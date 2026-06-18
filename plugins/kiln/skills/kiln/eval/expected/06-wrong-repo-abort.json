@@ -1,0 +1,17 @@
+{
+  "scenario": "06-wrong-repo-abort",
+  "routing": {
+    "mode": "ORIENT",
+    "tier": "N/A",
+    "blast_radius": "N/A"
+  },
+  "gates": {
+    "ARTIFACT-GATE": true,
+    "SPEC-GATE": false,
+    "PLAN-GATE": false,
+    "TASK-GATE": false
+  },
+  "agents_dispatched": [],
+  "agents_skipped": ["refiner", "planner", "crafter", "inspector"],
+  "abort_reason": "zero claimed artifacts found in repo"
+}

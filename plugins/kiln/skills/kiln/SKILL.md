@@ -45,6 +45,37 @@ ticket_signals: <list from ticket read or null>
 
 ---
 
+## Block 1.5: Artifact Verification (TICKET and TICKET_WITH_PLAN only)
+
+Skip for RAW_IDEA entries — no repo claims to verify.
+
+Before calling Compounds or dispatching any agent, verify the ticket's concrete claims match the current repo. Extract:
+- **Package names** — any version bump or dep-remediation language (e.g., "floor `simple-git` to ≥3.x")
+- **File paths** — any explicitly named source files
+- **Deployed artifact names** — function names, service names, Lambda identifiers
+
+For each extracted artifact, run a fast existence check:
+- Package: `grep -r "<name>" package.json` (or equivalent manifest)
+- File path: `test -f <path>`
+- Function/service name: `grep -r "<name>" serverless.yml` (or `cdk` / `terraform` entrypoints)
+
+**Gate condition:**
+- At least one claimed artifact found → proceed to Block 2
+- Zero claimed artifacts found → **ARTIFACT-GATE fires**:
+
+```
+ARTIFACT-GATE — repo mismatch detected
+Ticket names artifacts not present in this repo:
+  <list each missing artifact and what check failed>
+This ticket may target a different repository.
+Action required: confirm the correct repo before proceeding.
+```
+
+Write ledger: `ARTIFACT-GATE: fired | missing: <artifacts> | <ISO timestamp>`
+Stop. Do not proceed to Block 2.
+
+---
+
 ## Block 2: Routing Decision
 
 Load `modes.md` now. Apply the routing table:
