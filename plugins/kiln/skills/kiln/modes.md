@@ -43,7 +43,7 @@ Loaded on-demand by `SKILL.md` during the routing decision. Do not always-load.
 /kiln EXT-7394 path/to/existing.plan.md
 ```
 
-**Action:** Skip Refiner and Planner entirely. Call `plan_change(step="start")` with the existing plan as context. Proceed directly to the per-task loop.
+**Action:** Skip Refiner and Planner entirely. Call `plan_change(step="start")` with the existing plan as context. Proceed directly to the per-task loop. TASK-GATE still fires on each task when `plan_change` returns HIGH blast radius — EXECUTE does not bypass per-task inspection.
 
 ---
 
@@ -73,7 +73,7 @@ After mode selection produces a defined requirement, `plan_change(step="start")`
 |---|---|---|---|
 | TRIVIAL | N/A | None | Single Crafter dispatch, no gate pauses |
 | STANDARD | LOW | PLAN-GATE | One pause before first Crafter dispatch |
-| STANDARD | HIGH | SPEC-GATE + PLAN-GATE + TASK-GATE | SPEC-GATE after Refiner (REFINE path) or before plan_change (ORIENT path); TASK-GATE after each Crafter |
+| STANDARD | HIGH | SPEC-GATE + PLAN-GATE + TASK-GATE | SPEC-GATE after Refiner (REFINE path) or after plan_change confirms HIGH blast radius (ORIENT path); TASK-GATE after each Crafter |
 
 **SPEC-GATE fires only for STANDARD + HIGH blast radius.** TRIVIAL and STANDARD + LOW blast bypass SPEC-GATE entirely.
 

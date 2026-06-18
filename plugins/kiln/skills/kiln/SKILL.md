@@ -1,6 +1,6 @@
 ---
 name: kiln
-description: Complexity-proportionate implementation workflow. Use for any development task: Jira ticket, raw idea, or ticket with existing plan. Routes to REFINE/ORIENT/EXECUTE, invokes Compounds for impact analysis and task generation, enforces SPEC-GATE/PLAN-GATE/TASK-GATE, runs TDD implementation via crafter, quality review via inspector, and creates PR. Entry forms: /kiln EXT-NNNN | /kiln "raw idea" | /kiln EXT-NNNN path/to/plan.md
+description: Complexity-proportionate implementation workflow. Use for any development task: Jira ticket, raw idea, or ticket with existing plan. Entry forms: /kiln EXT-NNNN | /kiln "raw idea" | /kiln EXT-NNNN path/to/plan.md
 ---
 
 # The Kiln — Orchestrator
@@ -27,8 +27,8 @@ Parse the `/kiln` invocation argument:
 ```
 
 Detection rules:
-- Arg matches `EXT-\d+` followed by a `.md` path → EXECUTE fast-path
-- Arg matches `EXT-\d+` alone → read ticket signals via Jira MCP
+- Arg matches `[A-Z]+-\d+` followed by a `.md` path → EXECUTE fast-path
+- Arg matches `[A-Z]+-\d+` alone → read ticket signals via Jira MCP
 - Arg is a quoted string → raw idea → REFINE path
 
 Build routing decision object:
@@ -96,7 +96,7 @@ After approval: proceed to Block 5 (per-task loop).
 
 ## Block 4: SPEC-GATE
 
-Fires only for STANDARD + HIGH blast radius, after Refiner completes (REFINE path) or before `plan_change` on ORIENT path with HIGH blast.
+Fires only for STANDARD + HIGH blast radius, after Refiner completes (REFINE path) or after `plan_change` confirms HIGH blast radius (ORIENT path).
 
 ```
 Present spec summary (kiln-spec-draft.md if REFINE path, or ticket summary).
@@ -151,6 +151,8 @@ Inspector verdict: kiln-verdict-N.md
 Action required: review findings and decide how to proceed.
 ```
 
+Run `git log --oneline` to surface the failed-task commit range. Either `git revert` the commits in reverse order and push, or document the range in the escalation message.
+
 Write ledger: `TASK-N: ESCALATED | fix-loops: 2 | kiln-verdict-N.md`
 Stop execution. Do not proceed to next task.
 
@@ -187,4 +189,4 @@ If the context-reset nudge fires mid-execution:
    Resume with: /kiln <original entry arg>
    The Kiln will read the ledger and continue from task N.
    ```
-3. On resume: read ledger, find first entry without DONE status, continue from there.
+3. On resume: read ledger, find first entry without DONE status, continue from there. Before dispatching crafter for task N, run `git log --oneline origin/main..HEAD` and check whether a commit matching task N's title already exists. If it does, read the commit SHA, write the DONE ledger entry, and advance to task N+1.
