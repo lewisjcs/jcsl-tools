@@ -1,0 +1,11 @@
+{
+  "name": "jcsl-tools",
+  "version": "0.1.0",
+  "description": "Josh C.S. Lewis's personal AI tooling — The Kiln implementation workflow party and supporting skills",
+  "author": {
+    "name": "Josh C.S. Lewis",
+    "url": "https://github.com/lewisjcs"
+  },
+  "repository": "https://github.com/lewisjcs/jcsl-tools",
+  "license": "MIT"
+}
