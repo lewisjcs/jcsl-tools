@@ -43,7 +43,12 @@ Loaded on-demand by `SKILL.md` during the routing decision. Do not always-load.
 /kiln EXT-7394 path/to/existing.plan.md
 ```
 
-**Action:** Skip Refiner and Planner entirely. Call `plan_change(step="start")` with the existing plan as context. Proceed directly to the per-task loop. TASK-GATE still fires on each task when `plan_change` returns HIGH blast radius — EXECUTE does not bypass per-task inspection.
+**Action:** Skip Refiner and Planner entirely. Call `plan_change(step="start")` with the existing plan as context. Proceed directly to the per-task loop.
+
+Gate behavior on EXECUTE:
+- **SPEC-GATE:** skipped — a plan file was already provided and approved by the caller
+- **PLAN-GATE:** skipped — no Planner dispatch means no kiln-plan.md to present
+- **TASK-GATE:** fires on each task when `plan_change` returns HIGH blast radius — EXECUTE does not bypass per-task inspection
 
 ---
 

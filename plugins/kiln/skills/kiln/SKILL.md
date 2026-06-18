@@ -7,6 +7,8 @@ description: Complexity-proportionate implementation workflow. Use for any devel
 
 The Kiln is a complexity-proportionate implementation workflow. It routes, coordinates, and enforces gates. It does not implement code and does not review code — those belong to crafter and inspector.
 
+**When NOT to use:** docs-only edits, hotfixes with a known spec and no Compounds task list needed, or single-file typo/config changes. Use The Kiln when you need routing, gate enforcement, or multi-task TDD implementation.
+
 **Progressive disclosure:** Load on-demand files only when needed:
 - `modes.md` — load once during routing decision
 - `dispatch-contracts.md` — load once per Class dispatch
@@ -38,6 +40,8 @@ jira_key: <key or null>
 plan_file: <path or null>
 ticket_signals: <list from ticket read or null>
 ```
+
+**Verify:** Confirm `entry_form` is set, and `jira_key` is non-null for TICKET and TICKET_WITH_PLAN forms. If `jira_key` is null for a TICKET form, surface the parse failure and stop — do not proceed to routing.
 
 ---
 
@@ -88,9 +92,10 @@ After Compounds produces tier + blast radius classification:
 Present task list from kiln-plan.md to user.
 STOP — wait for explicit "approve" before proceeding.
 Do not proceed on any other response.
+On any other response: apply edits to kiln-plan.md, re-present, and wait again.
 ```
 
-After approval: proceed to Block 5 (per-task loop).
+After explicit "approve": proceed to Block 5 (per-task loop).
 
 ---
 
@@ -101,7 +106,8 @@ Fires only for STANDARD + HIGH blast radius, after Refiner completes (REFINE pat
 ```
 Present spec summary (kiln-spec-draft.md if REFINE path, or ticket summary).
 STOP — wait for explicit "approve" before proceeding.
-Do not proceed on any other response. Apply requested edits and re-present.
+Do not proceed on any other response.
+On any other response: apply requested edits to the spec, re-present, and wait again.
 ```
 
 Write ledger: `SPEC-GATE: approved | <ISO timestamp>`
@@ -172,8 +178,9 @@ After all tasks complete:
 
 1. Run `code-quality-audit` skill on `git diff main...HEAD`
 2. Invoke `/create-pr` skill — enforces title format and body template
+3. **Verify:** Confirm PR URL is returned. Surface the URL to the user. If `/create-pr` does not return a URL, stop and report the failure — do not write the COMPLETE ledger entry.
 
-Write ledger: `COMPLETE: PR created | <branch> | <ISO timestamp>`
+Write ledger: `COMPLETE: PR created | <url> | <branch> | <ISO timestamp>`
 
 ---
 

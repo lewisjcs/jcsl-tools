@@ -52,9 +52,9 @@ Required sections:
 **2. Create Jira subtasks** — one per Compounds task under the parent ticket.
 
 Subtask creation rules:
-- On ORIENT path: search for existing subtasks using `mcp__jira__searchJiraIssuesUsingJql` with JQL `parent = <ticket-key> AND summary ~ "[Kiln]"`; skip creation for any task whose title already has a matching subtask
+- On ORIENT path: search for existing subtasks using `mcp__jira__searchJiraIssuesUsingJql` with JQL `parent = <ticket-key> AND issuetype = Sub-task`; skip creation for any task whose Compounds title already matches an existing subtask summary
 - On REFINE path: always create subtasks (ticket was thin — no subtasks exist)
-- Subtask title format: `[Kiln] <Compounds task title>`
+- Subtask title format: `<Compounds task title>` — no tool prefix
 - Follow Jira ADF constraints: no `- [ ]` checkboxes, no inline code inside link text
 
 ## Verification

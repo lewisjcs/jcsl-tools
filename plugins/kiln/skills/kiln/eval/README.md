@@ -8,7 +8,7 @@ This is v1 scope: human-run, no CI automation. The harness is the ship-gate for 
 
 ## Scenario Format
 
-Each scenario file in `scenarios/` follows this structure (design spec §13.2):
+Each scenario file in `scenarios/` follows this structure:
 
 ```markdown
 ## Input
@@ -28,7 +28,7 @@ planner_dispatched: true | false
 
 ## Gold Fixture Format
 
-Each fixture in `expected/` follows this structure (design spec §13.3):
+Each fixture in `expected/` follows this structure:
 
 ```json
 {

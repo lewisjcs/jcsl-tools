@@ -61,6 +61,8 @@ Required sections:
 
 Run the test suite scoped to the files changed in this task. Confirm all tests pass before writing the report.
 
+**If tests fail after committing:** amend the commit (`git commit --amend --no-edit` after fixes), re-run the suite, and confirm green before writing the report. Do not write `kiln-report-N.md` while any test is failing.
+
 Run: `git rev-parse HEAD` to obtain the commit SHA for the report.
 
 Return the single line `CRAFTER_DONE: kiln-report-N.md written, commit: <SHA>` and nothing else. Do not paste implementation code or test output into your reply — the orchestrator reads the report file directly.
