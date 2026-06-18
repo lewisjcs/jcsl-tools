@@ -1,0 +1,12 @@
+{
+  "name": "kiln",
+  "version": "0.1.0",
+  "description": "The Kiln — complexity-proportionate implementation workflow Party for Contentful development tasks",
+  "author": {
+    "name": "Josh C.S. Lewis",
+    "url": "https://github.com/lewisjcs"
+  },
+  "repository": "https://github.com/lewisjcs/jcsl-tools",
+  "license": "MIT",
+  "keywords": ["implementation", "workflow", "tdd", "compounds", "party"]
+}

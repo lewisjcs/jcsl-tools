@@ -1,30 +1,28 @@
 # jcsl-tools
 
-Personal AI tooling plugin for Claude Code — Josh C.S. Lewis.
+Personal AI tooling marketplace for Claude Code — Josh C.S. Lewis.
 
-## Contents
+## Plugins
 
-### The Kiln
-
-A complexity-proportionate implementation workflow Party of four AI Classes:
-
-| Class | Role |
+| Plugin | Description |
 |---|---|
-| `kiln-refiner` | Brainstorming and spec dialogue — fuzzy→defined transition |
-| `kiln-planner` | Compounds impact analysis + implementation plan + Jira tasks |
-| `kiln-smith` | Per-task TDD implementation |
-| `kiln-inspector` | Per-task spec compliance and quality review |
-
-Orchestrated by the `kiln` skill. Invoke with `/kiln EXT-XXXX` or `/kiln "raw idea"`.
+| [`kiln`](plugins/kiln/) | The Kiln — complexity-proportionate implementation workflow Party |
 
 ## Installation
 
-```sh
-claude plugin install github:lewisjcs/jcsl-tools
+Add to `~/.claude/settings.json` under `extraKnownMarketplaces`:
+
+```json
+"jcsl-tools": {
+  "source": {
+    "source": "directory",
+    "path": "/path/to/jcslOS/repos/jcsl-tools"
+  }
+}
 ```
 
-Or from local development:
+Then install individual plugins:
 
 ```sh
-claude plugin install /path/to/jcsl-tools
+claude plugin install kiln@jcsl-tools
 ```

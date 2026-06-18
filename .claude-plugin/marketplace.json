@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema",
+  "name": "jcsl-tools",
+  "description": "Josh C.S. Lewis's personal AI tooling — implementation workflow parties and skills for Claude Code.",
+  "owner": {
+    "name": "Josh C.S. Lewis"
+  },
+  "plugins": [
+    {
+      "name": "kiln",
+      "source": "./plugins/kiln",
+      "displayName": "The Kiln",
+      "description": "Complexity-proportionate implementation workflow Party — four AI Classes (Refiner, Planner, Smith, Inspector) orchestrated by the kiln skill. Invoke with /kiln.",
+      "author": {
+        "name": "Josh C.S. Lewis"
+      },
+      "repository": "https://github.com/lewisjcs/jcsl-tools",
+      "keywords": ["implementation", "workflow", "tdd", "compounds", "party"],
+      "category": "development-workflows"
+    }
+  ]
+}
