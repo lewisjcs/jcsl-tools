@@ -1,7 +1,7 @@
 ---
 name: planner
 description: Implementation planning from Compounds task list. Dispatch after plan_change completes and kiln-tasklist.md is written. Reads Compounds output, authors kiln-plan.md, creates Jira subtasks on both ORIENT and REFINE paths.
-tools: Read, Bash, mcp__jira__getJiraIssue, mcp__jira__createJiraIssue, mcp__jira__editJiraIssue
+tools: Read, Bash, mcp__jira__getJiraIssue, mcp__jira__createJiraIssue, mcp__jira__editJiraIssue, mcp__jira__searchJiraIssuesUsingJql
 model: opus
 ---
 
@@ -52,7 +52,7 @@ Required sections:
 **2. Create Jira subtasks** — one per Compounds task under the parent ticket.
 
 Subtask creation rules:
-- On ORIENT path: check existing subtasks via `mcp__jira__getJiraIssue` first; skip creation if subtasks matching the Compounds task titles already exist
+- On ORIENT path: search for existing subtasks using `mcp__jira__searchJiraIssuesUsingJql` with JQL `parent = <ticket-key> AND summary ~ "[Kiln]"`; skip creation for any task whose title already has a matching subtask
 - On REFINE path: always create subtasks (ticket was thin — no subtasks exist)
 - Subtask title format: `[Kiln] <Compounds task title>`
 - Follow Jira ADF constraints: no `- [ ]` checkboxes, no inline code inside link text
