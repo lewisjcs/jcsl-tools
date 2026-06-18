@@ -1,0 +1,15 @@
+{
+  "scenario": "05-existing-plan",
+  "routing": {
+    "mode": "EXECUTE",
+    "tier": "STANDARD",
+    "blast_radius": "LOW"
+  },
+  "gates": {
+    "SPEC-GATE": false,
+    "PLAN-GATE": true,
+    "TASK-GATE": false
+  },
+  "agents_dispatched": ["crafter", "inspector"],
+  "agents_skipped": ["refiner", "planner"]
+}

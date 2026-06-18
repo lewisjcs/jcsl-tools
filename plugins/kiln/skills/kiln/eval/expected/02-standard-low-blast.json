@@ -1,0 +1,15 @@
+{
+  "scenario": "02-standard-low-blast",
+  "routing": {
+    "mode": "ORIENT",
+    "tier": "STANDARD",
+    "blast_radius": "LOW"
+  },
+  "gates": {
+    "SPEC-GATE": false,
+    "PLAN-GATE": true,
+    "TASK-GATE": false
+  },
+  "agents_dispatched": ["planner", "crafter", "inspector"],
+  "agents_skipped": ["refiner"]
+}

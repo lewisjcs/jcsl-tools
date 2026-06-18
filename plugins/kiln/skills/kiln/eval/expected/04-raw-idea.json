@@ -1,0 +1,15 @@
+{
+  "scenario": "04-raw-idea",
+  "routing": {
+    "mode": "REFINE",
+    "tier": "STANDARD",
+    "blast_radius": "LOW"
+  },
+  "gates": {
+    "SPEC-GATE": false,
+    "PLAN-GATE": true,
+    "TASK-GATE": false
+  },
+  "agents_dispatched": ["refiner", "planner", "crafter", "inspector"],
+  "agents_skipped": []
+}

@@ -1,0 +1,15 @@
+{
+  "scenario": "03-standard-high-blast",
+  "routing": {
+    "mode": "ORIENT",
+    "tier": "STANDARD",
+    "blast_radius": "HIGH"
+  },
+  "gates": {
+    "SPEC-GATE": true,
+    "PLAN-GATE": true,
+    "TASK-GATE": true
+  },
+  "agents_dispatched": ["planner", "crafter", "inspector"],
+  "agents_skipped": ["refiner"]
+}
