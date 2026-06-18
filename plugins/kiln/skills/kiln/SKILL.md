@@ -119,13 +119,15 @@ After Compounds produces tier + blast radius classification:
 - Write ledger: `PLAN: kiln-plan.md written | subtasks: <keys>`
 
 **PLAN-GATE** (STANDARD only — fires for both LOW and HIGH blast radius):
+
 ```
+PLAN-GATE — HARD STOP
 Present task list from kiln-plan.md to user.
-STOP — wait for explicit "approve" before proceeding.
-Do not proceed on any other response.
-On any other response: apply edits to kiln-plan.md, re-present, and wait again.
+Do NOT proceed until the user responds with an explicit "approve".
+On any other response: apply requested edits to kiln-plan.md, re-present, and return to this HARD STOP.
 ```
 
+Write ledger: `PLAN-GATE: approved | <ISO timestamp>`
 After explicit "approve": proceed to Block 5 (per-task loop).
 
 ---
@@ -135,10 +137,10 @@ After explicit "approve": proceed to Block 5 (per-task loop).
 Fires only for STANDARD + HIGH blast radius, after Refiner completes (REFINE path) or after `plan_change` confirms HIGH blast radius (ORIENT path).
 
 ```
+SPEC-GATE — HARD STOP
 Present spec summary (kiln-spec-draft.md if REFINE path, or ticket summary).
-STOP — wait for explicit "approve" before proceeding.
-Do not proceed on any other response.
-On any other response: apply requested edits to the spec, re-present, and wait again.
+Do NOT proceed until the user responds with an explicit "approve".
+On any other response: apply requested edits to the spec, re-present, and return to this HARD STOP.
 ```
 
 Write ledger: `SPEC-GATE: approved | <ISO timestamp>`

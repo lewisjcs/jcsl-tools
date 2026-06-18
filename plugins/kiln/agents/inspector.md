@@ -41,19 +41,19 @@ findings:
     claim: <one-sentence statement of the issue>
 ```
 
+**Severity definitions** (read before applying gate rules):
+- **Critical** — incorrect behavior, security flaw, crash risk, data loss, or spec criterion completely unmet
+- **Important** — missing error path, performance issue, significant anti-pattern, or spec criterion partially met
+- **Minor** — style, naming, or readability issue that does not affect correctness
+
 Rules:
 - If no findings: write `findings: []`
 - `spec: ✅` means all acceptance criteria in the brief are satisfied
 - `spec: ❌` means one or more acceptance criteria are not satisfied — list each as a finding
-- `quality: approved` means no code quality findings at Critical or Important severity
+- `quality: approved` means no code quality findings at Critical or Important severity (see severity definitions above)
 - `quality: findings` means one or more Critical or Important findings exist
 - Never return verdict as free text — always write to `kiln-verdict-N.md`
 - A clean result (`spec: ✅`, `quality: approved`, `findings: []`) is valid and expected for correct implementations
-
-**Severity definitions:**
-- **Critical** — incorrect behavior, security flaw, crash risk, data loss, or spec criterion completely unmet
-- **Important** — missing error path, performance issue, significant anti-pattern, or spec criterion partially met
-- **Minor** — style, naming, or readability issue that does not affect correctness
 
 ## Verification
 
