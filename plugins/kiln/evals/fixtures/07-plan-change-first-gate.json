@@ -1,0 +1,6 @@
+{
+  "scenario": "07-plan-change-first-gate",
+  "expected_gate": "plan_change_first",
+  "expected_outcome": "fires",
+  "expected_action": "halt with plan_change-first message"
+}

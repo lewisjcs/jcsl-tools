@@ -128,6 +128,24 @@ Load `modes.md` now. Apply the routing table:
 
 ## Block 3: Compounds Integration
 
+## GATE: plan_change-first
+
+**Condition:** This gate fires if file edits, file creation, or implementation steps
+are attempted before `plan_change(step="start")` has returned a successful routing result.
+
+**Violation action:**
+```
+PLAN_CHANGE-FIRST GATE — HARD STOP
+You attempted to edit files or write code before running plan_change(step="start").
+Action required: Run plan_change(step="start") first, then resume from Block 3.
+Do NOT proceed until plan_change routing completes.
+```
+
+**Pass condition:** `plan_change(step="start")` has been called and returned a tier/blast-radius
+classification in this session. Then continue to the routing decision below.
+
+---
+
 Call `plan_change(step="start")` and follow the state machine through all steps until routing completes.
 
 After Compounds produces tier + blast radius classification:
