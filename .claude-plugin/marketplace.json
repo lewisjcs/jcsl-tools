@@ -17,6 +17,18 @@
       "repository": "https://github.com/lewisjcs/jcsl-tools",
       "keywords": ["implementation", "workflow", "tdd", "compounds", "party"],
       "category": "development-workflows"
+    },
+    {
+      "name": "gauntlet",
+      "source": "./plugins/gauntlet",
+      "displayName": "Gauntlet",
+      "description": "Multi-skill AI review harness — orchestrates adversarial, security, directive, doc, plan, and skill-audit review lanes. Invoke with /gauntlet.",
+      "author": {
+        "name": "Josh C.S. Lewis"
+      },
+      "repository": "https://github.com/lewisjcs/jcsl-tools",
+      "keywords": ["review", "gauntlet", "security", "adversarial", "directive", "audit"],
+      "category": "development-workflows"
     }
   ]
 }
