@@ -2,7 +2,7 @@
 
 Load this file **only in Phase 3 substep 1** (Concatenate/promote), when adversarial-review's 5-field findings are being promoted to the canonical 10-field shape and relabeled. The orchestrator does not need this content to run Phases 0–2 or 4.
 
-Authoritative source: master spec `projects/active/gauntlet/2026-05-22-design.md` §4.1 / §4.1.1. This file is the operational extract; if the two ever disagree, the master spec wins.
+Authoritative source: the gauntlet master spec (see jcslOS workspace history) §4.1 / §4.1.1. This file is the operational extract; if the two ever disagree, the master spec wins.
 
 ---
 
@@ -21,6 +21,17 @@ When `adversarial-review` is dispatched against `plan-text` or `doc-text` (Phase
 | `code-diff` | `Hidden Assumptions` | `adversarial-review / Hidden Assumptions` (no relabel) |
 | `code-diff` | `Failure Scenarios` | `adversarial-review / Failure Scenarios` (no relabel) |
 | `code-diff` | `Blast Radius` | `adversarial-review / Blast Radius` (no relabel) |
+
+**R4 — Audit-skill lens mappings (skill-audit and code-quality-audit prose → canonical lens values)**
+
+| Audit-skill output | Canonical `lens` value |
+|---|---|
+| skill-audit — Compliance | `skill-audit / Compliance` |
+| skill-audit — Staleness | `skill-audit / Staleness` |
+| skill-audit — Gaps | `skill-audit / Gaps` |
+| code-quality-audit — Compliance | `code-quality-audit / Compliance` |
+| code-quality-audit — Staleness | `code-quality-audit / Staleness` |
+| code-quality-audit — Gaps | `code-quality-audit / Gaps` |
 
 **Why preserve all three sub-lenses (don't collapse to one):** Phase 8 Task 5+6 soft-validation showed that collapsing the 3 sub-lenses to 1 canonical lens caused Phase 3 substep 4 dedup to drop HIGH-confidence critical findings (severity=High AND confidence≥85 AND category=correctness). Two fixtures lost Required-Changes findings to the lens-collapse blind spot (plan/02 dropped F5-AR at conf 87; doc/01 dropped F6-AR at conf 85). The hyphenated-suffix vocabulary keeps each sub-lens distinct for dedup while preserving the parent family for report grouping. Dedup (substep 4) treats two findings as duplicates only when the original sub-lens AND the location both match.
 
