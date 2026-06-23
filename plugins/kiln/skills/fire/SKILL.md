@@ -75,9 +75,7 @@ Same as TICKET.
 
 ---
 
-## Block 1.5: Artifact Verification (TICKET and TICKET_WITH_PLAN only)
-
-### Branch Precondition
+## Block 1.4: Branch Precondition (all entry forms)
 
 Run: `git symbolic-ref --short HEAD`
 
@@ -87,6 +85,10 @@ Run: `git symbolic-ref --short HEAD`
   - Write ledger: `BRANCH: created <branch-name> | <ISO timestamp>`
 - If output is any other branch name → proceed silently (no ledger entry needed)
 - If `git symbolic-ref` fails (detached HEAD) → treat as non-default, proceed silently
+
+---
+
+## Block 1.5: Artifact Verification (TICKET and TICKET_WITH_PLAN only)
 
 ### Artifact Verification
 
