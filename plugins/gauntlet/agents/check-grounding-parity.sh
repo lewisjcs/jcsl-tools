@@ -164,3 +164,77 @@ fi
 
 echo "OK: FINDER-GROUNDING block present and byte-identical in all ${#FINDER_FILES[@]} finder files."
 echo "    SHA-256: $finder_unique_hashes"
+
+# ---------------------------------------------------------------------------
+# VALIDATOR-GROUNDING block check: present + byte-identical across the 5 validators
+# ---------------------------------------------------------------------------
+
+VALIDATOR_FILES=(
+  "$AGENTS_DIR/adversarial-validator.md"
+  "$AGENTS_DIR/directive-validator.md"
+  "$AGENTS_DIR/doc-validator.md"
+  "$AGENTS_DIR/plan-validator.md"
+  "$AGENTS_DIR/security-validator.md"
+)
+
+validator_missing=()
+validator_hashes=()
+
+for f in "${VALIDATOR_FILES[@]}"; do
+  name="$(basename "$f")"
+
+  if ! grep -q 'VALIDATOR-GROUNDING:START' "$f"; then
+    validator_missing+=("$name (missing VALIDATOR-GROUNDING:START marker)")
+    continue
+  fi
+  if ! grep -q 'VALIDATOR-GROUNDING:END' "$f"; then
+    validator_missing+=("$name (missing VALIDATOR-GROUNDING:END marker)")
+    continue
+  fi
+
+  extracted="$TMPDIR_WORK/$name.validator.block"
+  awk '/<!-- VALIDATOR-GROUNDING:START/{found=1} found{print} /VALIDATOR-GROUNDING:END -->/{found=0}' "$f" > "$extracted"
+
+  hash="$(shasum -a 256 "$extracted" | awk '{print $1}')"
+  validator_hashes+=("$hash $name")
+done
+
+if [[ ${#validator_missing[@]} -gt 0 ]]; then
+  echo "FAIL: VALIDATOR-GROUNDING markers absent in ${#validator_missing[@]} validator file(s):"
+  for m in "${validator_missing[@]}"; do
+    echo "  - $m"
+  done
+  exit 1
+fi
+
+validator_unique_hashes="$(printf '%s\n' "${validator_hashes[@]}" | awk '{print $1}' | sort -u)"
+validator_unique_count="$(printf '%s\n' "$validator_unique_hashes" | wc -l | tr -d ' ')"
+
+if [[ "$validator_unique_count" -ne 1 ]]; then
+  echo "FAIL: VALIDATOR-GROUNDING block is NOT byte-identical across all 5 validator files ($validator_unique_count distinct hashes found)."
+  echo ""
+  echo "Per-file hashes:"
+  printf '  %s\n' "${validator_hashes[@]}"
+  echo ""
+  echo "Diff (first diverging pair):"
+  first_file=""
+  for f in "${VALIDATOR_FILES[@]}"; do
+    name="$(basename "$f")"
+    extracted="$TMPDIR_WORK/$name.validator.block"
+    if [[ -z "$first_file" ]]; then
+      first_file="$extracted"
+      first_name="$name"
+    else
+      if ! diff -u "$first_file" "$extracted" > /dev/null 2>&1; then
+        echo "--- $first_name"
+        echo "+++ $name"
+        diff -u "$first_file" "$extracted" || true
+        break
+      fi
+    fi
+  done
+  exit 1
+fi
+
+echo "OK: VALIDATOR-GROUNDING block present and byte-identical in all ${#VALIDATOR_FILES[@]} validator files."
+echo "    SHA-256: $validator_unique_hashes"
