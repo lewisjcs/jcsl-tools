@@ -121,6 +121,40 @@ Stop. Do not proceed to Block 2.
 
 ---
 
+## Block 1.6: Read Lessons (all entry forms)
+
+Read the cross-run lessons corpus before routing.
+
+**Corpus path:** `$(git rev-parse --show-toplevel)/projects/active/kiln-lessons.md`
+
+- If file absent → treat as zero lessons, proceed silently (do NOT create the file here)
+- Parse each line matching: `- [YYYY-MM-DD] scope:<x> | trigger:<y> | gate:<z> | action:<a> | runs:<ids>`
+- Skip malformed lines silently; do not abort the run
+
+**Scope match rules** (filter which lessons to surface):
+
+| Scope | Include when |
+|-------|-------------|
+| `branch`, `entry`, `routing`, `compounds` | Always (every run reaches these blocks) |
+| `repo-onboarding` | Only if repo not yet indexed (`init_repo` needed) |
+| `dispatch` | Only if tier resolves to STANDARD (TRIVIAL skips per-task dispatch) |
+
+**Ranking:** sort surviving lessons by `len(runs)` descending (most recurrent first).
+
+**Surface pre-flight notice** if N > 0:
+```
+**[Kiln] Pre-flight — N lessons from prior runs:**
+- <scope>: <action> (<len(runs)> runs)
+```
+
+If N > 7, append one line: `(>7 lessons surfaced — consider pruning kiln-lessons.md)`
+
+If N == 0, proceed silently (no notice emitted).
+
+Write ledger: `LESSONS-READ: <N> surfaced | <ISO timestamp>`
+
+---
+
 ## Block 2: Routing Decision
 
 Load `modes.md` now. Apply the routing table:
@@ -349,6 +383,31 @@ Populate from progress.md and verdict-N.md:
 - Inspector findings summary
 
 Write retro to: `{{RUN_FOLDER}}/kiln-retro.md`
+
+### Distill Lessons (runs when friction_score >= 1)
+
+**Corpus path:** `$(git rev-parse --show-toplevel)/projects/active/kiln-lessons.md`
+
+For each friction item recorded in `progress.md`, evaluate:
+
+1. **Mechanically preventable?**
+   - YES: wrong branch, skipped `plan_change`, committed to main, missing artifact check
+   - NO: narration notes, pacing complaints, judgment calls, "felt slow" observations
+   - If NO → skip; item stays in retro prose only, never enters corpus
+
+2. **Already in corpus?** Match on `scope` + `trigger` (exact string match).
+
+Three-way outcome:
+- **New + preventable** → append: `- [YYYY-MM-DD] scope:<x> | trigger:<y> | gate:<z> | action:<a> | runs:<this-run-id>`
+  - `scope` MUST be one of: `branch`, `entry`, `routing`, `compounds`, `repo-onboarding`, `dispatch`
+  - `gate` = block reference (e.g., `Block-1.4`) or `none-yet` if no gate exists yet
+  - Write ledger: `LESSON-WRITE: new scope:<x> trigger:<y> | <ISO timestamp>`
+- **Existing** → find the matching line, append `,<this-run-id>` to its `runs:` field
+  - Write ledger: `LESSON-WRITE: bump scope:<x> trigger:<y> | <ISO timestamp>`
+- **Not preventable** → no write, no ledger entry
+
+**Error posture:** if the corpus write fails, log the failure and continue. A distill error must NEVER block retro completion or PR creation.
+
 Write ledger: `RETRO: terse|full | <ISO timestamp>`
 
 Write ledger: `COMPLETE: PR created | <url> | <branch> | <ISO timestamp>`
@@ -387,6 +446,8 @@ All ledger entries are written to `{{RUN_FOLDER}}/progress.md`.
 | `TASK-N: ESCALATED` | `TASK-N: ESCALATED \| fix-loops: 2 \| {{RUN_FOLDER}}/verdict-N.md` | Task escalated after 2 fix failures |
 | `DONE` | `DONE task-N: <title> \| commits: <sha1>..<sha2> \| inspected: ✅` | Task finalized successfully |
 | `PAUSED:` | `PAUSED: task-N in progress \| <ISO timestamp>` | Context-reset nudge fires |
+| `LESSONS-READ:` | `LESSONS-READ: <N> surfaced \| <ISO timestamp>` | Block 1.6 completes (written even when N == 0 and corpus exists) |
+| `LESSON-WRITE:` | `LESSON-WRITE: new\|bump scope:<x> trigger:<y> \| <ISO timestamp>` | Block 6 distill writes or bumps a lesson (one entry per action; not written if nothing qualifies) |
 | `RETRO:` | `RETRO: terse\|full \| <ISO timestamp>` | Retro written in Block 6 |
 | `COMPLETE:` | `COMPLETE: PR created \| <url> \| <branch> \| <ISO timestamp>` | PR created in Block 6 |
 | `USER-CORRECTION:` | `USER-CORRECTION: <description> \| <ISO timestamp>` | User issues mid-run correction |
