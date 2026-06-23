@@ -59,6 +59,14 @@ consumed in Phase 2; it never dispatches here. `--security` forces the lane rega
 
 **Phase 0 verify (per master spec §5.5):** `artifact_type ∈ {code-pr, code-local, skill, plan, doc, directive, multi}`. If detection produces multiple matches OR no matches, halt and ask the user: "I detected the artifact as both X and Y" (multi-match) or "I couldn't detect the artifact type from `<input>`" (no-match). Don't guess.
 
+**Phase 0 diff-content re-routing (code-pr only).** When the initial detection yields `code-pr`, fetch the changed file paths via `gh pr diff <n> --name-only` and classify each path:
+- A path is a **skill file** if it contains `.claude/skills/` OR matches `plugins/*/skills/`.
+- A path is a **directive file** if it contains `.claude/agents/*/knowledge/`, `.claude/agents/*/prompts/`, `.claude/agents/*/references/`, or matches `plugins/*/agents/*/knowledge`, `plugins/*/agents/*/prompts`, or `plugins/*/agents/*/references` — AND its extension is `.md`.
+
+Apply the following routing rule:
+- **All changed files are skill/directive:** re-route from `code-pr` to `skill` (if all are skill files), `directive` (if all are directive files), or `multi` (if mixed skill+directive). Record in chat: `"All changed files are skill/directive — re-routing from code-pr to <type>."`
+- **Mixed diff (some skill/directive files alongside non-skill/directive files):** keep `code-pr` routing. Add supplemental `skill-audit` and/or `directive-review` sub-tasks in Phase 1 for the skill/directive files. Record in chat: `"Mixed diff — code lanes + supplemental skill/directive lenses for N file(s)."`
+
 **Phase 0 emits to the top-level task list (via `TaskCreate`):** the artifact type, the routing decision (which sub-skills will be dispatched in Phase 1), and the dispatch count.
 
 **Phase 0 also checks for a prior report (P9 delta hook):** for ticketed artifacts, `ls projects/active/<ticket>/reviews/*-gauntlet-*.md 2>/dev/null`. If a prior report exists, read its **Reviewed ref** header; if the current head SHA has advanced past it, flag the run as a delta re-review so Phase 4d appends rather than writes fresh. If no prior report or the ref is unchanged, proceed as a normal run.
@@ -76,6 +84,8 @@ Create a task list with these 5 tasks (one `TaskCreate` call each). Mark each `c
 Add a **6th task when the Phase 0 go-live pre-filter matched OR `--go-live` was passed** (code-pr/code-local): **Phase 2.5** — Go-Live Readiness (conditional verdict lane), sequenced after Phase 2 and before Phase 3. Omit the task entirely when neither condition holds — it is not part of the default 5-phase flow.
 
 **HARD-GATE — no pausing between phases.** Proceed directly from each completed phase to the next without pausing for user input or displaying intermediate sub-skill output to chat. The only deliberate pause points in the entire run are: (a) Phase 0 halt-and-ask when artifact type is ambiguous, and (b) Phase 2.5 go-live prompt when the pre-filter matched and `--go-live` was not passed. Every other phase transition is silent and automatic. Do not post intermediate findings, progress summaries, or "Phase 1 complete — proceeding to security…" narration between phases — Phase 3 must adjudicate all findings before any results surface to the user.
+
+After marking a phase completed via TaskUpdate, immediately set the next phase to in_progress via TaskUpdate and begin work on it — do NOT post any message to chat between these two calls. The task-completion mark is not a pause point and must not be followed by output to the user. The only deliberate pause points in the entire run are: (a) Phase 0 halt-and-ask when artifact type is ambiguous, and (b) Phase 2.5 go-live prompt when the pre-filter matched and --go-live was not passed.
 
 <HARD-GATE>
 Six invariants enforced by this skill:
@@ -117,8 +127,8 @@ Nit in Phase 3 substep 6.
 - `code-local`: code-quality-audit, adversarial-review (artifact type=code-diff). Same dispatch pair as `code-pr`; both skills operate on diff content rather than GitHub metadata. No PR body dispatch (no PR exists for `code-local`).
 - `plan`: plan-review, adversarial-review (artifact type=plan-text — wires up plan-review's Architectural-risk lens per Phase 7 §9 resolution)
 - `doc`: doc-review, adversarial-review (artifact type=doc-text — wires up doc-review's Hidden-assumptions lens per Phase 7 §9 resolution)
-- `directive`: directive-review (typed; `Skill:` black-box dispatch) + adversarial-review (typed-input `directive-text`; if adversarial-review has no `directive-text` overlay yet, pass `doc-text` as the closest fit and note the substitution in the trust-signal footer). No PR body dispatch.
-- `skill`: skill-audit. **When the artifact is a skill DIRECTORY, also dispatch directive-review (typed; `Skill:` black-box dispatch) once per non-frontmatter prose sibling** (`modes.md`, `references/*.md`, `reference.md`, and any other `.md` without `name:`+`description:` skill frontmatter). A skill is reviewed as a unit: skill-audit owns the SKILL.md, directive-review owns the operating-prose siblings it points to. Enumerate the siblings with `ls`/`find` and create one directive-review sub-task per file. If the artifact is a single SKILL.md file (not a directory), skip the sibling sweep — there are no siblings to review.
+- `directive`: directive-review (typed; `Skill:` black-box dispatch) + adversarial-review (typed-input `directive-text`; if adversarial-review has no `directive-text` overlay yet, pass `doc-text` as the closest fit and note the substitution in the trust-signal footer). No PR body dispatch. **For multi-file directive runs:** before dispatching any directive-review sub-tasks, count the files to be reviewed and emit a single line to chat: `"Dispatching directive-review for N file(s): [list]. This will spawn N×2 agent passes."` Then proceed without gating.
+- `skill`: skill-audit. **When the artifact is a skill DIRECTORY, also dispatch directive-review (typed; `Skill:` black-box dispatch) once per non-frontmatter prose sibling** (`modes.md`, `references/*.md`, `reference.md`, and any other `.md` without `name:`+`description:` skill frontmatter). A skill is reviewed as a unit: skill-audit owns the SKILL.md, directive-review owns the operating-prose siblings it points to. Enumerate the siblings with `ls`/`find` and create one directive-review sub-task per file. **Before dispatching directive-review sub-tasks for multiple siblings, emit a single line to chat: `"Dispatching directive-review for N file(s): [list]. This will spawn N×2 agent passes."` Then proceed without gating.** If the artifact is a single SKILL.md file (not a directory), skip the sibling sweep — there are no siblings to review.
 - `multi`: per-file dispatch sets (recurse into Phase 1 for each contained artifact)
 
 Mark each sub-task complete as its sub-skill returns its findings array.
@@ -129,7 +139,7 @@ Each sibling falls into one of two dispatch shapes. **Use exactly these — do n
 
 | Lens | Owns typed agents? | Dispatch shape |
 |---|---|---|
-| `security-gauntlet`, `plan-review`, `doc-review`, `adversarial-review`, `directive-review` | Yes (`*-finder` + `*-validator`) | **`Skill:` dispatch.** Invoke the sibling skill (`Skill: security-gauntlet`). The skill runs its OWN internal Find→Validate→Adjudicate against its calibrated agents and returns survivors-only JSON (verdict=survives, confidence≥70). Treat it as a black box. |
+| `security-gauntlet`, `plan-review`, `doc-review`, `adversarial-review`, `directive-review` | Yes (`*-finder` + `*-validator`) | **`Skill:` dispatch.** Invoke the sibling skill (`Skill: gauntlet:security-gauntlet`). The skill runs its OWN internal Find→Validate→Adjudicate against its calibrated agents and returns survivors-only JSON (verdict=survives, confidence≥70). Treat it as a black box. |
 | `code-quality-audit`, `skill-audit` | No (workflow skills) | **Inline skill.** Invoke via `Skill:`; these read files and emit 3-layer prose in the main context (no typed finder/validator agents exist for them). gauntlet applies the §4.3 transformation to their prose. |
 
 Why black-box the typed lenses: each sibling is a *calibrated unit* — it owns the finder→validator handoff, the empty-finder short-circuit, schema-retry, count-match verification, and its own per-lens adjudication. The calibration harness scores the **skill**, not the raw agents. Reaching past the skill to dispatch its agents directly would duplicate that coordination in the orchestrator AND diverge the production path from the calibration path.
@@ -145,7 +155,7 @@ The sibling's "Called from gauntlet orchestrator" Invocation Context Detection r
 **For plan and doc artifact types, additionally dispatch adversarial-review with the typed-input parameter:**
 
 ```
-Skill: adversarial-review
+Skill: gauntlet:adversarial-review
 
 Artifact type: <plan-text | doc-text>
 Path (repo-relative): <path>
@@ -183,12 +193,12 @@ footer, set the "Reviewed by" status to `skipped (gated)`, and proceed to Phase 
 (below) treats a gated skip as a satisfied security requirement, NOT a missing lens. A `--security` flag
 forces the dispatch even when the flag is FALSE.
 
-Dispatch security-gauntlet via `Skill: security-gauntlet` against the same artifact:
+Dispatch security-gauntlet via `Skill: gauntlet:security-gauntlet` against the same artifact:
 
 - For `code-pr` and `code-local`: dispatch with the diff (PR diff for `code-pr`, `git diff main..HEAD` for `code-local`).
 - For `plan`, `doc`, `skill`: dispatch with the artifact content. security-gauntlet's existing prompt accepts non-code artifacts per master spec §3.3 ("Apply the 7 security-principles lenses to an artifact (code diff, plan text, doc text, or skill content per master spec §3.3)").
 
-**security-gauntlet output contract.** security-gauntlet returns a JSON findings array per the canonical 10-field schema when called from gauntlet (symmetric with plan-review and doc-review's `Returns surviving findings JSON for orchestrator aggregation` contract). Phase 2 verify parses that JSON; the standalone-prose path is a separate output mode invoked only when `Skill: security-gauntlet` runs without the gauntlet caller-context.
+**security-gauntlet output contract.** security-gauntlet returns a JSON findings array per the canonical 10-field schema when called from gauntlet (symmetric with plan-review and doc-review's `Returns surviving findings JSON for orchestrator aggregation` contract). Phase 2 verify parses that JSON; the standalone-prose path is a separate output mode invoked only when `Skill: gauntlet:security-gauntlet` runs without the gauntlet caller-context.
 
 **Phase 2 verify (per master spec §5.5):** parse output as JSON. If security-gauntlet returns a valid findings array (possibly empty), continue to Phase 3. If security-gauntlet errors or returns malformed JSON, mark Phase 2 as failed in the trust-signal footer and add a `⚠️ Security pass failed — manually run `/security-gauntlet` or escalate to AppSec.` callout to the report header (per §5.2 row 6). Critical-classification proceeds without the security signal.
 
@@ -208,7 +218,7 @@ Runs ONLY when the Phase 0 go-live pre-filter matched OR `--go-live` was passed.
 - **`--go-live` passed:** dispatch unconditionally, skipping the prompt — the operator already opted in explicitly. This path fires even when the pre-filter did NOT match (the override's whole purpose: review a go-live the signals missed).
 - **Pre-filter matched, no flag:** ask the operator once — "This change <matched signals — e.g. removes a feature flag and alters a response contract> — it may be a go-live. Run the go-live readiness lane? [y/N]". On `y`, dispatch; on `N` (or `--no-go-live`), skip and record `go-live-review: declined` in the footer. The FPR is ~0.28 by calibration, so a wrong prompt costs one keystroke; never escalate a bare pre-filter match to an auto-run.
 
-**Dispatch.** Invoke `Skill: go-live-review` against the PR/diff. It runs its own six-step readiness review (ticket-fetch, external-state confirmation, rollback, ownership, blast-radius) and returns its fenced verdict block. Treat it as a black box like the typed lenses — do not re-implement its steps in the orchestrator.
+**Dispatch.** Invoke `Skill: gauntlet:go-live-review` against the PR/diff. It runs its own six-step readiness review (ticket-fetch, external-state confirmation, rollback, ownership, blast-radius) and returns its fenced verdict block. Treat it as a black box like the typed lenses — do not re-implement its steps in the orchestrator.
 
 **Phase 2.5 verify.** Confirm the lane returned a fenced `🚀 Go-Live Readiness` block with one of SHIP / HOLD / NEEDS-INFO. If it errored, record `go-live-review: ⚠ failed` in the footer and continue — a go-live-lane failure never blocks the rest of the gauntlet. Carry the verdict block verbatim to Phase 4b for rendering in its own zone.
 
