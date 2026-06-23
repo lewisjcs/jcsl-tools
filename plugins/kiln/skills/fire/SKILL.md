@@ -77,6 +77,19 @@ Same as TICKET.
 
 ## Block 1.5: Artifact Verification (TICKET and TICKET_WITH_PLAN only)
 
+### Branch Precondition
+
+Run: `git symbolic-ref --short HEAD`
+
+- If output is `main` or `master`:
+  - TICKET/TICKET_WITH_PLAN → `git checkout -b kiln/<jira_key>`
+  - RAW_IDEA → `git checkout -b kiln/raw-<entry-slug>` (slug = first 3 words of idea, lowercased, hyphenated)
+  - Write ledger: `BRANCH: created <branch-name> | <ISO timestamp>`
+- If output is any other branch name → proceed silently (no ledger entry needed)
+- If `git symbolic-ref` fails (detached HEAD) → treat as non-default, proceed silently
+
+### Artifact Verification
+
 Skip for RAW_IDEA entries — no repo claims to verify.
 
 Before calling Compounds or dispatching any agent, verify the ticket's concrete claims match the current repo. Extract:
