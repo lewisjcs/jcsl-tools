@@ -220,10 +220,20 @@ For each Compounds task (STANDARD) or the single task (TRIVIAL):
 
 - Emit: `**[Kiln] Task {{N}}/{{TOTAL_TASKS}}: implementing {{task title}}**`
 
-**5a. Write brief**
+**5a. Get Compounds prompt and write brief**
 
-Extract task N from `{{RUN_FOLDER}}/tasklist.md`. Write `{{RUN_FOLDER}}/brief-N.md`.
-Required sections: Task title, Acceptance criteria, File targets, Test strategy, Prior-task interfaces.
+Call `implement_task(project_id, task_id)` to get the prompt and context for this task.
+From the response, extract the structured fields only (do NOT paste the full Compounds implementation prompt):
+- Task title
+- Acceptance criteria
+- File targets
+- Test strategy
+
+Write `{{RUN_FOLDER}}/brief-N.md` with:
+- Compounds task title + acceptance criteria (from implement_task response)
+- File targets (from implement_task response)
+- Test strategy (from implement_task response)
+- Prior-task interfaces (from orchestrator context — function signatures, file paths, exported types)
 
 **5b. Dispatch crafter**
 
@@ -237,7 +247,7 @@ Dispatch `inspector` agent using Inspector template from `dispatch-contracts.md`
 Wait for `INSPECTOR_DONE: {{RUN_FOLDER}}/verdict-N.md written`
 
 Read `{{RUN_FOLDER}}/verdict-N.md`. Evaluate gate condition:
-- `spec: ✅` AND `quality: approved` → PASS → write ledger entry, advance to next task
+- `spec: ✅` AND `quality: approved` → PASS → proceed to 5e
 - Any other result → FIX LOOP (see 5d)
 
 **5d. Fix loop (cap: 2 iterations)**
@@ -247,8 +257,8 @@ On inspector findings:
 2. Wait for `CRAFTER_DONE`
 3. Re-dispatch inspector, wait for `INSPECTOR_DONE`
 4. Read new `{{RUN_FOLDER}}/verdict-N.md`
-5. If PASS → write ledger, advance
-6. If still failing after 2 fix iterations:
+5. If PASS → proceed to 5e
+6. If still failing after 2 fix iterations → ESCALATION (do NOT call implement_task_finalize):
 
 ```
 HARD STOP — TASK-GATE ESCALATION
@@ -262,13 +272,40 @@ Run `git log --oneline` to surface the failed-task commit range. Either `git rev
 Write ledger: `TASK-N: ESCALATED | fix-loops: 2 | {{RUN_FOLDER}}/verdict-N.md`
 Stop execution. Do not proceed to next task.
 
-**5e. Ledger entry (on PASS)**
+**5e. Finalize on PASS**
+
+Reached only when Inspector verdict is `spec: ✅` AND `quality: approved`.
+
+Read `{{RUN_FOLDER}}/verdict-N.md` to extract evidence fields (`criteria_met`, `criteria_total`, `critical_findings`, `changed_files`).
+Read `{{RUN_FOLDER}}/report-N.md` to extract changed files list.
+
+Call:
+```
+implement_task_finalize(
+  project_id=<id>,
+  task_id=<id>,
+  caller_role="orchestrator",
+  phase="validate",
+  evidence={
+    validation_summary: "<Inspector verdict summary + key findings, ≥200 chars>",
+    criteria_met: <from Inspector verdict>,
+    criteria_total: <from Inspector verdict>,
+    critical_findings: <from Inspector verdict>,
+    changed_files: <from crafter report>
+  }
+)
+```
+
+- If `implement_task_finalize` succeeds → write ledger entry (5f)
+- If `implement_task_finalize` fails → escalate (same HARD STOP as task-gate escalation above)
+
+**5f. Ledger entry (on successful finalize)**
 
 ```
 DONE task-N: <title> | commits: <sha1>..<sha2> | inspected: ✅
 ```
 
-(TRIVIAL tasks: `DONE task-1: <title> | commits: <sha> | inspected: N/A`)
+(TRIVIAL tasks skip inspection and finalize: `DONE task-1: <title> | commits: <sha> | inspected: N/A`)
 
 ---
 

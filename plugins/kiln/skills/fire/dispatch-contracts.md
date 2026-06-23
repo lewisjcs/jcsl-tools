@@ -109,6 +109,10 @@ before writing any implementation code. This is non-optional.
 Read your task brief now:
 Brief path: {{RUN_FOLDER}}/brief-N.md
 
+The brief already contains the merged Compounds prompt context (task title, acceptance
+criteria, file targets, test strategy) alongside the orchestrator's prior-task interfaces.
+You do not need to call implement_task yourself — the brief is your complete requirements source.
+
 **Part 3 — Prior context:**
 {{PRIOR_TASK_INTERFACES}}
 ← If task 1: "N/A — first task. No prior agent outputs."
@@ -165,10 +169,18 @@ findings:
   - severity: Critical | Important | Minor
     location: <file:line or prose section>
     claim: <one-sentence statement of the issue>
+criteria_met: <number of acceptance criteria satisfied>
+criteria_total: <total number of acceptance criteria in the brief>
+critical_findings: <count of Critical-severity findings>
+changed_files:
+  - <file path from crafter report>
 ```
 
 Rules:
 - If no findings: write `findings: []`
+- `criteria_met` / `criteria_total` are counts from the brief's acceptance criteria list
+- `critical_findings` is the count of Critical-severity findings (0 if none)
+- `changed_files` is the list from the crafter's ## Implementation section
 - Never return verdict as free text — always write to {{RUN_FOLDER}}/verdict-{{N}}.md
 - An empty findings list with `quality: approved` is a valid clean result
 

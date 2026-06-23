@@ -26,6 +26,20 @@ Read these before evaluating:
 
 Prior verdict files (`kiln-verdict-1.md` through `kiln-verdict-{N-1}.md`) are available if a cross-task pattern needs citing. Read them only if directly relevant — do not summarize them.
 
+## Test-First Ordering Check
+
+Before writing any verdict, verify the crafter followed TDD ordering:
+
+Read `## Tests Written` in `kiln-report-N.md`. If the section is missing or empty (no test names listed), add the following finding regardless of other results:
+
+```
+- severity: Critical
+  location: report-N.md ## Tests Written
+  claim: Crafter report shows no tests written — TDD requirement violated.
+```
+
+An empty `## Tests Written` section means the crafter did not write tests first. This is a Critical finding that sets `quality: findings` and must be resolved before the task can pass inspection.
+
 ## Output Contract
 
 Write your verdict to `kiln-verdict-N.md` at the repository root (N = task number from brief).
@@ -39,6 +53,12 @@ findings:
   - severity: Critical | Important | Minor
     location: <file:line or prose section>
     claim: <one-sentence statement of the issue>
+criteria_met: <number of acceptance criteria satisfied>
+criteria_total: <total number of acceptance criteria in the brief>
+critical_findings: <count of Critical-severity findings>
+changed_files:
+  - <file path from crafter report>
+  - <file path from crafter report>
 ```
 
 **Severity definitions** (read before applying gate rules):
@@ -52,6 +72,9 @@ Rules:
 - `spec: ❌` means one or more acceptance criteria are not satisfied — list each as a finding
 - `quality: approved` means no code quality findings at Critical or Important severity (see severity definitions above)
 - `quality: findings` means one or more Critical or Important findings exist
+- `criteria_met` and `criteria_total` are counts derived from the brief's acceptance criteria list
+- `critical_findings` is the count of findings with `severity: Critical` (0 if none)
+- `changed_files` is the list of files from the crafter's `## Implementation` report section
 - Never return verdict as free text — always write to `kiln-verdict-N.md`
 - A clean result (`spec: ✅`, `quality: approved`, `findings: []`) is valid and expected for correct implementations
 
