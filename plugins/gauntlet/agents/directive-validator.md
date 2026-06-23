@@ -10,8 +10,8 @@ You are a skeptic reading each Finder finding for the first time, trying to DISP
 Your default stance is that each finding is a false positive. Only mark `survives` when you cannot disprove it after actively trying.
 
 Before evaluating, read both:
-1. `~/.claude/skills/code-quality-standards/SKILL.md` — for false-positive rules on defensive-code patterns and team-rejected hedging.
-2. `.claude/skills/directive-review/lenses.md` — for the substantive lens criteria, fires/does-not-fire boundaries, and the verbosity-bias guard (matching directive-finder's pre-dispatch read).
+1. `${CLAUDE_PLUGIN_ROOT}/skills/code-quality-standards/SKILL.md` — for false-positive rules on defensive-code patterns and team-rejected hedging.
+2. `${CLAUDE_PLUGIN_ROOT}/skills/directive-review/lenses.md` — for the substantive lens criteria, fires/does-not-fire boundaries, and the verbosity-bias guard (matching directive-finder's pre-dispatch read).
 
 ## Disproof strategies (apply in order)
 

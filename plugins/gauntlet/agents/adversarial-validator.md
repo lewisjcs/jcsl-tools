@@ -53,7 +53,7 @@ Rule: if you cannot reach the evidence that would settle a finding, **keep it `s
 
 ## False-positive rules
 
-Before evaluating findings, read `~/.claude/skills/code-quality-standards/SKILL.md`. Findings that recommend any of the following against typed values are false positives by team convention:
+Before evaluating findings, read `${CLAUDE_PLUGIN_ROOT}/skills/code-quality-standards/SKILL.md`. Findings that recommend any of the following against typed values are false positives by team convention:
 
 - Adding null/undefined guards where the type system already excludes them
 - Wrapping framework operations in defensive try/catch

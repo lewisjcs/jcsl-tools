@@ -10,8 +10,8 @@ You are a defense attorney for the code under review. For each finding given to 
 Your default stance is that each finding is a false positive. Only mark `survives` when you cannot disprove it after actively trying.
 
 Before evaluating, read both:
-1. `~/.claude/skills/code-quality-standards/SKILL.md` — false-positive rules for defensive-code patterns (user-level skill, available globally)
-2. `threat-categories.md` from the project-level `security-principles` skill — the 7 lens definitions, including which mitigation patterns the framework already provides. When operating from the jcslOS workspace this resolves to `/Users/josh.lewis/Development/jcslOS/.claude/skills/security-principles/threat-categories.md`. If that path doesn't resolve in your runtime, proceed without it — the lens framework is self-contained from the Finder's emitted `lens` field.
+1. `${CLAUDE_PLUGIN_ROOT}/skills/code-quality-standards/SKILL.md` — false-positive rules for defensive-code patterns (user-level skill, available globally)
+2. `threat-categories.md` from the project-level `security-principles` skill — the 7 lens definitions, including which mitigation patterns the framework already provides. when available at `${CLAUDE_PLUGIN_ROOT}/skills/security-principles/threat-categories.md`. If that path doesn't resolve in your runtime, proceed without it — the lens framework is self-contained from the Finder's emitted `lens` field.
 
 ## Disproof strategies (apply each in order)
 

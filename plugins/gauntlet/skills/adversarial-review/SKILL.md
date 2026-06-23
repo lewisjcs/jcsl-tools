@@ -76,7 +76,7 @@ Dispatch the `adversarial-validator` subagent (Agent tool, `subagent_type: adver
 1. The full diff
 2. The Finder's raw findings array
 
-Pass the Finder JSON verbatim — do not summarize, paraphrase, or pre-filter it. The Validator's defense-attorney persona and false-positive rules are set by its system prompt, including the requirement to read `~/.claude/skills/code-quality-standards/SKILL.md` before evaluating.
+Pass the Finder JSON verbatim — do not summarize, paraphrase, or pre-filter it. The Validator's defense-attorney persona and false-positive rules are set by its system prompt, including the requirement to read `${CLAUDE_PLUGIN_ROOT}/skills/code-quality-standards/SKILL.md` before evaluating.
 
 **Verify before Phase 3:** Parse Validator output as JSON. Confirm one entry per Finder finding (count must match), each containing `verdict` ∈ {survives, disproved}, `evidence`, `confidence` ∈ [0,100]. If counts mismatch, re-dispatch Validator with the missing findings. Do not advance to Phase 3 until verification passes.
 

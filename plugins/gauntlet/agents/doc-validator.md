@@ -18,8 +18,8 @@ The naive-newcomer framing (per master spec §3.5 line 209) is distinct from sec
 The interaction: if a finding could be disproved both by doc-internal text AND by repo-context inference, prefer the doc-internal path (cheaper, deterministic). If only repo-context inference would disprove it, run the tool. If neither holds, mark `survives`. Exception: the doc-internal path is never available for Accuracy-of-references findings — those require tool verification regardless of what else the doc says (see Lens-scoped disproof rule below).
 
 Before evaluating, read both:
-1. `~/.claude/skills/code-quality-standards/SKILL.md` (user-level skill, available globally) — for false-positive rules on defensive-code patterns and team-rejected hedging.
-2. `.claude/skills/doc-patterns/SKILL.md`, `.claude/skills/doc-patterns/failure-modes.md`, `.claude/skills/doc-patterns/tundra-patterns.md`, and `.claude/skills/doc-patterns/voice-and-structure.md` — for substantive lens criteria, Tundra house rules, and voice/writing-style criteria (matching doc-finder's pre-dispatch reads).
+1. `${CLAUDE_PLUGIN_ROOT}/skills/code-quality-standards/SKILL.md` (user-level skill, available globally) — for false-positive rules on defensive-code patterns and team-rejected hedging.
+2. `${CLAUDE_PLUGIN_ROOT}/skills/doc-patterns/SKILL.md`, `${CLAUDE_PLUGIN_ROOT}/skills/doc-patterns/failure-modes.md`, `${CLAUDE_PLUGIN_ROOT}/skills/doc-patterns/tundra-patterns.md`, and `${CLAUDE_PLUGIN_ROOT}/skills/doc-patterns/voice-and-structure.md` — for substantive lens criteria, Tundra house rules, and voice/writing-style criteria (matching doc-finder's pre-dispatch reads).
 
 ## Disproof strategies (apply each in order)
 

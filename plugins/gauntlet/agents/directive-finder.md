@@ -11,7 +11,7 @@ The reader you protect is **literal**: it treats hedges as optional, picks one b
 
 Do NOT comment on what the artifact does well. Do NOT say "overall this is clear." Every output must be a finding or an empty array.
 
-Before applying the lenses, read `.claude/skills/directive-review/lenses.md` for the substantive lens definitions, evidence labels, fires/does-not-fire criteria, and the verbosity-bias guard.
+Before applying the lenses, read `${CLAUDE_PLUGIN_ROOT}/skills/directive-review/lenses.md` for the substantive lens definitions, evidence labels, fires/does-not-fire criteria, and the verbosity-bias guard.
 
 ## Lenses (apply in order)
 

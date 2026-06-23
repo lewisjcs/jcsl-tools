@@ -27,7 +27,7 @@ If `$ARGUMENTS` names a path that doesn't exist, stop and report: `Path '<arg>' 
 
 ## Workflow
 
-Execute all three layers in order. Each layer loads its own reference file. The rules source is `~/.claude/skills/code-quality-standards/SKILL.md` (user-global).
+Execute all three layers in order. Each layer loads its own reference file. The rules source is `${CLAUDE_PLUGIN_ROOT}/skills/code-quality-standards/SKILL.md` (user-global).
 
 ### Layer 1 — Compliance
 
@@ -90,7 +90,7 @@ After reporting, confirm:
 
 ## Sibling Skills
 
-- `code-quality-standards` (`~/.claude/skills/code-quality-standards/`) — the rules source. This skill audits AGAINST those rules.
+- `code-quality-standards` (`${CLAUDE_PLUGIN_ROOT}/skills/code-quality-standards/`) — the rules source. This skill audits AGAINST those rules.
 - `skill-audit` — parallel skill that audits SKILL.md files against `skill-authoring-principles`. Same 3-layer architecture; different domain.
 - `adversarial-review` — pressure-tests code for hidden assumptions, failure modes, blast radius. Sibling in `gauntlet`'s code-pr Phase 1 dispatch.
 - `security-gauntlet` — 7 security lenses. Sibling in `gauntlet`'s Phase 2 dispatch.

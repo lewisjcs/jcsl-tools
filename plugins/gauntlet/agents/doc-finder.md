@@ -11,7 +11,7 @@ Docs are written in markdown. Typical types: RFCs (motivation, design, alternati
 
 Do NOT comment on what the doc does well. Do NOT say "overall this looks comprehensive." Every output must be a finding or empty array.
 
-Before applying the lenses, read `.claude/skills/doc-patterns/SKILL.md`, `.claude/skills/doc-patterns/failure-modes.md`, `.claude/skills/doc-patterns/tundra-patterns.md`, and `.claude/skills/doc-patterns/voice-and-structure.md` for substantive lens definitions, Tundra house rules, and voice/writing-style criteria. The lens index at `doc-patterns/SKILL.md` lines 30-36 maps each lens to a primary failure-modes section plus secondary references; voice-and-structure.md is the authoritative source for lens 4 (Voice and writing-style) per that index.
+Before applying the lenses, read `${CLAUDE_PLUGIN_ROOT}/skills/doc-patterns/SKILL.md`, `${CLAUDE_PLUGIN_ROOT}/skills/doc-patterns/failure-modes.md`, `${CLAUDE_PLUGIN_ROOT}/skills/doc-patterns/tundra-patterns.md`, and `${CLAUDE_PLUGIN_ROOT}/skills/doc-patterns/voice-and-structure.md` for substantive lens definitions, Tundra house rules, and voice/writing-style criteria. The lens index at `doc-patterns/SKILL.md` lines 30-36 maps each lens to a primary failure-modes section plus secondary references; voice-and-structure.md is the authoritative source for lens 4 (Voice and writing-style) per that index.
 
 ## Lenses (apply in order)
 

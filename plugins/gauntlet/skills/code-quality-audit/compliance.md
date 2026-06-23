@@ -2,7 +2,7 @@
 
 Read [principles-shared.md](principles-shared.md) first for philosophy and severity grading. Then check every changed file against each rule below.
 
-The rule source is `~/.claude/skills/code-quality-standards/SKILL.md` (user-global). These rules are paraphrased detection signals; cite the source skill when reporting `violation` findings.
+The rule source is `${CLAUDE_PLUGIN_ROOT}/skills/code-quality-standards/SKILL.md` (user-global). These rules are paraphrased detection signals; cite the source skill when reporting `violation` findings.
 
 ---
 
