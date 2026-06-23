@@ -136,8 +136,8 @@ Load `modes.md` now. Apply the routing table:
 **REFINE** — if any signal is missing or entry is a raw idea:
 - Emit: `**[Kiln] Phase: REFINE — transforming entry into spec**`
 - Load `dispatch-contracts.md`, dispatch `refiner` agent using Refiner template
-- Wait for `REFINER_DONE: {{RUN_FOLDER}}/spec-draft.md written`
-- Write ledger: `REFINE: spec drafted | {{RUN_FOLDER}}/spec-draft.md`
+- Wait for `REFINER_DONE: {{RUN_FOLDER}}/design.md + {{RUN_FOLDER}}/spec-draft.md written | run-id: <slug>`
+- Write ledger: `REFINE: spec drafted | {{RUN_FOLDER}}/design.md + {{RUN_FOLDER}}/spec-draft.md`
 - Proceed to Block 3
 
 ---

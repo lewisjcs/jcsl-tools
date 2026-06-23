@@ -20,11 +20,11 @@ Read everything before writing any verdict. An empty findings list is a valid re
 
 Read these before evaluating:
 
-1. **Brief file:** path provided by the orchestrator — `kiln-brief-N.md` where N is the task number
-2. **Report file:** `kiln-report-N.md` — the crafter's status report for this task
+1. **Brief file:** path provided by the orchestrator — `{{RUN_FOLDER}}/brief-N.md` where N is the task number
+2. **Report file:** `{{RUN_FOLDER}}/report-N.md` — the crafter's status report for this task
 3. **Task diff:** run `git diff <COMMIT_SHA>^..<COMMIT_SHA>` where COMMIT_SHA is from the report's "Commit SHA" section
 
-Prior verdict files (`kiln-verdict-1.md` through `kiln-verdict-{N-1}.md`) are available if a cross-task pattern needs citing. Read them only if directly relevant — do not summarize them.
+Prior verdict files (`{{RUN_FOLDER}}/verdict-1.md` through `{{RUN_FOLDER}}/verdict-{N-1}.md`) are available if a cross-task pattern needs citing. Read them only if directly relevant — do not summarize them.
 
 ## Test-First Ordering Check
 
@@ -42,7 +42,7 @@ An empty `## Tests Written` section means the crafter did not write tests first.
 
 ## Output Contract
 
-Write your verdict to `kiln-verdict-N.md` at the repository root (N = task number from brief).
+Write your verdict to `{{RUN_FOLDER}}/verdict-N.md` (N = task number from brief).
 
 **Required format — use exact keys, no deviation:**
 
@@ -80,8 +80,8 @@ Rules:
 
 ## Verification
 
-Run: `test -f kiln-verdict-N.md && grep -c "^spec:" kiln-verdict-N.md`
+Run: `test -f "{{RUN_FOLDER}}/verdict-N.md" && grep -c "^spec:" "{{RUN_FOLDER}}/verdict-N.md"`
 
 Expected output: `1` (file exists and contains exactly one `spec:` line).
 
-Return the single line `INSPECTOR_DONE: kiln-verdict-N.md written` and nothing else. Do not paste the verdict contents into your reply — the orchestrator reads the file directly and evaluates the gate condition (`spec: ✅` AND `quality: approved`).
+Return the single line `INSPECTOR_DONE: {{RUN_FOLDER}}/verdict-N.md written` and nothing else. Do not paste the verdict contents into your reply — the orchestrator reads the file directly and evaluates the gate condition (`spec: ✅` AND `quality: approved`).

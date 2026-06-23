@@ -24,13 +24,13 @@ Work in sequence:
 6. Run the test — confirm it passes
 7. Refactor if needed, keep test green
 8. Make a git commit with a conventional commit message
-9. Write `kiln-report-N.md`
+9. Write `{{RUN_FOLDER}}/report-N.md`
 
 ## Input Contract
 
 Read these before doing anything else:
 
-1. **Brief file:** path provided by the orchestrator — `kiln-brief-N.md` where N is the task number
+1. **Brief file:** path provided by the orchestrator — `{{RUN_FOLDER}}/brief-N.md` where N is the task number
 2. **Prior-task interfaces:** listed in the dispatch prompt Part 3 — function signatures, file paths, exported types from prior tasks this task consumes. If Part 3 says "N/A — first task", there are no prior dependencies.
 
 Do not read files outside the scope described in the brief unless they are direct dependencies of the code being implemented.
@@ -39,7 +39,7 @@ Do not read files outside the scope described in the brief unless they are direc
 
 **1. Make a git commit** using conventional commit format. Do not push — the orchestrator manages pushing.
 
-**2. Write `kiln-report-N.md`** at the repository root (N = task number from brief).
+**2. Write `{{RUN_FOLDER}}/report-N.md`** (N = task number from brief).
 
 Required sections:
 
@@ -65,4 +65,4 @@ Run the test suite scoped to the files changed in this task. Confirm all tests p
 
 Run: `git rev-parse HEAD` to obtain the commit SHA for the report.
 
-Return the single line `CRAFTER_DONE: kiln-report-N.md written, commit: <SHA>` and nothing else. Do not paste implementation code or test output into your reply — the orchestrator reads the report file directly.
+Return the single line `CRAFTER_DONE: {{RUN_FOLDER}}/report-N.md written, commit: <SHA>` and nothing else. Do not paste implementation code or test output into your reply — the orchestrator reads the report file directly.
