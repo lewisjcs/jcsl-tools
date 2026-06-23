@@ -31,6 +31,12 @@ N/A — first task. No prior agent outputs exist. Work from the entry arg above 
 **Part 4 — Output contract:**
 Write your output spec to: `{{RUN_FOLDER}}/spec-draft.md`.
 
+Required sections in {{RUN_FOLDER}}/design.md:
+- ## Problem
+- ## Approaches Considered (≥1 named approach with chosen rationale)
+- ## Architecture Sketch
+- ## Risks/Out-of-scope
+
 Required sections in {{RUN_FOLDER}}/spec-draft.md:
 - ## Problem Statement
 - ## Acceptance Criteria (EARS format: When/Then/Shall)
@@ -38,8 +44,8 @@ Required sections in {{RUN_FOLDER}}/spec-draft.md:
 - ## Root Cause (why this change is needed)
 - ## Out of Scope
 
-Done-check: Return the single line `REFINER_DONE: {{RUN_FOLDER}}/spec-draft.md written` and nothing else.
-The orchestrator reads {{RUN_FOLDER}}/spec-draft.md directly — do not paste its contents into your reply.
+Done-check: Return the single line `REFINER_DONE: {{RUN_FOLDER}}/design.md + {{RUN_FOLDER}}/spec-draft.md written | run-id: <slug>` and nothing else.
+The orchestrator reads both files directly — do not paste their contents into your reply.
 ```
 
 ---

@@ -17,7 +17,7 @@ Loaded on-demand by `SKILL.md` during the routing decision. Do not always-load.
 - Figma placeholder (linked but empty or stub)
 - Parent epic with thin description (no child-level detail)
 
-**Action:** Dispatch `refiner` agent. Wait for spec approval (SPEC-GATE fires for HIGH blast radius after Refiner completes). Then proceed as ORIENT.
+**Action:** Dispatch `refiner` agent. Wait for `REFINER_DONE: {{RUN_FOLDER}}/design.md + {{RUN_FOLDER}}/spec-draft.md written | run-id: <slug>`. Refiner emits two artifacts: design.md (design rationale, approach candidates, architecture sketch, risks) and spec-draft.md (EARS spec). Then apply SPEC-GATE for HIGH blast radius before proceeding as ORIENT.
 
 ---
 

@@ -1,0 +1,23 @@
+{
+  "scenario": "09-refiner-two-artifact",
+  "path": "REFINE",
+  "expected_artifacts": ["design.md", "spec-draft.md"],
+  "expected_design_sections": [
+    "Problem",
+    "Approaches Considered",
+    "Architecture Sketch",
+    "Risks/Out-of-scope"
+  ],
+  "expected_spec_sections": [
+    "Problem Statement",
+    "Acceptance Criteria",
+    "File Paths",
+    "Root Cause",
+    "Out of Scope"
+  ],
+  "expected_design_section_count": 4,
+  "expected_spec_section_count": 5,
+  "expected_approaches_non_empty": true,
+  "expected_no_placeholders": true,
+  "expected_done_signal": "REFINER_DONE: ... design.md + spec-draft.md written"
+}
