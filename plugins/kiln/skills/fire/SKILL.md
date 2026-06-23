@@ -134,6 +134,7 @@ Load `modes.md` now. Apply the routing table:
 - Proceed to Block 3
 
 **REFINE** — if any signal is missing or entry is a raw idea:
+- Emit: `**[Kiln] Phase: REFINE — transforming entry into spec**`
 - Load `dispatch-contracts.md`, dispatch `refiner` agent using Refiner template
 - Wait for `REFINER_DONE: {{RUN_FOLDER}}/spec-draft.md written`
 - Write ledger: `REFINE: spec drafted | {{RUN_FOLDER}}/spec-draft.md`
@@ -175,6 +176,7 @@ After Compounds produces tier + blast radius classification:
 - Then continue to generate tasks
 
 **STANDARD (any blast radius):**
+- Emit: `**[Kiln] Phase: PLAN — authoring task breakdown**`
 - Call `generate_tasks` to produce the full task list
 - Write task list to `{{RUN_FOLDER}}/tasklist.md`
 - Load `dispatch-contracts.md`, dispatch `planner` using Planner template
@@ -215,6 +217,8 @@ Write ledger: `SPEC-GATE: approved | <ISO timestamp>`
 Read ledger to find first incomplete task — this is resume support after `/clear`.
 
 For each Compounds task (STANDARD) or the single task (TRIVIAL):
+
+- Emit: `**[Kiln] Task {{N}}/{{TOTAL_TASKS}}: implementing {{task title}}**`
 
 **5a. Write brief**
 
@@ -269,6 +273,8 @@ DONE task-N: <title> | commits: <sha1>..<sha2> | inspected: ✅
 ---
 
 ## Block 6: Final Gate
+
+Emit: `**[Kiln] Phase: FINAL — running quality gate and creating PR**`
 
 After all tasks complete:
 
