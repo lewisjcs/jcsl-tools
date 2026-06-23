@@ -29,17 +29,17 @@ Ticket / idea: {{ENTRY_ARG}}
 N/A — first task. No prior agent outputs exist. Work from the entry arg above only.
 
 **Part 4 — Output contract:**
-Write your output spec to: `kiln-spec-draft.md` at the repo root.
+Write your output spec to: `{{RUN_FOLDER}}/spec-draft.md`.
 
-Required sections in kiln-spec-draft.md:
+Required sections in {{RUN_FOLDER}}/spec-draft.md:
 - ## Problem Statement
 - ## Acceptance Criteria (EARS format: When/Then/Shall)
 - ## File Paths (concrete implementation targets)
 - ## Root Cause (why this change is needed)
 - ## Out of Scope
 
-Done-check: Return the single line `REFINER_DONE: kiln-spec-draft.md written` and nothing else.
-The orchestrator reads kiln-spec-draft.md directly — do not paste its contents into your reply.
+Done-check: Return the single line `REFINER_DONE: {{RUN_FOLDER}}/spec-draft.md written` and nothing else.
+The orchestrator reads {{RUN_FOLDER}}/spec-draft.md directly — do not paste its contents into your reply.
 ```
 
 ---
@@ -66,12 +66,12 @@ Ticket: {{JIRA_KEY}}
 Routing mode was: {{MODE}}  (ORIENT | REFINE)
 Compounds tier: {{TIER}}  (TRIVIAL | STANDARD)
 Blast radius: {{BLAST_RADIUS}}  (LOW | HIGH | N/A)
-{{REFINER_NOTE}}  ← "Spec doc at kiln-spec-draft.md" if REFINE path, else "N/A"
+{{REFINER_NOTE}}  ← "Spec doc at {{RUN_FOLDER}}/spec-draft.md" if REFINE path, else "N/A"
 
 **Part 4 — Output contract:**
-Write your implementation plan to: `kiln-plan.md` at the repo root.
+Write your implementation plan to: `{{RUN_FOLDER}}/plan.md`.
 
-Required sections in kiln-plan.md:
+Required sections in {{RUN_FOLDER}}/plan.md:
 - ## Summary (1–3 sentences)
 - ## Task Breakdown (one entry per Compounds task: title, file targets, test strategy)
 - ## Jira Subtask IDs (list of created subtask keys)
@@ -82,8 +82,8 @@ Jira subtask creation rules:
 - On REFINE path: always create subtasks
 - Follow Jira ADF constraints: no `- [ ]` checkboxes, no inline code in link text
 
-Done-check: Return the single line `PLANNER_DONE: kiln-plan.md written, subtasks: {{SUBTASK_LIST}}`
-and nothing else. The orchestrator reads kiln-plan.md directly.
+Done-check: Return the single line `PLANNER_DONE: {{RUN_FOLDER}}/plan.md written, subtasks: {{SUBTASK_LIST}}`
+and nothing else. The orchestrator reads {{RUN_FOLDER}}/plan.md directly.
 ```
 
 ---
@@ -101,7 +101,7 @@ before writing any implementation code. This is non-optional.
 
 **Part 2 — Brief:**
 Read your task brief now:
-Brief path: {{KILN_BRIEF_N_PATH}}
+Brief path: {{RUN_FOLDER}}/brief-N.md
 
 **Part 3 — Prior context:**
 {{PRIOR_TASK_INTERFACES}}
@@ -110,7 +110,7 @@ Brief path: {{KILN_BRIEF_N_PATH}}
    from prior tasks that this task consumes. Do not paste summaries or narration.
 
 **Part 4 — Output contract:**
-Write your status report to: {{KILN_REPORT_N_PATH}}
+Write your status report to: {{RUN_FOLDER}}/report-N.md
 
 Required sections in the report file:
 - ## Task (brief title)
@@ -118,7 +118,7 @@ Required sections in the report file:
 - ## Implementation (list of files changed with one-line description each)
 - ## Commit SHA
 
-Done-check: Return the single line `CRAFTER_DONE: {{KILN_REPORT_N_PATH}} written, commit: {{SHA}}`
+Done-check: Return the single line `CRAFTER_DONE: {{RUN_FOLDER}}/report-N.md written, commit: {{SHA}}`
 and nothing else. Do not paste implementation code into your reply.
 ```
 
@@ -136,8 +136,8 @@ The Crafter has completed implementation. Evaluate spec compliance and code qual
 
 **Part 2 — Brief:**
 Read the task brief and crafter report now:
-Brief path: {{KILN_BRIEF_N_PATH}}
-Report path: {{KILN_REPORT_N_PATH}}
+Brief path: {{RUN_FOLDER}}/brief-N.md
+Report path: {{RUN_FOLDER}}/report-N.md
 
 Obtain the diff for this task's commit:
 Run: `git diff {{COMMIT_SHA}}^..{{COMMIT_SHA}}`
@@ -145,11 +145,11 @@ Run: `git diff {{COMMIT_SHA}}^..{{COMMIT_SHA}}`
 **Part 3 — Prior context:**
 {{PRIOR_VERDICTS_NOTE}}
 ← If task 1: "N/A — first inspection."
-← If task N>1: "Prior task verdict files: kiln-verdict-1.md … kiln-verdict-{{N-1}}.md.
+← If task N>1: "Prior task verdict files: {{RUN_FOLDER}}/verdict-1.md … {{RUN_FOLDER}}/verdict-{{N-1}}.md.
    Read them only if a cross-task pattern needs citing. Do not summarize them."
 
 **Part 4 — Output contract:**
-Write your verdict to: `kiln-verdict-{{N}}.md` at the repo root.
+Write your verdict to: `{{RUN_FOLDER}}/verdict-{{N}}.md`.
 
 Required format (exact keys, no deviation):
 ```
@@ -163,9 +163,9 @@ findings:
 
 Rules:
 - If no findings: write `findings: []`
-- Never return verdict as free text — always write to kiln-verdict-{{N}}.md
+- Never return verdict as free text — always write to {{RUN_FOLDER}}/verdict-{{N}}.md
 - An empty findings list with `quality: approved` is a valid clean result
 
-Done-check: `kiln-verdict-{{N}}.md` exists AND contains a `spec:` line.
-Return the single line `INSPECTOR_DONE: kiln-verdict-{{N}}.md written` and nothing else.
+Done-check: `{{RUN_FOLDER}}/verdict-{{N}}.md` exists AND contains a `spec:` line.
+Return the single line `INSPECTOR_DONE: {{RUN_FOLDER}}/verdict-{{N}}.md written` and nothing else.
 ```
