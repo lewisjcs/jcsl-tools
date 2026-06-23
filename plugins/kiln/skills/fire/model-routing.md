@@ -41,3 +41,5 @@ The design spec (§7.3) describes complexity-driven crafter model selection:
 This routing is **not implemented in v1** because Claude Code agent `model:` frontmatter is set at author time, not dispatch time. The AI Classes compiler (v2) will generate agent files with the appropriate model per dispatch context.
 
 Until v2 ships: all crafter dispatches use `model: sonnet`. The cost premium over Haiku on TRIVIAL/LOW-blast tasks is the accepted v1 tradeoff (ADR-6).
+
+<!-- verified 2026-06-23: model/temperature table accurate; inspector remains sonnet/no-override; no stale Haiku intent note present -->
