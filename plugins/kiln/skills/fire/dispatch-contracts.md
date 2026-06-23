@@ -52,7 +52,7 @@ temperature. Refuse to fire underprepared work.
 
 **Part 1 — Sequence position:**
 This is the planning dispatch. Routing and Compounds impact analysis are complete.
-The Compounds task list has been written to kiln-tasklist.md. Your job is to author
+The Compounds task list has been written to {{RUN_FOLDER}}/tasklist.md. Your job is to author
 a human-readable implementation plan and create Jira subtasks.
 
 **Part 2 — Brief:**
