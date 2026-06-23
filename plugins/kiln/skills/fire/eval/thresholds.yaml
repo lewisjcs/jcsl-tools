@@ -1,0 +1,17 @@
+# Kiln eval pass-rate thresholds
+# Each key matches a scenario file under eval/scenarios/ (without .md)
+# pass_rate: minimum fraction of runs that must match expected output to pass calibration
+
+thresholds:
+  01-trivial-bugfix:
+    pass_rate: 1.0
+  02-standard-low-blast:
+    pass_rate: 1.0
+  03-standard-high-blast:
+    pass_rate: 1.0
+  04-raw-idea:
+    pass_rate: 1.0
+  05-existing-plan:
+    pass_rate: 1.0
+  06-wrong-repo-abort:
+    pass_rate: 1.0

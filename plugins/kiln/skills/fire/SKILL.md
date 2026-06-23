@@ -51,7 +51,7 @@ Set `{{RUN_FOLDER}}` based on entry form:
 
 **TICKET / TICKET_WITH_PLAN:**
 ```
-{{RUN_FOLDER}} = jcslOS/projects/active/<jira_key>/kiln/
+{{RUN_FOLDER}} = $(git rev-parse --show-toplevel)/projects/active/<jira_key>/kiln/
 ```
 Create the directory if it does not exist:
 ```bash
@@ -63,13 +63,13 @@ mkdir -p {{RUN_FOLDER}}
 - Set a placeholder `{{RUN_FOLDER}} = PENDING`
 - After `REFINER_DONE: ... | run-id: <slug>` is received, compute:
   ```
-  {{RUN_FOLDER}} = jcslOS/projects/active/<slug>/kiln/
+  {{RUN_FOLDER}} = $(git rev-parse --show-toplevel)/projects/active/<slug>/kiln/
   ```
   Then `mkdir -p {{RUN_FOLDER}}`.
 
 **EXECUTE (plan file provided):**
 ```
-{{RUN_FOLDER}} = jcslOS/projects/active/<jira_key>/kiln/
+{{RUN_FOLDER}} = $(git rev-parse --show-toplevel)/projects/active/<jira_key>/kiln/
 ```
 Same as TICKET.
 
@@ -144,7 +144,7 @@ Load `modes.md` now. Apply the routing table:
 
 ## Block 3: Compounds Integration
 
-## GATE: plan_change-first
+### GATE: plan_change-first
 
 **Condition:** This gate fires if file edits, file creation, or implementation steps
 are attempted before `plan_change(step="start")` has returned a successful routing result.
@@ -318,6 +318,7 @@ After all tasks complete:
 1. Run `code-quality-audit` skill on `git diff main...HEAD`
 2. Invoke `/create-pr` skill — enforces title format and body template
 3. **Verify:** Confirm PR URL is returned. Surface the URL to the user. If `/create-pr` does not return a URL, stop and report the failure — do not write the COMPLETE ledger entry.
+4. Generate retro — see **Retro Generation** below.
 
 ## Retro Generation
 
@@ -347,7 +348,7 @@ Populate from progress.md and verdict-N.md:
 - Fix loop details (which tasks, how many iterations)
 - Inspector findings summary
 
-Write retro to: `projects/active/<run-id>/kiln-retro.md`
+Write retro to: `{{RUN_FOLDER}}/kiln-retro.md`
 Write ledger: `RETRO: terse|full | <ISO timestamp>`
 
 Write ledger: `COMPLETE: PR created | <url> | <branch> | <ISO timestamp>`
@@ -376,9 +377,9 @@ All ledger entries are written to `{{RUN_FOLDER}}/progress.md`.
 
 | Entry | Format | Written when |
 |-------|--------|--------------|
-| `BRANCH:` | `BRANCH: created <branch-name> \| <ISO timestamp>` | New branch created in Block 1 |
+| `BRANCH:` | `BRANCH: created <branch-name> \| <ISO timestamp>` | New branch created in Block 1.4 |
 | `ARTIFACT-GATE:` | `ARTIFACT-GATE: fired \| missing: <artifacts> \| <ISO timestamp>` | Required artifacts absent at gate |
-| `REFINE:` | `REFINE: spec drafted \| {{RUN_FOLDER}}/spec-draft.md` | Refiner completes spec |
+| `REFINE:` | `REFINE: spec drafted \| {{RUN_FOLDER}}/design.md + {{RUN_FOLDER}}/spec-draft.md` | Refiner completes spec |
 | `PLAN:` | `PLAN: {{RUN_FOLDER}}/plan.md written \| subtasks: <keys>` | Plan written in Block 3 |
 | `PLAN-GATE:` | `PLAN-GATE: approved \| <ISO timestamp>` | User approves plan |
 | `SPEC-GATE:` | `SPEC-GATE: approved \| <ISO timestamp>` | User approves spec |
@@ -392,7 +393,15 @@ All ledger entries are written to `{{RUN_FOLDER}}/progress.md`.
 
 ### USER-CORRECTION: ledger entry
 
-Written whenever the user issues a mid-run correction (explicit pushback, direction change,
-or hard-stop override). Format: `USER-CORRECTION: <description> | <ISO timestamp>`
+**When to write:** Whenever the user issues a mid-run correction — explicit pushback,
+direction change, or hard-stop override. Detect this from any user message that contradicts,
+overrides, or restates a decision already recorded in `progress.md`.
+
+**Write step:** Immediately after detecting the correction, before resuming any implementation work:
+```
+Write ledger: USER-CORRECTION: <one-sentence description of what changed> | <ISO timestamp>
+```
+
+Format: `USER-CORRECTION: <description> | <ISO timestamp>`
 
 Affects `friction_score` — triggers full retro if present.

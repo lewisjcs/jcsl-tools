@@ -30,11 +30,14 @@ Prior verdict files (`{{RUN_FOLDER}}/verdict-1.md` through `{{RUN_FOLDER}}/verdi
 
 Before writing any verdict, verify the crafter followed TDD ordering:
 
-Read `## Tests Written` in `kiln-report-N.md`. If the section is missing or empty (no test names listed), add the following finding regardless of other results:
+First, check the brief's test strategy: read `test strategy:` in `{{RUN_FOLDER}}/brief-N.md`.
+If `test strategy: none`, skip this check entirely — the TDD requirement does not apply.
+
+Otherwise, read `## Tests Written` in `{{RUN_FOLDER}}/report-N.md`. If the section is missing or empty (no test names listed), add the following finding regardless of other results:
 
 ```
 - severity: Critical
-  location: report-N.md ## Tests Written
+  location: "{{RUN_FOLDER}}/report-N.md ## Tests Written"
   claim: Crafter report shows no tests written — TDD requirement violated.
 ```
 
