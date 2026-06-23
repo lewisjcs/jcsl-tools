@@ -1,0 +1,7 @@
+{
+  "scenario": "08-branch-precondition-on-main",
+  "starting_branch": "main",
+  "expected_outcome": "branch_created",
+  "expected_branch_pattern": "kiln/<jira_key>",
+  "expected_ledger_entry": "BRANCH: created kiln/<jira_key>"
+}

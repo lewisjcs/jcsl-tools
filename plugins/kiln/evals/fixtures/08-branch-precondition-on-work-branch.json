@@ -1,0 +1,7 @@
+{
+  "scenario": "08-branch-precondition-on-work-branch",
+  "starting_branch": "kiln/some-feature",
+  "expected_outcome": "silent",
+  "expected_branch_pattern": null,
+  "expected_ledger_entry": null
+}
