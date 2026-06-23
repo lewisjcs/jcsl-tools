@@ -6,7 +6,8 @@ Personal AI tooling marketplace for Claude Code — Josh C.S. Lewis.
 
 | Plugin | Description |
 |---|---|
-| [`kiln`](plugins/kiln/) | The Kiln — complexity-proportionate implementation workflow Party |
+| [`kiln`](plugins/kiln/) | The Kiln — complexity-proportionate implementation workflow |
+| [`gauntlet`](plugins/gauntlet/) | The Gauntlet — multi-skill AI review harness |
 
 ## Installation
 
@@ -21,8 +22,9 @@ Add to `~/.claude/settings.json` under `extraKnownMarketplaces`:
 }
 ```
 
-Then install individual plugins:
+Both plugins ship a `.claude-plugin/plugin.json` manifest for auto-discovery. Install individual plugins:
 
 ```sh
 claude plugin install kiln@jcsl-tools
+claude plugin install gauntlet@jcsl-tools
 ```
