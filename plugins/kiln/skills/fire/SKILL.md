@@ -319,6 +319,37 @@ After all tasks complete:
 2. Invoke `/create-pr` skill — enforces title format and body template
 3. **Verify:** Confirm PR URL is returned. Surface the URL to the user. If `/create-pr` does not return a URL, stop and report the failure — do not write the COMPLETE ledger entry.
 
+## Retro Generation
+
+Load `retro-template.md` on-demand from `plugins/kiln/skills/fire/retro-template.md`.
+
+### Friction Detection
+
+Parse `{{RUN_FOLDER}}/progress.md`:
+- `fix_loops` = count of lines matching `FIX-LOOP:`
+- `escalations` = count of lines matching `ESCALATED`
+- `user_corrections` = count of lines matching `USER-CORRECTION:`
+- `routing_mismatch` = 1 if any `ROUTING:` entry differs from Block 1 routing decision, else 0
+
+`friction_score` = fix_loops + escalations + user_corrections + routing_mismatch
+
+### Retro Selection
+
+- `friction_score == 0` → use terse-stub from retro-template.md
+- `friction_score >= 1` → use full-form from retro-template.md
+
+### Auto-Seed Fields
+
+Populate from progress.md and verdict-N.md:
+- Run ID, routing mode, tier, blast radius
+- Task count, commit SHAs
+- Gate fires (SPEC-GATE, PLAN-GATE, TASK-GATE escalations)
+- Fix loop details (which tasks, how many iterations)
+- Inspector findings summary
+
+Write retro to: `projects/active/<run-id>/kiln-retro.md`
+Write ledger: `RETRO: terse|full | <ISO timestamp>`
+
 Write ledger: `COMPLETE: PR created | <url> | <branch> | <ISO timestamp>`
 
 ---
@@ -336,3 +367,32 @@ If the context-reset nudge fires mid-execution:
    The Kiln will read the ledger and continue from task N.
    ```
 3. On resume: read ledger, find first entry without DONE status, continue from there. Before dispatching crafter for task N, run `git log --oneline origin/main..HEAD` and check whether a commit matching task N's title already exists. If it does, read the commit SHA, write the DONE ledger entry, and advance to task N+1.
+
+---
+
+## Block 8: Ledger Entry Reference
+
+All ledger entries are written to `{{RUN_FOLDER}}/progress.md`.
+
+| Entry | Format | Written when |
+|-------|--------|--------------|
+| `BRANCH:` | `BRANCH: created <branch-name> \| <ISO timestamp>` | New branch created in Block 1 |
+| `ARTIFACT-GATE:` | `ARTIFACT-GATE: fired \| missing: <artifacts> \| <ISO timestamp>` | Required artifacts absent at gate |
+| `REFINE:` | `REFINE: spec drafted \| {{RUN_FOLDER}}/spec-draft.md` | Refiner completes spec |
+| `PLAN:` | `PLAN: {{RUN_FOLDER}}/plan.md written \| subtasks: <keys>` | Plan written in Block 3 |
+| `PLAN-GATE:` | `PLAN-GATE: approved \| <ISO timestamp>` | User approves plan |
+| `SPEC-GATE:` | `SPEC-GATE: approved \| <ISO timestamp>` | User approves spec |
+| `FIX-LOOP:` | `FIX-LOOP: task-N iteration <n> \| <ISO timestamp>` | Fix iteration triggered after Inspector FAIL |
+| `TASK-N: ESCALATED` | `TASK-N: ESCALATED \| fix-loops: 2 \| {{RUN_FOLDER}}/verdict-N.md` | Task escalated after 2 fix failures |
+| `DONE` | `DONE task-N: <title> \| commits: <sha1>..<sha2> \| inspected: ✅` | Task finalized successfully |
+| `PAUSED:` | `PAUSED: task-N in progress \| <ISO timestamp>` | Context-reset nudge fires |
+| `RETRO:` | `RETRO: terse\|full \| <ISO timestamp>` | Retro written in Block 6 |
+| `COMPLETE:` | `COMPLETE: PR created \| <url> \| <branch> \| <ISO timestamp>` | PR created in Block 6 |
+| `USER-CORRECTION:` | `USER-CORRECTION: <description> \| <ISO timestamp>` | User issues mid-run correction |
+
+### USER-CORRECTION: ledger entry
+
+Written whenever the user issues a mid-run correction (explicit pushback, direction change,
+or hard-stop override). Format: `USER-CORRECTION: <description> | <ISO timestamp>`
+
+Affects `friction_score` — triggers full retro if present.
