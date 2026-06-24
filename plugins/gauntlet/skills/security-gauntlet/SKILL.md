@@ -8,6 +8,8 @@ argument-hint: "[<repo> <pr-number>]"
 
 Apply the 7 security-principles lenses to an artifact (code diff, plan text, doc text, or skill content per master spec §3.3) via opposed-framing agents. Find → Validate → Adjudicate.
 
+**Trust-model scoping:** findings premised on a less-privileged second caller are only valid when such a caller exists in the artifact's threat model. For confirmed single-user / local-trust artifacts (no second principal less trusted than the author can reach the code path), the security-finder suppresses findings that presuppose one — see the trust-model rule in `security-finder.md`. When the artifact's trust context is unstated or ambiguous, the default posture is multi-caller; no findings are suppressed.
+
 This skill is part of the gauntlet skill family. It is named `security-gauntlet` (not `security-review`) to avoid collision with Claude Code's built-in `/security-review` command — that built-in is a generic git-diff security pass with different architecture and no calibration discipline. The gauntlet variant is calibrated against the test dataset at `projects/active/gauntlet/test-dataset/` per master spec §6.
 
 ## Usage

@@ -1,14 +1,14 @@
 ---
 name: gauntlet
-description: Use when running a full multi-skill review across an artifact (PR, local diff, plan, doc, or skill). The canonical PR-review surface — "review this PR" routes here. Dispatches code-quality-audit + adversarial-review for code, plan-review for plans, doc-review for docs, skill-audit for skill markdown; runs security-gauntlet on every artifact (always for plan/doc/skill/directive; gated for code diffs by a fail-open security-relevance pre-filter). Adjudicates findings across the canonical 10-field schema and emits a unified report with critical-finding classification. Trigger phrases include "review this PR", "review PR <number>", "review the PR", "review this", "run the gauntlet", "do a full review", "fully review", "review my plan and security", or any natural-language variation requesting a multi-domain review of an artifact. When NOT to use: for single-aspect review use the corresponding sibling (security-gauntlet, code-quality-audit, adversarial-review). For author-side approval ritual use /ownership-check standalone.
-argument-hint: "[<pr-url> | <path> | <directory>]"
+description: Use when running a full multi-skill review across an artifact (PR, local diff, plan, doc, or skill). The canonical PR-review surface — "review this PR" routes here. Trigger phrases include "review this PR", "review PR <number>", "review the PR", "review this", "run the gauntlet", "do a full review", "fully review", "review my plan and security", or any natural-language variation requesting a multi-domain review of an artifact. When NOT to use: for single-aspect review use the corresponding sibling (security-gauntlet, code-quality-audit, adversarial-review). For author-side approval ritual use /ownership-check standalone.
+argument-hint: "[<pr-url> | <path> | <directory>] [--go-live] [--security] [--doc-body] [--type <type>]"
 ---
 
 # Gauntlet
 
 The orchestrator for the gauntlet skill family. Routes an artifact to its domain-specific review skill, always runs a security pass, adjudicates findings across the canonical schema, and emits a unified report.
 
-This skill consumes pre-built sibling skills as black boxes: `security-gauntlet` (Phase 4), `plan-review` (Phase 5), `doc-review` (Phase 6). For code paths it dispatches `code-quality-audit` (Phase 9) and `adversarial-review`. For skill markdown it invokes `skill-audit`. See [[gauntlet-namespace-shadow]] before dispatching — preflight `ls ${CLAUDE_PLUGIN_ROOT}/skills/` to check for sibling name collisions; all sibling dispatches use the `gauntlet:` prefix (e.g. `Skill: gauntlet:adversarial-review`) to avoid plugin namespace collisions. See [[gauntlet-is-pr-review-tool]] for the routing convention: "review this PR" routes here, single-aspect reviews route to siblings, author-side approval ritual is `/ownership-check` standalone. The schema each sibling emits is normalized to the canonical 10-field shape (master spec §4.1) before adjudication.
+This skill consumes pre-built sibling skills as black boxes: `security-gauntlet` (Phase 2), `plan-review`, and `doc-review` (Phase 1). For code paths it dispatches `code-quality-audit` and `adversarial-review` (Phase 1). For skill markdown it invokes `skill-audit`. See [[gauntlet-namespace-shadow]] before dispatching — preflight `ls ${CLAUDE_PLUGIN_ROOT}/skills/` to check for sibling name collisions; all sibling dispatches use the `gauntlet:` prefix (e.g. `Skill: gauntlet:adversarial-review`) to avoid plugin namespace collisions. See [[gauntlet-is-pr-review-tool]] for the routing convention: "review this PR" routes here, single-aspect reviews route to siblings, author-side approval ritual is `/ownership-check` standalone. The schema each sibling emits is normalized to the canonical 10-field shape (master spec §4.1) before adjudication.
 
 ## Usage
 
@@ -33,7 +33,7 @@ Determine the artifact type from the input. The detection rule:
 | (no args) | `code-local` | Phase 1 dispatches: code-quality-audit + adversarial-review (artifact type=code-diff). Both work on local diffs — code-quality-audit operates on diff content, not GitHub metadata. Phase 2 dispatches: security-gauntlet against `git diff main..HEAD` (fall back to `master` only if `main` does not exist). |
 | Path ending in `.plan.md` OR file under `projects/active/<feature>/plans/` | `plan` | Phase 1 dispatches: plan-review. Phase 2 dispatches: security-gauntlet against the plan text. |
 | Path to `.md` file with prose-paragraph structure (RFC, ADR, README, design doc, AGENTS.md) — NOT a SKILL.md, NOT a plan | `doc` | Phase 1 dispatches: doc-review. Phase 2 dispatches: security-gauntlet against the doc text. **Plan-vs-doc tiebreaker (when path-based plan rules don't fire):** if the `.md` file contains a `## Goal` heading OR a `## Steps` heading OR EARS-style requirements (`When ... the system shall ...`) in its body, prefer `plan` over `doc` regardless of file location. If after this tiebreaker the artifact is still ambiguous, halt and ask per Phase 0 verify. |
-| Path to `SKILL.md` OR `.md` file with YAML frontmatter `name:` + `description:` skill-fields | `skill` | Phase 1 dispatches: skill-audit. Phase 2 dispatches: security-gauntlet against the skill content. (skill-audit emits in 3-layer shape; gauntlet performs the §4.3 transformation to canonical 10-field findings.) |
+| Path to `SKILL.md` OR `.md` file with YAML frontmatter `name:` + `description:` skill-fields | `skill` | Phase 1 dispatches: skill-audit + directive-review (body prose — post-frontmatter). Phase 2 dispatches: security-gauntlet against the skill content. (skill-audit emits in 3-layer shape; gauntlet performs the §4.3 transformation to canonical 10-field findings.) |
 | Path to a non-frontmatter `.md` under an instruction-prose dir (`prompts/`, `knowledge/`, `references/`, `reference/`, `rules/`) AND the content reads as agent operating prose (imperative directives), NOT a human-facing RFC/README | `directive` | Phase 1 dispatches: directive-review + adversarial-review (artifact type=directive-text, falls back to doc-text overlay). Phase 2 dispatches: security-gauntlet against the artifact text. |
 | Path to a directory | `multi` | Recurse: detect each contained file's type, run gauntlet against each. Aggregate per-file findings into a single report. |
 
@@ -85,7 +85,21 @@ Add a **6th task when the Phase 0 go-live pre-filter matched OR `--go-live` was 
 
 **HARD-GATE — no pausing between phases.** Proceed directly from each completed phase to the next without pausing for user input or displaying intermediate sub-skill output to chat. The only deliberate pause points in the entire run are: (a) Phase 0 halt-and-ask when artifact type is ambiguous, and (b) Phase 2.5 go-live prompt when the pre-filter matched and `--go-live` was not passed. Every other phase transition is silent and automatic. Do not post intermediate findings, progress summaries, or "Phase 1 complete — proceeding to security…" narration between phases — Phase 3 must adjudicate all findings before any results surface to the user.
 
-After marking a phase completed via TaskUpdate, immediately set the next phase to in_progress via TaskUpdate and begin work on it — do NOT post any message to chat between these two calls. The task-completion mark is not a pause point and must not be followed by output to the user. The only deliberate pause points in the entire run are: (a) Phase 0 halt-and-ask when artifact type is ambiguous, and (b) Phase 2.5 go-live prompt when the pre-filter matched and --go-live was not passed.
+**Continue-signal protocol (structural enforcement of the no-pause rule).** Every `Skill:` sibling dispatch carries an implicit continue-signal: when the sibling returns its findings JSON, the orchestrator is in CONTINUE state for that phase. The dispatch loop advances as follows — this is the ONLY permitted sequence at a phase boundary:
+
+```
+CONTINUE state transition (every phase except the two legitimate pause points):
+  1. tool: TaskUpdate(current-phase → completed)         ← marks phase done
+  2. tool: TaskUpdate(next-phase → in_progress)          ← advances the state machine
+  3. tool: [first dispatch call of next phase]           ← begins next phase immediately
+     (TaskCreate for sub-tasks, Skill: dispatch, or first read for Phase 4a)
+```
+
+Rule: steps 1–3 are a single action sequence. **No assistant text output appears between steps 1 and 3.** Narrating phase progress is permitted ONLY inside step 3's sub-task work or after Phase 4 begins writing the report — never as a standalone chat turn between steps 1 and 2, or between steps 2 and 3. Receiving a sibling's return IS the continue-signal; it binds the next action to step 1 above with zero intervening output. The orchestrator's state upon receiving any non-pause-point sibling return is deterministically "advance the phase machine immediately."
+
+The two legitimate turn boundaries remain intact and are explicitly excluded from this protocol:
+- **Phase 0 halt-and-ask** (ambiguous artifact type): the orchestrator asks the user and waits — it is NOT in CONTINUE state.
+- **Phase 2.5 go-live prompt** (pre-filter matched, no `--go-live` flag): the orchestrator asks the operator once — it is NOT in CONTINUE state until the operator responds.
 
 <HARD-GATE>
 Six invariants enforced by this skill:
@@ -128,7 +142,7 @@ Nit in Phase 3 substep 6.
 - `plan`: plan-review, adversarial-review (artifact type=plan-text — wires up plan-review's Architectural-risk lens per Phase 7 §9 resolution)
 - `doc`: doc-review, adversarial-review (artifact type=doc-text — wires up doc-review's Hidden-assumptions lens per Phase 7 §9 resolution)
 - `directive`: directive-review (typed; `Skill:` black-box dispatch) + adversarial-review (typed-input `directive-text`; if adversarial-review has no `directive-text` overlay yet, pass `doc-text` as the closest fit and note the substitution in the trust-signal footer). No PR body dispatch. **For multi-file directive runs:** before dispatching any directive-review sub-tasks, count the files to be reviewed and emit a single line to chat: `"Dispatching directive-review for N file(s): [list]. This will spawn N×2 agent passes."` Then proceed without gating.
-- `skill`: skill-audit. **When the artifact is a skill DIRECTORY, also dispatch directive-review (typed; `Skill:` black-box dispatch) once per non-frontmatter prose sibling** (`modes.md`, `references/*.md`, `reference.md`, and any other `.md` without `name:`+`description:` skill frontmatter). A skill is reviewed as a unit: skill-audit owns the SKILL.md, directive-review owns the operating-prose siblings it points to. Enumerate the siblings with `ls`/`find` and create one directive-review sub-task per file. **Before dispatching directive-review sub-tasks for multiple siblings, emit a single line to chat: `"Dispatching directive-review for N file(s): [list]. This will spawn N×2 agent passes."` Then proceed without gating.** If the artifact is a single SKILL.md file (not a directory), skip the sibling sweep — there are no siblings to review.
+- `skill`: skill-audit. **When the artifact is a skill DIRECTORY, also dispatch directive-review (typed; `Skill:` black-box dispatch) once per non-frontmatter prose sibling** (`modes.md`, `references/*.md`, `reference.md`, and any other `.md` without `name:`+`description:` skill frontmatter). A skill is reviewed as a unit: skill-audit owns the SKILL.md, directive-review owns the operating-prose siblings it points to. Enumerate the siblings with `ls`/`find` and create one directive-review sub-task per file. **Before dispatching directive-review sub-tasks for multiple siblings, emit a single line to chat: `"Dispatching directive-review for N file(s): [list]. This will spawn N×2 agent passes."` Then proceed without gating.** If the artifact is a single SKILL.md file (not a directory), skip the sibling sweep — there are no siblings to review. **Additionally, for BOTH a single SKILL.md and a skill directory, dispatch directive-review (typed; `Skill: gauntlet:directive-review`) against the SKILL.md body prose** — defined as everything after the closing `---` of the YAML frontmatter block (frontmatter = the leading `---` … `---` block; body prose = the rest). skill-audit retains ownership of the frontmatter and structural checks; directive-review receives the body prose only. This body pass is distinct from the sibling sweep above and applies even when the artifact is a single SKILL.md (no directory — no siblings); the sibling-sweep skip clause applies only to the sibling sweep, not to this body pass. **Create a dedicated `TaskCreate` sub-task for this body pass** (labelled `directive-review (body prose)`), separate from any sibling-sweep sub-tasks, so the Phase 1 completion gate tracks it and can detect it going missing.
 - `multi`: per-file dispatch sets (recurse into Phase 1 for each contained artifact)
 
 Mark each sub-task complete as its sub-skill returns its findings array.
@@ -281,9 +295,9 @@ Create the Phase 3 sub-tasks with these 7 substeps (a `TaskCreate` call per subs
    keeps PR-description nits advisory.
 
    **6b. Ground-truth check on critical findings (P7).** Before a finding stays in Required Changes, verify any load-bearing factual/environmental claim it rests on against ground truth — do NOT promote on a Finder's (or Validator's) assertion alone. The claim types that have shipped wrong: "this regex/type allows X", "this slips past CI", "this symbol is already published in version N", "the other service guarantees Y before this runs". For each critical finding, identify its load-bearing claim and verify by the cheapest sufficient means:
-   - **In-repo claim** (regex, type, guard, test config) → read the actual file/line.
+   - **In-repo claim** (regex, type, guard, test config) → read the actual file/line. First do the cheapest check: if the cited line number exceeds the file's length (`wc -l`), the citation is out of bounds — mark the finding **unverifiable** (it points at a line that does not exist) and do not promote it. Only when the line is in-bounds, read it to verify the claim.
    - **Build/CI claim** ("passes/fails the gate") → run the gate, or read the CI config that defines it.
-   - **Published-artifact claim** ("X is exported in 4.x") → check the installed package / registry, not memory.
+   - **Published-artifact claim** ("X is exported in 4.x") → check the package version the artifact actually resolves to, not memory. When the diff itself bumps a dependency, resolve the claim against the DECLARED post-change version in the manifest/lockfile post-image (the `+` side of `package.json` / `package-lock.json` / equivalent) — NOT the installed `node_modules` tree, which may still hold the pre-bump version if the sandbox wasn't reinstalled. When the diff does not touch the dependency, the installed package or registry is ground truth.
    - **Cross-service/cross-repo claim** the gauntlet can't reach → it is **unverifiable from here**. Do not promote it to Required Changes on confidence alone; downgrade to a regular Finding and tag it `⚠ unverified cross-system claim` in the report. Symmetrically, a *disproof* that rests on an unverifiable cross-system claim does NOT count as grounded — keep the finding rather than dropping it on an unprovable disproof (the ede1b2b6 failure: 3 High findings dropped on a lifecycle claim the Validator admitted it couldn't confirm).
 
    If verification contradicts the finding, drop it (note in the disproved `<details>`). If it confirms, keep it. If it can't be resolved, downgrade + tag. This step is the orchestrator's job precisely because the Finder→Validator loop runs in subagents that may assert environmental facts the orchestrator must confirm at ground level.
@@ -299,7 +313,7 @@ If the re-dispatch path is unavailable (all in-Phase-1 sub-skills are black-box)
 **Disproof-rate signal (single bidirectional check — replaces the two prior ≥90% banners).** Compute once: `disproof_rate = count(verdict="disproved") / total_raised` over the normalized Phase 1+2 findings (substep 3 input, after substep 2 normalization). The two failure modes this guards against are opposite ends of ONE axis, so define them with explicit polarity and never collapse or invert them:
 
 - **HIGH disproof (validators may be over-dropping):** `disproof_rate ≥ HIGH_BAND`. Footer: `ℹ️ High disproof rate (X/Y disproved). Artifact may be clean, OR Validators may be leaning on 'out of scope' / 'established convention' disproofs without context-checking — including unverifiable cross-system disproofs (substep 6b). Review the disproof reasons in the collapsed Findings before treating this as confirmation.`
-- **LOW disproof (validators may be over-firing / rubber-stamping):** `disproof_rate ≤ LOW_BAND` AND `total_raised ≥ 8`. Footer: `⚠️ Low disproof rate (X/Y disproved); validators dropped little — review may have over-fired false positives.`
+- **LOW disproof (validators may be over-firing / rubber-stamping):** `disproof_rate ≤ LOW_BAND` AND `total_raised ≥ 8` AND **not lens convergence** (suppress the banner — emit nothing — if the surviving findings share **a converging `location`** — for `file:line` locations, the same file no more than 5 lines apart (`same file AND |lineA − lineB| ≤ 5`); for narrative/section-reference locations (no line number, e.g. a heading like `## AC-4.1`), the same section/heading string — across 2 or more distinct `lens` prefixes; if a `location` is neither `file:line` nor a clear section reference, treat it as not converging (banner fires as normal); that cluster means multiple lenses legitimately converged on one root defect, so low disproof is the correct outcome, not evidence of over-firing). Footer: `⚠️ Low disproof rate (X/Y disproved); validators dropped little — review may have over-fired false positives.`
 
 **Threshold the bands on the CALIBRATED baseline, not a fixed 90%.** A fixed 90% fired on nearly every real run because ~90% disproof IS the steady-state for well-authored artifacts — flagging normal as suspicious (banner-blindness). Instead, read the validators' baseline disproof rate from the most recent calibration run (`run-calibration.sh` agreement block: a calibrated validator's disproof rate is `1 − (TP+FP confirmed)/total`; the φ−κ drift sign says whether it over- or under-confirms vs gold). Set `HIGH_BAND = baseline + 0.10` and `LOW_BAND = baseline − 0.20`, so the banner fires on **deviation from calibrated behavior**, not on the baseline itself. If no calibration baseline is available, fall back to `HIGH_BAND = 0.95`, `LOW_BAND = 0.50` (deliberately wider than the old 0.90 so it stops firing every run). Emit at most ONE of the two lines; if `disproof_rate` is between the bands, emit nothing. Neither line blocks the report.
 
@@ -326,173 +340,9 @@ The report is **written to a file** (the durable artifact); a **lean summary is 
 
 ### Phase 4b — Write the report file
 
-Write the file with TWO zones. **Bright-line: Zone 1 vocabulary never appears in a teammate-facing surface; only Zone 2 is postable.**
+**Load `report-template.md` now** — it holds the full Zone 1 (report file) + Zone 2 (postable comment) templates. The orchestrator does not need it before Phase 4b; it is consumed once per run at report-write time. Render the report to those two templates.
 
-````markdown
-# Gauntlet Report
-
-**Artifact:** <path or PR URL>
-**Type:** <code-pr | code-local | plan | doc | skill | multi>
-**Reviewed ref:** <from Phase 4a — base ← head@sha, or path@blob>
-**Reviewed at:** <ISO 8601 timestamp>
-
-[OPTIONAL header callout if Phase 2 failed: ⚠️ Security pass failed — manually run /security-gauntlet or escalate to AppSec.]
-[OPTIONAL trust-signal footer line from Phase 3's disproof-rate check (at most one: HIGH or LOW band).]
-
-## Required Changes
-
-[Only present if critical[] non-empty. Each entry: location, claim, severity, confidence, recommendation. NO truncation — the user is making a ship/no-ship call.]
-
-## Findings (ranked, by severity × confidence)
-
-[All surviving findings not in Required Changes. Each entry: location, claim, severity, confidence (integer), recommendation. Group by skill if helpful.]
-
-[**Clean-run case (master spec §5.2 row 8):** if both `critical[]` and `findings[]` are empty, replace BOTH sections with: `✅ Clean — no surviving findings across N reviews.` (N = sub-skills with status ✓).]
-
-## Reviewed by
-
-| Skill | Status | Findings |
-|---|---|---|
-| code-quality-audit | <status> | <count> |
-| security-gauntlet | <status> | <count> |
-| adversarial-review | <status> | <count> |
-| plan-review | <status> | <count> |
-| doc-review | <status> | <count> |
-| doc-review (PR body) | <status> | <count> |
-| skill-audit | <status> | <count> |
-| directive-review | <status> | <count> |
-| go-live-review | <status> | <verdict> |
-
-[Status: `✓` ran; `⚠ failed` errored; `n/a` not applicable; `declined` operator skipped the prompt;
-`skipped (gated)` security gate skipped a confidently-non-security code diff (fail-open did not trip);
-`skipped (cross-author)` doc-on-body skipped because the PR was teammate-authored. A `skipped (gated)`
-security row is a POSITIVE signal (the calibrated gate considered the diff and it was clean-surface), not a
-degradation — distinct from `⚠ failed`. `code-quality-standards` is a Validator reference skill, not a
-dispatch target — it does not appear here. **go-live-review's column shows its VERDICT
-(SHIP/HOLD/NEEDS-INFO), not a finding count.**]
-
-## Stage coverage
-
-[Emit ONE line by artifact type:
-- **`plan`:** `Stage coverage: plan-time only. Code-time coverage: <found | not yet>.` "found" iff `gh pr list --search "<ticket>" --state all --json number --jq length` ≥ 1.
-- **`code-pr`/`code-local`:** `Stage coverage: code-time (full lane set — not reduced by plan coverage).
-  Plan-time coverage: <found | not found>.` "found" iff `ls projects/active/<ticket>/plans/*.md 2>/dev/null`
-  ≥ 1 file. The parenthetical states the §1 guard explicitly so a reader never assumes prior plan coverage
-  thinned this run.
-- **`doc`/`skill`/`multi`:** omit the line.
-If ticket-key extraction or detection errors out, omit silently.]
-
-[**Go-Live Readiness zone (Phase 2.5 output) — present ONLY if Phase 2.5 ran.** Render the fenced `🚀 Go-Live Readiness — <SHIP|HOLD|NEEDS-INFO> (as-of <timestamp>)` block returned by go-live-review, verbatim, here. It is a SEPARATE section — its verdict does NOT appear in the box score, the `🛑/⚠️/💡` counts, the verdict badge, or the machine-readable JSON. If Phase 2.5 was skipped or declined, omit this zone entirely (the footer records the status). A HOLD/NEEDS-INFO here is an operator signal, not a gauntlet "blocker" — keep the two verdict systems distinct.]
-
-<details>
-<summary>N findings disproved (click to expand)</summary>
-
-[Each disproved finding: skill, lens, location, claim, Validator's evidence-of-disproof. Transparency only; do not action.]
-
-</details>
-
----
-
-## Postable review comment
-
-[This is the ONLY zone safe to paste into a PR/ticket/Slack. It is the **Gauntlet's branded, dual-audience comment** — render it to the canonical template below.
-
-**Voice (AI-attributed, NOT first-person-as-Josh).** Findings are attributed to the Gauntlet, never to a first-person "I". Aim for warmth, clear structure, and disciplined emoji use. Conversational warmth comes from word choice, not pronouns:
-- ✅ "The Gauntlet flags one blocker before the live run." / "Worth confirming whether X is exempt."
-- ❌ "One issue I'd want resolved." / "Curious whether X is exempt." (first-person-as-Josh — forbidden here)
-
-**Content rules.**
-- Findings + recommendations only. NO gauntlet-internal vocabulary ("pressure-tested", "grounding lean heavier than usual", "Validator disproof rate", "three-filter rule", lens taxonomy) and NO process narration ("I checked X and it was fine", "ran deeper than by hand").
-- **Branding carve-out:** the header, AI subtitle + tagline, verdict badge, box score, severity labels, agent-channel block, and footer below are INTENTIONAL brand — they are exempt from the no-vocabulary/no-narration rules above. The forbidden list is internal *mechanics*, not the brand frame.
-- NO competitive claims (never "caught what Bito/Copilot missed") — the comment is about the code; brand bragging belongs in Slack/demos.
-- Each AI/brand fact appears ONCE in its strongest position — no repetition across zones (AI-attribution → subtitle; builder credit → footer).
-
-**Severity tiers** (mapped from already-adjudicated data — no new analysis): 🛑 **Blocker** = `critical[]`; ⚠️ **Concern** = surviving High/Medium not classified critical; 💡 **Nit** = surviving Low. The word is the contract (agent enum + accessibility); the emoji is sugar — never emoji-only.
-
-**Canonical Zone 2 template** (render exactly this shape; the example shows a `code-pr` — the verdict, badge, `🧪 Lanes` row, and box-score tiers are generated from THIS run's adjudicated counts and dispatch set, not hardcoded. A `plan` renders `plan-review · adversarial · security`; `doc` renders `doc-review · adversarial · security`; `skill` renders `skill-audit · security` (a skill DIRECTORY that fanned out to prose siblings renders `skill-audit · directive-review · security`); `directive` renders `directive-review · adversarial · security`):
-
-## ⚔️ The Gauntlet — <verdict: 🛑 N Blocker(s) · M advisory | 🛡️ Clean>
-<sub>🤖 AI-powered · *your code, through the lanes*</sub>
-
-<!-- Header verdict is CODE-LANE ONLY (blockers/concerns/nits). The go-live SHIP/HOLD/NEEDS-INFO verdict does NOT appear here — it renders in its own `[!TIP]`/`[!CAUTION]`/`[!IMPORTANT]` callout below. A run can be code-Clean AND go-live HOLD simultaneously; the two verdict systems are kept visually distinct so neither masks the other. -->
-
-![gauntlet verdict](https://img.shields.io/badge/gauntlet-<message>-<color>)
-
-| | |
-|---|---|
-| 🛑 Blockers | **<n>** |
-| ⚠️ Concerns | <n> |
-| 💡 Nits | <n> |
-| 🔒 Security | <clean ✓ | N findings> |
-| 🧪 Lanes | <actual dispatch set for this artifact type> |
-
-> [!WARNING]
-> **<Blocker title>** — `<file>:<line>`. <claim>. **Fix:** <recommendation>.
-
-(one `> [!WARNING]` per blocker; omit the block entirely on a clean run)
-
-> [!TIP]
-> **🚀 Go-Live: SHIP** · _as-of <YYYY-MM-DD>_
-> <one-line reason from the verdict — what gate/precondition is satisfied, blast radius>
->
-> **Before GA — not this merge:**
-> 1. <forward item, if any>
-
-(Go-Live callout — render ONLY if Phase 2.5 ran. This is the Zone 2 mirror of the Zone 1 `🚀 Go-Live Readiness` block: same verdict, condensed to a callout. Rules:
-- **Alert type tracks the verdict:** SHIP → `> [!TIP]` (green), HOLD → `> [!CAUTION]` (red), NEEDS-INFO → `> [!IMPORTANT]` (purple). The `🚀` + verdict word is the contract; the alert color is sugar.
-- **Always carry the `as-of <YYYY-MM-DD>` stamp** — go-live reads drifting external state, so its verdict is point-in-time, unlike the SHA-reproducible counts.
-- **Forward items live INSIDE the block**, never scattered into prose. For SHIP, head them `**Before GA — not this merge:**`; for HOLD/NEEDS-INFO, head them `**Must resolve before shipping:**` as a numbered list lifted from the go-live verdict's resolution list. Omit the sub-list entirely if there are none.
-- **Placement:** after the blocker `[!WARNING]`s, before `### Findings` — the two ship/no-ship signals (blockers + go-live) sit together above the advisory findings.
-- **Separation invariant (load-bearing):** this block's verdict NEVER appears in the box score, the `🛑/⚠️/💡` counts, the verdict badge, or the `verdict:{}` JSON object. A HOLD here is an operator signal, NOT a gauntlet blocker — folding a drifting verdict into the reproducible counts corrupts the calibration trust signal. It maps ONLY to the `go_live:{}` JSON sibling below. If Phase 2.5 did not run, omit this callout entirely; the footer records the status.)
-
-### Findings
-| | Lens | Finding | Location |
-|---|---|---|---|
-| ⚠️ | <canonical lens> | <one-line claim> | `<file>:<line>` |
-| 💡 | <canonical lens> | <one-line claim> | `<file>:<line>` |
-
-(Render as a TABLE. Columns:
-- **Col 1** — severity emoji (⚠️ Concern, 💡 Nit).
-- **Lens** — the finding's canonical `lens` value, **character-for-character identical to the `lens` field in the machine-readable JSON block below** (e.g. `adversarial-review / Failure Scenarios`, `code-quality-standards / Gaps`, `security-gauntlet / Authorization`). Do NOT translate it to a friendlier synonym (`Failure scenario`, `Design / scoping`, `Type safety`, …) — a paraphrase mints a THIRD vocabulary that mismatches both the JSON and the 🧪 Lanes row, so a reader cross-referencing a row to the JSON sees two labels for one finding. One concept, one label, across both surfaces. The lane (the skill-prefix before ` / `) always equals a 🧪 Lanes entry; the sub-lens after ` / ` is the extra triage signal for the human. The lens taxonomy is allowed in this column (it's the carve-out, like the box score) — the no-internal-vocabulary rule still bars *process narration*, not the lens label itself.
-- **Finding** — one-line claim.
-- **Location** — `` `file:line` ``.
-- **Status — RE-REVIEW ONLY.** Append a **Status** column ONLY on a Phase 4d re-review. **Omit it entirely on an initial review** — every cell would read `Open`, a dead column carrying no signal. On a re-review, Status is set BY THE GAUNTLET (never self-ticked) and reflects what the re-review VERIFIED against the code: `✅ Resolved` (fix confirmed in the diff), `➖ By design` / `➖ Author` (author dispositioned and the rationale holds), or `🔴 Still open` (claimed fixed but verification failed, OR not yet addressed). Never mark `✅ Resolved` on an author's say-so alone — confirm against the code per Phase 4d.
-
-**Row membership differs by review kind — the table is the stable spine across re-reviews:**
-- **Initial review:** one row per surviving Concern/Nit, ordered Concerns-before-Nits then by the Phase 3 rank.
-- **Re-review (Phase 4d):** carry EVERY prior finding's row forward — including the ones now `✅ Resolved` and `➖ By design` — and append any new findings below them. A reader diffing the two comments must be able to track each finding's fate down a stable column; the Status cell IS that fate. **Do NOT drop resolved findings to a prose line** (e.g. "Resolved since last pass: …") — a finding that leaves the table loses its row continuity and the Status column has nothing to attach `✅ Resolved` to, defeating the column's whole purpose. Order: still-open Concerns → still-open Nits → resolved/by-design (prior rank preserved) → new findings (Phase 3 rank). The box-score counts still reflect only the OPEN tally (resolved findings are not counted as concerns/nits), but they keep their row with a terminal Status.
-
-**Blockers are NOT in this table** — they stay in the `> [!WARNING]` callouts above.
-
-Two rationales: (a) **Lens matches the JSON** — the human table and the agent JSON both name the lens, so they MUST agree; the JSON `lens` is the calibrated source of truth, so the human cell copies it rather than inventing prose. (b) **Status is re-review-only** — its value is the *verified* disposition a re-review produces; on an initial review it is uniformly `Open` and adds nothing. That same "verified, not self-asserted" property is why a Gauntlet-set Status emoji beats a GitHub `- [ ]` task-list checkbox: clickable boxes only render in a list (not a table cell) and the author can mis-tick them, whereas the Gauntlet verifies disposition against the code. Omit the Findings section entirely if there are no Concerns/Nits; on a fully clean run replace the header verdict with 🛡️ Clean and emit one line: "Cleared all lanes — no findings.")
-
-<details>
-<summary>🤖 Machine-readable findings (for agents)</summary>
-
-```json
-{
-  "tool": "gauntlet",
-  "schema": "v1",
-  "reviewed_ref": "<short sha or path@blob>",
-  "verdict": { "blockers": 0, "concerns": 0, "nits": 0, "security": "clean" },
-  "go_live": { "verdict": "SHIP|HOLD|NEEDS-INFO", "as_of": "<YYYY-MM-DD>" },
-  "findings": [
-    { "severity": "blocker|concern|nit", "location": "<file>:<line>", "lens": "<canonical lens>", "confidence": 0, "claim": "<text>", "recommendation": "<text>" }
-  ]
-}
-```
-</details>
-
----
-<sub>🎮 The Gauntlet · an AI review harness built by Josh C.S. Lewis · reviewed at `<short sha>`. Everything but the 🛑 is advisory.</sub>
-<!-- gauntlet:v1 ref=<short sha> -->
-
-**Verdict badge** (`shields.io`, static, rendered at post time from adjudicated counts): label `gauntlet`; message+color track state — ≥1 blocker → `<n>_blocker[s]`/`red`; 0 blockers + ≥1 advisory → `<n>_advisory`/`yellow`; 0 findings → `clean`/`brightgreen`. The badge is garnish (Camo-cached, breaks on host outage); the text box score is the source of truth — the badge never carries info absent from the text.
-
-**Agent channel.** The `<details>` JSON is the machine contract: `severity` ∈ {blocker, concern, nit}; `location` is `file:line`; fields mirror the canonical schema subset. Keep the blank line after `</summary>` or the fenced block won't render. The `<!-- gauntlet:v1 ref=<sha> -->` marker is the comment's self-ID: on a re-run, grep existing PR comments for `gauntlet:v1` and UPDATE the prior comment (Phase 4d delta) rather than posting a duplicate. The `go_live` sibling key is present ONLY when Phase 2.5 ran; it carries `{verdict, as_of}` and is deliberately a SEPARATE top-level key from `verdict:{}` — agent consumers read the ship/hold decision from `go_live`, never by inflating the `verdict` counts. Omit the `go_live` key entirely when Phase 2.5 did not run (do not emit `null`).
-
-**Zone 2 is the canonical postable text** for EVERY artifact type (code-pr, code-local, plan, doc, skill — for non-PR artifacts the operator pastes it into the ticket). When the operator later posts a PR comment or runs `/create-pr`, that step reuses Zone 2 verbatim. One voice pass, one source of truth.]
-````
+**Bright-line (carried from the template):** Zone 1 vocabulary never appears in a teammate-facing surface; only Zone 2 is postable. The Zone 2 comment is the canonical postable text for EVERY artifact type — when the operator later posts a PR comment or runs `/create-pr`, that step reuses Zone 2 verbatim.
 
 ### Phase 4c — Post lean chat summary + verify
 
@@ -527,7 +377,7 @@ Dispatch shape per the canonical contract in Phase 1: **typed** lenses own `*-fi
 - `plan-review` — typed. Phase 1 dispatch target for `plan` artifacts.
 - `doc-review` — typed. Phase 1 dispatch target for `doc` artifacts (and the PR body of `code-pr` when ≥200 words).
 - `adversarial-review` — typed. Phase 1 dispatch target for code (`code-pr`, `code-local`) AND for plan/doc (typed-input dispatch).
-- `directive-review` — typed. Phase 1 dispatch target for `directive` artifacts, AND for the non-frontmatter prose siblings (`modes.md`, `references/*`) of a `skill`-directory run. Owns `directive-finder`/`directive-validator`; returns survivors-only canonical JSON like the other typed lenses.
+- `directive-review` — typed. Phase 1 dispatch target for `directive` artifacts, AND for the SKILL.md body prose (post-frontmatter) of ANY `skill` artifact (single-file or directory), AND for the non-frontmatter prose siblings (`modes.md`, `references/*`) of a `skill`-directory run. Owns `directive-finder`/`directive-validator`; returns survivors-only canonical JSON like the other typed lenses.
 - `skill-audit` — audit (inline). Phase 1 dispatch target for `skill` artifacts. gauntlet performs the §4.3 transformation; skill-audit's output contract is unchanged.
 - `code-quality-audit` — audit (inline). Phase 1 dispatch target for `code-pr` and `code-local` artifacts. 3-layer audit (Compliance / Staleness / Gap) against `code-quality-standards` rules. Returns prose; gauntlet transforms to canonical 10-field shape via master spec §4.3.
 - `go-live-review` — **verdict lane (Phase 2.5), not a finding lens.** Conditionally dispatched for `code-pr`/`code-local` when the go-live pre-filter matches and the operator opts in. `Skill:`-dispatched as a black box; returns a fenced SHIP/HOLD/NEEDS-INFO readiness verdict that renders in its own Phase 4b zone and never enters Phase 3 adjudication or the blocker/concern/nit counts. Calibration + gold corpus: `projects/active/gauntlet/test-dataset/golive/`.
