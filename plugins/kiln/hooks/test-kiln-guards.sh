@@ -44,4 +44,18 @@ assert_allow "conductor: main-thread Edit to source when NO active run" kiln-gua
   "{\"tool_name\":\"Edit\",\"tool_input\":{\"file_path\":\"$SRC\"}}"
 
 rmdir "$RUN_DIR" 2>/dev/null; rmdir "$(dirname "$RUN_DIR")" 2>/dev/null
+
+# --- branch guard --- (re-create the active sentinel for these cases)
+mkdir -p "$RUN_DIR"; : > "$RUN_DIR/.active"
+# Deny path: simulate being on main. Allow path: simulate a work branch. Both run every invocation.
+KILN_TEST_BRANCH=main assert_deny "branch: Edit to source while on main (simulated)" kiln-guard-branch.sh \
+  "{\"agent_id\":\"a1\",\"tool_name\":\"Edit\",\"tool_input\":{\"file_path\":\"$SRC\"}}"
+KILN_TEST_BRANCH=master assert_deny "branch: Edit to source while on master (simulated)" kiln-guard-branch.sh \
+  "{\"tool_name\":\"Edit\",\"tool_input\":{\"file_path\":\"$SRC\"}}"
+KILN_TEST_BRANCH=kiln/TEST-0 assert_allow "branch: Edit to source while on work branch (simulated)" kiln-guard-branch.sh \
+  "{\"agent_id\":\"a1\",\"tool_name\":\"Edit\",\"tool_input\":{\"file_path\":\"$SRC\"}}"
+KILN_TEST_BRANCH=main assert_allow "branch: Write to run folder allowed even on main" kiln-guard-branch.sh \
+  "{\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\"$RUN_DIR/progress.md\"}}"
+rm -f "$RUN_DIR/.active"
+
 echo "---"; [ "$FAILS" -eq 0 ] && echo "ALL PASS" || { echo "$FAILS FAILED"; exit 1; }
