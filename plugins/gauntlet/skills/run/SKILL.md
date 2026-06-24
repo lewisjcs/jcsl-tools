@@ -85,7 +85,21 @@ Add a **6th task when the Phase 0 go-live pre-filter matched OR `--go-live` was 
 
 **HARD-GATE — no pausing between phases.** Proceed directly from each completed phase to the next without pausing for user input or displaying intermediate sub-skill output to chat. The only deliberate pause points in the entire run are: (a) Phase 0 halt-and-ask when artifact type is ambiguous, and (b) Phase 2.5 go-live prompt when the pre-filter matched and `--go-live` was not passed. Every other phase transition is silent and automatic. Do not post intermediate findings, progress summaries, or "Phase 1 complete — proceeding to security…" narration between phases — Phase 3 must adjudicate all findings before any results surface to the user.
 
-After marking a phase completed via TaskUpdate, immediately set the next phase to in_progress via TaskUpdate and begin work on it — do NOT post any message to chat between these two calls. The task-completion mark is not a pause point and must not be followed by output to the user. The only deliberate pause points in the entire run are: (a) Phase 0 halt-and-ask when artifact type is ambiguous, and (b) Phase 2.5 go-live prompt when the pre-filter matched and --go-live was not passed.
+**Continue-signal protocol (structural enforcement of the no-pause rule).** Every `Skill:` sibling dispatch carries an implicit continue-signal: when the sibling returns its findings JSON, the orchestrator is in CONTINUE state for that phase. The dispatch loop advances as follows — this is the ONLY permitted sequence at a phase boundary:
+
+```
+CONTINUE state transition (every phase except the two legitimate pause points):
+  1. tool: TaskUpdate(current-phase → completed)         ← marks phase done
+  2. tool: TaskUpdate(next-phase → in_progress)          ← advances the state machine
+  3. tool: [first dispatch call of next phase]           ← begins next phase immediately
+     (TaskCreate for sub-tasks, Skill: dispatch, or first read for Phase 4a)
+```
+
+Rule: steps 1–3 are a single action sequence. **No assistant text output appears between steps 1 and 3.** Narrating phase progress is permitted ONLY inside step 3's sub-task work or after Phase 4 begins writing the report — never as a standalone chat turn between steps 1 and 2, or between steps 2 and 3. Receiving a sibling's return IS the continue-signal; it binds the next action to step 1 above with zero intervening output. This replaces a "do not pause" prohibition with a positive next-action binding: the orchestrator's state upon receiving any non-pause-point sibling return is deterministically "advance the phase machine immediately."
+
+The two legitimate turn boundaries remain intact and are explicitly excluded from this protocol:
+- **Phase 0 halt-and-ask** (ambiguous artifact type): the orchestrator asks the user and waits — it is NOT in CONTINUE state.
+- **Phase 2.5 go-live prompt** (pre-filter matched, no `--go-live` flag): the orchestrator asks the operator once — it is NOT in CONTINUE state until the operator responds.
 
 <HARD-GATE>
 Six invariants enforced by this skill:
