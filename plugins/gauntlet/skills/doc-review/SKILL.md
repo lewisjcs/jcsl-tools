@@ -51,9 +51,9 @@ Each phase runs in its own subagent dispatch (Phases 1 and 2) or main context (P
 
 ## Phase 1 — Dispatch Finder
 
-Dispatch the `doc-finder` subagent (Agent tool, `subagent_type: doc-finder`) with the full doc content in the prompt body. The agent's senior-engineer persona, 4-lens vocabulary (with 6 Memory-rules sub-lenses), and emission contract are set by its system prompt; the dispatch prompt only supplies the doc content and any context (e.g., the doc's repo-relative path, surrounding repo signals if known).
+Dispatch the `doc-finder` subagent (Agent tool, `subagent_type: gauntlet:doc-finder`) with the full doc content in the prompt body. The agent's senior-engineer persona, 4-lens vocabulary (with 6 Memory-rules sub-lenses), and emission contract are set by its system prompt; the dispatch prompt only supplies the doc content and any context (e.g., the doc's repo-relative path, surrounding repo signals if known).
 
-**If the dispatch fails with `Agent type 'doc-finder' not found`:** the harness's runtime agent registry has not picked up the doc-finder agent file at `.claude/agents/doc-finder.md`. Run `/reload-plugins` (or restart the session) to refresh the registry, then retry the dispatch. This applies whenever the agents are newly authored (e.g., on the first invocation after a fresh build of the Gauntlet skill family). The same recovery applies to Phase 2's `doc-validator` dispatch.
+**If the dispatch fails with `Agent type 'gauntlet:doc-finder' not found`:** the runtime agent registry has not picked up the plugin's agents. Run `/reload-plugins` (or restart the session) to refresh the registry, then retry with the `gauntlet:`-prefixed name. The same recovery applies to Phase 2's `gauntlet:doc-validator` dispatch.
 
 **Verify before Phase 2:** Parse Finder output as JSON. Confirm it is an array (possibly empty). Each entry MUST contain: `skill`, `lens`, `category`, `location`, `claim`, `evidence`, `verdict`, `severity`, `confidence`, `recommendation` (10 fields per master spec §4.1). The `lens` value MUST start with `doc-review / ` exactly and MUST be one of the 10 canonical labels per §3.5 lines 219-228 (with the U+2014 em-dash separator on Memory-rules sub-lenses). The `location` value MUST be a bare narrative section reference (not a file:line reference, not backtick-wrapped — per master spec §4.1.1). If parse fails, schema mismatches, or emission contract is violated (especially: hyphen-minus or en-dash instead of em-dash on Memory-rules sub-lenses), re-dispatch Finder once with the contract spelled out (per master spec §4.1.1 retry policy). If the second pass still fails, emit a brief "Finder output malformed" report and exit.
 
@@ -63,7 +63,7 @@ If Finder returns an empty array (no findings), emit "No doc-review findings aga
 
 ## Phase 2 — Dispatch Validator
 
-Dispatch the `doc-validator` subagent (Agent tool, `subagent_type: doc-validator`) with:
+Dispatch the `doc-validator` subagent (Agent tool, `subagent_type: gauntlet:doc-validator`) with:
 
 1. The full doc content
 2. The Finder's raw findings array

@@ -50,7 +50,7 @@ Each phase runs in its own subagent dispatch (Phases 1 and 2) or main context (P
 
 ## Phase 1 — Dispatch Finder
 
-Dispatch the `plan-finder` subagent (Agent tool, `subagent_type: plan-finder`) with the full plan content in the prompt body. The agent's engineering-manager persona, 5-lens vocabulary, and emission contract are set by its system prompt; the dispatch prompt only supplies the plan content and any context.
+Dispatch the `plan-finder` subagent (Agent tool, `subagent_type: gauntlet:plan-finder`) with the full plan content in the prompt body. The agent's engineering-manager persona, 5-lens vocabulary, and emission contract are set by its system prompt; the dispatch prompt only supplies the plan content and any context.
 
 **Verify before Phase 2:** Parse Finder output as JSON. Confirm it is an array (possibly empty). Each entry MUST contain: `skill`, `lens`, `category`, `location`, `claim`, `evidence`, `verdict`, `severity`, `confidence`, `recommendation` (10 fields per master spec §4.1). The `lens` value MUST start with `plan-review / ` exactly. The `location` value MUST be a bare narrative section reference (not a file:line reference, not backtick-wrapped — per master spec §4.1.1). If parse fails, schema mismatches, or emission contract is violated, re-dispatch Finder once with the contract spelled out (per master spec §4.1.1 retry policy). If the second pass still fails, emit a brief "Finder output malformed" report and exit.
 
@@ -60,7 +60,7 @@ If Finder returns an empty array (no findings), emit "No plan-review findings ag
 
 ## Phase 2 — Dispatch Validator
 
-Dispatch the `plan-validator` subagent (Agent tool, `subagent_type: plan-validator`) with:
+Dispatch the `plan-validator` subagent (Agent tool, `subagent_type: gauntlet:plan-validator`) with:
 
 1. The full plan content
 2. The Finder's raw findings array

@@ -44,7 +44,7 @@ Each phase runs in its own subagent dispatch (Phases 1 and 2) or main context (P
 
 ## Phase 1 — Dispatch Finder
 
-Dispatch the `adversarial-finder` subagent (Agent tool, `subagent_type: adversarial-finder`) with the full artifact in the prompt body. The agent's hostile-engineer persona is set by its system prompt; the dispatch prompt supplies the artifact content, an explicit artifact-type marker, and any context the Finder needs to navigate the repo.
+Dispatch the `adversarial-finder` subagent (Agent tool, `subagent_type: gauntlet:adversarial-finder`) with the full artifact in the prompt body. The agent's hostile-engineer persona is set by its system prompt; the dispatch prompt supplies the artifact content, an explicit artifact-type marker, and any context the Finder needs to navigate the repo.
 
 **Typed-input dispatch format (Phase 7, 2026-05-27):** When dispatching Finder against non-code artifacts, include an artifact-type marker on its own line in the dispatch prompt body:
 
@@ -71,7 +71,7 @@ The marker line MUST appear on its own line (no surrounding text on the same lin
 
 ## Phase 2 — Dispatch Validator
 
-Dispatch the `adversarial-validator` subagent (Agent tool, `subagent_type: adversarial-validator`) with:
+Dispatch the `adversarial-validator` subagent (Agent tool, `subagent_type: gauntlet:adversarial-validator`) with:
 
 1. The full diff
 2. The Finder's raw findings array

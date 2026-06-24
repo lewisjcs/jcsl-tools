@@ -50,9 +50,9 @@ Each phase runs in its own subagent dispatch (Phases 1 and 2) or main context (P
 
 ## Phase 1 — Dispatch Finder
 
-Dispatch the `directive-finder` subagent (Agent tool, `subagent_type: directive-finder`) with the full artifact content in the prompt body. The agent's persona, 4-lens vocabulary, and emission contract are set by its system prompt; the dispatch prompt supplies the artifact content and its repo-relative path.
+Dispatch the `directive-finder` subagent (Agent tool, `subagent_type: gauntlet:directive-finder`) with the full artifact content in the prompt body. The agent's persona, 4-lens vocabulary, and emission contract are set by its system prompt; the dispatch prompt supplies the artifact content and its repo-relative path.
 
-**If the dispatch fails with `Agent type 'directive-finder' not found`:** the runtime agent registry has not picked up `.claude/agents/directive-finder.md`. Run `/reload-plugins` (or restart the session), then retry. Same recovery for Phase 2's `directive-validator`.
+**If the dispatch fails with `Agent type 'gauntlet:directive-finder' not found`:** the runtime agent registry has not picked up the plugin's agents. Run `/reload-plugins` (or restart the session), then retry with the `gauntlet:`-prefixed name. Same recovery for Phase 2's `gauntlet:directive-validator`.
 
 **Verify before Phase 2:** Parse Finder output as JSON. Confirm it is an array (possibly empty). Each entry MUST have the 10 fields (`skill`, `lens`, `category`, `location`, `claim`, `evidence`, `verdict`, `severity`, `confidence`, `recommendation`). The `lens` value MUST start with `directive-review / ` exactly and be one of the 4 canonical labels (`Under-specification`, `Internal contradiction`, `Unenforceable gate`, `Ambiguity and literal-readability`). The `location` MUST be a bare single-section reference (not file:line, not backtick-wrapped). If parse fails or the contract is violated, re-dispatch Finder once with the contract spelled out. If the second pass still fails, emit a brief "Finder output malformed" report and exit.
 
@@ -62,7 +62,7 @@ If Finder returns `[]`, emit "No directive-review findings against the 4 active 
 
 ## Phase 2 — Dispatch Validator
 
-Dispatch the `directive-validator` subagent (Agent tool, `subagent_type: directive-validator`) with: (1) the full artifact content, (2) the Finder's raw findings array verbatim, (3) the artifact's repo-relative path. Do NOT summarize or pre-filter the Finder JSON.
+Dispatch the `directive-validator` subagent (Agent tool, `subagent_type: gauntlet:directive-validator`) with: (1) the full artifact content, (2) the Finder's raw findings array verbatim, (3) the artifact's repo-relative path. Do NOT summarize or pre-filter the Finder JSON.
 
 **Verify before Phase 3:** Parse Validator output as JSON. Confirm one entry per Finder finding (count must match), each with `verdict ∈ {survives, disproved}`, `evidence`, `confidence ∈ [0,100]`. If counts mismatch, re-dispatch with the missing findings. If a non-canonical verdict string appears (`false_positive`, etc.), re-dispatch once with the contract spelled out. Do not advance until verification passes.
 
