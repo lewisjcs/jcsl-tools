@@ -53,7 +53,7 @@ Each phase runs in its own subagent dispatch (Phases 1 and 2) or main context (P
 
 ## Phase 1 — Dispatch Finder
 
-Dispatch the `security-finder` subagent (Agent tool, `subagent_type: security-finder`) with the full artifact (diff or text) in the prompt body. The agent's security-engineer persona, 7-lens vocabulary, and emission contract are set by its system prompt; the dispatch prompt only supplies the artifact and any context the Finder needs to navigate the repo.
+Dispatch the `security-finder` subagent (Agent tool, `subagent_type: gauntlet:security-finder`) with the full artifact (diff or text) in the prompt body. The agent's security-engineer persona, 7-lens vocabulary, and emission contract are set by its system prompt; the dispatch prompt only supplies the artifact and any context the Finder needs to navigate the repo.
 
 **Verify before Phase 2:** Parse Finder output as JSON. Confirm it is an array (possibly empty). Each entry MUST contain: `skill`, `lens`, `category`, `location`, `claim`, `evidence`, `verdict`, `severity`, `confidence`, `recommendation` (10 fields per master spec §4.1). The `lens` value MUST start with `security-gauntlet / ` exactly. The `location` value MUST be `<file-path>:<line-number>` for code findings, or a backtick-free narrative section reference for plan/doc/skill text (per master spec §4.1.1). If parse fails, schema mismatches, or emission contract is violated, re-dispatch Finder once with the contract spelled out. If the second pass still fails, emit a brief "Finder output malformed" report and exit. Do not advance to Phase 2 with malformed data.
 
@@ -63,7 +63,7 @@ If Finder returns an empty array (no findings), advance directly to report emiss
 
 ## Phase 2 — Dispatch Validator
 
-Dispatch the `security-validator` subagent (Agent tool, `subagent_type: security-validator`) with:
+Dispatch the `security-validator` subagent (Agent tool, `subagent_type: gauntlet:security-validator`) with:
 
 1. The full diff
 2. The Finder's raw findings array

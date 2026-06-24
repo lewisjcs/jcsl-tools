@@ -249,3 +249,25 @@ fi
 
 echo "OK: VALIDATOR-GROUNDING block present and byte-identical in all ${#VALIDATOR_FILES[@]} validator files."
 echo "    SHA-256: $validator_unique_hashes"
+
+# ---------------------------------------------------------------------------
+# AGENT-DISPATCH-PREFIX check: every sub-skill that dispatches a finder/validator
+# subagent MUST name it with the `gauntlet:` plugin prefix. A bare `subagent_type:
+# <agent>` resolves to nothing once the local agent copies are archived (the plugin
+# agents register only under their `gauntlet:`-prefixed names), so a bare dispatch
+# is a latent hard failure that only surfaces on a faithful run. This guard fails
+# fast on any reintroduced bare dispatch.
+# ---------------------------------------------------------------------------
+
+SKILLS_DIR="$(cd "$AGENTS_DIR/../skills" && pwd)"
+
+# Match `subagent_type: <name>-finder|validator` NOT preceded by `gauntlet:`.
+bare_dispatches="$(grep -rnE 'subagent_type:[[:space:]]*(adversarial|directive|doc|plan|security)-(finder|validator)' "$SKILLS_DIR" || true)"
+
+if [[ -n "$bare_dispatches" ]]; then
+  echo "FAIL: bare (un-prefixed) agent dispatch found — must use the gauntlet: prefix:"
+  echo "$bare_dispatches" | sed 's/^/  /'
+  exit 1
+fi
+
+echo "OK: all finder/validator dispatches use the gauntlet: prefix (no bare dispatch)."
