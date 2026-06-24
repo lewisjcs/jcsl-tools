@@ -6,6 +6,17 @@
 
 set -euo pipefail
 
+# Portable SHA-256: shasum (macOS) or sha256sum (Linux). Both print
+# "<hash>  <file>", so the downstream `awk '{print $1}'` works for either.
+if command -v shasum >/dev/null 2>&1; then
+  SHA_CMD="shasum -a 256"
+elif command -v sha256sum >/dev/null 2>&1; then
+  SHA_CMD="sha256sum"
+else
+  echo "FAIL: neither shasum nor sha256sum found on PATH" >&2
+  exit 1
+fi
+
 AGENTS_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 FILES=(
@@ -45,7 +56,7 @@ for f in "${FILES[@]}"; do
   awk '/<!-- GROUNDING-CONTRACT:START/{found=1} found{print} /GROUNDING-CONTRACT:END -->/{found=0}' "$f" > "$extracted"
 
   # Hash the extracted block
-  hash="$(shasum -a 256 "$extracted" | awk '{print $1}')"
+  hash="$($SHA_CMD "$extracted" | awk '{print $1}')"
   hashes+=("$hash $name")
 done
 
@@ -121,7 +132,7 @@ for f in "${FINDER_FILES[@]}"; do
   extracted="$TMPDIR_WORK/$name.finder.block"
   awk '/<!-- FINDER-GROUNDING:START/{found=1} found{print} /FINDER-GROUNDING:END -->/{found=0}' "$f" > "$extracted"
 
-  hash="$(shasum -a 256 "$extracted" | awk '{print $1}')"
+  hash="$($SHA_CMD "$extracted" | awk '{print $1}')"
   finder_hashes+=("$hash $name")
 done
 
@@ -195,7 +206,7 @@ for f in "${VALIDATOR_FILES[@]}"; do
   extracted="$TMPDIR_WORK/$name.validator.block"
   awk '/<!-- VALIDATOR-GROUNDING:START/{found=1} found{print} /VALIDATOR-GROUNDING:END -->/{found=0}' "$f" > "$extracted"
 
-  hash="$(shasum -a 256 "$extracted" | awk '{print $1}')"
+  hash="$($SHA_CMD "$extracted" | awk '{print $1}')"
   validator_hashes+=("$hash $name")
 done
 
