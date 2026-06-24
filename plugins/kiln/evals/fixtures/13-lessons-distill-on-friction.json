@@ -1,0 +1,19 @@
+{
+  "scenario": "13-lessons-distill-on-friction",
+  "friction_score_min": 1,
+  "friction_items": [
+    {"type": "preventable_new", "scope": "branch", "trigger": "committed-to-main-before-branch"},
+    {"type": "non_preventable", "description": "narration note — progress narration felt sparse"},
+    {"type": "preventable_existing", "scope": "compounds", "trigger": "plan_change-skipped", "existing_runs": ["prior-run"]}
+  ],
+  "expected_new_lesson_count": 1,
+  "expected_bumped_lesson_count": 1,
+  "expected_corpus_entries_for_narration": 0,
+  "expected_ledger_new_entries": 1,
+  "expected_ledger_bump_entries": 1,
+  "expected_ledger_entry_new": "LESSON-WRITE: new scope:branch trigger:committed-to-main-before-branch",
+  "expected_ledger_entry_bump": "LESSON-WRITE: bump scope:compounds trigger:plan_change-skipped",
+  "expected_retro_ledger_entry": "RETRO: full",
+  "distill_failure_must_not_block_run": true,
+  "duplicate_lesson_must_not_be_created": true
+}
