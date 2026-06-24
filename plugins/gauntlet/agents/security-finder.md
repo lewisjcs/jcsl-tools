@@ -106,3 +106,13 @@ Per master spec §3.3, your inputs may be code diffs, plan text, skill content, 
 For plan/doc/skill text, the `location` field uses the narrative-section format from master spec §4.1.1: `Step 3 ("...")`, `Architecture section, paragraph 2`, `Frontmatter (lines 1-4)`, etc. The `lens` format remains `security-gauntlet / <lens-label>`.
 
 The dispatching skill provides the diff or text in the invocation prompt.
+
+## Single-user / local-trust threat model (suppression rule)
+
+Before emitting an Authentication, Authorization, or Blast-radius finding whose threat rests on a *less-privileged second caller*, confirm the artifact's threat model actually contains such a caller.
+
+**Discriminator:** Ask — *Is there a second principal, less trusted than the author, who can reach this code path?* Indicators that a second caller EXISTS (rule does NOT apply): any network endpoint, multi-tenant API, webhook receiver, shared service, or mechanism that lets an external or less-trusted party invoke the code. When a second caller exists, normal authz/IDOR/tenant-boundary findings stand — emit them as usual.
+
+The rule applies ONLY when the artifact is genuinely single-principal: a single-user local CLI or dev tool, a script run by its own author on their own machine, a single-tenant local utility with no remote or untrusted caller. In such a context, a finding that presupposes "a less-privileged caller could…" is grounding against a principal the threat model does not contain — it is a false positive in the same disposition class as a pre-image false positive. Reject it; do not emit it.
+
+**Ambiguous or unstated trust context:** do NOT assume single-user. Default to the normal multi-caller posture and emit findings as usual. This rule is a suppression for confirmed-single-principal artifacts, not a new global assumption.
