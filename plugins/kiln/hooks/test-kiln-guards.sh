@@ -58,4 +58,13 @@ KILN_TEST_BRANCH=main assert_allow "branch: Write to run folder allowed even on 
   "{\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\"$RUN_DIR/progress.md\"}}"
 rm -f "$RUN_DIR/.active"
 
+# --- spine guard ---
+mkdir -p "$RUN_DIR"; : > "$RUN_DIR/.active"; rm -f "$RUN_DIR/.spine"
+assert_deny "spine: Agent dispatch before spine exists" kiln-guard-spine.sh \
+  "{\"tool_name\":\"Agent\",\"tool_input\":{\"subagent_type\":\"kiln:crafter\"}}"
+: > "$RUN_DIR/.spine"
+assert_allow "spine: Agent dispatch after spine exists" kiln-guard-spine.sh \
+  "{\"tool_name\":\"Agent\",\"tool_input\":{\"subagent_type\":\"kiln:crafter\"}}"
+rm -f "$RUN_DIR/.active" "$RUN_DIR/.spine"
+
 echo "---"; [ "$FAILS" -eq 0 ] && echo "ALL PASS" || { echo "$FAILS FAILED"; exit 1; }
