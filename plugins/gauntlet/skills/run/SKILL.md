@@ -142,7 +142,7 @@ Nit in Phase 3 substep 6.
 - `plan`: plan-review, adversarial-review (artifact type=plan-text — wires up plan-review's Architectural-risk lens per Phase 7 §9 resolution)
 - `doc`: doc-review, adversarial-review (artifact type=doc-text — wires up doc-review's Hidden-assumptions lens per Phase 7 §9 resolution)
 - `directive`: directive-review (typed; `Skill:` black-box dispatch) + adversarial-review (typed-input `directive-text`; if adversarial-review has no `directive-text` overlay yet, pass `doc-text` as the closest fit and note the substitution in the trust-signal footer). No PR body dispatch. **For multi-file directive runs:** before dispatching any directive-review sub-tasks, count the files to be reviewed and emit a single line to chat: `"Dispatching directive-review for N file(s): [list]. This will spawn N×2 agent passes."` Then proceed without gating.
-- `skill`: skill-audit. **When the artifact is a skill DIRECTORY, also dispatch directive-review (typed; `Skill:` black-box dispatch) once per non-frontmatter prose sibling** (`modes.md`, `references/*.md`, `reference.md`, and any other `.md` without `name:`+`description:` skill frontmatter). A skill is reviewed as a unit: skill-audit owns the SKILL.md, directive-review owns the operating-prose siblings it points to. Enumerate the siblings with `ls`/`find` and create one directive-review sub-task per file. **Before dispatching directive-review sub-tasks for multiple siblings, emit a single line to chat: `"Dispatching directive-review for N file(s): [list]. This will spawn N×2 agent passes."` Then proceed without gating.** If the artifact is a single SKILL.md file (not a directory), skip the sibling sweep — there are no siblings to review. **Additionally, for BOTH a single SKILL.md and a skill directory, dispatch directive-review (typed; `Skill: gauntlet:directive-review`) against the SKILL.md body prose** — defined as everything after the closing `---` of the YAML frontmatter block (frontmatter = the leading `---` … `---` block; body prose = the rest). skill-audit retains ownership of the frontmatter and structural checks; directive-review receives the body prose only. This body pass is distinct from the sibling sweep above and applies even when the artifact is a single SKILL.md (no directory — no siblings); the sibling-sweep skip clause applies only to the sibling sweep, not to this body pass.
+- `skill`: skill-audit. **When the artifact is a skill DIRECTORY, also dispatch directive-review (typed; `Skill:` black-box dispatch) once per non-frontmatter prose sibling** (`modes.md`, `references/*.md`, `reference.md`, and any other `.md` without `name:`+`description:` skill frontmatter). A skill is reviewed as a unit: skill-audit owns the SKILL.md, directive-review owns the operating-prose siblings it points to. Enumerate the siblings with `ls`/`find` and create one directive-review sub-task per file. **Before dispatching directive-review sub-tasks for multiple siblings, emit a single line to chat: `"Dispatching directive-review for N file(s): [list]. This will spawn N×2 agent passes."` Then proceed without gating.** If the artifact is a single SKILL.md file (not a directory), skip the sibling sweep — there are no siblings to review. **Additionally, for BOTH a single SKILL.md and a skill directory, dispatch directive-review (typed; `Skill: gauntlet:directive-review`) against the SKILL.md body prose** — defined as everything after the closing `---` of the YAML frontmatter block (frontmatter = the leading `---` … `---` block; body prose = the rest). skill-audit retains ownership of the frontmatter and structural checks; directive-review receives the body prose only. This body pass is distinct from the sibling sweep above and applies even when the artifact is a single SKILL.md (no directory — no siblings); the sibling-sweep skip clause applies only to the sibling sweep, not to this body pass. **Create a dedicated `TaskCreate` sub-task for this body pass** (labelled `directive-review (body prose)`), separate from any sibling-sweep sub-tasks, so the Phase 1 completion gate tracks it and can detect it going missing.
 - `multi`: per-file dispatch sets (recurse into Phase 1 for each contained artifact)
 
 Mark each sub-task complete as its sub-skill returns its findings array.
@@ -375,6 +375,7 @@ Write the file with TWO zones. **Bright-line: Zone 1 vocabulary never appears in
 | doc-review (PR body) | <status> | <count> |
 | skill-audit | <status> | <count> |
 | directive-review | <status> | <count> |
+| directive-review (body prose) | <status> | <count> |
 | go-live-review | <status> | <verdict> |
 
 [Status: `✓` ran; `⚠ failed` errored; `n/a` not applicable; `declined` operator skipped the prompt;
@@ -382,8 +383,12 @@ Write the file with TWO zones. **Bright-line: Zone 1 vocabulary never appears in
 `skipped (cross-author)` doc-on-body skipped because the PR was teammate-authored. A `skipped (gated)`
 security row is a POSITIVE signal (the calibrated gate considered the diff and it was clean-surface), not a
 degradation — distinct from `⚠ failed`. `code-quality-standards` is a Validator reference skill, not a
-dispatch target — it does not appear here. **go-live-review's column shows its VERDICT
-(SHIP/HOLD/NEEDS-INFO), not a finding count.**]
+dispatch target — it does not appear here. **The two directive-review rows are distinct dispatches on a
+`skill` artifact:** `directive-review` is the sibling-sweep over prose siblings (`reference.md`, `modes.md`,
+etc.) and shows `n/a` for a single SKILL.md with no siblings; `directive-review (body prose)` is the SKILL.md
+body-prose pass and runs for both a single SKILL.md and a directory. Keeping them on separate rows means a
+reader can tell which dispatch ran or failed — mirroring the `doc-review` / `doc-review (PR body)` split.
+**go-live-review's column shows its VERDICT (SHIP/HOLD/NEEDS-INFO), not a finding count.**]
 
 ## Stage coverage
 
