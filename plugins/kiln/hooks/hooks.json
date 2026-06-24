@@ -1,0 +1,25 @@
+{
+  "description": "Kiln v2 conductor-thinness, branch, and spine guards. Active only while a Kiln run sentinel (.active) is present.",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|NotebookEdit|mcp__compounds-dev__.*",
+        "hooks": [
+          { "type": "command", "command": "${CLAUDE_PLUGIN_ROOT}/hooks/kiln-guard-conductor.sh", "timeout": 10 }
+        ]
+      },
+      {
+        "matcher": "Edit|Write|NotebookEdit",
+        "hooks": [
+          { "type": "command", "command": "${CLAUDE_PLUGIN_ROOT}/hooks/kiln-guard-branch.sh", "timeout": 10 }
+        ]
+      },
+      {
+        "matcher": "Agent",
+        "hooks": [
+          { "type": "command", "command": "${CLAUDE_PLUGIN_ROOT}/hooks/kiln-guard-spine.sh", "timeout": 10 }
+        ]
+      }
+    ]
+  }
+}
