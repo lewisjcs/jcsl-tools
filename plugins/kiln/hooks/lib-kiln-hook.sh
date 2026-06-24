@@ -1,0 +1,29 @@
+#!/bin/bash
+# Shared helpers for Kiln guard hooks. Sourced, not executed.
+# Fail-open everywhere: any internal failure must allow the call (exit 0 / return non-deny).
+
+kiln_read_input() { KILN_INPUT=$(cat); }
+
+kiln_field() { # $1 = jq path, e.g. .tool_input.file_path
+  command -v jq >/dev/null 2>&1 || { echo ""; return 0; }
+  printf '%s' "$KILN_INPUT" | jq -r "$1 // empty" 2>/dev/null || echo ""
+}
+
+# Echo the path of an active run dir (one containing a .active sentinel), or empty.
+kiln_active_run_dir() {
+  local root; root=$(git rev-parse --show-toplevel 2>/dev/null) || { echo ""; return 0; }
+  # First active sentinel found under any active project's kiln/ dir.
+  find "$root/projects/active" -maxdepth 3 -name ".active" -path "*/kiln/.active" -print -quit 2>/dev/null \
+    | xargs -I{} dirname {} 2>/dev/null
+}
+
+# Return 0 if this hook fired inside a subagent (agent_id present), else 1.
+kiln_is_subagent() {
+  local aid; aid=$(kiln_field '.agent_id')
+  [ -n "$aid" ]
+}
+
+kiln_deny() { # $1 = reason
+  printf '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"%s"}}\n' "$1"
+  exit 0
+}
