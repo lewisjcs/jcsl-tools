@@ -2,6 +2,11 @@
 # Shared helpers for Kiln guard hooks. Sourced, not executed.
 # Fail-open everywhere: any internal failure must allow the call (exit 0 / return non-deny).
 
+# Declared default so a guard sourced under `set -u` never trips on an unbound
+# KILN_INPUT if kiln_field is ever reached before kiln_read_input (a non-zero exit
+# under set -u would be read as a deny — i.e. fail-CLOSED, the opposite of our posture).
+KILN_INPUT=""
+
 kiln_read_input() { KILN_INPUT=$(cat); }
 
 kiln_field() { # $1 = jq path, e.g. .tool_input.file_path
