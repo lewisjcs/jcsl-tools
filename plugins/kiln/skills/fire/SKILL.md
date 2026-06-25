@@ -30,7 +30,7 @@ Set `{{RUN_FOLDER}} = $(git rev-parse --show-toplevel)/projects/active/<key>/kil
 
 ## Verb 2 — Classify & announce (LOUDLY)
 
-Load `lanes.md` and `scenarios.md`. Determine: lane, scenario, and (after the Planner runs) tier + blast.
+Load `lanes.md` and `scenarios.md`. Determine lane + scenario now (from the entry + ticket). Tier + blast are NOT known yet — the Planner derives them from Compounds' classify step and returns them in its done-line; update the announcement with them after the Planner runs.
 **Announce before any work**, task-kickoff style:
 `**[Kiln] This is a <LANE> run, <SCENARIO> scenario — <one-line why>. Starting that path.**`
 If the entry is sparse/partial, a P2 scenario, or an ambiguous doc shape → **HALT-AND-ASK** (do not guess, do not fall through to code).
@@ -48,7 +48,7 @@ Create the `TaskCreate` progress spine — one task per phase this lane will run
 Load `dispatch-contracts.md`. Dispatch the right member with the four-part contract, passing `{{SCENARIO}}` into Crafter/Inspector/Walker dispatches. Sequence by lane (per `lanes.md`):
 - **EXECUTE:** drift-check → Planner(register existing plan) → Build loop.
 - **PLAN:** Planner → PLAN-GATE → (Walker if HIGH blast) → Build loop.
-- **Build loop (per task):** write `brief-N.md` (merge Compounds `implement_task` fields + prior-task interfaces + `scenario:`), dispatch Crafter, then Inspector (per `gates.md` tier×blast rules).
+- **Build loop (per task):** write `brief-N.md` (merge the task's entry from the Planner-produced `{{RUN_FOLDER}}/tasklist.md` + prior-task interfaces + `scenario:`), dispatch Crafter, then Inspector (per `gates.md` tier×blast rules). The conductor reads `tasklist.md`; it never calls Compounds itself (the guard denies it).
 
 ## Verb 5 — Adjudicate & advance
 
