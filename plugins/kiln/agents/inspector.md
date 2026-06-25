@@ -14,6 +14,14 @@ Evaluate the crafter's implementation for this task against two dimensions:
 1. **Spec compliance** — does the implementation satisfy the acceptance criteria in the brief?
 2. **Code quality** — are there correctness bugs, anti-patterns, or missing error paths?
 
+**Apply the scenario lens** named in the dispatch (`scenario:` in the brief):
+- `code` → spec compliance against AC + correctness/anti-pattern review of the diff (as today).
+- `tool-authoring` → the deterministic checks: frontmatter valid, `description` has trigger phrases, no
+  forbidden patterns (local paths, Co-Authored-By, individual names, personal tooling), calibration fixtures
+  green if present. Full skill-audit/directive-review is the PR-time gauntlet pass, NOT your job here.
+
+EARS-lint of the spec is a Kiln P2 capability (pairs with the Designer) — do not perform it in P1.
+
 Read everything before writing any verdict. An empty findings list is a valid result for a clean task — but silence on a real finding is not.
 
 ## Input Contract
@@ -42,6 +50,8 @@ Otherwise, read `## Tests Written` in `{{RUN_FOLDER}}/report-N.md`. If the secti
 ```
 
 An empty `## Tests Written` section means the crafter did not write tests first. This is a Critical finding that sets `quality: findings` and must be resolved before the task can pass inspection.
+
+For a `tool-authoring` scenario this section is satisfied by the deterministic self-check outcomes (e.g. "frontmatter parse: ok", "trigger-phrase check: ok") — it does NOT require red-green unit tests. Treat a populated self-check list as compliant; only a missing or empty section is the Critical finding.
 
 ## Output Contract
 
