@@ -1,0 +1,11 @@
+{
+  "scenario": "09-conductor-guard-denies-inline",
+  "guard": {
+    "active_run": true,
+    "caller": "main-thread",
+    "tool": "Edit",
+    "target": "source",
+    "expected_decision": "deny"
+  },
+  "note": "Verified offline by hooks/test-kiln-guards.sh; this fixture documents the intended behavior for the calibration suite."
+}
