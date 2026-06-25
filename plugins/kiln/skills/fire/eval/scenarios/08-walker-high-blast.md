@@ -8,7 +8,7 @@ compounds_classification: STANDARD
 blast_radius: HIGH
 
 ## Expected Routing
-mode: PLAN
+lane: PLAN
 scenario_type: code
 gates_fired: [PLAN-GATE, TASK-GATE]
 walker_dispatched: true   # the new HIGH-blast behavior

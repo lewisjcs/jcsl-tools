@@ -9,7 +9,7 @@ compounds_classification: STANDARD
 blast_radius: LOW
 
 ## Expected Routing
-mode: PLAN
+lane: PLAN
 scenario_type: tool-authoring
 crafter_verification: deterministic-self-check  (NOT red-green TDD)
 gates_fired: [PLAN-GATE]

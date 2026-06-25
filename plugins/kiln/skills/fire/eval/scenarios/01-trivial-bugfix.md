@@ -10,8 +10,10 @@ compounds_classification: TRIVIAL
 blast_radius: N/A
 
 ## Expected Routing
-mode: ORIENT
+lane: TRIVIAL
 tier: TRIVIAL
+scenario_type: code
 gates_fired: []
-refiner_dispatched: false
+walker_dispatched: false
 planner_dispatched: false
+inspector_dispatched: false   # TRIVIAL fast-path: single Crafter, no gates, no Inspector

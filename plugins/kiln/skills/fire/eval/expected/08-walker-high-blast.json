@@ -1,6 +1,6 @@
 {
   "scenario": "08-walker-high-blast",
-  "routing": { "mode": "PLAN", "tier": "STANDARD", "blast_radius": "HIGH", "scenario_type": "code" },
+  "routing": { "lane": "PLAN", "tier": "STANDARD", "blast_radius": "HIGH", "scenario_type": "code" },
   "gates": { "PLAN-GATE": true, "TASK-GATE": true },
   "agents_dispatched": ["planner", "walker", "crafter", "inspector"],
   "agents_skipped": []

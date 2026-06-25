@@ -10,8 +10,10 @@ compounds_classification: STANDARD
 blast_radius: LOW
 
 ## Expected Routing
-mode: ORIENT
+lane: PLAN
 tier: STANDARD
+scenario_type: code
 gates_fired: [PLAN-GATE]
-refiner_dispatched: false
+walker_dispatched: false
 planner_dispatched: true
+inspector_dispatched: true    # Inspector RUNS, but TASK-GATE does not block on LOW blast

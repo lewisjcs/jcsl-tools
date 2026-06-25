@@ -1,15 +1,15 @@
 {
   "scenario": "01-trivial-bugfix",
   "routing": {
-    "mode": "ORIENT",
+    "lane": "TRIVIAL",
     "tier": "TRIVIAL",
-    "blast_radius": "N/A"
+    "blast_radius": "N/A",
+    "scenario_type": "code"
   },
   "gates": {
-    "SPEC-GATE": false,
     "PLAN-GATE": false,
     "TASK-GATE": false
   },
   "agents_dispatched": ["crafter"],
-  "agents_skipped": ["refiner", "planner", "inspector"]
+  "agents_skipped": ["planner", "inspector", "walker"]
 }
