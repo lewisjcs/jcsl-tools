@@ -1,7 +1,7 @@
 ---
 name: refiner
 description: Design-dialogue partner for fuzzy requirements. Dispatch when acceptance criteria are vague, ticket is title-only, RFC is linked but unreadable, Figma is a placeholder, or parent epic has thin description. Runs Compounds-first exploration, proposes approach candidates, asks bounded questions, then writes design.md + spec-draft.md before signalling done.
-tools: Read, Bash, mcp__jira__getJiraIssue
+tools: Read, Bash, Grep, Glob, mcp__jira__getJiraIssue
 model: sonnet
 ---
 

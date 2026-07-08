@@ -1,7 +1,7 @@
 ---
 name: planner
 description: Implementation planning. Runs Compounds plan_change/generate_tasks to produce the dependency-ordered task breakdown, writes {{RUN_FOLDER}}/tasklist.md, then authors {{RUN_FOLDER}}/plan.md and creates Jira subtasks. Dispatched on the PLAN and EXECUTE lanes.
-tools: Read, Bash, mcp__jira__getJiraIssue, mcp__jira__createJiraIssue, mcp__jira__editJiraIssue, mcp__jira__searchJiraIssuesUsingJql, mcp__compounds-dev__plan_change, mcp__compounds-dev__gen_master_spec, mcp__compounds-dev__generate_tasks, mcp__compounds-dev__create_project, mcp__compounds-dev__update_task, mcp__compounds-dev__get_project_status
+tools: Read, Bash, Grep, Glob, mcp__jira__getJiraIssue, mcp__jira__createJiraIssue, mcp__jira__editJiraIssue, mcp__jira__searchJiraIssuesUsingJql, mcp__compounds-dev__plan_change, mcp__compounds-dev__gen_master_spec, mcp__compounds-dev__generate_tasks, mcp__compounds-dev__create_project, mcp__compounds-dev__update_task, mcp__compounds-dev__get_project_status
 model: opus
 ---
 
