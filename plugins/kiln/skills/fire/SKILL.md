@@ -28,7 +28,14 @@ returns. It does not implement, plan, or design inline. Members hold the working
 ## Verb 1 — Read
 
 Parse the entry argument. Prefix-agnostic key match `[A-Z]+-\d+`. Read the ticket (if any) via Jira-read.
-Set `{{RUN_FOLDER}} = $(git rev-parse --show-toplevel)/projects/active/<key>/kiln/` and `mkdir -p` it.
+Set `{{RUN_FOLDER}} = <WORKSPACE>/projects/active/<run-id>/kiln/` and `mkdir -p` it, where:
+- `<WORKSPACE>` is the OS workspace root — the directory the session runs from (this OS launches from a
+  non-git workspace that wraps many repos; do NOT use `git rev-parse --show-toplevel`, which would resolve
+  into whichever nested repo the cwd sits in and scatter run folders across repos). Run folders always live
+  in the workspace, never inside a repo.
+- `<run-id>` is the Jira key if the entry has one (`[A-Z]+-\d+`); otherwise a kebab-slug derived from the
+  entry (a raw-idea string or a keyless plan filename) — e.g. `/kiln "add dark mode"` → `add-dark-mode`.
+  Confirm the slug with the user on net-new entries (see Verb 4).
 If the entry includes a spec-shaped file (a PLAN-from-spec run — see `lanes.md`), stash it at
 `{{RUN_FOLDER}}/spec-draft.md` (`cp` — a run-folder write, guard-exempt). That copy is the sole P1
 producer of `spec-draft.md`; the Planner and Walker read it there. No spec file at entry → no stash, and
@@ -42,7 +49,10 @@ Load `lanes.md` and `scenarios.md`. Determine lane + scenario now (from the entr
 If the entry is sparse/partial, a P2 scenario, or an ambiguous doc shape → **HALT-AND-ASK** (do not guess, do not fall through to code).
 
 **Write the active-run sentinel now:** `touch {{RUN_FOLDER}}/.active`. (This is what arms the guard hooks. Remove it in Verb 5.)
-**Branch precondition:** run `git symbolic-ref --short HEAD`; if `main`/`master`, `git checkout -b kiln/<key>` and write ledger `BRANCH: created kiln/<key> | <ISO>`.
+**Branch precondition:** the session runs from the non-git workspace, so operate on the TARGET REPO by
+path with `git -C <repo>` (`<repo>` = the repo the change targets, e.g. `repos/<name>`, derived from the
+plan's file targets or the entry). Run `git -C <repo> symbolic-ref --short HEAD`; if `main`/`master`,
+`git -C <repo> checkout -b kiln/<run-id>` and write ledger `BRANCH: created kiln/<run-id> | <ISO>`.
 
 ## Verb 3 — Build the spine
 
