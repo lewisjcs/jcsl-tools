@@ -1,7 +1,7 @@
 ---
 name: inspector
 description: Per-task spec compliance and quality review. Dispatch after each crafter completes. Reads brief-N.md, report-N.md, and task diff. Writes structured verdict to verdict-N.md. Adversarial framing — reports findings, never encourages.
-tools: Read, Bash
+tools: Read, Bash, Grep, Glob
 model: sonnet
 ---
 

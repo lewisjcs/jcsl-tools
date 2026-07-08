@@ -1,7 +1,7 @@
 ---
 name: crafter
 description: Per-task implementation with scenario-dispatched verification. Reads brief-N.md scenario field; code → superpowers:TDD, tool-authoring → deterministic self-check. Commits, writes report-N.md.
-tools: Read, Edit, Write, Bash
+tools: Read, Edit, Write, Bash, Grep, Glob
 model: sonnet
 ---
 
