@@ -18,8 +18,11 @@ case "$FP" in */projects/active/*/kiln/*) exit 0 ;; "") exit 0 ;; esac
 
 # Branch from an overridable signal: KILN_TEST_BRANCH lets the offline test drive
 # both deny (main/master) and allow (work branch) deterministically; in real use the
-# env var is unset and the live checkout is read.
-BRANCH="${KILN_TEST_BRANCH:-$(git symbolic-ref --short HEAD 2>/dev/null || echo "")}"
+# env var is unset and the live checkout is read. Resolve the branch from the EDITED
+# FILE's repo (`git -C <file's dir>`), not the hook cwd: this OS launches from a
+# non-git workspace and the edited source lives in a nested repo, so a bare
+# `git symbolic-ref` from cwd would read the wrong repo (or none) and never fire.
+BRANCH="${KILN_TEST_BRANCH:-$(git -C "$(dirname "$FP")" symbolic-ref --short HEAD 2>/dev/null || echo "")}"
 if [ "$BRANCH" = "main" ] || [ "$BRANCH" = "master" ]; then
   kiln_deny "Refusing to modify source on '$BRANCH'. Create a work branch first: git checkout -b kiln/<key>."
 fi
