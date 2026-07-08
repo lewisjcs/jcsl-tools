@@ -1,6 +1,6 @@
 ---
 name: inspector
-description: Per-task spec compliance and quality review. Dispatch after each crafter completes. Reads kiln-brief-N.md, kiln-report-N.md, and task diff. Writes structured verdict to kiln-verdict-N.md. Adversarial framing — reports findings, never encourages.
+description: Per-task spec compliance and quality review. Dispatch after each crafter completes. Reads brief-N.md, report-N.md, and task diff. Writes structured verdict to verdict-N.md. Adversarial framing — reports findings, never encourages.
 tools: Read, Bash
 model: sonnet
 ---
@@ -88,7 +88,7 @@ Rules:
 - `criteria_met` and `criteria_total` are counts derived from the brief's acceptance criteria list
 - `critical_findings` is the count of findings with `severity: Critical` (0 if none)
 - `changed_files` is the list of files from the crafter's `## Implementation` report section
-- Never return verdict as free text — always write to `kiln-verdict-N.md`
+- Never return verdict as free text — always write to `verdict-N.md`
 - A clean result (`spec: ✅`, `quality: approved`, `findings: []`) is valid and expected for correct implementations
 
 ## Verification

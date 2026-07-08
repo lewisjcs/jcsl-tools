@@ -74,8 +74,9 @@ Subtask creation rules:
 
 ## Verification
 
-Run: `grep -c "^##" "{{RUN_FOLDER}}/plan.md"`
+Run: `grep -cE '^## (Summary|Task Breakdown|Jira Subtask IDs)$' "{{RUN_FOLDER}}/plan.md"`
 
-Expected output: `3` (three required section headers present).
+Expected output: `3` (all three required section headers present). Anchored to the exact
+titles at `## ` depth so `### Task N:` sub-headers — at any indentation — don't affect the count.
 
 Return the single line `PLANNER_DONE: {{RUN_FOLDER}}/plan.md written, subtasks: <comma-separated-keys>` and nothing else. Do not paste the plan contents into your reply — the orchestrator reads the file directly.
