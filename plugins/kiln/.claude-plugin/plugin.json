@@ -1,7 +1,7 @@
 {
   "name": "kiln",
-  "version": "1.2.0",
-  "description": "Complexity-proportionate implementation workflow — routes, coordinates, and enforces gates for TDD-driven development tasks",
+  "version": "2.0.0",
+  "description": "Complexity-proportionate implementation Party — thin conductor enforces gates via PreToolUse hooks; scenario-dispatched verification (code + tool-authoring)",
   "author": { "name": "Josh C.S. Lewis" },
   "repository": "https://github.com/lewisjcs/jcsl-tools",
   "license": "MIT",

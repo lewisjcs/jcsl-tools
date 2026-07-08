@@ -10,7 +10,7 @@
       "name": "kiln",
       "source": "./plugins/kiln",
       "displayName": "The Kiln",
-      "description": "Complexity-proportionate implementation workflow Party — four AI Classes (Refiner, Planner, Smith, Inspector) orchestrated by the kiln skill. Invoke with /kiln.",
+      "description": "Complexity-proportionate implementation Party — a thin conductor dispatches Planner, Crafter, Inspector, and Walker members, enforcing gates via PreToolUse hooks. Invoke with /kiln.",
       "author": {
         "name": "Josh C.S. Lewis"
       },

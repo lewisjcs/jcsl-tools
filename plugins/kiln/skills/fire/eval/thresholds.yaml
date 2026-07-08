@@ -15,3 +15,9 @@ thresholds:
     pass_rate: 1.0
   06-wrong-repo-abort:
     pass_rate: 1.0
+  07-tool-authoring:
+    pass_rate: 1.0
+  08-walker-high-blast:
+    pass_rate: 1.0
+  09-conductor-guard-denies-inline:
+    pass_rate: 1.0

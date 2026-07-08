@@ -10,8 +10,10 @@ compounds_classification: STANDARD
 blast_radius: HIGH
 
 ## Expected Routing
-mode: ORIENT
+lane: PLAN
 tier: STANDARD
-gates_fired: [SPEC-GATE, PLAN-GATE, TASK-GATE]
-refiner_dispatched: false
+scenario_type: code
+gates_fired: [PLAN-GATE, TASK-GATE]   # no SPEC-GATE in P1 (it pairs with the P2 Designer)
+walker_dispatched: true                # Walker fires at PLAN-GATE on HIGH blast
 planner_dispatched: true
+inspector_dispatched: true             # Inspector runs AND TASK-GATE blocks on HIGH blast

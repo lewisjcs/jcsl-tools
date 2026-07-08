@@ -1,15 +1,16 @@
 {
   "scenario": "04-raw-idea",
   "routing": {
-    "mode": "REFINE",
-    "tier": "STANDARD",
-    "blast_radius": "LOW"
+    "lane": "HALT-AND-ASK",
+    "tier": "N/A",
+    "blast_radius": "N/A",
+    "scenario_type": "N/A"
   },
   "gates": {
-    "SPEC-GATE": false,
-    "PLAN-GATE": true,
+    "PLAN-GATE": false,
     "TASK-GATE": false
   },
-  "agents_dispatched": ["refiner", "planner", "crafter", "inspector"],
-  "agents_skipped": []
+  "agents_dispatched": [],
+  "agents_skipped": ["planner", "crafter", "inspector", "walker"],
+  "halt_reason": "net-new raw idea with no ticket/spec — the DESIGN lane (Designer) is Kiln P2; P1 halts and asks for a code- or tool-authoring-shaped change"
 }

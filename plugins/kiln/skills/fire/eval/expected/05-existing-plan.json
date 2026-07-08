@@ -1,15 +1,16 @@
 {
   "scenario": "05-existing-plan",
   "routing": {
-    "mode": "EXECUTE",
+    "lane": "EXECUTE",
     "tier": "STANDARD",
-    "blast_radius": "LOW"
+    "blast_radius": "LOW",
+    "scenario_type": "code"
   },
   "gates": {
-    "SPEC-GATE": false,
     "PLAN-GATE": true,
     "TASK-GATE": false
   },
-  "agents_dispatched": ["crafter", "inspector"],
-  "agents_skipped": ["refiner", "planner"]
+  "agents_dispatched": ["planner", "crafter", "inspector"],
+  "agents_skipped": ["walker"],
+  "note": "EXECUTE runs drift-check, then the Planner REGISTERS the existing plan (generate_tasks over it) rather than re-planning from scratch; PLAN-GATE still confirms the registered breakdown."
 }
