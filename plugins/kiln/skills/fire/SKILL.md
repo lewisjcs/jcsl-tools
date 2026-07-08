@@ -6,10 +6,12 @@ description: Complexity-proportionate implementation Party. Thin conductor — r
 # The Kiln — Conductor
 
 A complexity-proportionate implementation Party. This conductor is **thin by capability**: while a run
-is active it physically cannot edit source or call Compounds mutation tools — a plugin PreToolUse hook
-denies those in the main thread (see `hooks/`). It routes, makes the lane visible, builds a progress
-spine, dispatches members, and adjudicates gates from their typed returns. It does not implement, plan,
-or design inline. Members hold the working tools.
+is active it cannot edit source via the file-editing tools (Edit/Write/MultiEdit/NotebookEdit) or call
+Compounds mutation tools — a plugin PreToolUse hook denies those in the main thread (see `hooks/`). This
+is a behavioral guardrail, not a sandbox: the conductor still holds Bash (it needs git), so the guarantee
+is "won't edit source through the editing tools," not "physically can't touch source." It routes, makes
+the lane visible, builds a progress spine, dispatches members, and adjudicates gates from their typed
+returns. It does not implement, plan, or design inline. Members hold the working tools.
 
 **Progressive disclosure — load on demand:**
 - `lanes.md` — at the classify verb (entry→lane matrix, doc-shape + drift-check).
@@ -27,6 +29,10 @@ or design inline. Members hold the working tools.
 
 Parse the entry argument. Prefix-agnostic key match `[A-Z]+-\d+`. Read the ticket (if any) via Jira-read.
 Set `{{RUN_FOLDER}} = $(git rev-parse --show-toplevel)/projects/active/<key>/kiln/` and `mkdir -p` it.
+If the entry includes a spec-shaped file (a PLAN-from-spec run — see `lanes.md`), stash it at
+`{{RUN_FOLDER}}/spec-draft.md` (`cp` — a run-folder write, guard-exempt). That copy is the sole P1
+producer of `spec-draft.md`; the Planner and Walker read it there. No spec file at entry → no stash, and
+those consumers fall through to the ticket body (they already read `spec-draft.md` only "if present").
 
 ## Verb 2 — Classify & announce (LOUDLY)
 
@@ -46,7 +52,7 @@ Create the `TaskCreate` progress spine — one task per phase this lane will run
 ## Verb 4 — Dispatch
 
 Load `dispatch-contracts.md`. Dispatch the right member with the four-part contract, passing `{{SCENARIO}}` into Crafter/Inspector/Walker dispatches. Sequence by lane (per `lanes.md`):
-- **EXECUTE:** drift-check → Planner(register existing plan) → Build loop.
+- **EXECUTE:** drift-check → Planner(register existing plan) → Build loop. The drift-check is NOT a member dispatch (there is no drift-check contract) — the conductor runs it inline: read-only Jira read + local file-existence checks per `lanes.md`. Material drift → STOP and recommend re-planning.
 - **PLAN:** Planner → PLAN-GATE → (Walker if HIGH blast) → Build loop.
 - **Build loop (per task):** write `brief-N.md` (merge the task's entry from the Planner-produced `{{RUN_FOLDER}}/tasklist.md` + prior-task interfaces + `scenario:`), dispatch Crafter, then Inspector (per `gates.md` tier×blast rules). The conductor reads `tasklist.md`; it never calls Compounds itself (the guard denies it).
 
