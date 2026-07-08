@@ -1,0 +1,7 @@
+{
+  "scenario": "11-sparse-ticket-research",
+  "routing": { "lane": "RESEARCH", "tier": "N/A", "blast_radius": "N/A", "scenario_type": "N/A" },
+  "gates": { "SPEC-GATE": true, "PLAN-GATE": true },
+  "agents_dispatched": ["scout", "designer", "planner"],
+  "agents_skipped": []
+}

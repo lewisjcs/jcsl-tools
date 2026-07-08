@@ -1,0 +1,7 @@
+{
+  "scenario": "12-design-doc-midflow",
+  "routing": { "lane": "DESIGN", "tier": "N/A", "blast_radius": "N/A", "scenario_type": "N/A", "designer_entry": "midflow-design-doc" },
+  "gates": { "SPEC-GATE": true, "PLAN-GATE": true },
+  "agents_dispatched": ["designer", "planner"],
+  "agents_skipped": ["scout"]
+}
