@@ -14,7 +14,8 @@ kiln_field() { # $1 = jq path, e.g. .tool_input.file_path
   printf '%s' "$KILN_INPUT" | jq -r "$1 // empty" 2>/dev/null || echo ""
 }
 
-# Echo the path of the active run dir (one containing a .active sentinel), or empty.
+# Echo the path of the active run dir this call belongs to (a `.active` sentinel's
+# `kiln/` dir), or empty when no run owns this call.
 #
 # Anchors on the OS WORKSPACE (where Claude Code was launched), NOT a git repo. This
 # OS wraps many nested repos and launches from a non-git workspace root, so a
@@ -26,11 +27,22 @@ kiln_field() { # $1 = jq path, e.g. .tool_input.file_path
 # only those that actually hold a `projects/active/` tree, and search them all so a
 # session standing inside a nested repo still finds the workspace run folder.
 #
-# Resolves the run whose .active is NEWEST: a crashed/escalated run deliberately
-# leaves its sentinels behind for resume (see SKILL.md), so an unordered first-match
-# could bind the guards to a stale run and fail-open on the live one. `ls -t` orders
-# by mtime and is portable (macOS BSD `find` has no `-printf`); `-exec … +` never runs
-# `ls` on zero matches, so no stray output when no run is active.
+# SESSION-SCOPED OWNERSHIP (concurrent runs, one window each): the `.active` sentinel
+# carries its owning session_id on its first line (empty = legacy/unowned). Claude Code
+# runs one Kiln run per session/window, so a call binds to the run OWNED by this call's
+# payload `.session_id` — that isolates concurrent windows (session B never binds to
+# session A's run) and stops a non-conducting session from binding to a foreign parked
+# run (the false-deny that blocked unrelated main-thread work). Precedence:
+#   1. A sentinel owned by THIS session_id → bind (newest among mine, defensively).
+#   2. Else, if exactly ONE run exists and it is unowned/legacy → bind. Preserves the
+#      resume path (`/clear` mints a new session_id, so the resumed run looks unowned
+#      until the conductor re-stamps it) and pre-ownership sentinels. Requiring a SINGLE
+#      run is load-bearing: with two runs present, an unowned one is NOT claimable by a
+#      session that owns neither — that is the multi-run fail-open case.
+#   3. Else (multiple runs, none mine) → empty. Fail-open: binding to someone else's run
+#      is worse than not binding; the guards are a safety net, not a hard sandbox.
+# `ls -t` orders by mtime (portable: macOS BSD `find` has no `-printf`) for the newest
+# tie-break; `-exec … +` never runs `ls` on zero matches, so no stray output.
 kiln_active_run_dir() {
   local r cand roots=()
   for r in "$(kiln_field '.cwd')" "${CLAUDE_PROJECT_DIR:-}" "$PWD"; do
@@ -45,10 +57,31 @@ kiln_active_run_dir() {
   # errors when the array is empty — which would surface as a non-zero exit and
   # be misread as a deny (fail-CLOSED). No candidate root → allow.
   [ ${#roots[@]} -eq 0 ] && { echo ""; return 0; }
-  local sentinel
-  sentinel=$(find "${roots[@]}" -maxdepth 3 -name ".active" -path "*/kiln/.active" \
-    -exec ls -t {} + 2>/dev/null | head -1)
-  [ -n "$sentinel" ] && dirname "$sentinel"
+
+  local me; me=$(kiln_field '.session_id')
+  # All sentinels newest-first, so the first owner-match is the newest of mine.
+  local sentinels; sentinels=$(find "${roots[@]}" -maxdepth 3 -name ".active" -path "*/kiln/.active" \
+    -exec ls -t {} + 2>/dev/null)
+  [ -z "$sentinels" ] && { echo ""; return 0; }
+
+  local s owner total=0 lone=""
+  while IFS= read -r s; do
+    [ -n "$s" ] || continue
+    total=$((total + 1)); lone="$s"
+    owner=$(head -n1 "$s" 2>/dev/null)
+    # Precedence 1: a run owned by this session wins outright (newest-first order).
+    if [ -n "$me" ] && [ "$owner" = "$me" ]; then dirname "$s"; return 0; fi
+  done <<EOF
+$sentinels
+EOF
+
+  # Precedence 2: exactly one run and it is unowned/legacy → bind (resume + back-compat).
+  if [ "$total" -eq 1 ]; then
+    owner=$(head -n1 "$lone" 2>/dev/null)
+    [ -z "$owner" ] && { dirname "$lone"; return 0; }
+  fi
+  # Precedence 3: multiple runs, none owned by me → fail-open.
+  echo ""
 }
 
 # Return 0 if this hook fired inside a subagent (agent_id present), else 1.

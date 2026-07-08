@@ -48,7 +48,12 @@ Load `lanes.md` and `scenarios.md`. Determine lane + scenario now (from the entr
 `**[Kiln] This is a <LANE> run, <SCENARIO> scenario — <one-line why>. Starting that path.**`
 If the entry is sparse/partial, a P2 scenario, or an ambiguous doc shape → **HALT-AND-ASK** (do not guess, do not fall through to code).
 
-**Write the active-run sentinel now:** `touch {{RUN_FOLDER}}/.active`. (This is what arms the guard hooks. Remove it in Verb 5.)
+**Write the active-run sentinel now, stamped with this session's id:**
+`printf '%s\n' "$CLAUDE_CODE_SESSION_ID" > {{RUN_FOLDER}}/.active`. (This is what arms the guard hooks.
+The stamped session id is what scopes the guards to THIS run: Claude Code runs one Kiln run per
+session/window, so a concurrent run in another window — with a different session id — will not bind this
+window's guards, and vice-versa. An empty stamp still works but is treated as legacy/unowned. Remove it
+in Verb 5.)
 **Branch precondition:** the session runs from the non-git workspace, so operate on the TARGET REPO by
 path with `git -C <repo>` (`<repo>` = the repo the change targets, e.g. `repos/<name>`, derived from the
 plan's file targets or the entry). Run `git -C <repo> symbolic-ref --short HEAD`; if `main`/`master`,
@@ -77,3 +82,9 @@ Read each member's done-line + return artifact. Update the spine (`TaskUpdate`).
 ## Resume
 
 On re-invoke with `{{RUN_FOLDER}}/.active` present: read `progress.md`, find the first task without a `DONE`, re-create the spine (Verb 3), and continue the Build loop from there.
+
+**Re-stamp ownership first:** `/clear` mints a NEW session id, so a resumed run's sentinel still carries
+the *previous* session's id (or is empty/legacy) and the guards would treat this window as non-owning.
+Immediately re-stamp with the current session: `printf '%s\n' "$CLAUDE_CODE_SESSION_ID" > {{RUN_FOLDER}}/.active`.
+(A lone unowned run is claimable this way by design — the resolver binds a single unowned run so resume
+is never orphaned; re-stamping makes ownership explicit and keeps a concurrent second run isolated.)

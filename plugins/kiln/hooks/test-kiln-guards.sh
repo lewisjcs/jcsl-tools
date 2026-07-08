@@ -118,4 +118,53 @@ assert_allow "spine: Agent dispatch after spine exists" kiln-guard-spine.sh \
   "{$CWD\"tool_name\":\"Agent\",\"tool_input\":{\"subagent_type\":\"kiln:crafter\"}}"
 rm -f "$RUN_DIR/.active" "$RUN_DIR/.spine"
 
+# --- session-scoped run ownership (concurrent runs, one window each) ---
+# The sentinel carries its owning session_id (first line; empty = legacy/unowned). The
+# resolver binds a call to the run OWNED by the call's payload .session_id. This isolates
+# concurrent windows and stops a non-conducting session from binding to a foreign parked run.
+# Verified: payload .session_id == $CLAUDE_CODE_SESSION_ID for main-thread calls.
+SID_A="11111111-aaaa-4aaa-8aaa-111111111111"   # session A (owns RUN_DIR)
+SID_B="22222222-bbbb-4bbb-8bbb-222222222222"   # session B (a different window)
+RUN_A="$RUN_DIR"                                # projects/active/TEST-0/kiln
+RUN_B="$WORKSPACE/projects/active/TEST-B/kiln"; mkdir -p "$RUN_B"
+SID() { printf '"session_id":"%s",' "$1"; }     # payload session_id snippet
+
+# Two concurrent owned runs: A stamped to session A, B stamped to session B.
+printf '%s\n' "$SID_A" > "$RUN_A/.active"
+printf '%s\n' "$SID_B" > "$RUN_B/.active"
+
+# Owner match: session A editing A's source is denied (bound to A's run).
+assert_deny "ownership: session A main-thread source Edit denied (owns RUN_A)" kiln-guard-conductor.sh \
+  "{$CWD$(SID "$SID_A")\"tool_name\":\"Edit\",\"tool_input\":{\"file_path\":\"$SRC\"}}"
+# Owner match: session A writing INTO A's run folder is allowed.
+assert_allow "ownership: session A write into RUN_A allowed" kiln-guard-conductor.sh \
+  "{$CWD$(SID "$SID_A")\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\"$RUN_A/progress.md\"}}"
+# ISOLATION (the core bug): session A writing into B's run folder is denied — it is NOT A's run,
+# even though B has a live sentinel. Under the old mtime resolver this could bind to whichever
+# sentinel was newest and mis-scope the exemption.
+assert_deny "ownership: session A write into RUN_B (other session's run) denied" kiln-guard-conductor.sh \
+  "{$CWD$(SID "$SID_A")\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\"$RUN_B/progress.md\"}}"
+# NON-CONDUCTING session: session C owns NO run. Its source edit must be ALLOWED (fail-open) even
+# though A and B sentinels are live. Old mtime resolver bound C to the newest foreign run → false-deny
+# (the exact friction that blocked unrelated main-thread work this session).
+SID_C="33333333-cccc-4ccc-8ccc-333333333333"
+assert_allow "ownership: non-conducting session C source Edit allowed (owns no run)" kiln-guard-conductor.sh \
+  "{$CWD$(SID "$SID_C")\"tool_name\":\"Edit\",\"tool_input\":{\"file_path\":\"$SRC\"}}"
+# Subagent of ANY session is still exempt (agent_id present short-circuits before ownership).
+assert_allow "ownership: subagent (agent_id) exempt regardless of session" kiln-guard-conductor.sh \
+  "{$CWD$(SID "$SID_B")\"agent_id\":\"x1\",\"tool_name\":\"Edit\",\"tool_input\":{\"file_path\":\"$SRC\"}}"
+rm -f "$RUN_B/.active"
+
+# BACKWARD-COMPAT: a single legacy (empty-owner) sentinel with a payload that has NO session_id
+# must still resolve and deny — preserves the resume path and pre-ownership sentinels.
+: > "$RUN_A/.active"   # empty = legacy/unowned
+assert_deny "ownership: legacy empty sentinel + no payload session_id still denies" kiln-guard-conductor.sh \
+  "{$CWD\"tool_name\":\"Edit\",\"tool_input\":{\"file_path\":\"$SRC\"}}"
+# A legacy empty sentinel is claimable by any single session (resume re-stamps it) — a session with
+# an id and one unowned run present still binds (so /clear-resume, which mints a new id, isn't orphaned).
+assert_deny "ownership: session with id binds to a lone unowned run (resume path)" kiln-guard-conductor.sh \
+  "{$CWD$(SID "$SID_A")\"tool_name\":\"Edit\",\"tool_input\":{\"file_path\":\"$SRC\"}}"
+rm -f "$RUN_A/.active"
+rmdir "$RUN_B" 2>/dev/null
+
 echo "---"; [ "$FAILS" -eq 0 ] && echo "ALL PASS" || { echo "$FAILS FAILED"; exit 1; }
