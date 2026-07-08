@@ -29,10 +29,19 @@ SRC="$(git rev-parse --show-toplevel)/plugins/kiln/skills/fire/SKILL.md"
 # --- conductor guard ---
 assert_deny  "conductor: main-thread Edit to source while active" kiln-guard-conductor.sh \
   "{\"tool_name\":\"Edit\",\"tool_input\":{\"file_path\":\"$SRC\"}}"
+assert_deny  "conductor: main-thread MultiEdit to source while active" kiln-guard-conductor.sh \
+  "{\"tool_name\":\"MultiEdit\",\"tool_input\":{\"file_path\":\"$SRC\"}}"
+assert_deny  "conductor: main-thread NotebookEdit to source while active" kiln-guard-conductor.sh \
+  "{\"tool_name\":\"NotebookEdit\",\"tool_input\":{\"notebook_path\":\"$SRC\"}}"
 assert_allow "conductor: subagent Edit to source (has agent_id)" kiln-guard-conductor.sh \
   "{\"agent_id\":\"a1\",\"tool_name\":\"Edit\",\"tool_input\":{\"file_path\":\"$SRC\"}}"
 assert_allow "conductor: main-thread Write to run folder" kiln-guard-conductor.sh \
   "{\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\"$RUN_DIR/progress.md\"}}"
+assert_allow "conductor: main-thread MultiEdit to run folder" kiln-guard-conductor.sh \
+  "{\"tool_name\":\"MultiEdit\",\"tool_input\":{\"file_path\":\"$RUN_DIR/plan.md\"}}"
+# N-2: a write shaped like a run folder but NOT the active run must still deny.
+assert_deny  "conductor: Write to a DIFFERENT run's kiln folder while active" kiln-guard-conductor.sh \
+  "{\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\"$(git rev-parse --show-toplevel)/projects/active/OTHER-9/kiln/plan.md\"}}"
 assert_deny  "conductor: main-thread Compounds mutation while active" kiln-guard-conductor.sh \
   "{\"tool_name\":\"mcp__compounds-dev__generate_tasks\",\"tool_input\":{}}"
 assert_allow "conductor: main-thread Compounds READ while active" kiln-guard-conductor.sh \
@@ -52,6 +61,8 @@ KILN_TEST_BRANCH=main assert_deny "branch: Edit to source while on main (simulat
   "{\"agent_id\":\"a1\",\"tool_name\":\"Edit\",\"tool_input\":{\"file_path\":\"$SRC\"}}"
 KILN_TEST_BRANCH=master assert_deny "branch: Edit to source while on master (simulated)" kiln-guard-branch.sh \
   "{\"tool_name\":\"Edit\",\"tool_input\":{\"file_path\":\"$SRC\"}}"
+KILN_TEST_BRANCH=main assert_deny "branch: MultiEdit to source while on main (simulated)" kiln-guard-branch.sh \
+  "{\"tool_name\":\"MultiEdit\",\"tool_input\":{\"file_path\":\"$SRC\"}}"
 KILN_TEST_BRANCH=kiln/TEST-0 assert_allow "branch: Edit to source while on work branch (simulated)" kiln-guard-branch.sh \
   "{\"agent_id\":\"a1\",\"tool_name\":\"Edit\",\"tool_input\":{\"file_path\":\"$SRC\"}}"
 KILN_TEST_BRANCH=main assert_allow "branch: Write to run folder allowed even on main" kiln-guard-branch.sh \

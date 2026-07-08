@@ -14,12 +14,18 @@ kiln_field() { # $1 = jq path, e.g. .tool_input.file_path
   printf '%s' "$KILN_INPUT" | jq -r "$1 // empty" 2>/dev/null || echo ""
 }
 
-# Echo the path of an active run dir (one containing a .active sentinel), or empty.
+# Echo the path of the active run dir (one containing a .active sentinel), or empty.
+# Resolves the run whose .active is NEWEST: a crashed/escalated run deliberately
+# leaves its sentinels behind for resume (see SKILL.md), so an unordered first-match
+# could bind the guards to a stale run and fail-open on the live one. `ls -t` orders
+# by mtime and is portable (macOS BSD `find` has no `-printf`); `-exec … +` never runs
+# `ls` on zero matches, so no stray output when no run is active.
 kiln_active_run_dir() {
   local root; root=$(git rev-parse --show-toplevel 2>/dev/null) || { echo ""; return 0; }
-  # First active sentinel found under any active project's kiln/ dir.
-  find "$root/projects/active" -maxdepth 3 -name ".active" -path "*/kiln/.active" -print -quit 2>/dev/null \
-    | xargs -I{} dirname {} 2>/dev/null
+  local sentinel
+  sentinel=$(find "$root/projects/active" -maxdepth 3 -name ".active" -path "*/kiln/.active" \
+    -exec ls -t {} + 2>/dev/null | head -1)
+  [ -n "$sentinel" ] && dirname "$sentinel"
 }
 
 # Return 0 if this hook fired inside a subagent (agent_id present), else 1.
@@ -29,6 +35,13 @@ kiln_is_subagent() {
 }
 
 kiln_deny() { # $1 = reason
-  printf '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"%s"}}\n' "$1"
+  # Build via jq so a reason containing quotes/backslashes can't corrupt the JSON.
+  # jq is already a dependency (kiln_field). Fall back to raw printf if it is absent —
+  # the lib is fail-open, and every current caller passes a static, quote-free reason.
+  if command -v jq >/dev/null 2>&1; then
+    jq -nc --arg r "$1" '{hookSpecificOutput:{hookEventName:"PreToolUse",permissionDecision:"deny",permissionDecisionReason:$r}}'
+  else
+    printf '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"%s"}}\n' "$1"
+  fi
   exit 0
 }

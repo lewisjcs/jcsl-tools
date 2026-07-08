@@ -11,7 +11,7 @@ RUN_DIR=$(kiln_active_run_dir)
 [ -z "$RUN_DIR" ] && exit 0
 
 TOOL=$(kiln_field '.tool_name')
-case "$TOOL" in Edit|Write|NotebookEdit) : ;; *) exit 0 ;; esac
+case "$TOOL" in Edit|Write|MultiEdit|NotebookEdit) : ;; *) exit 0 ;; esac
 
 FP=$(kiln_field '.tool_input.file_path'); [ -z "$FP" ] && FP=$(kiln_field '.tool_input.notebook_path')
 case "$FP" in */projects/active/*/kiln/*) exit 0 ;; "") exit 0 ;; esac

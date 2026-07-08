@@ -3,13 +3,13 @@
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Edit|Write|NotebookEdit|mcp__compounds-dev__.*",
+        "matcher": "Edit|Write|MultiEdit|NotebookEdit|mcp__compounds-dev__.*",
         "hooks": [
           { "type": "command", "command": "${CLAUDE_PLUGIN_ROOT}/hooks/kiln-guard-conductor.sh", "timeout": 10 }
         ]
       },
       {
-        "matcher": "Edit|Write|NotebookEdit",
+        "matcher": "Edit|Write|MultiEdit|NotebookEdit",
         "hooks": [
           { "type": "command", "command": "${CLAUDE_PLUGIN_ROOT}/hooks/kiln-guard-branch.sh", "timeout": 10 }
         ]

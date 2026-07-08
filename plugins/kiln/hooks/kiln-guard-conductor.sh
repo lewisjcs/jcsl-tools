@@ -28,15 +28,18 @@ case "$TOOL" in
     kiln_deny "The Kiln conductor cannot call Compounds mutation tools inline. Dispatch the Planner or Crafter member; the member holds these tools." ;;
 esac
 
-# Source mutation: deny unless the target is inside the run folder (run artifacts are allowed).
-if [ "$TOOL" = "Edit" ] || [ "$TOOL" = "Write" ] || [ "$TOOL" = "NotebookEdit" ]; then
-  FP=$(kiln_field '.tool_input.file_path')
-  [ -z "$FP" ] && FP=$(kiln_field '.tool_input.notebook_path')
-  case "$FP" in
-    */projects/active/*/kiln/*) exit 0 ;;  # run artifact — allowed
-    "") exit 0 ;;                          # no path resolvable — fail-open
-    *) kiln_deny "The Kiln conductor cannot edit source files inline. Dispatch the Crafter member — it holds Edit/Write." ;;
-  esac
-fi
+# Source mutation: deny unless the target is inside THIS active run's folder (run
+# artifacts are allowed). Scoped to the resolved $RUN_DIR, not the run-folder shape —
+# a write into some other run's kiln/ dir is still source mutation from this run's view.
+case "$TOOL" in
+  Edit|Write|MultiEdit|NotebookEdit)
+    FP=$(kiln_field '.tool_input.file_path')
+    [ -z "$FP" ] && FP=$(kiln_field '.tool_input.notebook_path')
+    case "$FP" in
+      "$RUN_DIR"/*) exit 0 ;;  # this run's artifact — allowed
+      "") exit 0 ;;            # no path resolvable — fail-open
+      *) kiln_deny "The Kiln conductor cannot edit source files inline. Dispatch the Crafter member — it holds Edit/Write." ;;
+    esac ;;
+esac
 
 exit 0
