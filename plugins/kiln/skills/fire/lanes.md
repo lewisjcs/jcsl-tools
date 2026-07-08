@@ -1,25 +1,36 @@
-# Kiln Lanes (P1)
+# Kiln Lanes (P2.1)
 
-Loaded on-demand at the classify verb. P1 implements EXECUTE / PLAN / TRIVIAL / RESUME only.
-RESEARCH and DESIGN lanes (Scout, Designer, SPEC-GATE) are P2 — a sparse/partial ticket HALTS.
+Loaded on-demand at the classify verb. Implements EXECUTE / PLAN / TRIVIAL / RESUME / RESEARCH / DESIGN.
+RESEARCH and DESIGN lanes (Scout, Designer, SPEC-GATE) are now live as of P2.1 — a sparse/partial ticket
+routes into RESEARCH/DESIGN instead of halting.
 
 ## Entry detection (mechanical first, prefix-agnostic `[A-Z]+-\d+`)
 
-| Entry | Detected as | Lane | Members run |
+| Entry | Detected as | Lane | Members |
 |---|---|---|---|
-| `/kiln <KEY> <path>.md` where the file has numbered tasks + file targets | impl-plan | **EXECUTE** | drift-check → Planner(register) → Build |
-| `/kiln <KEY> <path>.md` where the file is EARS AC + paths, no task list | spec | **PLAN** | Planner → Build |
-| `/kiln <KEY>` ticket with EARS AC + file paths + root cause | complete | **PLAN** | Planner → Build |
-| `/kiln <KEY>` ticket with some AC, no paths / title-only / thin | partial or sparse | **HALT-AND-ASK** | (DESIGN lane is P2) |
-| re-invoke with an active run folder + ledger present | resume | **RESUME** | read ledger → Build from first incomplete task |
-| file shape is none-of-the-above | — | **HALT-AND-ASK** | (don't guess) |
+| `<KEY> <path>.md` numbered tasks + file targets | impl-plan | EXECUTE | drift-check → Planner(register) → Build |
+| `<KEY> <path>.md` EARS AC + paths, no tasks | spec | PLAN | Planner → Build |
+| `<KEY>` ticket: EARS AC + paths + root cause | complete | PLAN | Planner → Build |
+| `<KEY>` ticket: some AC, no paths | partial | **DESIGN** | Designer → SPEC-GATE → Planner → Build |
+| `<KEY>` ticket: title-only / thin / epic-only | sparse | **RESEARCH** | Scout → Designer → SPEC-GATE → Planner → Build |
+| Quoted string, no ticket | net-new | **DESIGN** | Designer → SPEC-GATE → Planner → Build (local kebab-slug run-id; NO Jira offer — P2.2) |
+| File = design doc (`## Approaches`/`## Architecture`, no AC) | design-doc | **DESIGN (mid-flow)** | Designer enters with design.md pre-supplied → convert → SPEC-GATE → Planner → Build |
+| re-invoke with active run folder + ledger | resume | RESUME | read ledger → Build from first incomplete |
+| file shape none-of-the-above | — | HALT-AND-ASK | (don't guess) |
 
 ## Doc-shape detection (borrowed from the Gauntlet tiebreaker)
 
 - `## Tasks`/`## Steps` + per-task file targets → impl-plan.
 - `When … shall` EARS + file paths, no task list → spec.
-- `## Approaches`/`## Architecture`, no AC → design doc → **DESIGN lane (P2) → HALT-AND-ASK in P1**.
+- `## Approaches`/`## Architecture`, no AC → design doc → **DESIGN (mid-flow)** — Designer enters with
+  design.md pre-supplied and converts it, no HALT.
 - none-of-the-above → halt-and-ask.
+
+**Lane vs. scenario are ORTHOGONAL dimensions.** A design-doc ENTRY is an *input to convert into a spec*
+→ routes DESIGN (mid-flow); it is NOT the `doc/RFC` *scenario* (which is when the change's DELIVERABLE is
+prose to author). The `.md` shape of the ENTRY never triggers a doc/RFC HALT — the scenario is derived
+from the SYNTHESIZED file targets after the Designer runs (and stays code/tool-authoring; doc/RFC-as-
+deliverable is still P2.2).
 
 ## Stale-plan drift-check (EXECUTE only — never blindly run a prior-session plan)
 
