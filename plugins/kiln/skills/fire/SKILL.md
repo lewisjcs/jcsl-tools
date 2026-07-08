@@ -21,7 +21,7 @@ returns. It does not implement, plan, or design inline. Members hold the working
 
 **Ledger:** `{{RUN_FOLDER}}/progress.md`, written before every gate transition. On resume after `/clear`, read it and continue from the first incomplete task.
 
-**P1 scope:** EXECUTE / PLAN / TRIVIAL / RESUME lanes; `code` + `tool-authoring` scenarios. RESEARCH/DESIGN lanes, Scout, Designer, SPEC-GATE, and the other scenarios are P2 — out-of-scope inputs HALT-AND-ASK.
+**Scope (P2.1):** EXECUTE / PLAN / TRIVIAL / RESUME / **DESIGN / RESEARCH** lanes; `code` + `tool-authoring` scenarios. SPEC-GATE, Scout, and the Designer are live. Still P2.2: the `mcp/agent-app` / `doc/RFC` / `infra` scenarios (they HALT) and all Jira write-back. An out-of-scope scenario or ambiguous doc shape → HALT-AND-ASK.
 
 ---
 
@@ -46,7 +46,7 @@ those consumers fall through to the ticket body (they already read `spec-draft.m
 Load `lanes.md` and `scenarios.md`. Determine lane + scenario now (from the entry + ticket). Tier + blast are NOT known yet — the Planner derives them from Compounds' classify step and returns them in its done-line; update the announcement with them after the Planner runs.
 **Announce before any work**, task-kickoff style:
 `**[Kiln] This is a <LANE> run, <SCENARIO> scenario — <one-line why>. Starting that path.**`
-If the entry is sparse/partial, a P2 scenario, or an ambiguous doc shape → **HALT-AND-ASK** (do not guess, do not fall through to code).
+Sparse → RESEARCH; partial / net-new / design-doc → DESIGN (per `lanes.md`). Only a P2.2 scenario (`mcp/agent-app`/`doc/RFC`/`infra`) or an ambiguous doc shape → **HALT-AND-ASK** (do not guess, do not fall through to code).
 
 **Write the active-run sentinel now, stamped with this session's id:**
 `printf '%s\n' "$CLAUDE_CODE_SESSION_ID" > {{RUN_FOLDER}}/.active`. (This is what arms the guard hooks.
@@ -67,6 +67,14 @@ Create the `TaskCreate` progress spine — one task per phase this lane will run
 ## Verb 4 — Dispatch
 
 Load `dispatch-contracts.md`. Dispatch the right member with the four-part contract, passing `{{SCENARIO}}` into Crafter/Inspector/Walker dispatches. Sequence by lane (per `lanes.md`):
+- **RESEARCH:** Scout → Designer (dialogue loop, below) → SPEC-GATE → Planner → PLAN-GATE → Build loop.
+- **DESIGN:** Designer (dialogue loop) → SPEC-GATE → Planner → PLAN-GATE → Build loop. Net-new: propose a
+  kebab-slug run-id and confirm it; do NOT offer a Jira ticket (P2.2). Design-doc mid-flow: pass the
+  incoming design.md into dispatch #1 for confirm-and-convert.
+- **Designer dialogue loop (Approach A):** dispatch #1 → read the `DESIGNER_NEEDS_INPUT` done-line + its
+  `## Questions` block → render them via `AskUserQuestion` (main thread; ≤4) → dispatch #2 with the answers
+  pasted into Part 3 → read `DESIGNER_DONE`. This is the ONLY member interaction where the conductor calls
+  AskUserQuestion; it relays the batch verbatim and authors no design content.
 - **EXECUTE:** drift-check → Planner(register existing plan) → Build loop. The drift-check is NOT a member dispatch (there is no drift-check contract) — the conductor runs it inline: read-only Jira read + local file-existence checks per `lanes.md`. Material drift → STOP and recommend re-planning.
 - **PLAN:** Planner → PLAN-GATE → (Walker if HIGH blast) → Build loop.
 - **Build loop (per task):** write `brief-N.md` (merge the task's entry from the Planner-produced `{{RUN_FOLDER}}/tasklist.md` + prior-task interfaces + `scenario:`), dispatch Crafter, then Inspector (per `gates.md` tier×blast rules). The conductor reads `tasklist.md`; it never calls Compounds itself (the guard denies it).
@@ -74,6 +82,8 @@ Load `dispatch-contracts.md`. Dispatch the right member with the four-part contr
 ## Verb 5 — Adjudicate & advance
 
 Read each member's done-line + return artifact. Update the spine (`TaskUpdate`). Evaluate gates mechanically from typed fields (load `gates.md`):
+- **SPEC-GATE** (after Designer, DESIGN/RESEARCH lanes): present `spec-draft.md`; per flow-style, pause for
+  explicit approval. Write ledger `SPEC-GATE: approved | <ISO>`. Then dispatch the Planner.
 - **PLAN-GATE:** present `plan.md` (+ `walkthrough.md` if HIGH); per flow-style, pause for explicit approval. Write ledger `PLAN-GATE: approved | <ISO>`.
 - **TASK-GATE** (HIGH blast): conductor reads the Inspector verdict — `spec: ✅` AND `quality: approved` → the member finalizes the Compounds task (Inspector feeds `implement_task_finalize` with its verdict evidence on STANDARD; the Crafter marks TRIVIAL tasks done via `update_task`). The conductor's own action is the `TaskUpdate` on the spine — it never calls the Compounds mutation verb inline (the conductor guard denies it). Else fix loop (cap 2) → escalate (revert task commits, HARD STOP, leave sentinels for resume).
 
