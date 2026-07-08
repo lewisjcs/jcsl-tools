@@ -1,4 +1,4 @@
-# Scenario 04 — Raw Idea (No Ticket) → HALT in P1
+# Scenario 04 — Raw Idea (No Ticket) → DESIGN lane
 
 ## Input
 entry_form: /kiln "add dark mode toggle to the settings panel"
@@ -10,16 +10,22 @@ compounds_classification: STANDARD
 blast_radius: LOW
 
 ## Expected Routing
-lane: HALT-AND-ASK
+lane: DESIGN
 tier: N/A
+blast_radius: N/A
 scenario_type: N/A
-gates_fired: []
-walker_dispatched: false
-planner_dispatched: false
-inspector_dispatched: false
+# N/A — Designer synthesizes targets post-SPEC-GATE; blast is Planner-derived, unknown at routing
+gates_fired: [SPEC-GATE, PLAN-GATE]
+jira_offer: false   # net-new gets a local kebab-slug run-id; NO ticket offer (P2.2)
+scout_dispatched: false
+designer_dispatched: true
+planner_dispatched: true
 
-## Why this halts (v2 behavior)
-A net-new raw idea with no ticket/spec needs the DESIGN lane (the Designer turns fuzzy
-intent into a spec). The Designer is Kiln P2 — so P1 HALTS-AND-ASKS rather than dispatching.
-The conductor announces the gap and asks for a `code`- or `tool-authoring`-shaped change,
-or a spec to run the PLAN lane against. (In v1 this ran the Refiner; the Refiner is superseded.)
+## Why DESIGN (v2 behavior)
+A net-new raw idea with no ticket or spec routes to the DESIGN lane: the Designer runs a
+dialogue loop that turns fuzzy intent into a spec draft, SPEC-GATE gates the synthesized
+spec, and the Planner takes over from there. (P1 stopped and asked here; P2.1 activates the
+Designer.) Scout is skipped — Scout only fires on sparse/thin tickets that need research
+before a spec can be drafted, and a net-new quoted string has no ticket to research. No Jira
+offer for a net-new, no-ticket entry — the run uses a local kebab-slug run-id only (ticket
+creation from a synthesized spec is P2.2).
