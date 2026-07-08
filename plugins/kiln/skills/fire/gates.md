@@ -1,14 +1,22 @@
-# Kiln Gates (P1)
+# Kiln Gates (P2.1)
 
 Loaded on-demand. Each gate is evaluated by the CONDUCTOR reading a member's typed return field —
-never the worker grading itself. P1 has no SPEC-GATE (that pairs with the P2 Designer); P1 gates are PLAN and TASK.
+never the worker grading itself. SPEC-GATE (P2.1) pairs with the Designer and fires on the DESIGN/RESEARCH
+lanes; PLAN and TASK gates are unchanged.
 
 ## Gate table
 
 | Gate | Fires when | Reads | Pass condition |
 |---|---|---|---|
+| **SPEC-GATE** | after Designer, before Planner — on ANY DESIGN/RESEARCH run under a pausing flow-style | `spec-draft.md` summary | user types explicit approval |
 | **PLAN-GATE** | after Planner, before first Crafter — all STANDARD | `plan.md` (+ `walkthrough.md` on HIGH blast) | user types explicit approval |
 | **TASK-GATE** | after each Inspector — blocks on HIGH blast only | `verdict-N.md` typed fields | `spec: ✅` AND `quality: approved` |
+
+**SPEC-GATE fires on lane, not blast.** Blast radius is Planner-derived (Compounds classify), which
+runs AFTER SPEC-GATE — so blast is unknown at SPEC-GATE time. SPEC-GATE therefore fires whenever a
+Designer synthesized a spec (any DESIGN/RESEARCH run) under a pausing flow-style: a ticket sparse
+enough to need the Designer is high-uncertainty by definition. The Designer's `compounds impact`
+grounding note is advisory only — the authoritative blast signal is still the Planner's.
 
 ## Tier × blast behavior (Inspector-runs vs gate-blocks are SEPARATE decisions)
 
@@ -18,12 +26,12 @@ never the worker grading itself. P1 has no SPEC-GATE (that pairs with the P2 Des
 
 ## Flow-styles (configurable gate pausing)
 
-| Flow-style | PLAN-GATE | TASK-GATE |
-|---|---|---|
-| `guided` (default) | pause for explicit approval | block on findings (HIGH blast) |
-| `planning_gate` | pause | auto-advance on clean verdict |
-| `implementation_gate` | auto-proceed | block on findings |
-| `hands_free` | auto-proceed | auto-advance; escalate only on 2× fix-loop failure |
+| Flow-style | SPEC-GATE | PLAN-GATE | TASK-GATE |
+|---|---|---|---|
+| `guided` (default) | pause for explicit approval | pause for explicit approval | block on findings (HIGH blast) |
+| `planning_gate` | pause | pause | auto-advance on clean verdict |
+| `implementation_gate` | auto-proceed | auto-proceed | block on findings |
+| `hands_free` | auto-proceed | auto-proceed | auto-advance; escalate only on 2× fix-loop failure |
 
 Default `guided`. Owner sets per-run (`/kiln <KEY> --flow hands_free`). Never pass `flow_style` to Compounds unless the owner explicitly set one.
 
