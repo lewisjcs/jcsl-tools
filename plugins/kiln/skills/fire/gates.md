@@ -24,9 +24,11 @@ grounding note is advisory only — the authoritative blast signal is still the 
 
 ## Tier × blast behavior (Inspector-runs vs gate-blocks are SEPARATE decisions)
 
-- **TRIVIAL** (Compounds score 6–9): no gates, NO Inspector. Single Crafter dispatch; the **Crafter** marks the task done via `update_task(status="DONE")` (the conductor cannot call it — the guard forbids it).
-- **STANDARD + LOW blast:** PLAN-GATE only. Inspector RUNS every task (verdict feeds `finalize`), but TASK-GATE does NOT block — findings recorded, run advances.
-- **STANDARD + HIGH blast:** **Walker at PLAN-GATE** + PLAN-GATE + TASK-GATE per task. Inspector runs AND TASK-GATE blocks: non-passing verdict → fix loop (cap 2) → escalate (revert the task's commits, HARD STOP).
+- **TRIVIAL** (Compounds score 6–9): no gates, NO Inspector. Single Crafter dispatch; the **Crafter** marks the task done via `update_task(status="DONE")` (the conductor cannot call it — the guard forbids it; the Crafter holds the grant).
+- **STANDARD + LOW blast:** PLAN-GATE only. Inspector RUNS every task on a lightweight adequacy pass (relayed verify-model, static-only) and finalizes on a passing verdict (compounds → `implement_task_finalize`; native → `update_task`), but TASK-GATE does NOT block — findings recorded, run advances.
+- **STANDARD + HIGH blast:** **Walker at PLAN-GATE** + PLAN-GATE + TASK-GATE per task. Inspector runs full adequacy rigor AND TASK-GATE blocks: non-passing verdict → fix loop (cap 2) → escalate (revert the task's commits, HARD STOP).
+
+**Test-adequacy is the relocated guardrail (design D3):** with red-green dropped, the Inspector's `verify` asserts the tests cover each AC, are not trivially-passing, and exercise the changed path. An empty or tautological test set is a Critical finding.
 
 ## Flow-styles (configurable gate pausing)
 

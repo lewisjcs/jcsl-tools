@@ -21,7 +21,7 @@ returns. It does not implement, plan, or design inline. Members hold the working
 
 **Ledger:** `{{RUN_FOLDER}}/progress.md`, written before every gate transition. On resume after `/clear`, read it and continue from the first incomplete task.
 
-**Scope (P2.1):** EXECUTE / PLAN / TRIVIAL / RESUME / **DESIGN / RESEARCH** lanes; `code` + `tool-authoring` scenarios. SPEC-GATE, Scout, and the Designer are live. Still P2.2: the `mcp/agent-app` / `doc/RFC` / `infra` scenarios (they HALT) and all Jira write-back. An out-of-scope scenario or ambiguous doc shape → HALT-AND-ASK.
+**Scope (P2.1):** EXECUTE / PLAN / TRIVIAL / RESUME / **DESIGN / RESEARCH** lanes; `code` + `tool-authoring` + `doc` scenarios. SPEC-GATE, Scout, and the Designer are live. Still P2.2: the `mcp/agent-app` / `infra` scenarios (they HALT) and all Jira write-back. An out-of-scope scenario or ambiguous doc shape → HALT-AND-ASK. Every run binds one engine (`code`→compounds, `tool-authoring`/`doc`→native) and is ledger-tagged `engine:`.
 
 ---
 
@@ -48,9 +48,14 @@ those consumers fall through to the ticket body (they already read `spec-draft.m
 ## Verb 2 — Classify & announce (LOUDLY)
 
 Load `lanes.md` and `scenarios.md`. Determine lane + scenario now (from the entry + ticket). Tier + blast are NOT known yet — the Planner derives them from Compounds' classify step and returns them in its done-line; update the announcement with them after the Planner runs.
+
+**Bind the engine (router — a lookup, not judgment).** Load `engines.md`. Map the resolved scenario → engine per its router table: `code` → compounds; `tool-authoring`/`doc` → native; `mcp/agent-app`/`infra` → compounds but DORMANT (still HALT — do not route this pass). Write the ledger header `ENGINE: <compounds|native> | <ISO>` and **narrate the binding** (why-narration, always on regardless of flow-style):
+`[Kiln] <scenario> scenario → <engine> engine bound. <impl driver>; Inspector enforces <verify focus>. engine: <engine>.`
+Example: `[Kiln] code scenario → compounds engine bound. implement_task drives impl; Inspector enforces test adequacy. engine: compounds.`
+
 **Announce before any work**, task-kickoff style:
 `**[Kiln] This is a <LANE> run, <SCENARIO> scenario — <one-line why>. Starting that path.**`
-Sparse → RESEARCH; partial / net-new / design-doc → DESIGN (per `lanes.md`). Only a P2.2 scenario (`mcp/agent-app`/`doc/RFC`/`infra`) or an ambiguous doc shape → **HALT-AND-ASK** (do not guess, do not fall through to code).
+Sparse → RESEARCH; partial / net-new / design-doc → DESIGN (per `lanes.md`). Only a P2.2 scenario (`mcp/agent-app`/`infra`) or an ambiguous doc shape → **HALT-AND-ASK** (do not guess, do not fall through to code).
 
 **Write the active-run sentinel now, stamped with this session's id:**
 `printf '%s\n' "$CLAUDE_CODE_SESSION_ID" > {{RUN_FOLDER}}/.active`. (This is what arms the guard hooks.
@@ -62,6 +67,10 @@ in Verb 5.)
 path with `git -C <repo>` (`<repo>` = the repo the change targets, e.g. `repos/<name>`, derived from the
 plan's file targets or the entry). Run `git -C <repo> symbolic-ref --short HEAD`; if `main`/`master`,
 `git -C <repo> checkout -b kiln/<run-id>` and write ledger `BRANCH: created kiln/<run-id> | <ISO>`.
+
+**Why-narration (always on, flow-style-independent — spec §5b, pattern E3).** At each routing/engine/gate decision, emit a one-line rationale to the user AND the ledger. Target decision points only — not verbose everything-narration. This is constant regardless of flow-style (the flow-style dials whether a gate *pauses*, not whether the reasoning is *shown*). Examples:
+- `[Kiln] STANDARD+LOW blast → Inspector runs lightweight (verify-model relayed), TASK-GATE non-blocking. Advancing on findings-recorded.`
+- `[Kiln] STANDARD+HIGH blast → Walker at PLAN-GATE, TASK-GATE blocks. Non-passing verdict → fix loop (cap 2).`
 
 ## Verb 3 — Build the spine
 
@@ -85,7 +94,7 @@ Load `dispatch-contracts.md`. Dispatch the right member with the four-part contr
   member relay.)
 - **EXECUTE:** drift-check → Planner(register existing plan) → Build loop. The drift-check is NOT a member dispatch (there is no drift-check contract) — the conductor runs it inline: read-only Jira read + local file-existence checks per `lanes.md`. Material drift → STOP and recommend re-planning.
 - **PLAN:** Planner → PLAN-GATE → (Walker if HIGH blast) → Build loop.
-- **Build loop (per task):** write `brief-N.md` (merge the task's entry from the Planner-produced `{{RUN_FOLDER}}/tasklist.md` + prior-task interfaces + `scenario:`), dispatch Crafter, then Inspector (per `gates.md` tier×blast rules). The conductor reads `tasklist.md`; it never calls Compounds itself (the guard denies it). **Model relay:** read the task's `- **Model:**` bullet from `tasklist.md` and pass that value as the `Agent` dispatch `model` param for the Crafter and its Inspector/Walker. If the bullet is malformed (not one of `haiku`/`sonnet`/`opus`), omit the `model` param — the member runs on its frontmatter `model` (the fallback floor). **TRIVIAL lane:** no Planner runs, so there is no `tasklist.md` bullet to relay — dispatch the lone Crafter on that lane's deterministic default `model: haiku` (the routing rubric's TRIVIAL row is a fixed constant, not a per-task judgment). The conductor never exercises per-task model *judgment*: it relays the Planner's typed recommendation, and where no Planner runs it applies the lane's single fixed default. It never reasons about a task to pick a model.
+- **Build loop (per task):** write `brief-N.md` (merge the task's entry from the Planner-produced `{{RUN_FOLDER}}/tasklist.md` — INCLUDING its `### Enriched context` subsection — + prior-task interfaces + `scenario:` + the bound `engine:`), dispatch Crafter, then Inspector (per `gates.md` tier×blast rules). The conductor reads `tasklist.md`; it never calls Compounds itself (the guard denies it). **Model relay (two values):** read the task's `- **Impl model:**` and `- **Verify model:**` bullets from `tasklist.md`. Pass the Impl-model as the `Agent` `model` param for the Crafter (and the Walker, on HIGH blast); pass the Verify-model as the `model` param for the Inspector. If a bullet is malformed (not one of `haiku`/`sonnet`/`opus`), omit that member's `model` param — it runs on its frontmatter floor. Also pass `engine: <compounds|native>` (bound in Verb 2) into the Crafter and Inspector dispatches. **TRIVIAL lane:** no Planner runs, so no bullets to relay — dispatch the lone Crafter on `model: haiku` (the rubric's TRIVIAL row, a fixed constant). The conductor never exercises per-task model *judgment*: it relays the Planner's typed recommendations, and where no Planner runs it applies the lane's fixed default.
 
 ## Verb 5 — Adjudicate & advance
 
@@ -97,7 +106,7 @@ Read each member's done-line + return artifact. Update the spine (`TaskUpdate`).
 - **PLAN-GATE:** present `plan.md` (+ `walkthrough.md` if HIGH); per flow-style, pause for explicit approval. Write ledger `PLAN-GATE: approved | <ISO>`.
   On rejection or a change request: do NOT write `approved` and do NOT start the Build loop; re-dispatch
   the Planner with the feedback and re-present at PLAN-GATE.
-- **TASK-GATE** (HIGH blast): conductor reads the Inspector verdict — `spec: ✅` AND `quality: approved` → the member finalizes the Compounds task (Inspector feeds `implement_task_finalize` with its verdict evidence on STANDARD; the Crafter marks TRIVIAL tasks done via `update_task`). The conductor's own action is the `TaskUpdate` on the spine — it never calls the Compounds mutation verb inline (the conductor guard denies it). Else fix loop (cap 2) → escalate (revert task commits, HARD STOP, leave sentinels for resume).
+- **TASK-GATE** (HIGH blast): conductor reads the Inspector verdict — `spec: ✅` AND `quality: approved` → the MEMBER finalizes the task (the conductor never calls a Compounds mutation verb inline — the guard denies it): on STANDARD the **Inspector** finalizes (compounds → `implement_task_finalize` with verdict evidence; native → `update_task`); on TRIVIAL the **Crafter** marked it done. The conductor's own action is the `TaskUpdate` on the spine plus writing the per-task ledger line `DONE: task N | engine: <compounds|native> | <ISO>`. Else fix loop (cap 2) → escalate (revert task commits, HARD STOP, leave sentinels for resume).
 
 **On completion:** run `code-quality-audit` on the diff, invoke `/create-pr`, generate the retro (P3 expands this; P1 writes a terse ledger `COMPLETE:` entry). **Remove the sentinels:** `rm -f {{RUN_FOLDER}}/.active {{RUN_FOLDER}}/.spine`.
 

@@ -27,10 +27,10 @@ routes into RESEARCH/DESIGN instead of halting.
 - none-of-the-above → halt-and-ask.
 
 **Lane vs. scenario are ORTHOGONAL dimensions.** A design-doc ENTRY is an *input to convert into a spec*
-→ routes DESIGN (mid-flow); it is NOT the `doc/RFC` *scenario* (which is when the change's DELIVERABLE is
-prose to author). The `.md` shape of the ENTRY never triggers a doc/RFC HALT — the scenario is derived
-from the SYNTHESIZED file targets after the Designer runs (and stays code/tool-authoring; doc/RFC-as-
-deliverable is still P2.2).
+→ routes DESIGN (mid-flow); it is NOT the `doc` *scenario* (which is when the change's DELIVERABLE is
+prose to author). The `.md` shape of the ENTRY never by itself triggers the `doc` scenario — the scenario
+is derived from the SYNTHESIZED file targets after the Designer runs, and may resolve to `code`,
+`tool-authoring`, or `doc` depending on what those targets actually are.
 
 ## Stale-plan drift-check (EXECUTE only — never blindly run a prior-session plan)
 
