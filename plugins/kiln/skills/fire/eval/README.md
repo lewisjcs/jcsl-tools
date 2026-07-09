@@ -105,7 +105,7 @@ A mismatch on `scenario_type` is a calibration **fail**. Misclassifying `tool-au
 
 Note: `scenario_type` appears under `routing` in the fixture JSON. The top-level `scenario` key holds the fixture's name (e.g. `"07-tool-authoring"`). These are distinct fields; the naming is intentional.
 
-**Why the design-front fixtures assert `N/A` for `tier`/`blast_radius`/`scenario_type` (amendment ②③):**
+**Why the design-front fixtures assert `N/A` for `tier`/`blast_radius`/`scenario_type`:**
 Fixtures 04, 10, 11, and 12 all assert `N/A` for these three fields, not because the run halts, but
 because none of them is deterministic at the routing checkpoint. The Designer has not yet synthesized
 file targets — `scenario_type` (code vs. tool-authoring) is derived from those targets, which don't
