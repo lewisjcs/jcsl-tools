@@ -24,7 +24,7 @@ grounding note is advisory only — the authoritative blast signal is still the 
 
 ## Tier × blast behavior (Inspector-runs vs gate-blocks are SEPARATE decisions)
 
-- **TRIVIAL** (Compounds score 6–9): no gates, NO Inspector. Single Crafter dispatch; the **Crafter** marks the task done via `update_task(status="DONE")` (the conductor cannot call it — the guard forbids it; the Crafter holds the grant).
+- **TRIVIAL** (Compounds score 6–9): no gates, NO Inspector. Single Crafter dispatch; the **Crafter** self-finalizes (the conductor cannot call a Compounds verb — the guard forbids it; the Crafter holds the grant). By engine: **compounds** → the `start_trivial` terminal `create_project(status="DONE")` IS the finalize (no project/task exists yet, so `implement_task`/`update_task` do not apply); **native** → no Compounds project exists, so the commit is the finalize (no Compounds verb).
 - **STANDARD + LOW blast:** PLAN-GATE only. Inspector RUNS every task on a lightweight adequacy pass (relayed verify-model, static-only). Because TASK-GATE does NOT block at LOW, the Inspector **finalizes every task regardless of verdict** (compounds → `implement_task_finalize`; native → `update_task`) — a non-passing verdict records its findings as **advisory** and the run still advances, so a LOW-blast task is never left un-finalized (no rot-to-TODO). There is no fix loop at LOW.
 - **STANDARD + HIGH blast:** **Walker at PLAN-GATE** + PLAN-GATE + TASK-GATE per task. Inspector runs full adequacy rigor AND TASK-GATE blocks: non-passing verdict → fix loop (cap 2) → escalate (revert the task's commits, HARD STOP).
 

@@ -4,12 +4,18 @@ The conductor names the `engine:` bound for this run. Apply that engine's `imple
 `verify` steps (the contract is in `${CLAUDE_PLUGIN_ROOT}/skills/fire/engines.md`). Do not
 apply a discipline the bound engine does not call for.
 
-## engine: compounds  (code / — dormant: mcp-agent-app, infra)
+## engine: compounds  (code — dormant: mcp/agent-app, infra)
 
 1. Read the `### Enriched context` in your brief — the Planner already generated the
    design patterns, testing frameworks, and reference architecture for this task. This is
    your implementation guide; do not re-generate it.
-2. Call `implement_task` for this task so Compounds runs its own implementation+test loop.
+2. Branch on the `tier:` field in your dispatch:
+   - **STANDARD** → call `implement_task` for this task so Compounds runs its own
+     implementation+test loop (the Planner's `generate_tasks` created the project/task it needs).
+   - **TRIVIAL** → NO Planner ran, so no Compounds project/task exists — do NOT call
+     `implement_task`. Run the `start_trivial` terminal path: `plan_change(step="start")` →
+     locate the file → edit → commit → log via `create_project(status="DONE")` as the terminal.
+     That terminal `create_project(status="DONE")` IS the finalize for a TRIVIAL compounds task.
 3. If the brief's `test strategy:` names an E2E/frontend layer, additionally run the
    framework the brief points to before reporting.
 4. Confirm the test suite is green (`verify`). Commit (Conventional Commits; include the

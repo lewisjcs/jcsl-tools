@@ -24,9 +24,10 @@ a `code`, `tool-authoring`, or `doc`-shaped change, or run the steps manually." 
 onto `code` (forcing an unfit verification discipline onto a mismatched target) is the exact
 current-Kiln failure this registry exists to prevent.
 
-**Ambiguous between the two P1 scenarios** (e.g. a PR that edits both `src/` code and a `SKILL.md`):
-treat as `code` for its code targets and `tool-authoring` for its prose targets — the Crafter receives
-the scenario per-task, and a task's scenario follows its own file targets, not the run's.
+**Ambiguous between the three P1 scenarios** (e.g. a PR that edits `src/` code, a `SKILL.md`, and a
+README): treat each target by its own signal — `code` for code targets, `tool-authoring` for prose
+under skills/agents, `doc` for standalone prose docs — the Crafter receives the scenario per-task,
+and a task's scenario follows its own file targets, not the run's.
 
 ## Per-scenario verification + patterns source (P1 rows)
 

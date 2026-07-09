@@ -125,12 +125,15 @@ implement+verify discipline, every time. Never skip verification. Commit only �
 
 **Part 1 — Sequence position:**
 This is task {{N}} of {{TOTAL_TASKS}} in the implementation loop.
-tier: {{TIER}}   (TRIVIAL | STANDARD — selects your finalize step: TRIVIAL → you finalize via update_task; STANDARD → the Inspector finalizes, you do not; see crafter.md "Verification")
+tier: {{TIER}}   (TRIVIAL | STANDARD — selects your finalize step: TRIVIAL → you self-finalize (compounds: the start_trivial terminal create_project(status="DONE"); native: commit only); STANDARD → the Inspector finalizes, you do not; see crafter.md "Verification")
 engine: {{ENGINE}}   (compounds | native — selects your implement+verify discipline; see skills/fire/engines.md and crafter/references/scenarios.md)
 model: {{MODEL}}   (relayed from the task's **Impl model:** bullet in tasklist.md; omit → frontmatter floor)
 Load ${CLAUDE_PLUGIN_ROOT}/skills/fire/engines.md FIRST, then follow the bound engine's steps.
-On engine: compounds call implement_task at craft time (Compounds runs its own impl+test loop);
-there is NO mandatory red-green pre-cycle. On engine: native run the deterministic self-check.
+On engine: compounds, the Compounds call depends on tier: STANDARD → call implement_task at craft
+time (Compounds runs its own impl+test loop); TRIVIAL → no project exists, so run the start_trivial
+terminal path (plan_change(step="start") → locate → edit → commit → create_project(status="DONE")),
+NOT implement_task. Either way there is NO mandatory red-green pre-cycle. On engine: native run the
+deterministic self-check.
 
 **Part 2 — Brief:**
 Read your task brief now:
