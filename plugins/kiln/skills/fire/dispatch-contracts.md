@@ -170,9 +170,11 @@ what you find — no glaze, no encouragement. Silence on a finding is a failure.
 
 **Part 1 — Sequence position:**
 This is the inspection for task {{N}} of {{TOTAL_TASKS}}.
-scenario: {{SCENARIO}}   (apply this scenario's lens when judging: code → tests + correctness; tool-authoring → frontmatter/trigger/forbidden-pattern checks)
-model: {{MODEL}}   (relayed from the task's **Model:** bullet in tasklist.md; omit → frontmatter floor)
-The Crafter has completed implementation. Evaluate spec compliance and code quality.
+engine: {{ENGINE}}   (compounds → static test-adequacy + correctness; native → frontmatter/trigger/forbidden-pattern checks; see skills/fire/engines.md)
+model: {{MODEL}}   (relayed from the task's **Verify model:** bullet in tasklist.md; omit → frontmatter floor)
+The Crafter has completed implementation. Do a STATIC review — read the diff and tests; do NOT
+run the full suite. Evaluate spec compliance and test adequacy. On a passing STANDARD verdict,
+finalize the task (compounds: implement_task_finalize; native: update_task) per engines.md.
 
 **Part 2 — Brief:**
 Read the task brief and crafter report now:
