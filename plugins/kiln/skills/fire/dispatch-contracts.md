@@ -2,6 +2,12 @@
 
 Loaded on-demand by `SKILL.md` when dispatching an Agent Class. Do not always-load.
 
+**Tool discipline (applies to every dispatched member):** Use `Read` to read files, `Grep`
+to search file contents, and `Glob` to find files by name. Use `Bash` ONLY for operations
+that genuinely require a shell — the test runner, `git diff` / `git log`, package managers.
+Do NOT shell out to `cat` / `grep` / `ls` / `find` via Bash when a direct `Read` / `Grep` /
+`Glob` call does the same thing in one turn. Each avoided Bash call is one fewer agentic turn.
+
 Each template has exactly four parts:
 1. Sequence position — where this dispatch fits in the overall flow
 2. Brief file path — the agent's requirements source ("read this first")
