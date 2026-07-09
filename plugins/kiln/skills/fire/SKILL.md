@@ -28,14 +28,18 @@ returns. It does not implement, plan, or design inline. Members hold the working
 ## Verb 1 — Read
 
 Parse the entry argument. Prefix-agnostic key match `[A-Z]+-\d+`. Read the ticket (if any) via Jira-read.
-Set `{{RUN_FOLDER}} = <WORKSPACE>/projects/active/<run-id>/kiln/` and `mkdir -p` it, where:
+Set `{{RUN_FOLDER}} = <WORKSPACE>/projects/active/<run-id>/kiln/`, where:
 - `<WORKSPACE>` is the OS workspace root — the directory the session runs from (this OS launches from a
   non-git workspace that wraps many repos; do NOT use `git rev-parse --show-toplevel`, which would resolve
   into whichever nested repo the cwd sits in and scatter run folders across repos). Run folders always live
   in the workspace, never inside a repo.
 - `<run-id>` is the Jira key if the entry has one (`[A-Z]+-\d+`); otherwise a kebab-slug derived from the
   entry (a raw-idea string or a keyless plan filename) — e.g. `/kiln "add dark mode"` → `add-dark-mode`.
-  Confirm the slug with the user on net-new entries (see Verb 4).
+
+**Ordering matters here.** A ticketed entry (run-id = Jira key) needs no confirmation — proceed straight
+to `mkdir -p {{RUN_FOLDER}}`. A net-new entry's slug is a guess: CONFIRM it with the user via
+`AskUserQuestion` (see Verb 4) BEFORE `mkdir -p {{RUN_FOLDER}}` and before any sentinel write — a
+rejected slug must not orphan a folder or sentinels under the wrong name.
 If the entry includes a spec-shaped file (a PLAN-from-spec run — see `lanes.md`), stash it at
 `{{RUN_FOLDER}}/spec-draft.md` (`cp` — a run-folder write, guard-exempt). That copy is the sole P1
 producer of `spec-draft.md`; the Planner and Walker read it there. No spec file at entry → no stash, and
@@ -69,14 +73,16 @@ Create the `TaskCreate` progress spine — one task per phase this lane will run
 Load `dispatch-contracts.md`. Dispatch the right member with the four-part contract, passing `{{SCENARIO}}` into Crafter/Inspector/Walker dispatches. Sequence by lane (per `lanes.md`):
 - **RESEARCH:** Scout → Designer (dialogue loop, below) → SPEC-GATE → Planner → PLAN-GATE → Build loop.
 - **DESIGN:** Designer (dialogue loop) → SPEC-GATE → Planner → PLAN-GATE → Build loop. Net-new: propose a
-  kebab-slug run-id and confirm it; do NOT offer a Jira ticket (P2.2). Design-doc mid-flow: pass the
-  incoming design.md into dispatch #1 for confirm-and-convert.
+  kebab-slug run-id and confirm via `AskUserQuestion` (a conductor step, not a member relay — permitted;
+  see Verb 1) — if the user proposes a different slug, use theirs; do NOT offer a Jira ticket (P2.2).
+  Design-doc mid-flow: pass the incoming design.md into dispatch #1 for confirm-and-convert.
 - **Designer dialogue loop (Approach A):** repeat until the Designer returns `DESIGNER_DONE` — dispatch #N →
   if the done-line is `DESIGNER_NEEDS_INPUT`, render its `## Questions` block via `AskUserQuestion`
   (main thread; ≤4) and re-dispatch with the answers pasted into Part 3; if it is `DESIGNER_DONE`, stop.
-  The Designer self-caps at ≤2 question batches (so at most 3 dispatches). This is the ONLY member
+  The Designer self-caps at ≤2 question batches (so at most 3 dispatches). This is the ONLY MEMBER
   interaction where the conductor calls AskUserQuestion; it relays each batch verbatim and authors no
-  design content.
+  design content. (The Verb 1 slug confirm above is a separate conductor housekeeping step, not a
+  member relay.)
 - **EXECUTE:** drift-check → Planner(register existing plan) → Build loop. The drift-check is NOT a member dispatch (there is no drift-check contract) — the conductor runs it inline: read-only Jira read + local file-existence checks per `lanes.md`. Material drift → STOP and recommend re-planning.
 - **PLAN:** Planner → PLAN-GATE → (Walker if HIGH blast) → Build loop.
 - **Build loop (per task):** write `brief-N.md` (merge the task's entry from the Planner-produced `{{RUN_FOLDER}}/tasklist.md` + prior-task interfaces + `scenario:`), dispatch Crafter, then Inspector (per `gates.md` tier×blast rules). The conductor reads `tasklist.md`; it never calls Compounds itself (the guard denies it).
