@@ -38,8 +38,18 @@ case "$TOOL" in
     case "$FP" in
       "$RUN_DIR"/*) exit 0 ;;  # this run's artifact — allowed
       "") exit 0 ;;            # no path resolvable — fail-open
-      *) kiln_deny "The Kiln conductor cannot edit source files inline. Dispatch the Crafter member — it holds Edit/Write." ;;
-    esac ;;
+    esac
+    # Housekeeping allow-path (spec §5a): the conductor may write workspace housekeeping —
+    # OS memory files and the daily journal — which are categorically NOT shipped source.
+    # Matched STRUCTURALLY (no hard-coded user path): a memory file lives under
+    # `.../.claude/projects/<slug>/memory/`, and a journal entry is `journal/YYYY/MM/DD.md`.
+    case "$FP" in
+      "${HOME:-}"/.claude/projects/*/memory/*) exit 0 ;;        # OS memory dir (anchored under $HOME/.claude)
+    esac
+    if printf '%s' "$FP" | grep -Eq '(^|/)journal/[0-9]{4}/[0-9]{2}/[0-9]{2}\.md$'; then
+      exit 0                                                     # daily journal
+    fi
+    kiln_deny "The Kiln conductor cannot edit source files inline. Dispatch the Crafter member — it holds Edit/Write." ;;
 esac
 
 exit 0

@@ -31,6 +31,9 @@ assert_allow() { # $1=label $2=script $3=stdin_json
 WORKSPACE="$(mktemp -d)"
 trap 'rm -rf "$WORKSPACE"' EXIT
 cd "$WORKSPACE" || { echo "FAIL - could not cd to sandbox workspace"; exit 1; }
+# The memory allow-path anchors on $HOME/.claude; point HOME at the sandbox so the
+# anchored match is exercised here (git init/symbolic-ref below need no HOME identity).
+export HOME="$WORKSPACE"
 RUN_DIR="$WORKSPACE/projects/active/TEST-0/kiln"
 mkdir -p "$RUN_DIR"; : > "$RUN_DIR/.active"
 # "Source" lives in a nested (non-git) repo path under the workspace, outside any run folder.
@@ -60,6 +63,25 @@ assert_deny  "conductor: main-thread Compounds mutation while active" kiln-guard
   "{$CWD\"tool_name\":\"mcp__compounds-dev__generate_tasks\",\"tool_input\":{}}"
 assert_allow "conductor: main-thread Compounds READ while active" kiln-guard-conductor.sh \
   "{$CWD\"tool_name\":\"mcp__compounds-dev__get_task\",\"tool_input\":{}}"
+
+# --- housekeeping allow-path (spec §6a): memory dir + journal are conductor housekeeping, not source ---
+# Memory dir mirrors the OS layout: <something>/.claude/projects/<slug>/memory/<file>.
+MEMDIR="$WORKSPACE/.claude/projects/-some-workspace-slug/memory"
+mkdir -p "$MEMDIR"
+assert_allow "conductor: main-thread Write to OS memory dir while active" kiln-guard-conductor.sh \
+  "{$CWD\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\"$MEMDIR/feedback_new_thing.md\"}}"
+# Journal path shape: journal/YYYY/MM/DD.md under the workspace.
+JOURNAL="$WORKSPACE/journal/2026/07/09.md"
+mkdir -p "$(dirname "$JOURNAL")"
+assert_allow "conductor: main-thread Write to journal/YYYY/MM/DD.md while active" kiln-guard-conductor.sh \
+  "{$CWD\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\"$JOURNAL\"}}"
+# Regression: repo source is STILL denied (proves the allowlist did not loosen source protection).
+assert_deny  "conductor: repo source STILL denied after housekeeping allow added" kiln-guard-conductor.sh \
+  "{$CWD\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\"$SRC\"}}"
+# Path-confusion: a memory-SHAPED path nested INSIDE repo source (contains .claude/projects/<slug>/memory/
+# but is NOT under $HOME/.claude) must still DENY — proves the anchor, not just the segment.
+assert_deny  "conductor: memory-shaped decoy nested in repo source denied (path-confusion guard)" kiln-guard-conductor.sh \
+  "{$CWD\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\"$WORKSPACE/repos/jcsl-tools/.claude/projects/some-slug/memory/evil.md\"}}"
 
 # N-3 regression (workspace anchor): the payload `.cwd` must be the anchor even when the
 # hook process cwd is somewhere else entirely. Run the guard from `/` (no projects/active/
