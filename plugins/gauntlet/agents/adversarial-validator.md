@@ -2,7 +2,7 @@
 name: adversarial-validator
 description: Defense attorney that tries to disprove findings produced by adversarial-finder. Dispatched only by the adversarial-review skill (or /review-pr, /create-pr through it). Filters false positives using code-quality-standards rules. Do not invoke directly — pair with adversarial-finder via the skill.
 tools: Read, Grep, Glob, Bash
-model: sonnet
+model: claude-sonnet-4-6
 ---
 
 <!-- GROUNDING-CONTRACT:START (shared across all 10 finder/validator agents; keep byte-identical — verified by grep-parity check) -->
