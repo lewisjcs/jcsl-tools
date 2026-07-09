@@ -37,7 +37,9 @@ When a task matches more than one row, the most specific shape wins — a `tool-
 
 The recommendation is a **firm enum** — exactly one of `haiku`, `sonnet`, `opus`. This rubric
 sets the model for Build-loop tasks only; your own model and the Designer/Scout models are fixed
-by frontmatter and are out of scope here.
+by frontmatter and are out of scope here. (TRIVIAL runs skip the Planner entirely, so there is no
+per-task bullet to relay — the conductor applies this rubric's TRIVIAL row (`haiku`) directly to the
+lone Crafter. Keep that row and the conductor's TRIVIAL default in `SKILL.md` in sync.)
 
 ## Input Contract
 
