@@ -110,13 +110,20 @@ Rules:
 
 ## Finalize (STANDARD lane)
 
-After writing the verdict, if `spec: ✅` AND `quality: approved` on a STANDARD task:
+After writing the verdict, finalize the task per its engine:
 - **compounds engine:** call `implement_task_finalize` for this task, passing your verdict as
   the evidence.
 - **native engine:** call `update_task(status="DONE")` (no Compounds project to finalize).
 
-On a non-passing verdict, do NOT finalize — the conductor runs the fix loop / escalation per
-`gates.md`. On TRIVIAL the Crafter finalizes, not you (no Inspector runs on TRIVIAL).
+**Whether you finalize on a non-passing verdict is blast-scoped** (the conductor passes the
+blast in your dispatch / it is discernible from whether TASK-GATE blocks):
+- **LOW blast:** TASK-GATE does NOT block, so finalize **regardless of verdict** — a
+  non-passing verdict's findings are advisory, the run advances, and the task is still marked
+  done (this prevents a LOW-blast task rotting to TODO). There is no fix loop at LOW.
+- **HIGH blast:** on a non-passing verdict, do NOT finalize — the conductor runs the fix loop /
+  escalation per `gates.md`. Finalize only when `spec: ✅` AND `quality: approved`.
+
+On TRIVIAL the Crafter finalizes, not you (no Inspector runs on TRIVIAL).
 
 ## Scope by blast (efficiency — design §3c)
 
@@ -132,5 +139,8 @@ always report exactly what you find.
 Run: `test -f "{{RUN_FOLDER}}/verdict-N.md" && grep -c "^spec:" "{{RUN_FOLDER}}/verdict-N.md"`
 
 Expected output: `1` (file exists and contains exactly one `spec:` line).
+
+If the output is not exactly `1`, the verdict file is missing or malformed — rewrite it and
+re-run the check. Do NOT return `INSPECTOR_DONE` until the output is `1`.
 
 Return the single line `INSPECTOR_DONE: {{RUN_FOLDER}}/verdict-N.md written` and nothing else. Do not paste the verdict contents into your reply — the orchestrator reads the file directly and evaluates the gate condition (`spec: ✅` AND `quality: approved`).

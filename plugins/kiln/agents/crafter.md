@@ -74,8 +74,12 @@ while verification is failing.
 
 Run `git rev-parse HEAD` to obtain the commit SHA for the report.
 
-**TRIVIAL lane only:** after verification is green, mark the Compounds task done yourself via
-`update_task(status="DONE")` — the conductor cannot call it (the guard forbids it) and no
-Inspector runs on TRIVIAL. On STANDARD the Inspector finalizes; do not call `update_task`.
+**Finalize — branch on the `tier:` field in your dispatch (Part 1):**
+- **`tier: TRIVIAL`** → after verification is green, mark the task done yourself via
+  `update_task(status="DONE")` for BOTH engines — the conductor cannot call it (the guard
+  forbids it) and no Inspector runs on TRIVIAL. A TRIVIAL task is lightweight, so it needs no
+  Compounds-project finalize; `update_task` is the grant you hold (you do NOT hold
+  `implement_task_finalize` — that is the Inspector's STANDARD-compounds verb).
+- **`tier: STANDARD`** → the Inspector finalizes; do NOT call `update_task` or any finalize verb.
 
 Return the single line `CRAFTER_DONE: {{RUN_FOLDER}}/report-N.md written, commit: <SHA>` and nothing else. Do not paste implementation code or test output into your reply — the orchestrator reads the report file directly.
