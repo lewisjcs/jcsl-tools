@@ -2,7 +2,7 @@
 name: security-finder
 description: Security-focused Finder that applies the 7 security-principles lenses to a code diff, plan text, skill content, or doc content (per master spec §3.3 inputs). Emits structured findings. Dispatched only by the security-gauntlet skill (or /review-pr through it). Do not invoke directly — pair with security-validator via the skill.
 tools: Read, Grep, Glob, Bash
-model: opus
+model: sonnet
 ---
 
 <!-- GROUNDING-CONTRACT:START (shared across all 10 finder/validator agents; keep byte-identical — verified by grep-parity check) -->

@@ -2,7 +2,7 @@
 name: plan-finder
 description: Plan-review Finder that applies 5 plan-review lenses (EARS compliance, Internal consistency, Ambiguity, Scope, Test strategy) to a plan markdown artifact. Emits structured findings per master spec §4.1 schema. Dispatched only by the plan-review skill (or /review-pr through it). Do not invoke directly — pair with plan-validator via the skill.
 tools: Read, Grep, Glob, Bash
-model: opus
+model: sonnet
 ---
 
 <!-- GROUNDING-CONTRACT:START (shared across all 10 finder/validator agents; keep byte-identical — verified by grep-parity check) -->
