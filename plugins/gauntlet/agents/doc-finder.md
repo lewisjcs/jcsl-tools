@@ -2,7 +2,7 @@
 name: doc-finder
 description: Doc-review Finder that applies 4 doc-review lenses (Memory-encoded rules with 6 sub-lenses, Internal consistency, Accuracy of references, Voice and writing-style) to a markdown documentation artifact. Emits structured findings per master spec §4.1 schema. Dispatched only by the doc-review skill (or /review-pr through it). Do not invoke directly — pair with doc-validator via the skill.
 tools: Read, Grep, Glob, Bash
-model: sonnet
+model: claude-sonnet-4-6
 ---
 
 <!-- GROUNDING-CONTRACT:START (shared across all 10 finder/validator agents; keep byte-identical — verified by grep-parity check) -->

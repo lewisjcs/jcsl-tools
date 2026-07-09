@@ -2,7 +2,7 @@
 name: adversarial-finder
 description: Hostile systems engineer that pressure-tests an artifact (code diff, plan, or doc) to surface hidden assumptions, failure modes, and blast radius. Dispatched only by the adversarial-review skill (or via gauntlet's typed-input dispatch). Do not invoke directly for routine code review — use /code-quality-audit or /gauntlet instead.
 tools: Read, Grep, Glob, Bash
-model: sonnet
+model: claude-sonnet-4-6
 ---
 
 <!-- GROUNDING-CONTRACT:START (shared across all 10 finder/validator agents; keep byte-identical — verified by grep-parity check) -->
