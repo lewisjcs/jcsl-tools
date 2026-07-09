@@ -13,6 +13,8 @@ Every finding and every verdict must be grounded in the artifact's post-change s
 1. **Post-change-state grounding.** Ground each claim against what the change PRODUCES, not against a prior or hypothetical state. For a code diff: the post-image (`+` side) of the hunk and the DECLARED post-change versions in the manifest/lockfile — never the pre-image (`-` side) or a separately installed version. For a plan, doc, or skill: the text as the change leaves it. A claim that is true only of the pre-change state is not a defect in the change.
 
 2. **Confidence tracks grounding, not self-consistency.** Confidence reflects how well a claim is grounded in the post-change artifact — not how internally coherent the claim sounds. A self-consistent claim that is grounded against the wrong artifact state (pre-image, installed-not-declared version, a file/line that does not exist, or an assumption unreachable from this artifact) takes a confidence PENALTY, not a boost. Reserve high confidence for claims verified against in-reach post-change evidence.
+
+3. **Tool discipline.** You have the artifact inline. For all repo navigation — finding definitions, callers, blast radius — use `Grep`/`Glob`/`Read`: each returns bounded, repo-wide results in one call. Reserve `Bash` for `git`/`gh` and running cited commands. One `Grep` covers the whole tree; a `grep`→`cat`→`sed` chain covers the same ground in far more calls. If you reach ~15 navigation calls you are likely crawling rather than reviewing — switch any remaining `bash grep`/`cat`/`find` to `Grep`/`Glob`/`Read` and emit findings from what you have.
 <!-- GROUNDING-CONTRACT:END -->
 
 <!-- VALIDATOR-GROUNDING:START (shared across the 5 validator agents; keep byte-identical — verified by validator-parity check) -->
@@ -34,7 +36,7 @@ Before evaluating, read both:
 1. Can the type system, framework, or runtime guarantee this can't happen? (e.g., Express middleware order, ORM-provided escaping)
 2. Does the surrounding code already handle this case? (e.g., a wrapping middleware that validates auth before this handler runs)
 3. Is the threat model realistic, or is this defense-in-depth speculation under low-realism conditions?
-4. Read relevant source files beyond just the diff to verify — use `Read` and `Grep` aggressively. Confidence >85 requires evidence beyond the diff.
+4. Read relevant source files beyond just the diff to verify (per the Tool-discipline rule in the grounding contract above). Confidence >85 requires evidence beyond the diff.
 
 ## Grounding discipline (CODE-EVAL-06 / CODE-EVAL-07)
 

@@ -13,6 +13,8 @@ Every finding and every verdict must be grounded in the artifact's post-change s
 1. **Post-change-state grounding.** Ground each claim against what the change PRODUCES, not against a prior or hypothetical state. For a code diff: the post-image (`+` side) of the hunk and the DECLARED post-change versions in the manifest/lockfile — never the pre-image (`-` side) or a separately installed version. For a plan, doc, or skill: the text as the change leaves it. A claim that is true only of the pre-change state is not a defect in the change.
 
 2. **Confidence tracks grounding, not self-consistency.** Confidence reflects how well a claim is grounded in the post-change artifact — not how internally coherent the claim sounds. A self-consistent claim that is grounded against the wrong artifact state (pre-image, installed-not-declared version, a file/line that does not exist, or an assumption unreachable from this artifact) takes a confidence PENALTY, not a boost. Reserve high confidence for claims verified against in-reach post-change evidence.
+
+3. **Tool discipline.** You have the artifact inline. For all repo navigation — finding definitions, callers, blast radius — use `Grep`/`Glob`/`Read`: each returns bounded, repo-wide results in one call. Reserve `Bash` for `git`/`gh` and running cited commands. One `Grep` covers the whole tree; a `grep`→`cat`→`sed` chain covers the same ground in far more calls. If you reach ~15 navigation calls you are likely crawling rather than reviewing — switch any remaining `bash grep`/`cat`/`find` to `Grep`/`Glob`/`Read` and emit findings from what you have.
 <!-- GROUNDING-CONTRACT:END -->
 
 <!-- FINDER-GROUNDING:START (shared across the 5 finder agents; keep byte-identical — verified by finder-parity check) -->
@@ -59,7 +61,7 @@ Primary-lens disambiguation:
 - If the defect is in the dedicated `## Test strategy` section (missing section, generic content, mocked-behavior tests), route to **Test strategy** — the defect is in the verification methodology.
 - This applies even when the step's text *describes* a test action (e.g., "Make sure tests still pass" in Step 5 routes to Ambiguity because it's a step-level specificity defect; the same phrase in a Test strategy section would route to Test strategy because that section is supposed to define verification methodology).
 
-You may use `Read`, `Grep`, and `Glob` to inspect files referenced by the plan for context — but the findings must be about the plan text, not pre-existing issues in the referenced code.
+Findings must be about the plan text, not pre-existing issues in the referenced code. (Navigate per the Tool-discipline rule in the grounding contract above.)
 
 ## Pre-emission self-check (MANDATORY)
 
