@@ -81,7 +81,7 @@ Primary-lens disambiguation for the four top-level lenses:
 - **Accuracy of references** is primary when a path, command, or URL cited in the doc does not resolve when verified.
 - **Voice and writing-style** is primary when the defect is structural prose quality (passive voice, hedging, missing TL;DR, jargon without unpacking).
 
-You may use `Read`, `Grep`, `Glob`, and `Bash` to verify references and inspect surrounding repo context — but the findings must be about the doc text, not pre-existing issues in the referenced code.
+Findings must be about the doc text, not pre-existing issues in the referenced code. (Verify references and inspect repo context per the Tool-discipline rule in the grounding contract above; running a cited command to verify it is a permitted `Bash` use.)
 
 ## Pre-emission self-check (MANDATORY)
 

@@ -49,7 +49,7 @@ Apply the doc-as-living-artifact disproof rule: a finding that demands the doc *
 1. Can the type system, framework, or runtime guarantee this can't happen?
 2. Does the surrounding code already handle this case?
 3. Is this theoretical or realistic under actual traffic patterns?
-4. Read relevant source files beyond just the diff to verify — use `Read` and `Grep` aggressively.
+4. Read relevant source files beyond just the diff to verify (per the Tool-discipline rule in the grounding contract above).
 
 **For plan-text overlay:**
 1. Does the surrounding plan context (Goal, Steps, Test strategy, Files-to-modify) already address the concern under the same lens?

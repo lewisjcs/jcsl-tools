@@ -36,7 +36,7 @@ Before evaluating, read both:
 1. Can the type system, framework, or runtime guarantee this can't happen? (e.g., Express middleware order, ORM-provided escaping)
 2. Does the surrounding code already handle this case? (e.g., a wrapping middleware that validates auth before this handler runs)
 3. Is the threat model realistic, or is this defense-in-depth speculation under low-realism conditions?
-4. Read relevant source files beyond just the diff to verify — use `Read` and `Grep` aggressively. Confidence >85 requires evidence beyond the diff.
+4. Read relevant source files beyond just the diff to verify (per the Tool-discipline rule in the grounding contract above). Confidence >85 requires evidence beyond the diff.
 
 ## Grounding discipline (CODE-EVAL-06 / CODE-EVAL-07)
 

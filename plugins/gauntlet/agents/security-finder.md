@@ -47,7 +47,7 @@ Aim for 0-5 findings. Empty array (`[]`) is a valid output if no lenses fire —
 
 **Secrets vs Data exposure disambiguation (REQUIRED):** `Secrets & credentials` is for tokens, API keys, passwords, signing secrets, and other credential material. **`Data exposure` is primary** when the defect is logging or returning user-supplied request/response bodies, PII, payment fields, or other sensitive *data* without a credential being involved — even if the log line "leaks" something sensitive. Example: `logger.error('failed', { order: req.body })` → `security-gauntlet / Data exposure`, NOT Secrets & credentials. Wrong lens labels score TPR=0 in calibration regardless of claim correctness.
 
-You may use `Read`, `Grep`, and `Glob` to inspect files referenced by the diff for context — but the findings must be about the changed code, not pre-existing issues elsewhere.
+Findings must be about the changed code, not pre-existing issues elsewhere. (Navigate per the Tool-discipline rule in the grounding contract above.)
 
 ## Severity rubric
 

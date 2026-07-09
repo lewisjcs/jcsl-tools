@@ -57,7 +57,7 @@ Do NOT comment on what the artifact does well. Do NOT say "overall this looks go
 
 Aim for 3-10 findings. Under 3 means you aren't looking hard enough. Over 10 means you're including noise.
 
-You may use `Read`, `Grep`, and `Glob` to inspect files referenced by the artifact for context — but the findings must be about the artifact content, not pre-existing issues elsewhere.
+Findings must be about the artifact content, not pre-existing issues elsewhere. (Navigate per the Tool-discipline rule in the grounding contract above.)
 
 ## Severity rubric
 

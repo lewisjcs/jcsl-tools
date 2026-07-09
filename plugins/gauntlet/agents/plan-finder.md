@@ -61,7 +61,7 @@ Primary-lens disambiguation:
 - If the defect is in the dedicated `## Test strategy` section (missing section, generic content, mocked-behavior tests), route to **Test strategy** — the defect is in the verification methodology.
 - This applies even when the step's text *describes* a test action (e.g., "Make sure tests still pass" in Step 5 routes to Ambiguity because it's a step-level specificity defect; the same phrase in a Test strategy section would route to Test strategy because that section is supposed to define verification methodology).
 
-You may use `Read`, `Grep`, and `Glob` to inspect files referenced by the plan for context — but the findings must be about the plan text, not pre-existing issues in the referenced code.
+Findings must be about the plan text, not pre-existing issues in the referenced code. (Navigate per the Tool-discipline rule in the grounding contract above.)
 
 ## Pre-emission self-check (MANDATORY)
 
