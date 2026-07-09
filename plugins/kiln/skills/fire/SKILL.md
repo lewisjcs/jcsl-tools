@@ -71,10 +71,12 @@ Load `dispatch-contracts.md`. Dispatch the right member with the four-part contr
 - **DESIGN:** Designer (dialogue loop) → SPEC-GATE → Planner → PLAN-GATE → Build loop. Net-new: propose a
   kebab-slug run-id and confirm it; do NOT offer a Jira ticket (P2.2). Design-doc mid-flow: pass the
   incoming design.md into dispatch #1 for confirm-and-convert.
-- **Designer dialogue loop (Approach A):** dispatch #1 → read the `DESIGNER_NEEDS_INPUT` done-line + its
-  `## Questions` block → render them via `AskUserQuestion` (main thread; ≤4) → dispatch #2 with the answers
-  pasted into Part 3 → read `DESIGNER_DONE`. This is the ONLY member interaction where the conductor calls
-  AskUserQuestion; it relays the batch verbatim and authors no design content.
+- **Designer dialogue loop (Approach A):** repeat until the Designer returns `DESIGNER_DONE` — dispatch #N →
+  if the done-line is `DESIGNER_NEEDS_INPUT`, render its `## Questions` block via `AskUserQuestion`
+  (main thread; ≤4) and re-dispatch with the answers pasted into Part 3; if it is `DESIGNER_DONE`, stop.
+  The Designer self-caps at ≤2 question batches (so at most 3 dispatches). This is the ONLY member
+  interaction where the conductor calls AskUserQuestion; it relays each batch verbatim and authors no
+  design content.
 - **EXECUTE:** drift-check → Planner(register existing plan) → Build loop. The drift-check is NOT a member dispatch (there is no drift-check contract) — the conductor runs it inline: read-only Jira read + local file-existence checks per `lanes.md`. Material drift → STOP and recommend re-planning.
 - **PLAN:** Planner → PLAN-GATE → (Walker if HIGH blast) → Build loop.
 - **Build loop (per task):** write `brief-N.md` (merge the task's entry from the Planner-produced `{{RUN_FOLDER}}/tasklist.md` + prior-task interfaces + `scenario:`), dispatch Crafter, then Inspector (per `gates.md` tier×blast rules). The conductor reads `tasklist.md`; it never calls Compounds itself (the guard denies it).

@@ -40,7 +40,8 @@ Propose 2-3 named approaches. For each:
 - Blast-radius note: N files affected (from `compounds impact`)
 - Key trade-off: one pro, one con
 
-Present the candidates to the user before asking questions. This grounds the dialogue.
+Record the candidates in `design-state.md`, and include a one-line summary of each in the returned
+batch so the conductor can relay them alongside the questions.
 
 ## Part 3 — Return a Question Batch (do NOT ask the user directly)
 You CANNOT prompt the user — you are a subagent. Instead, after exploration (Part 1) and approach
@@ -124,10 +125,15 @@ After all checks pass, emit the done signal.
 
 ## Done-check
 
-**Dispatch #1** (needs input): return the single line
+Each dispatch returns EITHER `DESIGNER_NEEDS_INPUT` (a genuine gap remains and fewer than 2 batches have
+been used) OR `DESIGNER_DONE` (design complete) — never both. The first batch goes out on the initial
+dispatch; an optional second batch fires only if a genuine gap opened after the first round of answers.
+`DESIGNER_DONE` is emitted once Part 5's checks pass on whichever dispatch completes the design.
+
+**Needs input:** return the single line
 `DESIGNER_NEEDS_INPUT: <n> questions | state: {{RUN_FOLDER}}/design-state.md` (see Part 3).
 
-**Dispatch #2** (design complete): after Part 5's checks pass, return the single line
+**Design complete:** after Part 5's checks pass, return the single line
 `DESIGNER_DONE: {{RUN_FOLDER}}/design.md + spec-draft.md written`
 
 Do not paste artifact contents into your reply — the conductor reads the files directly.

@@ -32,7 +32,7 @@ Done-check: return `SCOUT_DONE: {{RUN_FOLDER}}/research.md written | gaps: <N>` 
 
 ---
 
-## Designer Dispatch Template (TWO dispatches — batch-return loop)
+## Designer Dispatch Template (up to 3 dispatches — ≤2 question batches — batch-return loop)
 
 ### Dispatch #1
 ```
@@ -54,6 +54,10 @@ You are the Kiln Designer — a patient design partner. You CANNOT prompt the us
 **Part 4 — Output contract:** Write {{RUN_FOLDER}}/design.md (4 sections) + spec-draft.md (5 sections);
   run Part-5 self-review incl. EARS lint. Done-line `DESIGNER_DONE: {{RUN_FOLDER}}/design.md + spec-draft.md written`.
 ```
+
+Note: if dispatch #2 still returns `DESIGNER_NEEDS_INPUT` (a genuine gap opened after the first round of
+answers), relay and re-dispatch it the same way as dispatch #1 — this is capped at 2 question batches
+total, so at most one further dispatch (#3) follows.
 
 ---
 
