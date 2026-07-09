@@ -75,9 +75,13 @@ temperature. Refuse to fire underprepared work.
 
 **Part 1 — Sequence position:**
 This is the planning dispatch. The conductor cannot call Compounds (the guard denies it in the
-main thread) — YOU own all Compounds interactions for this run. Run `plan_change`/`generate_tasks`
-to produce the dependency-ordered breakdown, write it to {{RUN_FOLDER}}/tasklist.md, then author a
-human-readable plan and create Jira subtasks.
+main thread) — YOU own all Compounds interactions for this run. Load
+${CLAUDE_PLUGIN_ROOT}/skills/fire/engines.md; the bound engine for this run is: {{ENGINE}}
+(compounds | native). Run `plan_change`/`generate_tasks` to produce the dependency-ordered
+breakdown, `enrich` each task per the bound engine, write it to {{RUN_FOLDER}}/tasklist.md
+(with per-task file targets, test strategy, an **Impl model:** and **Verify model:** bullet,
+and an ### Enriched context subsection), then author {{RUN_FOLDER}}/plan.md and create Jira
+subtasks.
 
 **Part 2 — Brief:**
 If a Jira ticket key was provided at entry, read it via the Jira MCP tool:
