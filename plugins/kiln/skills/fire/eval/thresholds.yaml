@@ -21,3 +21,9 @@ thresholds:
     pass_rate: 1.0
   09-conductor-guard-denies-inline:
     pass_rate: 1.0
+  10-partial-ticket-design:
+    pass_rate: 1.0
+  11-sparse-ticket-research:
+    pass_rate: 1.0
+  12-design-doc-midflow:
+    pass_rate: 1.0
