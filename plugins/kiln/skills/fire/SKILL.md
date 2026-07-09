@@ -85,7 +85,7 @@ Load `dispatch-contracts.md`. Dispatch the right member with the four-part contr
   member relay.)
 - **EXECUTE:** drift-check → Planner(register existing plan) → Build loop. The drift-check is NOT a member dispatch (there is no drift-check contract) — the conductor runs it inline: read-only Jira read + local file-existence checks per `lanes.md`. Material drift → STOP and recommend re-planning.
 - **PLAN:** Planner → PLAN-GATE → (Walker if HIGH blast) → Build loop.
-- **Build loop (per task):** write `brief-N.md` (merge the task's entry from the Planner-produced `{{RUN_FOLDER}}/tasklist.md` + prior-task interfaces + `scenario:`), dispatch Crafter, then Inspector (per `gates.md` tier×blast rules). The conductor reads `tasklist.md`; it never calls Compounds itself (the guard denies it).
+- **Build loop (per task):** write `brief-N.md` (merge the task's entry from the Planner-produced `{{RUN_FOLDER}}/tasklist.md` + prior-task interfaces + `scenario:`), dispatch Crafter, then Inspector (per `gates.md` tier×blast rules). The conductor reads `tasklist.md`; it never calls Compounds itself (the guard denies it). **Model relay:** read the task's `- **Model:**` bullet from `tasklist.md` and pass that value as the `Agent` dispatch `model` param for the Crafter and its Inspector/Walker. If the bullet is absent or not one of `haiku`/`sonnet`/`opus`, omit the `model` param — the member then runs on its frontmatter `model` (the fallback floor). The conductor never chooses the model itself; it only relays the Planner's typed recommendation.
 
 ## Verb 5 — Adjudicate & advance
 
