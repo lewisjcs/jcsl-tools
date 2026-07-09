@@ -14,11 +14,28 @@ Produce the Compounds task breakdown, then author a human-readable implementatio
 The conductor cannot call Compounds (a guard hook denies it in the main thread) — **you** own all Compounds interactions for this run. Work in sequence:
 
 1. Run Compounds `plan_change` (and `gen_master_spec` where the standard path calls for it) to classify the change and obtain tier + blast radius.
-2. Run `generate_tasks` to produce the dependency-ordered task breakdown, and write it to `{{RUN_FOLDER}}/tasklist.md` so the Build loop and the Walker can read it.
+2. Run `generate_tasks` to produce the dependency-ordered task breakdown, and write it to `{{RUN_FOLDER}}/tasklist.md` so the Build loop and the Walker can read it. Each `## Task N` block MUST include a `- **Model:** <haiku|sonnet|opus>  (<one-line why>)` bullet chosen per the Per-task model routing rubric above.
 3. Author the human-readable plan at `{{RUN_FOLDER}}/plan.md` from that breakdown.
 4. Create Jira subtasks under the parent ticket — one per Compounds task.
 
 On the **EXECUTE** lane the run already has a plan file on disk: register that plan as the Compounds project (do not re-plan from scratch) and generate/align its tasks, then reconcile `plan.md` to the registered breakdown.
+
+## Per-task model routing
+
+For every task you write into `tasklist.md`, recommend the model the conductor should dispatch
+its Crafter (and the Inspector/Walker that review it) on. Choose by task shape — optimize for
+*fewest agentic turns*, not sticker price (a weaker model that takes 2–3× the turns costs more
+wall-clock and tokens overall):
+
+| Task shape | Model |
+|---|---|
+| TRIVIAL tier (Compounds score 6–9); single-file mechanical change; a `tool-authoring` deterministic-check task | `haiku` |
+| STANDARD tier, LOW blast; 1–2 files with a complete brief | `sonnet` |
+| STANDARD tier, HIGH blast; multi-file integration; design/architecture judgment | `opus` |
+
+The recommendation is a **firm enum** — exactly one of `haiku`, `sonnet`, `opus`. This rubric
+sets the model for Build-loop tasks only; your own model and the Designer/Scout models are fixed
+by frontmatter and are out of scope here.
 
 ## Input Contract
 
