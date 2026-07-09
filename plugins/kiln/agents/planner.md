@@ -33,6 +33,8 @@ wall-clock and tokens overall):
 | STANDARD tier, LOW blast; 1–2 files with a complete brief | `sonnet` |
 | STANDARD tier, HIGH blast; multi-file integration; design/architecture judgment | `opus` |
 
+When a task matches more than one row, the most specific shape wins — a `tool-authoring` deterministic-check task is always `haiku` regardless of tier or blast.
+
 The recommendation is a **firm enum** — exactly one of `haiku`, `sonnet`, `opus`. This rubric
 sets the model for Build-loop tasks only; your own model and the Designer/Scout models are fixed
 by frontmatter and are out of scope here.
