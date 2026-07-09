@@ -86,7 +86,11 @@ Load `dispatch-contracts.md`. Dispatch the right member with the four-part contr
 Read each member's done-line + return artifact. Update the spine (`TaskUpdate`). Evaluate gates mechanically from typed fields (load `gates.md`):
 - **SPEC-GATE** (after Designer, DESIGN/RESEARCH lanes): present `spec-draft.md`; per flow-style, pause for
   explicit approval. Write ledger `SPEC-GATE: approved | <ISO>`. Then dispatch the Planner.
+  On rejection or a change request: do NOT write `approved` and do NOT dispatch the Planner; re-dispatch
+  the Designer with the feedback and re-present at SPEC-GATE.
 - **PLAN-GATE:** present `plan.md` (+ `walkthrough.md` if HIGH); per flow-style, pause for explicit approval. Write ledger `PLAN-GATE: approved | <ISO>`.
+  On rejection or a change request: do NOT write `approved` and do NOT start the Build loop; re-dispatch
+  the Planner with the feedback and re-present at PLAN-GATE.
 - **TASK-GATE** (HIGH blast): conductor reads the Inspector verdict — `spec: ✅` AND `quality: approved` → the member finalizes the Compounds task (Inspector feeds `implement_task_finalize` with its verdict evidence on STANDARD; the Crafter marks TRIVIAL tasks done via `update_task`). The conductor's own action is the `TaskUpdate` on the spine — it never calls the Compounds mutation verb inline (the conductor guard denies it). Else fix loop (cap 2) → escalate (revert task commits, HARD STOP, leave sentinels for resume).
 
 **On completion:** run `code-quality-audit` on the diff, invoke `/create-pr`, generate the retro (P3 expands this; P1 writes a terse ledger `COMPLETE:` entry). **Remove the sentinels:** `rm -f {{RUN_FOLDER}}/.active {{RUN_FOLDER}}/.spine`.

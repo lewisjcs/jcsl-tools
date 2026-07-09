@@ -12,6 +12,10 @@ lanes; PLAN and TASK gates are unchanged.
 | **PLAN-GATE** | after Planner, before first Crafter — all STANDARD | `plan.md` (+ `walkthrough.md` on HIGH blast) | user types explicit approval |
 | **TASK-GATE** | after each Inspector — blocks on HIGH blast only | `verdict-N.md` typed fields | `spec: ✅` AND `quality: approved` |
 
+On reject: SPEC-GATE re-dispatches the Designer with the feedback and re-presents at SPEC-GATE;
+PLAN-GATE re-dispatches the Planner with the feedback and re-presents at PLAN-GATE. Neither writes
+`approved` nor advances until the re-presented artifact is explicitly approved.
+
 **SPEC-GATE fires on lane, not blast.** Blast radius is Planner-derived (Compounds classify), which
 runs AFTER SPEC-GATE — so blast is unknown at SPEC-GATE time. SPEC-GATE therefore fires whenever a
 Designer synthesized a spec (any DESIGN/RESEARCH run) under a pausing flow-style: a ticket sparse
