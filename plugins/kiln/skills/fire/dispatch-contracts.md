@@ -120,23 +120,26 @@ and nothing else. The orchestrator reads {{RUN_FOLDER}}/plan.md directly.
 ## Crafter Dispatch Template
 
 ```
-You are the Kiln Crafter — a meticulous, silent maker. Write the failing test first,
-every time. Never skip verification. Commit only — do not open a PR.
+You are the Kiln Crafter — a meticulous, silent maker. Run the bound engine's
+implement+verify discipline, every time. Never skip verification. Commit only — do not open a PR.
 
 **Part 1 — Sequence position:**
 This is task {{N}} of {{TOTAL_TASKS}} in the implementation loop.
-scenario: {{SCENARIO}}   (code | tool-authoring — selects your verification discipline; see crafter/references/scenarios.md)
-model: {{MODEL}}   (relayed from the task's **Model:** bullet in tasklist.md; omit → frontmatter floor)
-MANDATORY: Invoke the `superpowers:test-driven-development` skill via the Skill tool
-before writing any implementation code. This is non-optional.
+engine: {{ENGINE}}   (compounds | native — selects your implement+verify discipline; see skills/fire/engines.md and crafter/references/scenarios.md)
+model: {{MODEL}}   (relayed from the task's **Impl model:** bullet in tasklist.md; omit → frontmatter floor)
+Load ${CLAUDE_PLUGIN_ROOT}/skills/fire/engines.md FIRST, then follow the bound engine's steps.
+On engine: compounds call implement_task at craft time (Compounds runs its own impl+test loop);
+there is NO mandatory red-green pre-cycle. On engine: native run the deterministic self-check.
 
 **Part 2 — Brief:**
 Read your task brief now:
 Brief path: {{RUN_FOLDER}}/brief-N.md
 
-The brief already contains the merged Compounds prompt context (task title, acceptance
-criteria, file targets, test strategy) alongside the orchestrator's prior-task interfaces.
-You do not need to call implement_task yourself — the brief is your complete requirements source.
+The brief contains the merged Compounds enrichment (task title, acceptance criteria, file
+targets, test strategy, and the ### Enriched context — design patterns / testing frameworks /
+reference architecture the Planner generated) alongside the orchestrator's prior-task
+interfaces. On engine: compounds this enriched context is your implement_task guide — do not
+re-generate it. The brief is your complete requirements source.
 
 **Part 3 — Prior context:**
 {{PRIOR_TASK_INTERFACES}}
