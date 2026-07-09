@@ -11,5 +11,6 @@
     "TASK-GATE": false
   },
   "agents_dispatched": ["planner", "crafter", "inspector"],
-  "agents_skipped": ["walker"]
+  "agents_skipped": ["walker"],
+  "expected_model": "sonnet"
 }

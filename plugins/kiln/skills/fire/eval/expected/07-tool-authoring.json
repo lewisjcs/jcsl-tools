@@ -4,5 +4,6 @@
   "gates": { "PLAN-GATE": true, "TASK-GATE": false },
   "agents_dispatched": ["planner", "crafter", "inspector"],
   "agents_skipped": ["walker"],
-  "crafter_verification": "deterministic-self-check"
+  "crafter_verification": "deterministic-self-check",
+  "expected_model": "haiku"
 }

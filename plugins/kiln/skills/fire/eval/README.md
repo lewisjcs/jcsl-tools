@@ -54,6 +54,9 @@ Each fixture in `expected/` follows this structure:
 }
 ```
 
+- `expected_model` (optional): the model the conductor should relay for this scenario's Build-loop
+  tasks, per the Planner's routing rubric (`agents/planner.md`). Present only on build-loop fixtures.
+
 SPEC-GATE is live (P2.1): it fires after the Designer on DESIGN/RESEARCH runs, before the Planner.
 Gate keys now include SPEC-GATE alongside PLAN-GATE and TASK-GATE.
 A `HALT-AND-ASK` lane (scenario 06) dispatches no members: an out-of-scope or artifact-mismatched
