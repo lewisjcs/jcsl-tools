@@ -68,7 +68,19 @@ in Verb 5.)
 **Branch precondition:** the session runs from the non-git workspace, so operate on the TARGET REPO by
 path with `git -C <repo>` (`<repo>` = the repo the change targets, e.g. `repos/<name>`, derived from the
 plan's file targets or the entry). Run `git -C <repo> symbolic-ref --short HEAD`; if `main`/`master`,
-`git -C <repo> checkout -b kiln/<run-id>` and write ledger `BRANCH: created kiln/<run-id> | <ISO>`.
+create a work branch. **The `contentful-git-create-branch` skill is the single source of truth for the
+name** — its convention is `<type>/<TICKET-KEY>-<short-description>` (NOT the old `kiln/<run-id>`, which
+matched no Contentful repo convention). Derive the parts without `cd`-ing into the repo (OS runs from the
+workspace root):
+- `<type>` from the bound scenario — `doc`→`docs`, `tool-authoring`→`chore`, `code`→`feat` (or `fix` if the
+  ticket is a bug). Use the ticket's own type when the Jira issue type makes it unambiguous.
+- `<TICKET-KEY>` = the run's Jira key, uppercased (e.g. `EXT-7366`). Keyless net-new run → use the kebab
+  run-id slug in the `<short-description>` position and pick `<type>` from the scenario, no key segment.
+- `<short-description>` = kebab-case slug from the ticket summary.
+Then `git -C <repo> checkout -b <type>/<TICKET-KEY>-<short-description>` (if it already exists, `checkout`
+it instead — never overwrite; per the skill's safety rules) and write ledger
+`BRANCH: created <branch> (repo: <name>) | <ISO>`. The skill's own `git checkout -b` runs from cwd; here
+we substitute `git -C <repo>` for the same effect since the conductor must not `cd`.
 
 **Why-narration (always on, flow-style-independent — spec §5b, pattern E3).** At each routing/engine/gate decision, emit a one-line rationale to the user AND the ledger. Target decision points only — not verbose everything-narration. This is constant regardless of flow-style (the flow-style dials whether a gate *pauses*, not whether the reasoning is *shown*). Examples:
 - `[Kiln] STANDARD+LOW blast → Inspector runs lightweight (verify-model relayed), TASK-GATE non-blocking. Advancing on findings-recorded.`
