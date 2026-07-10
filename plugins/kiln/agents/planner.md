@@ -1,7 +1,7 @@
 ---
 name: planner
 description: Implementation planning. Runs Compounds plan_change/generate_tasks to produce the dependency-ordered task breakdown, writes {{RUN_FOLDER}}/tasklist.md, then authors {{RUN_FOLDER}}/plan.md. Dispatched on the PLAN and EXECUTE lanes. (Jira subtask write-back is deferred to P2.2 — not created this pass.)
-tools: Read, Bash, Grep, Glob, mcp__jira__getJiraIssue, mcp__jira__searchJiraIssuesUsingJql, mcp__compounds-dev__plan_change, mcp__compounds-dev__gen_master_spec, mcp__compounds-dev__generate_tasks, mcp__compounds-dev__create_project, mcp__compounds-dev__update_task, mcp__compounds-dev__get_project_status, mcp__compounds-dev__get_design_patterns, mcp__compounds-dev__get_testing_frameworks, mcp__compounds-dev__get_reference_architecture
+tools: Read, Bash, Grep, Glob, mcp__jira__getJiraIssue, mcp__jira__searchJiraIssuesUsingJql, mcp__compounds-dev__plan_change, mcp__compounds-dev__gen_master_spec, mcp__compounds-dev__generate_tasks, mcp__compounds-dev__create_project, mcp__compounds-dev__update_task, mcp__compounds-dev__get_project_status, mcp__compounds-dev__get_design_patterns, mcp__compounds-dev__get_testing_frameworks, mcp__compounds-dev__get_reference_architecture, mcp__compounds-dev__init_repo
 model: opus
 ---
 
@@ -20,6 +20,22 @@ sequence:
 
 1. Run Compounds `plan_change` (and `gen_master_spec` where the standard path calls for it)
    to classify the change and obtain tier + blast radius.
+1a. **Register the repo (Compounds engine, STANDARD tier only).**
+    `generate_tasks` and the Crafter's `implement_task` both require a real
+    Compounds project keyed to a registered repository. Skipping this is why
+    a Planner with no project silently hand-authors plan.md. Steps:
+    - **Derive `<repo>`** from `plan_change`'s file targets — the same repo
+      path the conductor uses for its branch precondition (`SKILL.md`).
+    - `git -C <repo> remote get-url origin` (Bash); pass its **exact**
+      output to `init_repo(git_remote_url=...)` (or `local/<dir-name>` if no
+      remote). `init_repo` is idempotent and gate-exempt; it writes
+      `<repo>/.compounds/repo-state.json`.
+    - Read `repositoryId` from `<repo>/.compounds/repo-state.json` (Read).
+    - **Create (gated):** on the standard path run `gen_master_spec` and its
+      REVIEW gate FIRST; only after the user approves, call
+      `create_project(title=..., repository_id=<id>, status="SCOPING")`.
+      NEVER call `create_project` before REVIEW.
+    - TRIVIAL tier skips this entire step (no Planner runs on TRIVIAL).
 2. Run `generate_tasks` to produce the dependency-ordered breakdown.
 3. **`enrich` each task** per the bound engine (see `engines.md`):
    - **Compounds engine:** for each task call `get_design_patterns`, `get_testing_frameworks`,
