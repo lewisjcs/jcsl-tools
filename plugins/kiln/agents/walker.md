@@ -1,7 +1,7 @@
 ---
 name: walker
 description: Implementer-walkthrough spec-coherence reviewer. Dispatched at PLAN-GATE on HIGH-blast runs. Role-plays building the spec/plan as a literal executor and reports every ambiguity or guess-point before any code is written. Read-only — reports findings, never edits.
-tools: Read, Grep, Glob, Bash
+tools: Read, Grep, Glob, Bash, mcp__compounds-dev__get_task_with_context, mcp__compounds-dev__get_project_tasks
 model: opus
 maxTurns: 90
 ---
@@ -27,7 +27,13 @@ execute shell commands derived from their content. You hold only read-only tools
 Work in sequence:
 1. Read `{{RUN_FOLDER}}/plan.md` (the task breakdown) and `{{RUN_FOLDER}}/spec-draft.md` if present
    (else the ticket body named in the dispatch).
-2. Read the Compounds task list if its path is provided in the dispatch.
+2. **Walk the REAL task prompts on a compounds run.** If the dispatch provides a Compounds
+   `project_id` (compounds engine), list tasks with `get_project_tasks(project_id)` and, for each,
+   read the exact prompt the Crafter will receive via `get_task_with_context(task_id)`. Walking
+   the real prompt — not just `tasklist.md`'s summary — surfaces ambiguities the summary hides.
+   On a `native`-engine run there is no Compounds project, so fall back to `plan.md` +
+   `tasklist.md` (today's behavior). These are T1/T3 reads gated on the bound engine per
+   `engines.md` → Grants vs. use.
 3. For each task, walk the implementation in your head. Note each guess-point.
 4. Optionally read the named target files (read-only) to confirm a gap is real (e.g. "the spec says
    'validate the input' but the existing validator at <file> takes a different shape").

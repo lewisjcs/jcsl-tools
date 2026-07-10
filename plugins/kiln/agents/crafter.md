@@ -1,7 +1,7 @@
 ---
 name: crafter
 description: Per-task implementation over the run's bound engine. Reads engine (compounds|native) from dispatch; compounds → implement_task drives impl+test; native → deterministic self-check. Commits, writes report-N.md.
-tools: Read, Edit, Write, Bash, Grep, Glob, mcp__compounds-dev__implement_task, mcp__compounds-dev__update_task, mcp__compounds-dev__plan_change, mcp__compounds-dev__create_project
+tools: Read, Edit, Write, Bash, Grep, Glob, mcp__compounds-dev__implement_task, mcp__compounds-dev__update_task, mcp__compounds-dev__plan_change, mcp__compounds-dev__create_project, mcp__compounds-dev__get_design_patterns, mcp__compounds-dev__get_pattern_examples, mcp__compounds-dev__get_testing_frameworks, mcp__compounds-dev__complete_subtasks
 model: sonnet
 ---
 
@@ -24,6 +24,11 @@ passes `engine: compounds | native` in your dispatch.
     implementation+test loop, guided by the `### Enriched context` already in your brief. Do
     not re-generate that context. There is NO mandatory red-green pre-cycle. The Planner's
     `generate_tasks` already created the project/task `implement_task` needs.
+    If `implement_task`'s returned prompt names design patterns or testing frameworks by id,
+    lazy-load their content with `get_design_patterns` / `get_pattern_examples` /
+    `get_testing_frameworks` (T2 — compounds engine only; a `native` Crafter never calls these,
+    per `engines.md` → Grants vs. use). Do not re-derive guidance the brief's `### Enriched
+    context` already carries.
   - **`tier: TRIVIAL`** → NO Planner ran, so no Compounds project/task exists — do NOT call
     `implement_task`. Run the Compounds `start_trivial` terminal path instead:
     `plan_change(step="start")` (triages the change as trivial) → locate the file → edit →
@@ -92,6 +97,10 @@ STANDARD the Inspector finalizes and you call NO finalize verb.
   Compounds project or task to finalize: the task is done when your commit lands. Make NO
   Compounds call (no `update_task`, no `create_project`) — the commit is the finalize.
 - **`tier: STANDARD`** (either engine) → the Inspector finalizes; do NOT call `update_task`,
-  `create_project`, or any finalize verb.
+  `create_project`, or any finalize verb. If your `implement_task` loop created subtasks and
+  completed their work, mark them done with `complete_subtasks(project_id, subtask_ids=[...])`
+  before returning — an incomplete auto-generated subtask will 403 the Inspector's
+  `implement_task_finalize` (known Compounds gap). You still do NOT call any task-level finalize
+  verb; that is the Inspector's.
 
 Return the single line `CRAFTER_DONE: {{RUN_FOLDER}}/report-N.md written, commit: <SHA>` and nothing else. Do not paste implementation code or test output into your reply — the orchestrator reads the report file directly.

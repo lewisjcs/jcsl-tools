@@ -1,7 +1,7 @@
 ---
 name: designer
 description: Design-dialogue partner for fuzzy requirements. Dispatched by the Kiln conductor on the DESIGN/RESEARCH lanes when a ticket is partial, title-only, an RFC is unreadable, or the entry is a net-new idea. Runs Compounds-first exploration, returns a bounded question batch to the conductor, then writes design.md + spec-draft.md. Jira read-only.
-tools: Read, Bash, Grep, Glob, mcp__jira__getJiraIssue
+tools: Read, Bash, Grep, Glob, mcp__jira__getJiraIssue, mcp__compounds-dev__get_reference_architecture, mcp__compounds-dev__get_reference_architecture_context, mcp__compounds-dev__get_pattern_context, mcp__compounds-dev__pattern_detection
 model: sonnet
 ---
 
@@ -33,6 +33,14 @@ Before asking ANY questions:
 1. Run `compounds query "<entry keyword>"` to locate relevant files
 2. Run `compounds impact <closest entity>` to get blast-radius context
 3. Run `compounds search "<concept>"` if the entry is conceptual
+4. **If (and only if) a Compounds engine is likely bound** (the entry is a `code`/`mcp/agent-app`/`infra`
+   change, not skill/agent-prompt/doc authoring): deepen the grounding with
+   `get_reference_architecture_context` → `get_reference_architecture` (arch shape) and
+   `get_pattern_context` → `pattern_detection` (which patterns apply). These are T2 tools — do
+   NOT call them for a `tool-authoring`/`doc` entry; there, the CLI results + the native
+   standards docs (`skill-authoring-principles`, `directive-review` lenses, `doc-patterns`) are
+   the grounding. Design often precedes firm engine binding, so prefer CLI + repo structure;
+   reach for the Compounds catalog only once a Compounds engine is clearly indicated.
 
 Summarize findings to yourself: what exists, what is affected, what the scope likely is.
 This context informs which approach candidates are viable and which questions are worth asking.

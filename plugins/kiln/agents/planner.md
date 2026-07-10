@@ -1,7 +1,7 @@
 ---
 name: planner
 description: Implementation planning. Runs Compounds plan_change/generate_tasks to produce the dependency-ordered task breakdown, writes {{RUN_FOLDER}}/tasklist.md, then authors {{RUN_FOLDER}}/plan.md. Dispatched on the PLAN and EXECUTE lanes. (Jira subtask write-back is deferred to P2.2 — not created this pass.)
-tools: Read, Bash, Grep, Glob, mcp__jira__getJiraIssue, mcp__jira__searchJiraIssuesUsingJql, mcp__compounds-dev__plan_change, mcp__compounds-dev__gen_master_spec, mcp__compounds-dev__generate_tasks, mcp__compounds-dev__create_project, mcp__compounds-dev__update_task, mcp__compounds-dev__get_project_status, mcp__compounds-dev__get_design_patterns, mcp__compounds-dev__get_testing_frameworks, mcp__compounds-dev__get_reference_architecture
+tools: Read, Bash, Grep, Glob, mcp__jira__getJiraIssue, mcp__jira__searchJiraIssuesUsingJql, mcp__compounds-dev__plan_change, mcp__compounds-dev__gen_spec, mcp__compounds-dev__gen_master_spec, mcp__compounds-dev__gen_project_spec, mcp__compounds-dev__validate_master_spec, mcp__compounds-dev__validate_spec, mcp__compounds-dev__validate_project_specs, mcp__compounds-dev__save_impact_report, mcp__compounds-dev__generate_tasks, mcp__compounds-dev__implement_all_tasks, mcp__compounds-dev__init_repo, mcp__compounds-dev__create_project, mcp__compounds-dev__update_project, mcp__compounds-dev__get_project, mcp__compounds-dev__get_all_projects, mcp__compounds-dev__get_project_status, mcp__compounds-dev__get_project_tasks, mcp__compounds-dev__add_task, mcp__compounds-dev__delete_task, mcp__compounds-dev__update_task, mcp__compounds-dev__get_pattern_context, mcp__compounds-dev__pattern_detection, mcp__compounds-dev__get_design_patterns, mcp__compounds-dev__get_pattern_examples, mcp__compounds-dev__get_reference_architecture, mcp__compounds-dev__get_reference_architecture_context, mcp__compounds-dev__get_testing_frameworks
 model: opus
 ---
 
@@ -20,11 +20,31 @@ sequence:
 
 1. Run Compounds `plan_change` (and `gen_master_spec` where the standard path calls for it)
    to classify the change and obtain tier + blast radius.
+1a. **Register the repo (Compounds engine, STANDARD tier only).**
+    `generate_tasks` and the Crafter's `implement_task` both require a real
+    Compounds project keyed to a registered repository. Skipping this is why
+    a Planner with no project silently hand-authors plan.md. Steps:
+    - **Derive `<repo>`** from `plan_change`'s file targets — the same repo
+      path the conductor uses for its branch precondition (`SKILL.md`).
+    - `git -C <repo> remote get-url origin` (Bash); pass its **exact**
+      output to `init_repo(git_remote_url=...)` (or `local/<dir-name>` if no
+      remote). `init_repo` is idempotent and gate-exempt; it writes
+      `<repo>/.compounds/repo-state.json`.
+    - Read `repositoryId` from `<repo>/.compounds/repo-state.json` (Read).
+    - **Create (gated):** on the standard path run `gen_master_spec` and its
+      REVIEW gate FIRST; only after the user approves, call
+      `create_project(title=..., repository_id=<id>, status="SCOPING")`.
+      NEVER call `create_project` before REVIEW.
+    - TRIVIAL tier skips this entire step (no Planner runs on TRIVIAL).
 2. Run `generate_tasks` to produce the dependency-ordered breakdown.
 3. **`enrich` each task** per the bound engine (see `engines.md`):
-   - **Compounds engine:** for each task call `get_design_patterns`, `get_testing_frameworks`,
-     and `get_reference_architecture`; capture their guidance as text. Do NOT call
-     `implement_task` — that is the Crafter's craft-time call (exactly once, there).
+   - **Compounds engine:** for each task, ground it via the pattern funnel: `get_pattern_context`
+     (discover valid filter labels) → `pattern_detection` (which patterns apply) →
+     `get_design_patterns` (load their markdown) + `get_reference_architecture_context` /
+     `get_reference_architecture` (arch grounding) + `get_testing_frameworks`; capture their
+     guidance as text. `save_impact_report` may persist the structured findings so
+     `pattern_detection` can filter server-side. Do NOT call `implement_task` — that is the
+     Crafter's craft-time call (exactly once, there).
    - **Native engine:** name the standards source for each task (`skill-authoring-principles`,
      the `directive-review` lenses, or `doc-patterns`) — this is what the Crafter authors against.
 4. Write the breakdown to `{{RUN_FOLDER}}/tasklist.md` so the Build loop and the Walker can
@@ -33,7 +53,17 @@ sequence:
    `enrich` output as text. **This subsection is the fix for enrichment evaporating** — the
    conductor merges it into `brief-N.md`, and the Crafter consumes it there instead of
    re-generating it.
-5. Author the human-readable plan at `{{RUN_FOLDER}}/plan.md` from that breakdown.
+5. **Prioritize-kickoff (compounds engine, STANDARD tier only) — write `task-order.json`, then STOP.**
+   After `generate_tasks` completes (poll `get_project_status` until `breakdown_status == COMPLETED`
+   and `task_count > 0` — confirm with `get_project_tasks`), call
+   `implement_all_tasks(project_id, caller_role="subagent")` **once**. Follow the returned
+   prioritize prompt to compute dependency order and write `.compounds/<project_id>/task-order.json`.
+   Then **STOP** — do NOT drive the implementation loop, even though the prompt tells you to; the
+   conductor dispatches a per-task Crafter for each task, and each Crafter reads `task-order.json`
+   and calls `implement_task` itself (see `engines.md` → the prioritize kickoff note). This step is
+   the one thing that lets the per-task `implement_task` satisfy its `task-order.json` prerequisite.
+   NATIVE engine and TRIVIAL tier skip this step entirely (no Compounds project exists).
+6. Author the human-readable plan at `{{RUN_FOLDER}}/plan.md` from that breakdown.
 
 Jira subtask creation is **deferred to P2.2** (`SKILL.md` scope note): do NOT create subtasks. The
 plan's Task Breakdown is the durable record this pass; creating subtasks without the
@@ -145,5 +175,12 @@ titles at `## ` depth so `### Task N:` sub-headers — at any indentation — do
 
 If the count is not exactly `3`, a required section is missing or misnamed — add/fix it and
 re-run the grep. Do NOT return `PLANNER_DONE` until the grep prints `3`.
+
+**Prioritize-kickoff assertion (compounds + STANDARD only):** confirm the order file exists —
+`test -f ".compounds/$PROJECT_ID/task-order.json" && echo ORDER_OK`. Expected: `ORDER_OK`. If
+it prints nothing, `implement_all_tasks` did not run or did not write the file — re-run step 5
+before returning `PLANNER_DONE`. A missing order file means every downstream Crafter's
+`implement_task` will fail its prerequisite. (Skip this assertion on NATIVE/TRIVIAL — there is
+no project.)
 
 Return the single line `PLANNER_DONE: {{RUN_FOLDER}}/plan.md written, subtasks: deferred (P2.2)` and nothing else. Do not paste the plan contents into your reply — the orchestrator reads the file directly.
