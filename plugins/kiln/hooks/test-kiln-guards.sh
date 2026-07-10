@@ -75,6 +75,12 @@ assert_deny  "conductor: main-thread Compounds mutation while active" kiln-guard
 assert_allow "conductor: main-thread Compounds READ while active" kiln-guard-conductor.sh \
   "{$CWD\"tool_name\":\"mcp__compounds-dev__get_task\",\"tool_input\":{}}"
 
+# Scratch paths outside <workspace>/repos/ are conductor working space — must ALLOW.
+assert_allow "conductor: Write to /tmp scratch while active" kiln-guard-conductor.sh \
+  "{$CWD\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\"/tmp/ais-204-pr-body.md\"}}"
+assert_allow "conductor: Write to \$TMPDIR-style scratch while active" kiln-guard-conductor.sh \
+  "{$CWD\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\"$WORKSPACE/scratch/notes.md\"}}"
+
 # --- housekeeping allow-path (spec §6a): memory dir + journal are conductor housekeeping, not source ---
 # Memory dir mirrors the OS layout: <something>/.claude/projects/<slug>/memory/<file>.
 MEMDIR="$WORKSPACE/.claude/projects/-some-workspace-slug/memory"

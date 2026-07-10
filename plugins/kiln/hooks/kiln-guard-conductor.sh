@@ -28,36 +28,22 @@ case "$TOOL" in
     kiln_deny "The Kiln conductor cannot call Compounds mutation tools inline. Dispatch the Planner or Crafter member; the member holds these tools." ;;
 esac
 
-# Source mutation: deny unless the target is workspace project space. The exemption is the
-# whole `<workspace>/projects/active/` tree, anchored on the resolved workspace root — run
-# folders (`.../<run-id>/kiln/`), ticket-root docs (`.../<run-id>/grounding.md`, spec/plan),
-# and `.handoffs/` all live there and are conductor working space, NOT shipped source. Shipped
-# source lives under `<workspace>/repos/` (outside `projects/`), which stays denied. This is
-# intentionally NOT per-run scoped: the conductor may write any project folder (user direction) —
-# the boundary is "project space vs source repo", not "whose run". Anchoring on the workspace
-# root (not a bare `*/projects/active/*` glob) defeats a source repo that nests its own
-# `projects/active/` subtree — the same path-confusion class the memory-decoy case guards.
-# $RUN_DIR is `<workspace>/projects/active/<run-id>/kiln`; strip at `/projects/active/` for the root.
-WS_PROJECTS="${RUN_DIR%%/projects/active/*}/projects/active"
+# Source mutation: the ONLY protected tree is shipped source under <workspace>/repos/.
+# Everything else the conductor may write — workspace project space, /tmp scratch, memory,
+# journal — is working space, not shipped source. Deny ONLY writes whose target resolves
+# under <workspace>/repos/. Anchoring on the workspace root (derived below) — not a bare
+# */repos/* glob — avoids matching an unrelated "repos" segment elsewhere in a path.
+WS_ROOT="${RUN_DIR%%/projects/active/*}"
 case "$TOOL" in
   Edit|Write|MultiEdit|NotebookEdit)
     FP=$(kiln_field '.tool_input.file_path')
     [ -z "$FP" ] && FP=$(kiln_field '.tool_input.notebook_path')
+    [ -z "$FP" ] && exit 0                       # no path resolvable — fail-open
     case "$FP" in
-      "$WS_PROJECTS"/*) exit 0 ;;  # workspace project space — allowed
-      "") exit 0 ;;                # no path resolvable — fail-open
+      "$WS_ROOT"/repos/*)
+        kiln_deny "The Kiln conductor cannot edit shipped source under repos/ inline. Dispatch the Crafter member — it holds Edit/Write." ;;
     esac
-    # Housekeeping allow-path (spec §5a): the conductor may write workspace housekeeping —
-    # OS memory files and the daily journal — which are categorically NOT shipped source.
-    # Matched STRUCTURALLY (no hard-coded user path): a memory file lives under
-    # `.../.claude/projects/<slug>/memory/`, and a journal entry is `journal/YYYY/MM/DD.md`.
-    case "$FP" in
-      "${HOME:-}"/.claude/projects/*/memory/*) exit 0 ;;        # OS memory dir (anchored under $HOME/.claude)
-    esac
-    if printf '%s' "$FP" | grep -Eq '(^|/)journal/[0-9]{4}/[0-9]{2}/[0-9]{2}\.md$'; then
-      exit 0                                                     # daily journal
-    fi
-    kiln_deny "The Kiln conductor cannot edit source files inline. Dispatch the Crafter member — it holds Edit/Write." ;;
+    exit 0 ;;                                     # any non-source path — allowed
 esac
 
 exit 0
