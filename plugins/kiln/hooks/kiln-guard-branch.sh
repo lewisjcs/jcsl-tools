@@ -24,6 +24,6 @@ case "$FP" in */projects/active/*/kiln/*) exit 0 ;; "") exit 0 ;; esac
 # `git symbolic-ref` from cwd would read the wrong repo (or none) and never fire.
 BRANCH="${KILN_TEST_BRANCH:-$(git -C "$(dirname "$FP")" symbolic-ref --short HEAD 2>/dev/null || echo "")}"
 if [ "$BRANCH" = "main" ] || [ "$BRANCH" = "master" ]; then
-  kiln_deny "Refusing to modify source on '$BRANCH'. Create a work branch first: git checkout -b kiln/<key>."
+  kiln_deny "Refusing to modify source on '$BRANCH'. Create a work branch first per contentful-git-create-branch: git checkout -b <type>/<TICKET-KEY>-<short-description> (e.g. docs/EXT-7366-...)."
 fi
 exit 0

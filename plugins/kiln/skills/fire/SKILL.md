@@ -19,7 +19,7 @@ returns. It does not implement, plan, or design inline. Members hold the working
 - `gates.md` — at the first gate (gate conditions, tier×blast behavior, flow-styles).
 - `dispatch-contracts.md` — once per member dispatch (four-part templates).
 
-**Ledger:** `{{RUN_FOLDER}}/progress.md`, written before every gate transition. On resume after `/clear`, read it and continue from the first incomplete task.
+**Ledger:** `{{RUN_FOLDER}}/progress.md`, written before every gate transition (task state + `NUDGE-SEEN`/`YIELD` flags). On a context-preservation yield the conductor also writes `handoff.md` (narrative). On resume after `/clear`, read both and continue from the first incomplete task.
 
 **Scope (P2.1):** EXECUTE / PLAN / TRIVIAL / RESUME / **DESIGN / RESEARCH** lanes; `code` + `tool-authoring` + `doc` scenarios. SPEC-GATE, Scout, and the Designer are live. Still P2.2: the `mcp/agent-app` / `infra` scenarios (they HALT) and all Jira write-back. An out-of-scope scenario or ambiguous doc shape → HALT-AND-ASK. Every run binds one engine (`code`→compounds, `tool-authoring`/`doc`→native) and is ledger-tagged `engine:`.
 
@@ -41,8 +41,10 @@ to `mkdir -p {{RUN_FOLDER}}`. A net-new entry's slug is a guess: CONFIRM it with
 `AskUserQuestion` (see Verb 4) BEFORE `mkdir -p {{RUN_FOLDER}}` and before any sentinel write — a
 rejected slug must not orphan a folder or sentinels under the wrong name.
 If the entry includes a spec-shaped file (a PLAN-from-spec run — see `lanes.md`), stash it at
-`{{RUN_FOLDER}}/spec-draft.md` (`cp` — a run-folder write, guard-exempt). That copy is the sole P1
-producer of `spec-draft.md`; the Planner and Walker read it there. No spec file at entry → no stash, and
+`{{RUN_FOLDER}}/spec-draft.md` (`cp` — a project-space write, guard-exempt: the conductor guard
+exempts the whole `<WORKSPACE>/projects/active/` tree — run folders, ticket-root docs, and
+`.handoffs/` — as working space; only source under `<WORKSPACE>/repos/` is denied inline). That copy
+is the sole P1 producer of `spec-draft.md`; the Planner and Walker read it there. No spec file at entry → no stash, and
 those consumers fall through to the ticket body (they already read `spec-draft.md` only "if present").
 
 ## Verb 2 — Classify & announce (LOUDLY)
@@ -66,7 +68,19 @@ in Verb 5.)
 **Branch precondition:** the session runs from the non-git workspace, so operate on the TARGET REPO by
 path with `git -C <repo>` (`<repo>` = the repo the change targets, e.g. `repos/<name>`, derived from the
 plan's file targets or the entry). Run `git -C <repo> symbolic-ref --short HEAD`; if `main`/`master`,
-`git -C <repo> checkout -b kiln/<run-id>` and write ledger `BRANCH: created kiln/<run-id> | <ISO>`.
+create a work branch. **The `contentful-git-create-branch` skill is the single source of truth for the
+name** — its convention is `<type>/<TICKET-KEY>-<short-description>` (NOT the old `kiln/<run-id>`, which
+matched no Contentful repo convention). Derive the parts without `cd`-ing into the repo (OS runs from the
+workspace root):
+- `<type>` from the bound scenario — `doc`→`docs`, `tool-authoring`→`chore`, `code`→`feat` (or `fix` if the
+  ticket is a bug). Use the ticket's own type when the Jira issue type makes it unambiguous.
+- `<TICKET-KEY>` = the run's Jira key, uppercased (e.g. `EXT-7366`). Keyless net-new run → use the kebab
+  run-id slug in the `<short-description>` position and pick `<type>` from the scenario, no key segment.
+- `<short-description>` = kebab-case slug from the ticket summary.
+Then `git -C <repo> checkout -b <type>/<TICKET-KEY>-<short-description>` (if it already exists, `checkout`
+it instead — never overwrite; per the skill's safety rules) and write ledger
+`BRANCH: created <branch> (repo: <name>) | <ISO>`. The skill's own `git checkout -b` runs from cwd; here
+we substitute `git -C <repo>` for the same effect since the conductor must not `cd`.
 
 **Why-narration (always on, flow-style-independent — spec §5b, pattern E3).** At each routing/engine/gate decision, emit a one-line rationale to the user AND the ledger. Target decision points only — not verbose everything-narration. This is constant regardless of flow-style (the flow-style dials whether a gate *pauses*, not whether the reasoning is *shown*). Examples:
 - `[Kiln] STANDARD+LOW blast → Inspector runs lightweight (verify-model relayed), TASK-GATE non-blocking. Advancing on findings-recorded.`
@@ -109,12 +123,20 @@ Read each member's done-line + return artifact. Update the spine (`TaskUpdate`).
 - **TASK-GATE** (the MEMBER always finalizes — the conductor never calls a Compounds mutation verb inline; the guard denies it. On STANDARD the **Inspector** finalizes: compounds → `implement_task_finalize` with verdict evidence, native → `update_task`. On TRIVIAL the **Crafter** already marked it done. The conductor's own action is the `TaskUpdate` on the spine plus writing the per-task ledger line `DONE: task N | engine: <compounds|native> | <ISO>`.):
   - **HIGH blast (gate blocks):** conductor reads the verdict — `spec: ✅` AND `quality: approved` → the Inspector finalizes and the run advances. Else fix loop (cap 2) → escalate (revert task commits, HARD STOP, leave sentinels for resume).
   - **LOW blast (gate does NOT block):** the Inspector finalizes regardless of verdict (findings are advisory); the run always advances. No fix loop at LOW.
+- **Context-preservation yield (all gates, every flow-style — see `gates.md`).** When the workspace
+  reset-nudge appears in your context (the "invoke the context-economy skill lever router" message),
+  record `NUDGE-SEEN: <ISO>` in `progress.md` once. Thereafter, at the NEXT gate boundary (SPEC/PLAN/
+  TASK), before advancing: invoke `context-economy:handoff` to write `{{RUN_FOLDER}}/handoff.md`
+  (narrative; it points to `progress.md` for task state), write ledger `YIELD: context-preservation at
+  <gate>, task <N/total> | <ISO>`, then END YOUR TURN with a status line: the checkpoint phase/task
+  and "Context is high — checkpointed. Run `/clear`, then `/kiln <run-id>` to resume in a fresh
+  session." Do NOT auto-`/clear`. If the run reaches `COMPLETE` before the next gate, finish normally.
 
 **On completion:** run `code-quality-audit` on the diff, invoke `/create-pr`, generate the retro (P3 expands this; P1 writes a terse ledger `COMPLETE:` entry). **Remove the sentinels:** `rm -f {{RUN_FOLDER}}/.active {{RUN_FOLDER}}/.spine`.
 
 ## Resume
 
-On re-invoke with `{{RUN_FOLDER}}/.active` present: read `progress.md`, find the first task without a `DONE`, re-create the spine (Verb 3), and continue the Build loop from there.
+On re-invoke with `{{RUN_FOLDER}}/.active` present: read `progress.md` (task state — source of truth) and `handoff.md` if present (narrative context from a context-preservation yield), find the first task without a `DONE`, re-create the spine (Verb 3), and continue the Build loop from there. A `YIELD:` ledger entry with no later `DONE` marks exactly where the previous session stopped.
 
 **Re-stamp ownership first:** `/clear` mints a NEW session id, so a resumed run's sentinel still carries
 the *previous* session's id (or is empty/legacy) and the guards would treat this window as non-owning.

@@ -48,6 +48,27 @@ blast they resolve to auto-advance regardless of flow-style.
 
 Default `guided`. Owner sets per-run (`/kiln <KEY> --flow hands_free`). Never pass `flow_style` to Compounds unless the owner explicitly set one.
 
+## Context-preservation yield (separate axis from flow-style)
+
+This is orthogonal to the tier×blast precedence above: tier×blast decides *whether a gate blocks*;
+this decides *whether the conductor pauses to hand off before its own context grows unsafe*. It fires
+under EVERY flow-style, including `hands_free`.
+
+**Trigger.** The workspace reset-nudge Stop hook fires once (~100 assistant turns) and injects a
+"invoke the context-economy skill lever router" message into the conductor's context. On seeing that
+message, the conductor records `NUDGE-SEEN: <ISO>` in `progress.md` (once per run).
+
+**Action.** While `NUDGE-SEEN` is unset, flow-style governs gates normally. Once it is set, at the
+**next gate boundary** (SPEC-GATE / PLAN-GATE / a task's TASK-GATE) the conductor performs a **forced
+yield regardless of flow-style**: it invokes `context-economy:handoff` to write
+`{{RUN_FOLDER}}/handoff.md` (narrative reasoning; it references `progress.md` for task state rather
+than duplicating it), then ends its turn with a status line naming the checkpoint phase/task and
+instructing the user to `/clear` and re-invoke `/kiln <run-id>`. It does NOT auto-`/clear`.
+
+**Why the next gate, not immediately:** gate boundaries are clean resume points; a mid-task yield
+resumes worse. **Edge case:** if the run reaches `COMPLETE` before the next gate after the nudge, it
+finishes normally — there is nothing to preserve once the run is done.
+
 ## Generator-Critic separation (AIS RFC mandate)
 
 Inspector and Walker receive ONLY the output artifact (brief/report/diff, or plan/spec) — never the

@@ -28,16 +28,24 @@ case "$TOOL" in
     kiln_deny "The Kiln conductor cannot call Compounds mutation tools inline. Dispatch the Planner or Crafter member; the member holds these tools." ;;
 esac
 
-# Source mutation: deny unless the target is inside THIS active run's folder (run
-# artifacts are allowed). Scoped to the resolved $RUN_DIR, not the run-folder shape —
-# a write into some other run's kiln/ dir is still source mutation from this run's view.
+# Source mutation: deny unless the target is workspace project space. The exemption is the
+# whole `<workspace>/projects/active/` tree, anchored on the resolved workspace root — run
+# folders (`.../<run-id>/kiln/`), ticket-root docs (`.../<run-id>/grounding.md`, spec/plan),
+# and `.handoffs/` all live there and are conductor working space, NOT shipped source. Shipped
+# source lives under `<workspace>/repos/` (outside `projects/`), which stays denied. This is
+# intentionally NOT per-run scoped: the conductor may write any project folder (user direction) —
+# the boundary is "project space vs source repo", not "whose run". Anchoring on the workspace
+# root (not a bare `*/projects/active/*` glob) defeats a source repo that nests its own
+# `projects/active/` subtree — the same path-confusion class the memory-decoy case guards.
+# $RUN_DIR is `<workspace>/projects/active/<run-id>/kiln`; strip at `/projects/active/` for the root.
+WS_PROJECTS="${RUN_DIR%%/projects/active/*}/projects/active"
 case "$TOOL" in
   Edit|Write|MultiEdit|NotebookEdit)
     FP=$(kiln_field '.tool_input.file_path')
     [ -z "$FP" ] && FP=$(kiln_field '.tool_input.notebook_path')
     case "$FP" in
-      "$RUN_DIR"/*) exit 0 ;;  # this run's artifact — allowed
-      "") exit 0 ;;            # no path resolvable — fail-open
+      "$WS_PROJECTS"/*) exit 0 ;;  # workspace project space — allowed
+      "") exit 0 ;;                # no path resolvable — fail-open
     esac
     # Housekeeping allow-path (spec §5a): the conductor may write workspace housekeeping —
     # OS memory files and the daily journal — which are categorically NOT shipped source.
