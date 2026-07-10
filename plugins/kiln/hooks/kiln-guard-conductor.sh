@@ -28,6 +28,32 @@ case "$TOOL" in
     kiln_deny "The Kiln conductor cannot call Compounds mutation tools inline. Dispatch the Planner or Crafter member; the member holds these tools." ;;
 esac
 
+# Lexically resolve `..`/`.`/duplicate-slash segments in an absolute path — a pure
+# string operation, NOT an existence check (the target need not exist on disk). This
+# is required because PreToolUse hooks receive tool_input.file_path exactly as the
+# model wrote it, unmodified by Claude Code — a literal "../../repos/x" segment would
+# otherwise dodge the `"$WS_ROOT"/repos/*` glob below despite lexically landing inside
+# it. Deliberately NOT realpath/readlink -f: those hit the filesystem (can fail or
+# differ macOS vs Linux) and this guard must stay fail-open-safe on a path that may
+# not exist yet (e.g. a new file under an existing directory).
+kiln_normalize_path() {
+  local path="$1" part
+  local -a out=()
+  case "$path" in
+    /*) : ;;
+    *) printf '%s' "$path"; return 0 ;;   # relative — nothing to anchor traversal against; pass through
+  esac
+  local IFS='/'
+  for part in $path; do
+    case "$part" in
+      ''|'.') continue ;;
+      '..') [ ${#out[@]} -gt 0 ] && unset 'out[${#out[@]}-1]' ;;
+      *) out+=("$part") ;;
+    esac
+  done
+  printf '/%s' "${out[*]:-}"
+}
+
 # Source mutation: the ONLY protected tree is shipped source under <workspace>/repos/.
 # Everything else the conductor may write — workspace project space, /tmp scratch, memory,
 # journal — is working space, not shipped source. Deny ONLY writes whose target resolves
@@ -39,6 +65,7 @@ case "$TOOL" in
     FP=$(kiln_field '.tool_input.file_path')
     [ -z "$FP" ] && FP=$(kiln_field '.tool_input.notebook_path')
     [ -z "$FP" ] && exit 0                       # no path resolvable — fail-open
+    FP=$(kiln_normalize_path "$FP")
     case "$FP" in
       "$WS_ROOT"/repos/*)
         kiln_deny "The Kiln conductor cannot edit shipped source under repos/ inline. Dispatch the Crafter member — it holds Edit/Write." ;;

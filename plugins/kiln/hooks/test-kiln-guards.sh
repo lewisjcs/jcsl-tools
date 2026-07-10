@@ -80,6 +80,12 @@ assert_allow "conductor: Write to /tmp scratch while active" kiln-guard-conducto
   "{$CWD\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\"/tmp/ais-204-pr-body.md\"}}"
 assert_allow "conductor: Write to \$TMPDIR-style scratch while active" kiln-guard-conductor.sh \
   "{$CWD\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\"$WORKSPACE/scratch/notes.md\"}}"
+# Path-traversal: a literal ".." segment that LEXICALLY resolves into <workspace>/repos/ must
+# still deny — PreToolUse hooks receive tool_input.file_path raw/unmodified (Claude Code does
+# not canonicalize it before the hook runs), so a literal-string glob against the un-normalized
+# path would miss this and wrongly ALLOW a write that lands inside protected source.
+assert_deny "conductor: Write with lexical .. traversal into repos/ still denied" kiln-guard-conductor.sh \
+  "{$CWD\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\"$WORKSPACE/projects/active/TEST-0/../../../repos/jcsl-tools/plugins/kiln/skills/fire/SKILL.md\"}}"
 
 # --- housekeeping allow-path (spec §6a): memory dir + journal are conductor housekeeping, not source ---
 # Memory dir mirrors the OS layout: <something>/.claude/projects/<slug>/memory/<file>.
