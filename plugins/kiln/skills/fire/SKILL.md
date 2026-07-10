@@ -19,7 +19,7 @@ returns. It does not implement, plan, or design inline. Members hold the working
 - `gates.md` — at the first gate (gate conditions, tier×blast behavior, flow-styles).
 - `dispatch-contracts.md` — once per member dispatch (four-part templates).
 
-**Ledger:** `{{RUN_FOLDER}}/progress.md`, written before every gate transition. On resume after `/clear`, read it and continue from the first incomplete task.
+**Ledger:** `{{RUN_FOLDER}}/progress.md`, written before every gate transition (task state + `NUDGE-SEEN`/`YIELD` flags). On a context-preservation yield the conductor also writes `handoff.md` (narrative). On resume after `/clear`, read both and continue from the first incomplete task.
 
 **Scope (P2.1):** EXECUTE / PLAN / TRIVIAL / RESUME / **DESIGN / RESEARCH** lanes; `code` + `tool-authoring` + `doc` scenarios. SPEC-GATE, Scout, and the Designer are live. Still P2.2: the `mcp/agent-app` / `infra` scenarios (they HALT) and all Jira write-back. An out-of-scope scenario or ambiguous doc shape → HALT-AND-ASK. Every run binds one engine (`code`→compounds, `tool-authoring`/`doc`→native) and is ledger-tagged `engine:`.
 
@@ -123,12 +123,20 @@ Read each member's done-line + return artifact. Update the spine (`TaskUpdate`).
 - **TASK-GATE** (the MEMBER always finalizes — the conductor never calls a Compounds mutation verb inline; the guard denies it. On STANDARD the **Inspector** finalizes: compounds → `implement_task_finalize` with verdict evidence, native → `update_task`. On TRIVIAL the **Crafter** already marked it done. The conductor's own action is the `TaskUpdate` on the spine plus writing the per-task ledger line `DONE: task N | engine: <compounds|native> | <ISO>`.):
   - **HIGH blast (gate blocks):** conductor reads the verdict — `spec: ✅` AND `quality: approved` → the Inspector finalizes and the run advances. Else fix loop (cap 2) → escalate (revert task commits, HARD STOP, leave sentinels for resume).
   - **LOW blast (gate does NOT block):** the Inspector finalizes regardless of verdict (findings are advisory); the run always advances. No fix loop at LOW.
+- **Context-preservation yield (all gates, every flow-style — see `gates.md`).** When the workspace
+  reset-nudge appears in your context (the "invoke the context-economy skill lever router" message),
+  record `NUDGE-SEEN: <ISO>` in `progress.md` once. Thereafter, at the NEXT gate boundary (SPEC/PLAN/
+  TASK), before advancing: invoke `context-economy:handoff` to write `{{RUN_FOLDER}}/handoff.md`
+  (narrative; it points to `progress.md` for task state), write ledger `YIELD: context-preservation at
+  <gate>, task <N/total> | <ISO>`, then END YOUR TURN with a status line: the checkpoint phase/task
+  and "Context is high — checkpointed. Run `/clear`, then `/kiln <run-id>` to resume in a fresh
+  session." Do NOT auto-`/clear`. If the run reaches `COMPLETE` before the next gate, finish normally.
 
 **On completion:** run `code-quality-audit` on the diff, invoke `/create-pr`, generate the retro (P3 expands this; P1 writes a terse ledger `COMPLETE:` entry). **Remove the sentinels:** `rm -f {{RUN_FOLDER}}/.active {{RUN_FOLDER}}/.spine`.
 
 ## Resume
 
-On re-invoke with `{{RUN_FOLDER}}/.active` present: read `progress.md`, find the first task without a `DONE`, re-create the spine (Verb 3), and continue the Build loop from there.
+On re-invoke with `{{RUN_FOLDER}}/.active` present: read `progress.md` (task state — source of truth) and `handoff.md` if present (narrative context from a context-preservation yield), find the first task without a `DONE`, re-create the spine (Verb 3), and continue the Build loop from there. A `YIELD:` ledger entry with no later `DONE` marks exactly where the previous session stopped.
 
 **Re-stamp ownership first:** `/clear` mints a NEW session id, so a resumed run's sentinel still carries
 the *previous* session's id (or is empty/legacy) and the guards would treat this window as non-owning.
