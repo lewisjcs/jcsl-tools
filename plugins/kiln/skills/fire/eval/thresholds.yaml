@@ -31,3 +31,5 @@ thresholds:
     pass_rate: 1.0
   14-tool-authoring-native-engine:
     pass_rate: 1.0
+  15-context-preservation-yield:
+    pass_rate: 1.0

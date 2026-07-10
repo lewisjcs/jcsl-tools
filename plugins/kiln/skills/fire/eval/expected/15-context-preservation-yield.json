@@ -1,0 +1,28 @@
+{
+  "scenario": "15-context-preservation-yield",
+  "routing": {
+    "lane": "PLAN",
+    "tier": "STANDARD",
+    "blast_radius": "LOW",
+    "scenario_type": "code"
+  },
+  "gates": {
+    "PLAN-GATE": true,
+    "TASK-GATE": true
+  },
+  "agents_dispatched": ["planner", "crafter", "inspector"],
+  "agents_skipped": ["walker"],
+  "yield": {
+    "trigger": "reset-nudge message in conductor context",
+    "nudge_seen_recorded": true,
+    "yield_gate": "TASK-GATE",
+    "yield_task": "3/4",
+    "flow_style": "hands_free",
+    "overrides_flow_style": true,
+    "handoff_written": true,
+    "yield_ledger_entry": true,
+    "auto_clear_emitted": false,
+    "reaches_complete_this_session": false
+  },
+  "note": "Behavioral assertion, not routing-only: the harness cannot simulate ~100 real turns, so this fixture documents the conductor's intended rule when the reset-nudge appears. Verified against SKILL.md Verb 5 and gates.md; live-confirmed by a handoff.md + YIELD ledger line at the first gate after the nudge."
+}
