@@ -31,6 +31,34 @@ time (a TRIVIAL compounds run never calls it; it runs the `start_trivial` termin
 context so the expensive-to-generate guidance is paid once at plan time, written into the
 brief, and never re-generated on a Crafter retry.
 
+**The prioritize kickoff (`implement_all_tasks`) is the Planner's, once, and prioritize-ONLY.**
+`implement_task` has a hard prerequisite — `.compounds/<project_id>/task-order.json` — which is
+written only by the `implement_all_tasks` *prioritize* step. Compounds' native shape is one
+orchestrator agent that both prioritizes AND drives the whole loop; Kiln's shape is the
+opposite (a fresh per-task Crafter + a separate Inspector). So Kiln **splits** that call: the
+Planner runs `implement_all_tasks` once after `generate_tasks` completes, follows the returned
+prioritize prompt to write `task-order.json`, then **STOPS** — it does NOT drive the loop. Each
+per-task Crafter later reads `task-order.json` and calls `implement_task(project_id, task_id)`.
+The Planner must ignore the prioritize prompt's instruction to "drive the implementation loop"
+— that instruction assumes Compounds' single-agent topology, not Kiln's.
+
+## Grants vs. use (the capability-gate rule)
+
+A member holding a Compounds tool in its frontmatter `tools:` list does NOT mean it calls
+that tool on every run. Frontmatter grants are static — they cannot be scoped per engine — so
+**this prose is the gate.** Each tool sorts into one of three engine-sensitivity tiers, and a
+member fires a tool only on the engine its tier permits:
+
+| Tier | Tools | On a `native`-bound run |
+|---|---|---|
+| **T1 — engine-agnostic reads** | `get_project`, `get_all_projects`, `get_project_tasks`, `get_project_status` (+ CLI `query`/`search`/`impact`) | **Callable.** A skill/doc task still lives in a real indexed repo; reading its structure is engine-independent. |
+| **T2 — Compounds catalog** | `pattern_detection`, `get_pattern_context`, `get_pattern_examples`, `get_design_patterns`, `get_reference_architecture`, `get_reference_architecture_context`, `get_testing_frameworks` | **Held, NOT called.** The native `enrich` column names the correct source (`skill-authoring-principles` + `directive-review` lenses + `doc-patterns`). The Compounds catalog is bound to Compounds' tech stacks (python-fastapi, typescript-react, fastmcp, playwright) and has nothing for skill/agent-prompt markdown. |
+| **T3 — Compounds-artifact-bound** | `implement_task`, `implement_task_finalize`, `implement_all_tasks`, `get_task`, `get_task_with_context`, `get_prompt` | **Cannot be called — no artifact exists.** A native run never creates a Compounds project/task. |
+
+This preserves the measurement symmetry: the only variable between a `compounds` run and a
+`native` run is the bound engine, because a native-bound member simply does not fire its
+T2/T3 grants.
+
 ## Enrichment is carried by the brief (the core fix)
 
 `enrich` is called by the **Planner** and its output is written into the task's entry in
@@ -66,3 +94,19 @@ The router (in `SKILL.md`'s classify verb) is a lookup table, not judgment:
 Only `code` / `tool-authoring` / `doc` route this pass (P2.1). The Compounds bindings for
 `mcp/agent-app` and `infra` are designed-but-dormant — those scenarios still HALT-AND-ASK
 in this pass (P2.1). Their rows exist so the contract is complete when P2.2 activates them.
+
+## The compounds standard path (connective tissue)
+
+On `engine: compounds` + `tier: STANDARD`, the Planner walks the full Compounds standard path —
+not just its endpoints. The order, with the tool at each stage:
+
+1. `plan_change` (start→locate→impact→classify→route) → `gen_spec(tier="standard", composite_score)`
+2. `gen_master_spec` → write the master spec → `validate_master_spec` → **REVIEW gate** (user approves)
+3. `register`: `init_repo` → read `repositoryId` → `get_all_projects` (reuse-or-create) → `create_project` (post-REVIEW only)
+4. upload the tech spec to the project via the `compounds` CLI (`compounds upload <project_id> <file> --type technical-spec`), then `validate_spec`
+5. `generate_tasks` → **poll `get_project_status` every 60s** (max 5 attempts) until `breakdown_status == COMPLETED` and `task_count > 0`
+6. `implement_all_tasks` (prioritize-only → `task-order.json`) → STOP
+
+When the master spec exceeds 70,000 chars, step 2 auto-branches to the multi-project sub-mode:
+`gen_project_spec` per scope → `validate_project_specs` before `create_project`. `generate_tasks`
+is async and requires an uploaded tech spec with content — steps 4–5 are not optional.
