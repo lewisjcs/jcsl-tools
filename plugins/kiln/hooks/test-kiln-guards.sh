@@ -56,8 +56,19 @@ assert_allow "conductor: main-thread Write to run folder" kiln-guard-conductor.s
   "{$CWD\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\"$RUN_DIR/progress.md\"}}"
 assert_allow "conductor: main-thread MultiEdit to run folder" kiln-guard-conductor.sh \
   "{$CWD\"tool_name\":\"MultiEdit\",\"tool_input\":{\"file_path\":\"$RUN_DIR/plan.md\"}}"
-# N-2: a write shaped like a run folder but NOT the active run must still deny.
-assert_deny  "conductor: Write to a DIFFERENT run's kiln folder while active" kiln-guard-conductor.sh \
+# Ticket-root docs live one level ABOVE kiln/ (projects/active/<run-id>/): spec/plan/grounding
+# docs per the OS project-doc layout. These are conductor working space, not shipped source,
+# so they are allowed. (Regression guard for the parent-folder deny that forced `cat >>` bash
+# workarounds: grounding.md and .handoffs/ writes were denied because the exemption was kiln/-only.)
+assert_allow "conductor: Write to ticket-root doc (parent of kiln/)" kiln-guard-conductor.sh \
+  "{$CWD\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\"$WORKSPACE/projects/active/TEST-0/grounding.md\"}}"
+assert_allow "conductor: Write to ticket-root .handoffs/ (parent of kiln/)" kiln-guard-conductor.sh \
+  "{$CWD\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\"$WORKSPACE/projects/active/TEST-0/.handoffs/handoff-2026-07-10.md\"}}"
+# Any workspace project folder is conductor working space — INCLUDING another run's folder.
+# The exemption is the whole <workspace>/projects/ tree (user direction: "write to those project
+# folders in general, just not source repos"), NOT per-run scoping. This deliberately relaxes the
+# prior cross-run isolation (project docs only); source under <workspace>/repos/ stays denied below.
+assert_allow "conductor: Write to a DIFFERENT run's project folder (projects/ tree is exempt)" kiln-guard-conductor.sh \
   "{$CWD\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\"$WORKSPACE/projects/active/OTHER-9/kiln/plan.md\"}}"
 assert_deny  "conductor: main-thread Compounds mutation while active" kiln-guard-conductor.sh \
   "{$CWD\"tool_name\":\"mcp__compounds-dev__generate_tasks\",\"tool_input\":{}}"
@@ -161,10 +172,10 @@ assert_deny "ownership: session A main-thread source Edit denied (owns RUN_A)" k
 # Owner match: session A writing INTO A's run folder is allowed.
 assert_allow "ownership: session A write into RUN_A allowed" kiln-guard-conductor.sh \
   "{$CWD$(SID "$SID_A")\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\"$RUN_A/progress.md\"}}"
-# ISOLATION (the core bug): session A writing into B's run folder is denied — it is NOT A's run,
-# even though B has a live sentinel. Under the old mtime resolver this could bind to whichever
-# sentinel was newest and mis-scope the exemption.
-assert_deny "ownership: session A write into RUN_B (other session's run) denied" kiln-guard-conductor.sh \
+# Session A writing into B's run folder is ALLOWED: the exemption covers the whole workspace
+# projects/ tree, not the owning run. Ownership still governs SOURCE edits (below) — the write
+# exemption is about "is this workspace project space vs shipped source", not "whose run is it".
+assert_allow "ownership: session A write into RUN_B (still under projects/ tree)" kiln-guard-conductor.sh \
   "{$CWD$(SID "$SID_A")\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\"$RUN_B/progress.md\"}}"
 # NON-CONDUCTING session: session C owns NO run. Its source edit must be ALLOWED (fail-open) even
 # though A and B sentinels are live. Old mtime resolver bound C to the newest foreign run → false-deny

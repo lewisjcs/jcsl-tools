@@ -41,8 +41,10 @@ to `mkdir -p {{RUN_FOLDER}}`. A net-new entry's slug is a guess: CONFIRM it with
 `AskUserQuestion` (see Verb 4) BEFORE `mkdir -p {{RUN_FOLDER}}` and before any sentinel write — a
 rejected slug must not orphan a folder or sentinels under the wrong name.
 If the entry includes a spec-shaped file (a PLAN-from-spec run — see `lanes.md`), stash it at
-`{{RUN_FOLDER}}/spec-draft.md` (`cp` — a run-folder write, guard-exempt). That copy is the sole P1
-producer of `spec-draft.md`; the Planner and Walker read it there. No spec file at entry → no stash, and
+`{{RUN_FOLDER}}/spec-draft.md` (`cp` — a project-space write, guard-exempt: the conductor guard
+exempts the whole `<WORKSPACE>/projects/active/` tree — run folders, ticket-root docs, and
+`.handoffs/` — as working space; only source under `<WORKSPACE>/repos/` is denied inline). That copy
+is the sole P1 producer of `spec-draft.md`; the Planner and Walker read it there. No spec file at entry → no stash, and
 those consumers fall through to the ticket body (they already read `spec-draft.md` only "if present").
 
 ## Verb 2 — Classify & announce (LOUDLY)
