@@ -1,0 +1,23 @@
+{
+  "scenario": "14-tool-authoring-native-engine",
+  "routing": {
+    "lane": "PLAN",
+    "tier": "STANDARD",
+    "blast_radius": "LOW",
+    "scenario_type": "tool-authoring",
+    "engine": "native"
+  },
+  "gates": {
+    "PLAN-GATE": true,
+    "TASK-GATE": false
+  },
+  "agents_dispatched": ["planner", "crafter", "inspector"],
+  "agents_skipped": ["walker"],
+  "expected_impl_model": "haiku",
+  "expected_verify_model": "haiku",
+  "engine_behavior": {
+    "planner_named_standards_source": true,
+    "crafter_called_implement_task": false,
+    "ledger_engine_tag": "native"
+  }
+}

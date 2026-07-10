@@ -2,7 +2,7 @@
 
 ## Harness Purpose
 
-Validates that The Kiln's routing decisions and gate logic match the design spec. Twelve scenarios (01–12) cover every lane, gate combination, scenario type, and the conductor-guard behavior: 01–09 cover the P1 lanes (TRIVIAL/PLAN/EXECUTE), gates, scenario types, and the guard; 10–12 cover the P2.1 DESIGN/RESEARCH/design-doc-mid-flow routes. A calibration run compares The Kiln's announced decisions against the gold JSON fixtures in `expected/`.
+Validates that The Kiln's routing decisions and gate logic match the design spec. Fourteen scenarios (01–14) cover every lane, gate combination, scenario type, and the conductor-guard behavior: 01–09 cover the P1 lanes (TRIVIAL/PLAN/EXECUTE), gates, scenario types, and the guard; 10–12 cover the P2.1 DESIGN/RESEARCH/design-doc-mid-flow routes; 13–14 cover the Compounds-engine behavior (code→Compounds, tool-authoring→native). A calibration run compares The Kiln's announced decisions against the gold JSON fixtures in `expected/`.
 
 This is human-run, no CI automation. The harness is the ship-gate for any change to `SKILL.md` routing or gate logic.
 
@@ -56,6 +56,15 @@ Each fixture in `expected/` follows this structure:
 
 - `expected_model` (optional): the model the conductor should relay for this scenario's Build-loop
   tasks, per the Planner's routing rubric (`agents/planner.md`). Present only on build-loop fixtures.
+- `routing.engine` (build-loop fixtures): the engine the router bound — `compounds` | `native`.
+  Asserts the scenario→engine lookup (`code`→compounds, `tool-authoring`/`doc`→native).
+- `expected_impl_model` / `expected_verify_model` (build-loop fixtures): the two models the
+  conductor relays — Impl-model to the Crafter, Verify-model to the Inspector — replacing the
+  former single `expected_model`. Legacy fixtures with a single `expected_model` still assert
+  the Crafter's Impl-model.
+- `engine_behavior` (scenarios 13, 14): asserts the #0.1 defect fix — that the Planner enriched,
+  the enrichment reached the brief, the Crafter did/did-not call `implement_task`, and the
+  correct `engine:` tag was written. These are observed during the live run, not from routing alone.
 
 SPEC-GATE is live (P2.1): it fires after the Designer on DESIGN/RESEARCH runs, before the Planner.
 Gate keys now include SPEC-GATE alongside PLAN-GATE and TASK-GATE.

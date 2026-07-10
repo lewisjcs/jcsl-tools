@@ -1,0 +1,24 @@
+{
+  "scenario": "13-code-compounds-engine",
+  "routing": {
+    "lane": "PLAN",
+    "tier": "STANDARD",
+    "blast_radius": "LOW",
+    "scenario_type": "code",
+    "engine": "compounds"
+  },
+  "gates": {
+    "PLAN-GATE": true,
+    "TASK-GATE": false
+  },
+  "agents_dispatched": ["planner", "crafter", "inspector"],
+  "agents_skipped": ["walker"],
+  "expected_impl_model": "sonnet",
+  "expected_verify_model": "sonnet",
+  "engine_behavior": {
+    "planner_enrich_called": true,
+    "enriched_context_in_brief": true,
+    "crafter_called_implement_task": true,
+    "ledger_engine_tag": "compounds"
+  }
+}
