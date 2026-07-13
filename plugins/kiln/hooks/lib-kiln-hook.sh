@@ -14,6 +14,30 @@ kiln_field() { # $1 = jq path, e.g. .tool_input.file_path
   printf '%s' "$KILN_INPUT" | jq -r "$1 // empty" 2>/dev/null || echo ""
 }
 
+# Lexically resolve `..`/`.`/duplicate-slash segments in an absolute path — a pure
+# string operation, NOT an existence check (the target need not exist on disk).
+# Required because PreToolUse hooks receive tool_input.file_path exactly as the model
+# wrote it; a literal "../../repos/x" segment would otherwise dodge a repos/ glob despite
+# lexically landing inside it. Deliberately NOT realpath/readlink -f (those hit the
+# filesystem and differ macOS vs Linux; this must stay fail-open on a not-yet-existing path).
+kiln_normalize_path() {
+  local path="$1" part
+  local -a out=()
+  case "$path" in
+    /*) : ;;
+    *) printf '%s' "$path"; return 0 ;;   # relative — nothing to anchor traversal against; pass through
+  esac
+  local IFS='/'
+  for part in $path; do
+    case "$part" in
+      ''|'.') continue ;;
+      '..') [ ${#out[@]} -gt 0 ] && unset 'out[${#out[@]}-1]' ;;
+      *) out+=("$part") ;;
+    esac
+  done
+  printf '/%s' "${out[*]:-}"
+}
+
 # Echo the path of the active run dir this call belongs to (a `.active` sentinel's
 # `kiln/` dir), or empty when no run owns this call.
 #
