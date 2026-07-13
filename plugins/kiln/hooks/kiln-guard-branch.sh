@@ -16,12 +16,15 @@ case "$TOOL" in Edit|Write|MultiEdit|NotebookEdit) : ;; *) exit 0 ;; esac
 FP=$(kiln_field '.tool_input.file_path'); [ -z "$FP" ] && FP=$(kiln_field '.tool_input.notebook_path')
 [ -z "$FP" ] && exit 0                                   # no path resolvable — fail-open
 FP=$(kiln_normalize_path "$FP")
-# Only shipped source under <workspace>/repos/ is branch-protected. Everything else —
-# run folder, ticket-root docs, .handoffs/, scratch — is working space, allowed on any branch.
+# Two trees are branch-protected: shipped source under <workspace>/repos/, and the installed
+# plugin source under ~/.claude/plugins/ (a real git repo, normally on main — a member/conductor
+# must never patch the live plugin copy on main; do it on a work branch in .worktrees/). Everything
+# else — run folder, ticket-root docs, .handoffs/, scratch — is working space, allowed on any branch.
 # Mirrors kiln-guard-conductor.sh's protected-tree model (they had drifted).
 WS_ROOT="${RUN_DIR%%/projects/active/*}"
 case "$FP" in
   "$WS_ROOT"/repos/*) : ;;                                # shipped source → fall through to the branch check
+  "$HOME"/.claude/plugins/*) : ;;                         # installed plugin source → fall through to the branch check
   *) exit 0 ;;                                            # any non-source path → allow
 esac
 
