@@ -52,11 +52,19 @@ skills, and for nothing a direct tool already does.
    as proof-of-readiness: the `/verify` outcome (gates run + flow exercised), acceptance-criteria
    coverage summarized from the verdict files, and the advisory quality-audit findings. Capture the
    resulting PR URL.
+   - If `/create-pr` fails to produce a PR URL: record `url: not created` in verify.md's `## PR`
+     section (Compounds is already closed by this point, so that state must be captured for resume),
+     then return `CURATOR_BLOCKED: PR creation failed | {{RUN_FOLDER}}/verify.md`. Do NOT proceed to
+     stage 5.
 
 5. **Transition Jira.**
-   - If `{{JIRA_KEY}} == none`: skip (record `jira: none` in `verify.md`).
+   - If `{{JIRA_KEY}} == none`: skip (record `jira: none` in `verify.md`). This is not a failure.
    - Else: call `getTransitionsForJiraIssue({{JIRA_KEY}})`, find the transition to **In Review**, call
      `transitionJiraIssue` with its id, then `addCommentToJiraIssue({{JIRA_KEY}}, <PR URL>)`.
+   - If the transition or comment call fails: record the PR url in verify.md's `## PR` section first
+     (the PR exists; only the Jira step failed), then return
+     `CURATOR_BLOCKED: jira transition failed | {{RUN_FOLDER}}/verify.md` — resume re-attempts only
+     the transition.
 
 ## verify.md schema
 
@@ -66,7 +74,7 @@ Write `{{RUN_FOLDER}}/verify.md` with exactly these sections:
 # Curator close-out — <run-id>
 
 ## Verify
-outcome: passed | failed
+outcome: <passed|failed>
 gates: <the repo gate commands run and their pass/fail>
 flow_exercised: <what behavior was driven and what was observed>
 
@@ -88,8 +96,9 @@ transition: In Review | skipped
 
 ## Verification (before returning CURATOR_DONE)
 
-Run: `test -f "{{RUN_FOLDER}}/verify.md" && grep -c "^outcome: passed" "{{RUN_FOLDER}}/verify.md"`
-Expected output: `1`.
+Run: `test -f "{{RUN_FOLDER}}/verify.md" && grep -c "^outcome: passed$" "{{RUN_FOLDER}}/verify.md"`
+Expected output: `1` — the anchored end-of-line match requires an exact `outcome: passed`, so an
+unedited schema placeholder or a `failed` outcome cannot satisfy it.
 
 If the output is not `1`, either verify did not pass (return `CURATOR_BLOCKED`) or the file is
 malformed (rewrite it). Do NOT return `CURATOR_DONE` unless verify passed, the project is closed
