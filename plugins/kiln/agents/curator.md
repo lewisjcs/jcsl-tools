@@ -48,11 +48,18 @@ skills, and for nothing a direct tool already does.
      (Status enum is `SCOPING|TASKING|TODO|IN_PROGRESS|DONE`; never emit `COMPLETED`/`ACTIVE`/`ON_HOLD`
      — the API rejects them.)
 
-4. **Create the PR.** Invoke the `/create-pr` skill. Weave the verification evidence into the PR body
-   as proof-of-readiness: the `/verify` outcome (gates run + flow exercised), acceptance-criteria
-   coverage summarized from the verdict files, and the advisory quality-audit findings. Capture the
-   resulting PR URL.
-   - If `/create-pr` fails to produce a PR URL: record `url: not created` in verify.md's `## PR`
+4. **Create the PR (idempotent).** Before invoking `/create-pr`, check whether an open PR already
+   exists for the current branch of `{{TARGET_REPO}}`, e.g. `git -C {{TARGET_REPO}} rev-parse
+   --abbrev-ref HEAD` to get the branch, then `gh pr view <branch> --repo <owner/repo derived from
+   {{TARGET_REPO}}> --json url,state`. If an open PR already exists, adopt its `url` as the PR result,
+   record it in verify.md's `## PR` section, and proceed straight to stage 5 — do NOT create a new PR.
+   This is what makes resume after a stage-5 (Jira) failure re-attempt only the transition, as stage
+   5's note promises.
+   - If no open PR exists: invoke the `/create-pr` skill. Weave the verification evidence into the PR
+     body as proof-of-readiness: the `/verify` outcome (gates run + flow exercised), acceptance-criteria
+     coverage summarized from the verdict files, and the advisory quality-audit findings. Capture the
+     resulting PR URL.
+   - If `/create-pr` still fails to produce a PR URL: record `url: not created` in verify.md's `## PR`
      section (Compounds is already closed by this point, so that state must be captured for resume),
      then return `CURATOR_BLOCKED: PR creation failed | {{RUN_FOLDER}}/verify.md`. Do NOT proceed to
      stage 5.
