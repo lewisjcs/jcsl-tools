@@ -21,7 +21,7 @@ returns. It does not implement, plan, or design inline. Members hold the working
 
 **Ledger:** `{{RUN_FOLDER}}/progress.md`, written before every gate transition (task state + `NUDGE-SEEN`/`YIELD` flags). On a context-preservation yield the conductor also writes `handoff.md` (narrative). On resume after `/clear`, read both and continue from the first incomplete task.
 
-**Scope (P2.1):** EXECUTE / PLAN / TRIVIAL / RESUME / **DESIGN / RESEARCH** lanes; `code` + `tool-authoring` + `doc` scenarios. SPEC-GATE, Scout, and the Designer are live. Still P2.2: the `mcp/agent-app` / `infra` scenarios (they HALT) and all Jira write-back. An out-of-scope scenario or ambiguous doc shape → HALT-AND-ASK. Every run binds one engine (`code`→compounds, `tool-authoring`/`doc`→native) and is ledger-tagged `engine:`.
+**Scope (P2.1):** EXECUTE / PLAN / TRIVIAL / RESUME / **DESIGN / RESEARCH** lanes; `code` + `tool-authoring` + `doc` scenarios. SPEC-GATE, Scout, and the Designer are live. Still P2.2: the `mcp/agent-app` / `infra` scenarios (they HALT) and Jira **subtask** write-back. The Curator's close-out transition (ticket → In Review + PR-link comment) is in scope. An out-of-scope scenario or ambiguous doc shape → HALT-AND-ASK. Every run binds one engine (`code`→compounds, `tool-authoring`/`doc`→native) and is ledger-tagged `engine:`.
 
 ---
 
@@ -88,7 +88,7 @@ we substitute `git -C <repo>` for the same effect since the conductor must not `
 
 ## Verb 3 — Build the spine
 
-Create the `TaskCreate` progress spine — one task per phase this lane will run (e.g. PLAN-GATE → Walker (if HIGH) → per-task Crafter/Inspector → FINAL). This is the conductor's visible state; it is the fix for "no todo list, wall of text."
+Create the `TaskCreate` progress spine — one task per phase this lane will run (e.g. PLAN-GATE → Walker (if HIGH) → per-task Crafter/Inspector → Curator (FINAL)). This is the conductor's visible state; it is the fix for "no todo list, wall of text."
 **Immediately after the spine exists:** `touch {{RUN_FOLDER}}/.spine`. (The spine guard denies any dispatch before this file exists.)
 
 ## Verb 4 — Dispatch
@@ -132,11 +132,24 @@ Read each member's done-line + return artifact. Update the spine (`TaskUpdate`).
   and "Context is high — checkpointed. Run `/clear`, then `/kiln <run-id>` to resume in a fresh
   session." Do NOT auto-`/clear`. If the run reaches `COMPLETE` before the next gate, finish normally.
 
-**On completion:** run `code-quality-audit` on the diff, invoke `/create-pr`, generate the retro (P3 expands this; P1 writes a terse ledger `COMPLETE:` entry). **Remove the sentinels:** `rm -f {{RUN_FOLDER}}/.active {{RUN_FOLDER}}/.spine`.
+**On completion — dispatch the Curator (Verb 4), then adjudicate (Verb 5):** load the Curator
+Dispatch Template from `dispatch-contracts.md` and dispatch the Curator once, filling `{{TARGET_REPO}}`
+(the repo the run targeted), `{{COMPOUNDS_PROJECT}}` (the project id from the Planner's run, or "none"
+on native), `{{JIRA_KEY}}`, `{{ENGINE}}`, and `{{COMMIT_RANGE}}`. The Curator holds the Compounds-close
+and Jira-write grants the conductor cannot call. Branch on its typed return:
+- `CURATOR_DONE` → `TaskUpdate` the FINAL spine task to done; write the terse ledger `COMPLETE: <ISO>`
+  entry (P3 expands the retro); **remove the sentinels:** `rm -f {{RUN_FOLDER}}/.active {{RUN_FOLDER}}/.spine`.
+- `CURATOR_BLOCKED` → surface the `{{RUN_FOLDER}}/verify.md` evidence to the user, leave the FINAL spine
+  task `in_progress`, HARD STOP, and **leave the sentinels in place** for resume. Do NOT create the PR,
+  transition Jira, or remove sentinels — the Curator already stopped before those side-effects.
 
 ## Resume
 
 On re-invoke with `{{RUN_FOLDER}}/.active` present: read `progress.md` (task state — source of truth) and `handoff.md` if present (narrative context from a context-preservation yield), find the first task without a `DONE`, re-create the spine (Verb 3), and continue the Build loop from there. A `YIELD:` ledger entry with no later `DONE` marks exactly where the previous session stopped.
+
+A `CURATOR_BLOCKED` ledger entry with no later `COMPLETE:` means the run stopped in close-out — resume
+by re-dispatching the Curator (re-verify), NOT the Build loop; all tasks are already DONE. Likewise a
+run whose every task has a `DONE` line but no `COMPLETE:` resumes at the Curator.
 
 **Re-stamp ownership first:** `/clear` mints a NEW session id, so a resumed run's sentinel still carries
 the *previous* session's id (or is empty/legacy) and the guards would treat this window as non-owning.

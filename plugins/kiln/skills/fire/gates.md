@@ -73,3 +73,16 @@ finishes normally — there is nothing to preserve once the run is done.
 
 Inspector and Walker receive ONLY the output artifact (brief/report/diff, or plan/spec) — never the
 Crafter's or author's reasoning trace. The conductor branches mechanically on their typed return field.
+
+## Close-out (the Curator, FINAL slot)
+
+After the Build loop, the conductor dispatches the **Curator** once (it is not a gate that blocks
+mid-run — it is the terminal phase). The Curator runs `/verify` on the final diff, asserts all
+Compounds tasks are DONE, closes the project (`update_project(status="DONE")`; skipped on the native
+engine), creates the PR with verification evidence, and transitions Jira to In Review. The conductor
+branches on its typed return:
+- `CURATOR_DONE` → finalize the run (spine FINAL done, ledger `COMPLETE:`, remove sentinels).
+- `CURATOR_BLOCKED` → HARD STOP, sentinels preserved for resume (mirrors HIGH-blast TASK-GATE
+  escalation). No PR, no Jira transition, Compounds project left open.
+
+Fail-closed ordering: verify → close → PR → Jira. No side-effect runs on an unverified piece.
