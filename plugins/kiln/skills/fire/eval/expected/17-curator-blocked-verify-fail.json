@@ -1,0 +1,30 @@
+{
+  "scenario": "17-curator-blocked-verify-fail",
+  "routing": {
+    "lane": "PLAN",
+    "tier": "STANDARD",
+    "blast_radius": "LOW",
+    "scenario_type": "code",
+    "engine": "compounds"
+  },
+  "gates": {
+    "PLAN-GATE": true,
+    "TASK-GATE": false
+  },
+  "agents_dispatched": ["planner", "crafter", "inspector", "curator"],
+  "agents_skipped": ["walker"],
+  "expected_impl_model": "sonnet",
+  "expected_verify_model": "sonnet",
+  "closeout": {
+    "curator_dispatched": true,
+    "verify_outcome": "failed",
+    "stage_reached": "verify",
+    "quality_audit_run": false,
+    "compounds_close_attempted": false,
+    "project_closed": "no",
+    "pr_created": false,
+    "jira_transition": "skipped",
+    "curator_return": "CURATOR_BLOCKED",
+    "conductor_action": "hard-stop, sentinels preserved, resume re-dispatches Curator (not Build loop)"
+  }
+}

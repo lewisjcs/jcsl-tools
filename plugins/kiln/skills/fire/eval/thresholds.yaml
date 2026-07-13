@@ -33,3 +33,9 @@ thresholds:
     pass_rate: 1.0
   15-context-preservation-yield:
     pass_rate: 1.0
+  16-curator-closeout:
+    pass_rate: 1.0
+  17-curator-blocked-verify-fail:
+    pass_rate: 1.0
+  18-curator-closeout-native-skip:
+    pass_rate: 1.0
