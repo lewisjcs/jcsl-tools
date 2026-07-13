@@ -1,0 +1,27 @@
+{
+  "scenario": "16-curator-closeout",
+  "routing": {
+    "lane": "PLAN",
+    "tier": "STANDARD",
+    "blast_radius": "LOW",
+    "scenario_type": "code",
+    "engine": "compounds"
+  },
+  "gates": {
+    "PLAN-GATE": true,
+    "TASK-GATE": false
+  },
+  "agents_dispatched": ["planner", "crafter", "inspector", "curator"],
+  "agents_skipped": ["walker"],
+  "expected_model": "sonnet",
+  "closeout": {
+    "curator_dispatched": true,
+    "curator_inline_pr_create": false,
+    "verify_outcome": "passed",
+    "compounds_close_gated_on_all_tasks_done": true,
+    "project_closed": "yes",
+    "pr_created": true,
+    "jira_transition": "In Review",
+    "curator_return": "CURATOR_DONE"
+  }
+}

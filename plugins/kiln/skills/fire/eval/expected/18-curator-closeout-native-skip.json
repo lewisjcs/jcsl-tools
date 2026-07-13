@@ -1,0 +1,27 @@
+{
+  "scenario": "18-curator-closeout-native-skip",
+  "routing": {
+    "lane": "PLAN",
+    "tier": "STANDARD",
+    "blast_radius": "LOW",
+    "scenario_type": "tool-authoring",
+    "engine": "native"
+  },
+  "gates": {
+    "PLAN-GATE": true,
+    "TASK-GATE": false
+  },
+  "agents_dispatched": ["planner", "crafter", "inspector", "curator"],
+  "agents_skipped": ["walker"],
+  "expected_model": "haiku",
+  "closeout": {
+    "curator_dispatched": true,
+    "verify_outcome": "passed",
+    "compounds_project": "none",
+    "compounds_close_skipped": true,
+    "project_closed": "n/a",
+    "pr_created": true,
+    "jira_transition": "In Review",
+    "curator_return": "CURATOR_DONE"
+  }
+}
