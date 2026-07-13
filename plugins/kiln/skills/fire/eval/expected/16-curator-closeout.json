@@ -13,7 +13,8 @@
   },
   "agents_dispatched": ["planner", "crafter", "inspector", "curator"],
   "agents_skipped": ["walker"],
-  "expected_model": "sonnet",
+  "expected_impl_model": "sonnet",
+  "expected_verify_model": "sonnet",
   "closeout": {
     "curator_dispatched": true,
     "curator_inline_pr_create": false,

@@ -13,7 +13,8 @@
   },
   "agents_dispatched": ["planner", "crafter", "inspector", "curator"],
   "agents_skipped": ["walker"],
-  "expected_model": "haiku",
+  "expected_impl_model": "haiku",
+  "expected_verify_model": "haiku",
   "closeout": {
     "curator_dispatched": true,
     "verify_outcome": "passed",
