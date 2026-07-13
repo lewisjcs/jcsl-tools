@@ -140,8 +140,10 @@ and Jira-write grants the conductor cannot call. Branch on its typed return:
 - `CURATOR_DONE` → `TaskUpdate` the FINAL spine task to done; write the terse ledger `COMPLETE: <ISO>`
   entry (P3 expands the retro); **remove the sentinels:** `rm -f {{RUN_FOLDER}}/.active {{RUN_FOLDER}}/.spine`.
 - `CURATOR_BLOCKED` → surface the `{{RUN_FOLDER}}/verify.md` evidence to the user, leave the FINAL spine
-  task `in_progress`, HARD STOP, and **leave the sentinels in place** for resume. Do NOT create the PR,
-  transition Jira, or remove sentinels — the Curator already stopped before those side-effects.
+  task `in_progress`, HARD STOP, and **leave the sentinels in place** for resume. The Curator stopped at
+  the first failing stage; side-effects BEFORE that stage may already have completed (verify.md records
+  the actual state — e.g. Compounds may be closed, or a PR may already exist). Do not assume a clean
+  slate — resume reads verify.md and continues from the failed stage.
 
 ## Resume
 

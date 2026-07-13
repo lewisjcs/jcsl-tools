@@ -83,6 +83,8 @@ engine), creates the PR with verification evidence, and transitions Jira to In R
 branches on its typed return:
 - `CURATOR_DONE` → finalize the run (spine FINAL done, ledger `COMPLETE:`, remove sentinels).
 - `CURATOR_BLOCKED` → HARD STOP, sentinels preserved for resume (mirrors HIGH-blast TASK-GATE
-  escalation). No PR, no Jira transition, Compounds project left open.
+  escalation). The Curator halts at the first failing stage; stages before it may have completed
+  (verify.md is the source of truth for what was done — e.g. a stage-4/5 failure means Compounds is
+  already closed and possibly a PR exists). Resume continues from the failed stage.
 
 Fail-closed ordering: verify → close → PR → Jira. No side-effect runs on an unverified piece.
