@@ -44,7 +44,11 @@ skills, and for nothing a direct tool already does.
      `task_counts_by_status`. If ANY count outside `DONE` is non-zero (i.e. any TODO or IN_PROGRESS
      task remains), the run is not truly finished — record the counts in `verify.md` and return
      `CURATOR_BLOCKED: tasks not all DONE | {{RUN_FOLDER}}/verify.md`. Do NOT close the project.
-     Only when every task is DONE, call `update_project(project_id={{COMPOUNDS_PROJECT}}, status="DONE")`.
+     Only when every task is DONE, close the project — but idempotently: if `get_project_status`
+     already reports the PROJECT's own status as `DONE` (a resume after a later stage failed), the
+     close is already done; record `closed: yes (already)` in `verify.md` and skip straight to stage
+     4. Do NOT re-issue the transition. Otherwise call
+     `update_project(project_id={{COMPOUNDS_PROJECT}}, status="DONE")`.
      (Status enum is `SCOPING|TASKING|TODO|IN_PROGRESS|DONE`; never emit `COMPLETED`/`ACTIVE`/`ON_HOLD`
      — the API rejects them.)
 
