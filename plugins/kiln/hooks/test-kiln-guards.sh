@@ -138,6 +138,20 @@ KILN_TEST_BRANCH=kiln/TEST-0 assert_allow "branch: Edit to source while on work 
 KILN_TEST_BRANCH=main assert_allow "branch: Write to run folder allowed even on main" kiln-guard-branch.sh \
   "{$CWD\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\"$RUN_DIR/progress.md\"}}"
 
+# Drift regression (Curator close-out prerequisite): a MEMBER writing project-space OUTSIDE
+# kiln/ — ticket-root docs and .handoffs/ — must be ALLOWED on main. The old */kiln/* allowlist
+# denied these (the bug that blocked member artifact writes). Source under repos/ stays denied.
+KILN_TEST_BRANCH=main assert_allow "branch: Write to ticket-root doc on main (drift fix)" kiln-guard-branch.sh \
+  "{$CWD\"agent_id\":\"a1\",\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\"$WORKSPACE/projects/active/TEST-0/design.md\"}}"
+KILN_TEST_BRANCH=main assert_allow "branch: Write to .handoffs/ on main (drift fix)" kiln-guard-branch.sh \
+  "{$CWD\"agent_id\":\"a1\",\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\"$WORKSPACE/projects/active/TEST-0/.handoffs/h.md\"}}"
+KILN_TEST_BRANCH=main assert_allow "branch: Write to run-folder verify.md on main (Curator artifact)" kiln-guard-branch.sh \
+  "{$CWD\"agent_id\":\"a1\",\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\"$RUN_DIR/verify.md\"}}"
+KILN_TEST_BRANCH=main assert_deny "branch: repos/ source on main STILL denied after drift fix" kiln-guard-branch.sh \
+  "{$CWD\"agent_id\":\"a1\",\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\"$SRC\"}}"
+KILN_TEST_BRANCH=main assert_deny "branch: lexical .. traversal into repos/ on main denied" kiln-guard-branch.sh \
+  "{$CWD\"agent_id\":\"a1\",\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\"$WORKSPACE/projects/active/TEST-0/../../../repos/jcsl-tools/plugins/kiln/skills/fire/SKILL.md\"}}"
+
 # N-3 regression (branch resolved from the EDITED FILE's repo, not hook cwd): the previous
 # tests all use KILN_TEST_BRANCH; none exercised real `git -C <file dir>` resolution. Create
 # a REAL git repo inside the workspace so the un-overridden path is proven. Against the old
