@@ -73,6 +73,22 @@ On the **EXECUTE** lane the run already has a plan file on disk: register that p
 Compounds project (do not re-plan from scratch), generate/align its tasks, enrich them as in
 step 3, then reconcile `plan.md` to the registered breakdown.
 
+## Blast tier (three-tier, surfaced never defaulted)
+
+Derive blast from Compounds' `plan_change` classify step, then map to the tier scale and REPORT it
+in the done-line — never silently default a missing/ambiguous signal:
+
+- **LOW** — change is localized: single file or a tight cluster, no cross-module contract change,
+  no shared/exported surface touched.
+- **MEDIUM** — change spans multiple files/modules OR touches a shared internal surface, but does
+  not alter a public/exported contract or a widely-consumed interface.
+- **HIGH** — change alters a public/exported contract, a widely-consumed interface, or has
+  cross-cutting blast (many consumers, migration, or irreversible/user-visible effect).
+
+If the classify signal is ambiguous between two tiers, pick the HIGHER tier and state the ambiguity
+in the done-line (`blast: MEDIUM (ambiguous LOW/MEDIUM — took higher)`). Surfacing the uncertainty
+is mandatory; a silent default is the defect this contract exists to prevent.
+
 ## Per-task model routing (two independent choices)
 
 For every task you write into `tasklist.md`, recommend **two** models — one for the Crafter
@@ -183,4 +199,4 @@ before returning `PLANNER_DONE`. A missing order file means every downstream Cra
 `implement_task` will fail its prerequisite. (Skip this assertion on NATIVE/TRIVIAL — there is
 no project.)
 
-Return the single line `PLANNER_DONE: {{RUN_FOLDER}}/plan.md written, subtasks: deferred (P2.2)` and nothing else. Do not paste the plan contents into your reply — the orchestrator reads the file directly.
+Return the single line `PLANNER_DONE: {{RUN_FOLDER}}/plan.md written, tier: <TRIVIAL|STANDARD>, blast: <LOW|MEDIUM|HIGH>, subtasks: deferred (P2.2)` and nothing else. Do not paste the plan contents into your reply — the orchestrator reads the file directly.
