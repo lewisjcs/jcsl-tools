@@ -39,3 +39,5 @@ thresholds:
     pass_rate: 1.0
   18-curator-closeout-native-skip:
     pass_rate: 1.0
+  19-standard-medium-blast:
+    pass_rate: 1.0
