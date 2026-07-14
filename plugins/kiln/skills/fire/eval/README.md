@@ -16,7 +16,7 @@ entry_form: /kiln <arg>
 ticket_signals:
   - <signal from the lanes.md entry-detection table>
 compounds_classification: TRIVIAL | STANDARD
-blast_radius: LOW | HIGH | N/A
+blast_radius: LOW | MEDIUM | HIGH | N/A
 
 ## Expected Routing
 lane: TRIVIAL | PLAN | EXECUTE | RESUME | DESIGN | RESEARCH | HALT-AND-ASK
@@ -41,7 +41,7 @@ Each fixture in `expected/` follows this structure:
   "routing": {
     "lane": "TRIVIAL | PLAN | EXECUTE | RESUME | DESIGN | RESEARCH | HALT-AND-ASK",
     "tier": "TRIVIAL | STANDARD | N/A",
-    "blast_radius": "LOW | HIGH | N/A",
+    "blast_radius": "LOW | MEDIUM | HIGH | N/A",
     "scenario_type": "code | tool-authoring | N/A"
   },
   "gates": {
