@@ -101,6 +101,7 @@ sticker price (a weaker model that takes 2–3× the turns costs more overall):
 |---|---|---|
 | TRIVIAL tier (Compounds score 6–9); single-file mechanical change; a `tool-authoring` deterministic-check task | `haiku` | `haiku` |
 | STANDARD tier, LOW blast; 1–2 files with a complete brief | `sonnet` | `sonnet` |
+| STANDARD tier, MEDIUM blast; multi-file or shared-internal change, no public-contract change | `sonnet` | `sonnet` |
 | STANDARD tier, HIGH blast; multi-file integration; design/architecture judgment | `opus` | `opus` |
 
 When a task matches more than one row, the most specific shape wins — a `tool-authoring`
