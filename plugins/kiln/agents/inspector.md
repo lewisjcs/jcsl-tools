@@ -131,7 +131,7 @@ blast in your dispatch / it is discernible from whether TASK-GATE blocks):
 - **LOW blast:** TASK-GATE does NOT block, so finalize **regardless of verdict** — a
   non-passing verdict's findings are advisory, the run advances, and the task is still marked
   done (this prevents a LOW-blast task rotting to TODO). There is no fix loop at LOW.
-- **HIGH blast:** on a non-passing verdict, do NOT finalize — the conductor runs the fix loop /
+- **MEDIUM or HIGH blast:** on a non-passing verdict, do NOT finalize — the conductor runs the fix loop /
   escalation per `gates.md`. Finalize only when `spec: ✅` AND `quality: approved`.
 
 On TRIVIAL the Crafter finalizes, not you (no Inspector runs on TRIVIAL).
@@ -140,7 +140,7 @@ On TRIVIAL the Crafter finalizes, not you (no Inspector runs on TRIVIAL).
 
 - **LOW blast:** lightweight adequacy pass (your relayed verify-model is cheaper); findings
   recorded; TASK-GATE does not block (the conductor advances on findings-recorded).
-- **HIGH blast:** full adequacy rigor; TASK-GATE blocks a non-passing verdict → fix loop.
+- **MEDIUM or HIGH blast:** full adequacy rigor; TASK-GATE blocks a non-passing verdict → fix loop.
 
 You run on both; the depth and the gate's blocking are the conductor's tier×blast decision — you
 always report exactly what you find.

@@ -2,7 +2,7 @@
 
 Loaded on-demand by `SKILL.md` at the classify step. The scenario is the **second**
 classification dimension, orthogonal to the complexity tier (TRIVIAL/STANDARD) and the
-blast radius (LOW/HIGH). It selects (a) the Crafter's per-task verification discipline and
+blast radius (LOW/MEDIUM/HIGH). It selects (a) the Crafter's per-task verification discipline and
 (b) the patterns/standards source injected into the brief. The conductor passes the resolved
 scenario into every Crafter and Inspector dispatch.
 
