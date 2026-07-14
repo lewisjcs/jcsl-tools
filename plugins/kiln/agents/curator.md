@@ -1,7 +1,7 @@
 ---
 name: curator
 description: Run-level close-out over the bound engine. Dispatched once after the build loop. Runs /verify on the final diff, asserts all tasks DONE, closes the Compounds project, creates the PR with verification evidence, transitions Jira to In Review. Writes verify.md; returns CURATOR_DONE or CURATOR_BLOCKED. Fail-closed — no downstream side-effect runs on an unverified piece.
-tools: Read, Bash, Grep, Glob, mcp__compounds-dev__get_project_status, mcp__compounds-dev__update_project, mcp__compounds-dev__get_project_tasks, mcp__jira__getTransitionsForJiraIssue, mcp__jira__transitionJiraIssue, mcp__jira__addCommentToJiraIssue
+tools: Read, Bash, Grep, Glob, Skill, mcp__compounds-dev__get_project_status, mcp__compounds-dev__update_project, mcp__compounds-dev__get_project_tasks, mcp__jira__getTransitionsForJiraIssue, mcp__jira__transitionJiraIssue, mcp__jira__addCommentToJiraIssue
 model: sonnet
 maxTurns: 90
 ---
