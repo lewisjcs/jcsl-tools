@@ -1,0 +1,9 @@
+{
+  "name": "prospector",
+  "version": "0.1.0",
+  "description": "Discovery-first research harness — two-round fan-out across Glean, GitHub, Jira, and the web; verifies every load-bearing claim; synthesizes a provenance-tagged answer.",
+  "author": { "name": "Josh C.S. Lewis" },
+  "repository": "https://github.com/lewisjcs/jcsl-tools",
+  "license": "MIT",
+  "keywords": ["research", "discovery", "fan-out", "synthesis", "glean"]
+}
