@@ -1,0 +1,7 @@
+{
+  "scenario": "19-standard-medium-blast",
+  "routing": { "lane": "PLAN", "tier": "STANDARD", "blast_radius": "MEDIUM", "scenario_type": "code" },
+  "gates": { "PLAN-GATE": true, "TASK-GATE": true },
+  "agents_dispatched": ["planner", "crafter", "inspector"],
+  "agents_skipped": ["walker"]
+}

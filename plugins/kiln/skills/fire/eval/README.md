@@ -2,7 +2,7 @@
 
 ## Harness Purpose
 
-Validates that The Kiln's routing decisions and gate logic match the design spec. Fourteen scenarios (01–14) cover every lane, gate combination, scenario type, and the conductor-guard behavior: 01–09 cover the P1 lanes (TRIVIAL/PLAN/EXECUTE), gates, scenario types, and the guard; 10–12 cover the P2.1 DESIGN/RESEARCH/design-doc-mid-flow routes; 13–14 cover the Compounds-engine behavior (code→Compounds, tool-authoring→native). A calibration run compares The Kiln's announced decisions against the gold JSON fixtures in `expected/`.
+Validates that The Kiln's routing decisions and gate logic match the design spec. Nineteen scenarios (01–19) cover every lane, gate combination, scenario type, and the conductor-guard behavior: 01–09 cover the P1 lanes (TRIVIAL/PLAN/EXECUTE), gates, scenario types, and the guard; 10–12 cover the P2.1 DESIGN/RESEARCH/design-doc-mid-flow routes; 13–14 cover the Compounds-engine behavior (code→Compounds, tool-authoring→native); 15 covers the context-preservation yield at a gate boundary; 16–18 cover the Curator close-out (compounds-engine, verify-fail-blocked, and native-engine skip); 19 covers the MEDIUM-blast rung — TASK-GATE blocks but the Walker does not dispatch. A calibration run compares The Kiln's announced decisions against the gold JSON fixtures in `expected/`.
 
 This is human-run, no CI automation. The harness is the ship-gate for any change to `SKILL.md` routing or gate logic.
 
