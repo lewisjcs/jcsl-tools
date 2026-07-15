@@ -29,6 +29,16 @@
       "repository": "https://github.com/lewisjcs/jcsl-tools",
       "keywords": ["review", "gauntlet", "security", "adversarial", "directive", "audit"],
       "category": "development-workflows"
+    },
+    {
+      "name": "prospector",
+      "source": "./plugins/prospector",
+      "displayName": "Prospector",
+      "description": "Discovery-first research harness — finds where an answer lives across Glean, GitHub, Jira, and the web, verifies every load-bearing claim, and synthesizes a cited answer. Invoke with /prospector:research.",
+      "author": { "name": "Josh C.S. Lewis" },
+      "repository": "https://github.com/lewisjcs/jcsl-tools",
+      "keywords": ["research", "discovery", "fan-out", "synthesis"],
+      "category": "development-workflows"
     }
   ]
 }
