@@ -20,7 +20,7 @@ Discovery-first research: the job is to find **where** an answer lives, then rea
 
 ## Step 2 — Choose the execution path (context detection)
 
-- **Main context:** launch the Layer 2 Workflow (`workflow.js`) via the `Workflow` tool for real parallel fan-out and adversarial verify. See `method.md` §Engine.
+- **Main context:** Call the `Workflow` tool with `scriptPath` set to this skill's `workflow.js` and `args: { question, outputShape, destination }` resolved in Step 1. When it returns, write `answer` to `destination` and report the path + `verifiedCount`. See `method.md` §Engine.
 - **Inside a subagent** (you were dispatched with a task and cannot spawn a Workflow): follow `method.md` inline, single-threaded. Do the same phases by hand.
 
 Decide by checking whether you can call the `Workflow` tool. If a Workflow launch is unavailable, run inline.
