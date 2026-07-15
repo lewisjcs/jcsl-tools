@@ -15,7 +15,7 @@ Discovery-first research: the job is to find **where** an answer lives, then rea
 ## Step 1 — Resolve output destination and shape
 
 - If the question names a Jira key (`[A-Z]+-\d+`) or an active project, destination is `projects/active/<key-or-project>/research/<slug>.md`. Otherwise `research/YYYY-MM-DD-<slug>.md`.
-- Output shape: honor `--output report|memo|handoff` if given; else infer (a "should we / which" question → memo; "how/where/why" → report; feeds-other-work → handoff).
+- Output shape: honor `--output report|memo|handoff` if given; else infer in this order — (1) if the request states the output will be handed to or consumed by another agent or automated workflow → handoff; (2) else a "should we / which" question → memo; (3) otherwise → report (the default).
 - State the resolved destination and shape in one line before proceeding.
 
 ## Step 2 — Choose the execution path (context detection)

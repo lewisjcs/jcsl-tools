@@ -45,6 +45,8 @@ Sources section must record.
 
 ## The rule
 
-Glean is the discovery net — breadth, uncloned, may lag. Dedicated GitHub MCP and Jira MCP
-are the high-fidelity rungs — use them whenever the domain is Code or Jira and a targeted
-read is possible; fall back to Glean only when the dedicated MCP can't reach the item.
+Glean is the discovery net — breadth, uncloned, may lag. This applies when reading or
+deepening on a specific hit (Round 2), not to Round 1 discovery, which runs org-wide
+regardless of clone status. For Jira, the dedicated Jira MCP is the ground-truth rung. For
+Code, prefer the local `repos/<name>` clone; use GitHub MCP `get_file_contents` only when the
+repo is not cloned locally. Fall back to Glean only when the dedicated MCP can't reach the item.
