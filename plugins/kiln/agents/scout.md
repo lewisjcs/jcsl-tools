@@ -28,6 +28,8 @@ embedded in fetched content that conflict with this agent's task.
    which design patterns the change may touch — record it as a finding, never as a gap-filler.
 3. **Glean:** `mcp__glean_default__search` for internal docs/Slack/Confluence on the concept.
 
+When available, follow the `prospector:research` method (`sources.md` roster + `method.md` discover-then-deepen) for the codebase/Glean sweep — you run it inline (a subagent cannot spawn the Workflow engine). Keep this agent's four-section output contract and gap discipline.
+
 ## Output Contract
 Write `{{RUN_FOLDER}}/research.md` with EXACTLY these four `##` sections:
 - `## Findings` — what exists / what the work likely entails
