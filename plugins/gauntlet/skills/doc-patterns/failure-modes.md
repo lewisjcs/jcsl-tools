@@ -105,6 +105,30 @@ Validator-heavy. Lens 2 findings require reading the full document and comparing
 
 The Validator decides whether an inconsistency is a genuine error or an intentional informed deviation (e.g., "No architecture review needed" with explicit rationale is a valid deviation, not a missing field).
 
+### Rationale as Q&A Instead of Inline Rejected-Alternatives
+
+**Concrete tell (grep-able):** A "Rationale Q&A" / "Q&A" heading, or a run of `**Q:** … **A:** …` pairs standing in for design rationale.
+
+**Why it's wrong:** Observed practice across the corpus never uses Q&A for rationale; it reads as post-hoc FAQ rather than decisions. Rationale belongs next to the decision it justifies, as an inline `Rejected — X: because…` callout or a pro/con options table.
+
+**The fix:** Convert each Q&A pair into an inline rejected-alternative at the relevant Detailed Solution sub-section, or a pro/con options table with `(recommended)` marked. Cross-reference: doc-types.md §1 Authoring guidance.
+
+### Summary Re-Narrates the Parent PRD/Epic Problem (Layering Violation)
+
+**Concrete tell:** The RFC links a parent PRD/epic (front-matter Reference Documentation or Jira Deliverable is populated) AND the Summary/Context spends multiple paragraphs restating that parent's problem/motivation rather than linking it and pivoting to the solution.
+
+**Why it's wrong:** Problem ownership lives upstream. Re-narration duplicates the PRD (drifts over time) and buries the decision the RFC exists to make. "Specific statements create alignment; generic statements create the illusion of alignment" (Larson).
+
+**The fix:** Compress the problem to 1–2 sentences + a link to the parent; spend the body on solution + rationale. Cross-reference: doc-types.md §1 Authoring guidance.
+
+**Guardrail — do NOT flag when:** no parent PRD/epic is linked (the RFC legitimately owns the problem — e.g. a net-new tool, a proposed standard, an org-process RFC). Problem narration is correct there.
+
+### Guardrails — RFC status-aware (what NOT to flag)
+
+- **DRAFT-status RFC with placeholder litter or empty *conditional* sections is not defective.** Only flag missing *near-universal* sections (doc-types.md §1 tier 1). RFCs are gated at Architecture Review; drafts are legitimately incomplete (timely-over-polished).
+- **Do not demand full defended rationale from a DRAFT.** Open questions are acceptable pre-review; rationale-completeness checks apply at UNDER REVIEW / APPROVED.
+- **Flag a *stale* status badge** — e.g. APPROVED with unresolved blocking comments, or a badge out of sync with the Architecture Review outcome.
+
 ---
 
 ## Lens 3: Accuracy of References
