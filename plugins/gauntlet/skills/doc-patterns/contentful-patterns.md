@@ -108,4 +108,4 @@ Bare URLs do not auto-link in Jira ADF (`contentFormat: "markdown"`). Always use
 
 These constraints are Jira/Confluence-specific. GitHub PR descriptions and skill files are more forgiving, but `[text](url)` is preferred everywhere for consistency.
 
-**Doc-review lens:** Lens 3. See failure-modes.md §Lens 3 for the grep pattern. Voice-and-structure.md §Citation conventions covers the broader rule.
+**Doc-review lens:** Lens 4 (Voice/writing-style). See failure-modes.md §Lens 4 for the grep pattern. Voice-and-structure.md §Citation conventions covers the broader rule.

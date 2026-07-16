@@ -136,7 +136,6 @@ The Validator decides whether an inconsistency is a genuine error or an intentio
 Partial support — URL resolution requires fetching, not static analysis. The Finder flags patterns that warrant verification; the Validator confirms.
 
 **Static checks the Finder can perform:**
-- **Bare URLs:** `https?://[^\s)\]]+(?<![\)\]])` on a line without a preceding `](` — use `[text](url)` instead. (See voice-and-structure.md §Citation conventions.)
 - **Personal Confluence space URLs:** `atlassian\.net/wiki/spaces/~\d+/` — personal spaces may not be accessible to all readers.
 - **Skill references:** `\$contentful-[a-z-]+` in AGENTS.md without verified installed-skill inventory. (See §Lens 1, No personal tooling.)
 - **Local paths:** `~/|/tmp/|\.worktrees/|/Users/[a-z.]+/` — not navigable by other readers. (See §Lens 1, No local paths.)
@@ -185,6 +184,16 @@ Five or more consecutive non-blank lines without a list marker (`- `, `* `, `1.`
 **Why it's wrong:** Dense prose signals narrative padding. Cross-reference voice-and-structure.md §Paragraph density.
 
 **The fix:** Determine whether the content is parallel items (→ list or table), data structure (→ code block), or continuous reasoning (→ legitimate prose). If genuinely continuous reasoning and over 4 sentences, compress: cut to decision and rationale, remove restatements.
+
+---
+
+### Bare or Non-Hyperlinked URL Citation
+
+**Concrete tell (grep-able):** `https?://[^\s)\]]+(?<![\)\]])` on a line without a preceding `](` — use `[text](url)` instead.
+
+**Why it's wrong:** This is a citation-format concern, not a resolution concern — it belongs to Lens 4 (Voice/writing-style), not Lens 3 (Accuracy of references). A bare or backtick-wrapped URL that resolves is not an Accuracy defect; it is a readability/citation-convention defect. See voice-and-structure.md §Citation conventions.
+
+**The fix:** Replace with `[descriptive text](url)`.
 
 ---
 

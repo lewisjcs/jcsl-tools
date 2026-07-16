@@ -12,7 +12,7 @@ What good documentation looks like across doc types. Loaded by `doc-review` and 
 
 **What bad looks like:** Topic buckets — "Context," "Design," "Next Steps" — that force the reader to read every paragraph to understand what was decided.
 
-**Doc-review lens:** Lens 4 (Voice/writing-style alignment) — skim-test failure signals the author wrote to document a process rather than communicate a decision. Finder pattern: headings matching `^#{2,4} (Context|Background|Approach|Solution|Design|Implementation|Next Steps|Summary)\s*$` (single-word or generic topic-bucket headings) are candidates for flagging.
+**Doc-review lens:** Lens 4 (Voice/writing-style alignment) — skim-test failure signals the author wrote to document a process rather than communicate a decision. Finder pattern: headings matching `^#{2,4} (Context|Background|Approach|Solution|Design|Implementation|Next Steps|Summary)\s*$` (single-word or generic topic-bucket headings) are candidates for flagging. **Exception:** several doc types mandate one of these exact bare heading names as a near-universal or recommended structural section — RFC's `Summary` and `Context` (doc-types.md §1), RAPID's `Background` (§3), ADR's `Context` (§4). A heading matching the pattern because it conforms to its type's own template is not a generic-topic-bucket defect; the Finder's pre-emission self-check cross-checks doc-types.md before flagging (see doc-finder.md's template-mandated heading allowlist).
 
 **Sources:** Larson, [Writing Engineering Strategy](https://staffeng.com/guides/engineering-strategy/); Nygard, [Documenting Architecture Decisions](https://www.cognitect.com/blog/2011/11/15/documenting-architecture-decisions)
 
@@ -94,7 +94,7 @@ What good documentation looks like across doc types. Loaded by `doc-review` and 
 
 **What bad looks like:** `Reference Documentation: <bare URL>` (no descriptive anchor text — readers cannot tell what the link points to without clicking).
 
-**Doc-review lens:** Lens 3 (Accuracy of references). Finder pattern: `https?://[^\s)]+(?<!\))` on a line without a preceding `](`.
+**Doc-review lens:** Lens 4 (Voice/writing-style alignment) — citation format is a readability concern, distinct from whether the reference resolves (Lens 3). Finder pattern: `https?://[^\s)]+(?<!\))` on a line without a preceding `](`. Applies whether the bare URL is unadorned or wrapped in backticks as inline code — neither is a `[text](url)` link.
 
 **Sources:** `feedback_jira_markdown_adf_lossy` memory; contentful-patterns.md §Citation conventions in Jira and Confluence markdown (Jira-specific detail)
 

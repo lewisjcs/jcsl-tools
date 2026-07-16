@@ -31,8 +31,8 @@ When applying doc review, the five lenses (in the order doc-finder applies them 
 |---|---|---|---|
 | 1 | Memory-encoded rules | failure-modes.md §Lens 1 | contentful-patterns.md (ADR convention, owner pointers, AGENTS.md bloat); voice-and-structure.md (evergreen language) |
 | 2 | Internal consistency | failure-modes.md §Lens 2 | doc-types.md (structural templates per type) |
-| 3 | Accuracy of references | failure-modes.md §Lens 3 | voice-and-structure.md (citation conventions); contentful-patterns.md (Jira/Confluence-specific) |
-| 4 | Voice / writing-style alignment | failure-modes.md §Lens 4 | voice-and-structure.md (active voice, no hedging, headings as TL;DR, Larson's specificity) |
+| 3 | Accuracy of references | failure-modes.md §Lens 3 | (resolution only — does the path/command/URL work; citation *format* is Lens 4) |
+| 4 | Voice / writing-style alignment | failure-modes.md §Lens 4 | voice-and-structure.md (active voice, no hedging, headings as TL;DR, Larson's specificity, citation conventions); contentful-patterns.md (Jira/Confluence-specific citation constraints) |
 | 5 | Hidden assumptions | sibling: `adversarial-review` | failure-modes.md §Lens 5 (delegation note) |
 
 ## Sibling Skills
