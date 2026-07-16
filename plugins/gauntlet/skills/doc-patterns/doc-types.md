@@ -1,6 +1,6 @@
 # Doc Types Reference
 
-Six document types used across Tundra (Extensibility) and the broader Contentful engineering org. Loaded by `doc-review` and other doc-relevant skills.
+Six document types used across Applied AI Solutions (AIS) and the broader Contentful engineering org. Loaded by `doc-review` and other doc-relevant skills.
 
 ---
 
@@ -15,7 +15,7 @@ Six document types used across Tundra (Extensibility) and the broader Contentful
 *Near-universal (every deliverable RFC has these):*
 1. Front-matter details table — status badge (RFC Status: DRAFT/UNDER REVIEW/APPROVED/ABANDONED) + Author + upstream link (Reference Documentation → PRD, optionally RAPID; Jira Deliverable). Canonical 6 fields: RFC Status, Author, Contributors, Reference Documentation, Jira Deliverable, Review Date.
 2. Summary — what-it-does + (if no parent owns the problem) current-state problem; leads with the solution when a parent PRD/epic does own it (see Authoring guidance).
-3. Audience table — Role (AGREE/INPUT/CONSULT) | Individual(s)/Team(s) | Detail. CONSULT is an AIS/Tundra extension beyond the org AGREE/INPUT pair.
+3. Audience table — Role (AGREE/INPUT/CONSULT) | Individual(s)/Team(s) | Detail. CONSULT is an AIS extension beyond the org AGREE/INPUT pair.
 4. Effect — observable outcomes per actor role if adopted; separate from Summary.
 5. Context — settled information only; flag anything still open so reviewers focus there.
 6. Detailed Solution — prose + inline code blocks for all data structures; never prose-only for data shapes.
@@ -34,14 +34,14 @@ Six document types used across Tundra (Extensibility) and the broader Contentful
 - **Rationale = inline rejected-alternatives or a pro/con table — never Q&A.** Put the rejected option next to the decision it lost to: `Rejected — X: because…`, or a pro/con options table with `(recommended)` marked. Alternatives-with-trade-offs are mandatory, not optional.
 - **Scope boundary is an explicit surface, not silence.** Name what the RFC does not own — a Scope/Non-Goals section, inline "owned by X, not this RFC", or Open Questions. Non-goals are things that could reasonably be goals but are explicitly chosen not to be — not negated outcomes.
 - **Be opinionated; show your work.** Stake a recommendation and defend it with cited reasoning. See voice-and-structure.md for the specificity and active-voice rules.
-- **AI-feature RFCs carry a first-class eval/success-metrics plan.** See tundra-patterns.md §Evals discipline — state how the feature is measured and graduated, plus cost model and rollback criteria.
+- **AI-feature RFCs carry a first-class eval/success-metrics plan.** See contentful-patterns.md §Evals discipline — state how the feature is measured and graduated, plus cost model and rollback criteria.
 
 **Voice cues:**
 - Declarative and opinionated: stake a recommendation and defend it — no hedge language
 - Larson's rule applies directly: "Specific statements create alignment; generic statements create the illusion of alignment" (https://staffeng.com/guides/engineering-strategy/)
 - Active voice throughout; short paragraphs (prose blocks rarely exceed 3–4 sentences before a break)
 - Parenthetical scope constraints are acceptable and preferred over waffling prose: "(at the time of writing, only user identity)"
-- Templates evolve from repeat reviewer questions (Orosz, https://blog.pragmaticengineer.com/scaling-engineering-teams-via-writing-things-down-rfcs/); the Tundra audience table with AGREE/INPUT/CONSULT is the formalized answer to "who must approve this and in what capacity"
+- Templates evolve from repeat reviewer questions (Orosz, https://blog.pragmaticengineer.com/scaling-engineering-teams-via-writing-things-down-rfcs/); the AIS audience table with AGREE/INPUT/CONSULT is the formalized answer to "who must approve this and in what capacity"
 - **AI features require an evals plan.** Per Mike Kivisto's February 2026 All Hands directive (https://docs.google.com/presentation/d/1qb1NNCIjIakodLN8YGZrckM8ilMeiTCDlFucIqdkpHM): "If an LLM is part of the feature you are shipping you need to use AI Evals. Full stop." An RFC proposing an AI-powered feature that defers evals to a future sprint is directly contradicting this mandate. Regression evals are required whenever prompts change, models swap, or tools/agents are added.
 
 **Doc-review lens emphasis:**
@@ -109,7 +109,7 @@ Six document types used across Tundra (Extensibility) and the broader Contentful
 - Decision section is in past tense once decided; no hedging
 - For a RAPID still in draft (Decider not yet named or due date in the future), present-tense or conditional phrasing in the Decision section is correct and should not be flagged as a voice violation — the past-tense rule applies only to RAPIDs whose decision has been made
 - Options comparison is neutral in framing — pros and cons stated without editorializing before the Decision section
-- The RAPID vocabulary (Recommend/Agree/Perform/Input/Decide) maps to the Tundra RFC audience table: AGREE and INPUT roles in the RFC audience table borrow directly from RAPID; CONSULT is a Tundra RFC extension not present in RAPID itself
+- The RAPID vocabulary (Recommend/Agree/Perform/Input/Decide) maps to the AIS RFC audience table: AGREE and INPUT roles in the RFC audience table borrow directly from RAPID; CONSULT is an AIS RFC extension not present in RAPID itself
 - RAPID and RFC are explicitly not alternatives: RAPID resolves a constrained upstream choice; the RFC designs the solution to implement that choice. The RFC's Reference Documentation field can link to the preceding RAPID.
 - The org's canonical RAPID definition (internal Confluence) is the normative reference for role definitions and trigger cases
 
@@ -134,7 +134,7 @@ Six document types used across Tundra (Extensibility) and the broader Contentful
 3. Context — forces at play: technological, organizational, project-local; value-neutral; states facts, not opinions; no argumentation
 4. Decision — response to the forces; full sentences, active voice: "We will…" — never passive, never hedged; argumentation lives here, not in Context
 5. Consequences — all consequences, positive, negative, and neutral; not just the justification for the decision
-6. (Optional, MADR 4.0 extension) Considered Options — explicit options comparison with Pros/Cons per option; maps to the options table patterns common in Tundra RFCs
+6. (Optional, MADR 4.0 extension) Considered Options — explicit options comparison with Pros/Cons per option; maps to the options table patterns common in AIS RFCs
 
 **Voice cues:**
 - Active voice in Decision section is a hard rule (Nygard 2011, https://www.cognitect.com/blog/2011/11/15/documenting-architecture-decisions): "We will…" not "It was decided that…"

@@ -101,6 +101,6 @@ Calibrated against the gauntlet gold-fixture suite (`projects/active/gauntlet/te
 
 - `lenses.md` (this skill's directory) — substantive lens definitions + evidence labels. Loaded by both agents at dispatch.
 - `code-quality-standards` — defensive-code anti-patterns. Loaded by the Validator for false-positive filtering.
-- `doc-review` — reviews human-facing docs (RFCs/READMEs/AGENTS.md). Different audience: doc-review protects human readers and Tundra house voice; directive-review protects a literal agent executor.
+- `doc-review` — reviews human-facing docs (RFCs/READMEs/AGENTS.md). Different audience: doc-review protects human readers and Contentful house voice; directive-review protects a literal agent executor.
 - `skill-audit` — reviews SKILL.md/agent.md frontmatter definitions. directive-review covers the non-frontmatter prose those skills reference.
 - `gauntlet` — orchestrator; dispatches directive-review for `directive` artifacts.

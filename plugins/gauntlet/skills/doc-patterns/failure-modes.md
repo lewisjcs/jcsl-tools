@@ -1,6 +1,6 @@
 # Doc Failure Modes
 
-Common failure patterns mapped to `doc-review` lenses (master spec §3.5). Each Lens 1 and Lens 4 entry has a concrete grep-able tell. Lenses 2 and 3 are partially supported — the Validator role is more load-bearing there. For lens definitions see the master spec §3.5. For doc type context see doc-types.md §1–6. For voice rules behind these patterns see voice-and-structure.md and tundra-patterns.md.
+Common failure patterns mapped to `doc-review` lenses (master spec §3.5). Each Lens 1 and Lens 4 entry has a concrete grep-able tell. Lenses 2 and 3 are partially supported — the Validator role is more load-bearing there. For lens definitions see the master spec §3.5. For doc type context see doc-types.md §1–6. For voice rules behind these patterns see voice-and-structure.md and contentful-patterns.md.
 
 ---
 
@@ -59,9 +59,9 @@ Highest-confidence findings — violations of explicit, stored rules. Finder pat
 
 **Why it's wrong:** Individual names go stale and commit people to roles they did not agree to.
 
-**The fix:** Replace with team aliases (`Team Tundra (Extensibility)`), Slack channels (`#ext-tundra-engineering`), or CODEOWNERS paths (`@contentful/tundra`). Internal scratch docs are exempt.
+**The fix:** Replace with team aliases (e.g. `Applied AI Solutions`), Slack channels, or CODEOWNERS paths. Internal scratch docs are exempt.
 
-**Exception:** Mike Kivisto is named in tundra-patterns.md §Evals discipline — the only individual-name exception in doc-patterns content (master spec §3.2 spec-named exception).
+**Exception:** Mike Kivisto is named in contentful-patterns.md §Evals discipline — the only individual-name exception in doc-patterns content (master spec §3.2 spec-named exception).
 
 ---
 
@@ -86,7 +86,7 @@ Highest-confidence findings — violations of explicit, stored rules. Finder pat
 - `## Getting Started` or `## Setup` heading in AGENTS.md
 - ` ```[a-z]*\n(?:[^\n]*\n){2,}``` ` — code block of 2+ content lines in an AGENTS.md body (multi-line code examples belong in skill files or README, not AGENTS.md)
 
-**The fix:** Apply the litmus test (tundra-patterns.md §AGENTS.md). Remove `bloat`; move `misplaced`: setup → README; decision trees/examples → skill files. The `contentful-update-agents-md` skill in `contentful/agents-kit` automates this classification.
+**The fix:** Apply the litmus test (contentful-patterns.md §AGENTS.md). Remove `bloat`; move `misplaced`: setup → README; decision trees/examples → skill files. The `contentful-update-agents-md` skill in `contentful/agents-kit` automates this classification.
 
 Three-tag vocabulary: `ok` (non-discoverable, keep), `bloat` (discoverable/procedural, remove), `misplaced` (belongs elsewhere, move).
 
@@ -190,11 +190,11 @@ Five or more consecutive non-blank lines without a list marker (`- `, `* `, `1.`
 
 ### RFC Audience Table Missing Detail Column
 
-**Concrete tell (grep-able):** Audience table rows matching `\|\s*(AGREE|INPUT|CONSULT)\s*\|[^|]+\|\s*$` — three pipes total instead of four (Role | Individual/Team | Detail | end-of-row). The Detail column is required per Tundra house style; its absence collapses reviewer scope.
+**Concrete tell (grep-able):** Audience table rows matching `\|\s*(AGREE|INPUT|CONSULT)\s*\|[^|]+\|\s*$` — three pipes total instead of four (Role | Individual/Team | Detail | end-of-row). The Detail column is required per Contentful house style; its absence collapses reviewer scope.
 
 **Why it's wrong:** The Detail column communicates what each reviewer is being asked to validate. Without it, an AGREE reviewer cannot tell if their veto applies to the whole RFC or only to a specific sub-decision.
 
-**The fix:** Add the Detail column. Each row gets a one-phrase scope: "API surface", "auth model", "delivery sequencing", etc. Cross-reference: tundra-patterns.md §AGREE / INPUT / CONSULT audience-table convention.
+**The fix:** Add the Detail column. Each row gets a one-phrase scope: "API surface", "auth model", "delivery sequencing", etc. Cross-reference: contentful-patterns.md §AGREE / INPUT / CONSULT audience-table convention.
 
 ---
 

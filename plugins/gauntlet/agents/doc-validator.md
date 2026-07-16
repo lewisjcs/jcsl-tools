@@ -37,7 +37,7 @@ The interaction: if a finding could be disproved both by doc-internal text AND b
 
 Before evaluating, read both:
 1. `${CLAUDE_PLUGIN_ROOT}/skills/code-quality-standards/SKILL.md` (user-level skill, available globally) — for false-positive rules on defensive-code patterns and team-rejected hedging.
-2. `${CLAUDE_PLUGIN_ROOT}/skills/doc-patterns/SKILL.md`, `${CLAUDE_PLUGIN_ROOT}/skills/doc-patterns/failure-modes.md`, `${CLAUDE_PLUGIN_ROOT}/skills/doc-patterns/tundra-patterns.md`, and `${CLAUDE_PLUGIN_ROOT}/skills/doc-patterns/voice-and-structure.md` — for substantive lens criteria, Tundra house rules, and voice/writing-style criteria (matching doc-finder's pre-dispatch reads).
+2. `${CLAUDE_PLUGIN_ROOT}/skills/doc-patterns/SKILL.md`, `${CLAUDE_PLUGIN_ROOT}/skills/doc-patterns/failure-modes.md`, `${CLAUDE_PLUGIN_ROOT}/skills/doc-patterns/contentful-patterns.md`, and `${CLAUDE_PLUGIN_ROOT}/skills/doc-patterns/voice-and-structure.md` — for substantive lens criteria, Contentful house rules, and voice/writing-style criteria (matching doc-finder's pre-dispatch reads).
 
 ## Disproof strategies (apply each in order)
 
@@ -64,7 +64,7 @@ The following four clauses are pre-finalized in master spec §3.5 lines 240-245 
 
 Each finding declares a `lens` field. Disproof must apply to that lens's evaluation criteria, not a different lens's. Specifically, the following cross-section disproof patterns are FORBIDDEN:
 
-- **Memory rules vs. Voice and writing-style.** A clear, well-toned doc can still leak personal tooling (`/cartograph`), local paths (`~/`), or an individual's name. The Voice/writing-style lens evaluates tone, structure, and Tundra house style; it does NOT absolve a Memory-rules violation. Do NOT use "the doc reads cleanly" or "the section is well-structured" to disprove a Memory-rules finding.
+- **Memory rules vs. Voice and writing-style.** A clear, well-toned doc can still leak personal tooling (`/cartograph`), local paths (`~/`), or an individual's name. The Voice/writing-style lens evaluates tone, structure, and Contentful house style; it does NOT absolve a Memory-rules violation. Do NOT use "the doc reads cleanly" or "the section is well-structured" to disprove a Memory-rules finding.
 - **Memory rules vs. sibling Memory rules.** A doc that is correctly evergreen (no "was removed", no "post-EXT-X") can still reference personal tooling, individual names, or local paths. Each of the 6 Memory sub-lenses is independent. Do NOT use evergreen tone to disprove a personal-tooling finding, and do NOT use absence of personal tooling to disprove an individual-name finding.
 - **Memory rules vs. Internal consistency.** A doc whose sections are mutually consistent can still violate Memory rules; a doc with an internal contradiction can still pass all Memory rules. Each finding stands or falls on the lens it declares.
 - **Accuracy of references vs. all other lenses.** A finding that "the path/command/URL cited in §X does not resolve" is not disproved by the doc's overall correctness, evergreen tone, or absence of individual names. Verify the reference; cite the verification outcome.
