@@ -28,7 +28,7 @@ What good documentation looks like across doc types. Loaded by `doc-review` and 
 
 **Doc-review lens:** Lens 4 (Voice/writing-style alignment). See also §Structured-then-prose pattern.
 
-**Sources:** Tundra RFC corpus voice patterns; Nygard, [Documenting Architecture Decisions](https://www.cognitect.com/blog/2011/11/15/documenting-architecture-decisions)
+**Sources:** AIS RFC corpus voice patterns; Nygard, [Documenting Architecture Decisions](https://www.cognitect.com/blog/2011/11/15/documenting-architecture-decisions)
 
 ---
 
@@ -88,7 +88,7 @@ What good documentation looks like across doc types. Loaded by `doc-review` and 
 
 ## Citation Conventions
 
-**The pattern:** Every URL uses `[text](url)` format — never bare URLs. Anchor text must be descriptive: `[RFC: CMA Access Delegation for Agent Apps](url)`, not `[here](url)`. For Jira ADF and Confluence-specific constraints (bare URLs do not auto-link, inline `code` inside link text is dropped, `- [ ]` checkboxes are escaped), see tundra-patterns.md §Citation conventions in Jira and Confluence markdown.
+**The pattern:** Every URL uses `[text](url)` format — never bare URLs. Anchor text must be descriptive: `[RFC: CMA Access Delegation for Agent Apps](url)`, not `[here](url)`. For Jira ADF and Confluence-specific constraints (bare URLs do not auto-link, inline `code` inside link text is dropped, `- [ ]` checkboxes are escaped), see contentful-patterns.md §Citation conventions in Jira and Confluence markdown.
 
 **What good looks like:** `See [Writing Engineering Strategy](https://staffeng.com/guides/engineering-strategy/) for the specificity principle.`
 
@@ -96,7 +96,7 @@ What good documentation looks like across doc types. Loaded by `doc-review` and 
 
 **Doc-review lens:** Lens 3 (Accuracy of references). Finder pattern: `https?://[^\s)]+(?<!\))` on a line without a preceding `](`.
 
-**Sources:** `feedback_jira_markdown_adf_lossy` memory; tundra-patterns.md §Citation conventions in Jira and Confluence markdown (Jira-specific detail)
+**Sources:** `feedback_jira_markdown_adf_lossy` memory; contentful-patterns.md §Citation conventions in Jira and Confluence markdown (Jira-specific detail)
 
 ---
 
@@ -114,16 +114,16 @@ What good documentation looks like across doc types. Loaded by `doc-review` and 
 
 **Doc-review lens:** Lens 4 (Voice/writing-style alignment). Cross-reference §Paragraph density.
 
-**Sources:** contentful-update-agents-md conventions.md §4 (Do/Don't bullets, no prose paragraphs in AGENTS.md); Tundra RFC corpus structural patterns
+**Sources:** contentful-update-agents-md conventions.md §4 (Do/Don't bullets, no prose paragraphs in AGENTS.md); AIS RFC corpus structural patterns
 
 ---
 
 ## Larson's Specificity Principle
 
-**The pattern:** Specific statements create alignment. Generic statements create the illusion of alignment. This is the governing *why* behind §No hedging on directives, §Headings as TL;DR, and the Tundra house style for decision sections. "We will use Braintrust as the eval framework for this feature's regression suite" creates accountability; "We should consider using an eval framework at some point" does not — every reader walks away with a different understanding of "some point."
+**The pattern:** Specific statements create alignment. Generic statements create the illusion of alignment. This is the governing *why* behind §No hedging on directives, §Headings as TL;DR, and the Contentful house style for decision sections. "We will use Braintrust as the eval framework for this feature's regression suite" creates accountability; "We should consider using an eval framework at some point" does not — every reader walks away with a different understanding of "some point."
 
 **What good looks like:**
-- Milestone: "M2: Evals suite passes on staging (target: 2026-06-15, Owner: Team Tundra)."
+- Milestone: "M2: Evals suite passes on staging (target: 2026-06-15, Owner: Applied AI Solutions)."
 - AGENTS.md: "Never call `spaceContext.space.getSpace()` — use the injected `cmaClient` instead."
 
 **What bad looks like:**

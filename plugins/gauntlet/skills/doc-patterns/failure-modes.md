@@ -1,6 +1,6 @@
 # Doc Failure Modes
 
-Common failure patterns mapped to `doc-review` lenses (master spec §3.5). Each Lens 1 and Lens 4 entry has a concrete grep-able tell. Lenses 2 and 3 are partially supported — the Validator role is more load-bearing there. For lens definitions see the master spec §3.5. For doc type context see doc-types.md §1–6. For voice rules behind these patterns see voice-and-structure.md and tundra-patterns.md.
+Common failure patterns mapped to `doc-review` lenses (master spec §3.5). Each Lens 1 and Lens 4 entry has a concrete grep-able tell. Lenses 2 and 3 are partially supported — the Validator role is more load-bearing there. For lens definitions see the master spec §3.5. For doc type context see doc-types.md §1–6. For voice rules behind these patterns see voice-and-structure.md and contentful-patterns.md.
 
 ---
 
@@ -59,9 +59,9 @@ Highest-confidence findings — violations of explicit, stored rules. Finder pat
 
 **Why it's wrong:** Individual names go stale and commit people to roles they did not agree to.
 
-**The fix:** Replace with team aliases (`Team Tundra (Extensibility)`), Slack channels (`#ext-tundra-engineering`), or CODEOWNERS paths (`@contentful/tundra`). Internal scratch docs are exempt.
+**The fix:** Replace with team aliases (e.g. `Applied AI Solutions`), Slack channels, or CODEOWNERS paths. Internal scratch docs are exempt.
 
-**Exception:** Mike Kivisto is named in tundra-patterns.md §Evals discipline — the only individual-name exception in doc-patterns content (master spec §3.2 spec-named exception).
+**Exception:** Mike Kivisto is named in contentful-patterns.md §Evals discipline — the only individual-name exception in doc-patterns content (master spec §3.2 spec-named exception).
 
 ---
 
@@ -86,7 +86,7 @@ Highest-confidence findings — violations of explicit, stored rules. Finder pat
 - `## Getting Started` or `## Setup` heading in AGENTS.md
 - ` ```[a-z]*\n(?:[^\n]*\n){2,}``` ` — code block of 2+ content lines in an AGENTS.md body (multi-line code examples belong in skill files or README, not AGENTS.md)
 
-**The fix:** Apply the litmus test (tundra-patterns.md §AGENTS.md). Remove `bloat`; move `misplaced`: setup → README; decision trees/examples → skill files. The `contentful-update-agents-md` skill in `contentful/agents-kit` automates this classification.
+**The fix:** Apply the litmus test (contentful-patterns.md §AGENTS.md). Remove `bloat`; move `misplaced`: setup → README; decision trees/examples → skill files. The `contentful-update-agents-md` skill in `contentful/agents-kit` automates this classification.
 
 Three-tag vocabulary: `ok` (non-discoverable, keep), `bloat` (discoverable/procedural, remove), `misplaced` (belongs elsewhere, move).
 
@@ -104,6 +104,30 @@ Validator-heavy. Lens 2 findings require reading the full document and comparing
 - **Superseded ADR chain:** A "superseded" ADR without a link to its replacement, or vice versa, breaks the bidirectional chain.
 
 The Validator decides whether an inconsistency is a genuine error or an intentional informed deviation (e.g., "No architecture review needed" with explicit rationale is a valid deviation, not a missing field).
+
+### Rationale as Q&A Instead of Inline Rejected-Alternatives
+
+**Concrete tell (grep-able):** A "Rationale Q&A" / "Q&A" heading, or a run of `**Q:** … **A:** …` pairs standing in for design rationale.
+
+**Why it's wrong:** Observed practice across the corpus never uses Q&A for rationale; it reads as post-hoc FAQ rather than decisions. Rationale belongs next to the decision it justifies, as an inline `Rejected — X: because…` callout or a pro/con options table.
+
+**The fix:** Convert each Q&A pair into an inline rejected-alternative at the relevant Detailed Solution sub-section, or a pro/con options table with `(recommended)` marked. Cross-reference: doc-types.md §1 Authoring guidance.
+
+### Summary Re-Narrates the Parent PRD/Epic Problem (Layering Violation)
+
+**Concrete tell:** The RFC links a parent PRD/epic (front-matter Reference Documentation or Jira Deliverable is populated) AND the Summary/Context spends multiple paragraphs restating that parent's problem/motivation rather than linking it and pivoting to the solution.
+
+**Why it's wrong:** Problem ownership lives upstream. Re-narration duplicates the PRD (drifts over time) and buries the decision the RFC exists to make. "Specific statements create alignment; generic statements create the illusion of alignment" (Larson).
+
+**The fix:** Compress the problem to 1–2 sentences + a link to the parent; spend the body on solution + rationale. Cross-reference: doc-types.md §1 Authoring guidance.
+
+**Guardrail — do NOT flag when:** no parent PRD/epic is linked (the RFC legitimately owns the problem — e.g. a net-new tool, a proposed standard, an org-process RFC). Problem narration is correct there.
+
+### Guardrails — RFC status-aware (what NOT to flag)
+
+- **DRAFT-status RFC with placeholder litter or empty *conditional* sections is not defective.** Only flag missing *near-universal* sections (doc-types.md §1 tier 1). RFCs are gated at Architecture Review; drafts are legitimately incomplete (timely-over-polished).
+- **Do not demand full defended rationale from a DRAFT.** Open questions are acceptable pre-review; rationale-completeness checks apply at UNDER REVIEW / APPROVED.
+- **Flag a *stale* status badge** — e.g. APPROVED with unresolved blocking comments, or a badge out of sync with the Architecture Review outcome.
 
 ---
 
@@ -166,11 +190,11 @@ Five or more consecutive non-blank lines without a list marker (`- `, `* `, `1.`
 
 ### RFC Audience Table Missing Detail Column
 
-**Concrete tell (grep-able):** Audience table rows matching `\|\s*(AGREE|INPUT|CONSULT)\s*\|[^|]+\|\s*$` — three pipes total instead of four (Role | Individual/Team | Detail | end-of-row). The Detail column is required per Tundra house style; its absence collapses reviewer scope.
+**Concrete tell (grep-able):** Audience table rows matching `\|\s*(AGREE|INPUT|CONSULT)\s*\|[^|]+\|\s*$` — three pipes total instead of four (Role | Individual/Team | Detail | end-of-row). The Detail column is required per Contentful house style; its absence collapses reviewer scope.
 
 **Why it's wrong:** The Detail column communicates what each reviewer is being asked to validate. Without it, an AGREE reviewer cannot tell if their veto applies to the whole RFC or only to a specific sub-decision.
 
-**The fix:** Add the Detail column. Each row gets a one-phrase scope: "API surface", "auth model", "delivery sequencing", etc. Cross-reference: tundra-patterns.md §AGREE / INPUT / CONSULT audience-table convention.
+**The fix:** Add the Detail column. Each row gets a one-phrase scope: "API surface", "auth model", "delivery sequencing", etc. Cross-reference: contentful-patterns.md §AGREE / INPUT / CONSULT audience-table convention.
 
 ---
 

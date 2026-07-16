@@ -104,7 +104,7 @@ Format based on invocation context:
 
 ## Sibling Skills
 
-- `doc-patterns` — substantive lens definitions and Tundra house rules. Loaded by both Finder and Validator at dispatch time.
+- `doc-patterns` — substantive lens definitions and Contentful house rules. Loaded by both Finder and Validator at dispatch time.
 - `code-quality-standards` — defensive-code anti-patterns. Loaded by the Validator for false-positive filtering.
 - `adversarial-review` — pressure-tests structural assumptions in code diffs. Different scope; doc-review checks doc correctness, adversarial-review checks code correctness. Hidden assumptions lens will invoke this in Phase 7+.
 - `security-gauntlet` — security review skill, also Finder/Validator pattern. Sibling within the gauntlet review-skill family.

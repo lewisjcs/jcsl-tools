@@ -1,6 +1,6 @@
 # Doc Types Reference
 
-Six document types used across Tundra (Extensibility) and the broader Contentful engineering org. Loaded by `doc-review` and other doc-relevant skills.
+Six document types used across Applied AI Solutions (AIS) and the broader Contentful engineering org. Loaded by `doc-review` and other doc-relevant skills.
 
 ---
 
@@ -10,32 +10,42 @@ Six document types used across Tundra (Extensibility) and the broader Contentful
 
 **Audience:** Engineers, architects, and DevOps who will build or be affected by the solution; the Technical Lead owns authorship; RFC exists to surface misalignment before code starts, not document decisions already made.
 
-**Structural template (recommended sections in order):**
-1. Front-matter details macro — six required fields: RFC Status (DRAFT/UNDER REVIEW/APPROVED/ABANDONED), Author, Contributors, Reference Documentation (links to PRD and optionally a RAPID), Jira Deliverable, Review Date
-2. Audience table — Role (AGREE/INPUT/CONSULT) | Individual(s) or Team(s) | Detail column stating what each reviewer validates; CONSULT is a Tundra extension beyond the org template's AGREE/INPUT pair
-3. Effect — observable outcomes per actor role if this proposal is adopted; separate from Summary
-4. Summary — three-part: what-it-does sentence, current-state problem statement, Solution bullet list
-5. Context — settled information only; flag anything still open so reviewers know where to focus
-6. Detailed Solution — prose + inline code blocks for all data structures; never prose-only descriptions of data shapes
-7. Technical Diagram — required
-8. API Specification — required; OpenAPI, AsyncAPI, or TypeScript `.d.ts`
-9. Rationale Q&A or Settled Decisions table — pre-empts reviewer objections; Decision | Rationale columns or numbered Q&A; present before the detailed solution body in short RFCs, after in longer ones
-10. Dependencies — required
-11. Delivery Approach & Milestones — t-shirt sizing with rationale; Milestone | Description | Target Date | Owner table; Rollout Strategy; Testing Plan
-12. Delivery Risks & Mitigations — Risk | Mitigation | Owner (Owner column is required per org template)
-13. Open Questions — numbered, with inline recommendations where possible; framed as future work, not current blockers
+**Structural template (three tiers — observed across the ECO/AIS/ProdDev corpus, not the flat template):**
+
+*Near-universal (every deliverable RFC has these):*
+1. Front-matter details table — status badge (RFC Status: DRAFT/UNDER REVIEW/APPROVED/ABANDONED) + Author + upstream link (Reference Documentation → PRD, optionally RAPID; Jira Deliverable). Canonical 6 fields: RFC Status, Author, Contributors, Reference Documentation, Jira Deliverable, Review Date.
+2. Summary — what-it-does + (if no parent owns the problem) current-state problem; leads with the solution when a parent PRD/epic does own it (see Authoring guidance).
+3. Audience table — Role (AGREE/INPUT/CONSULT) | Individual(s)/Team(s) | Detail. CONSULT is an AIS extension beyond the org AGREE/INPUT pair.
+4. Effect — observable outcomes per actor role if adopted; separate from Summary.
+5. Context — settled information only; flag anything still open so reviewers focus there.
+6. Detailed Solution — prose + inline code blocks for all data structures; never prose-only for data shapes.
+7. Delivery Approach & Milestones — t-shirt sizing + rationale; Milestone/Description/Target Date/Owner; Rollout; Testing Plan.
+8. Delivery Risks & Mitigations — Risk | Mitigation | Owner (Owner column required per org template).
+
+*Conditional (present when the change is a service/API — routinely empty otherwise; do NOT treat as required):*
+- Technical Diagram, API Specification, Data Model, Dependencies.
+
+*Maturity signals (the best-reviewed RFCs add these though the base template omits them):*
+- Open Questions (numbered, inline recommendations, framed as future work not blockers); Scope / Non-Goals (explicit boundary — see Authoring guidance); Rollback Plan; dated Decisions / Revisions log.
+
+**Authoring guidance (write-time rules — consumed by kiln-native doc authoring):**
+
+- **Problem clarity is mandatory; problem length is not — ownership decides length.** If a parent PRD/epic/prior-RFC owns the problem, state it in 1–2 sentences, *link* the parent, and spend the body on solution + rationale (do NOT re-narrate the parent's problem). If the RFC itself owns the problem (net-new tool, a proposed standard, an org-process change with no upstream PRD), narrate the problem in depth. Rule of thumb: specificity over length — "specific statements create alignment; generic statements create the illusion of alignment" (Larson); "readers are brought up to speed but some previous knowledge can be assumed and detailed info can be linked to" (Design Docs at Google).
+- **Rationale = inline rejected-alternatives or a pro/con table — never Q&A.** Put the rejected option next to the decision it lost to: `Rejected — X: because…`, or a pro/con options table with `(recommended)` marked. Alternatives-with-trade-offs are mandatory, not optional.
+- **Scope boundary is an explicit surface, not silence.** Name what the RFC does not own — a Scope/Non-Goals section, inline "owned by X, not this RFC", or Open Questions. Non-goals are things that could reasonably be goals but are explicitly chosen not to be — not negated outcomes.
+- **Be opinionated; show your work.** Stake a recommendation and defend it with cited reasoning. See voice-and-structure.md for the specificity and active-voice rules.
+- **AI-feature RFCs carry a first-class eval/success-metrics plan.** See contentful-patterns.md §Evals discipline — state how the feature is measured and graduated, plus cost model and rollback criteria.
 
 **Voice cues:**
 - Declarative and opinionated: stake a recommendation and defend it — no hedge language
 - Larson's rule applies directly: "Specific statements create alignment; generic statements create the illusion of alignment" (https://staffeng.com/guides/engineering-strategy/)
 - Active voice throughout; short paragraphs (prose blocks rarely exceed 3–4 sentences before a break)
 - Parenthetical scope constraints are acceptable and preferred over waffling prose: "(at the time of writing, only user identity)"
-- Rationale Q&A answers are direct: "Recommendation: No, expensive and complex. Accept limitation — document."
-- Templates evolve from repeat reviewer questions (Orosz, https://blog.pragmaticengineer.com/scaling-engineering-teams-via-writing-things-down-rfcs/); the Tundra audience table with AGREE/INPUT/CONSULT is the formalized answer to "who must approve this and in what capacity"
+- Templates evolve from repeat reviewer questions (Orosz, https://blog.pragmaticengineer.com/scaling-engineering-teams-via-writing-things-down-rfcs/); the AIS audience table with AGREE/INPUT/CONSULT is the formalized answer to "who must approve this and in what capacity"
 - **AI features require an evals plan.** Per Mike Kivisto's February 2026 All Hands directive (https://docs.google.com/presentation/d/1qb1NNCIjIakodLN8YGZrckM8ilMeiTCDlFucIqdkpHM): "If an LLM is part of the feature you are shipping you need to use AI Evals. Full stop." An RFC proposing an AI-powered feature that defers evals to a future sprint is directly contradicting this mandate. Regression evals are required whenever prompts change, models swap, or tools/agents are added.
 
 **Doc-review lens emphasis:**
-- **Lens 2 (Internal consistency)** is the most load-bearing lens for RFCs. The Alternatives/Rationale sections frequently drift from the chosen approach — reviewer additions get incorporated but old option rows are not pruned. The RFC Status badge and Architecture Review outcome must stay in sync. Milestone-table dates must align with the delivery-approach phases.
+- **Lens 2 (Internal consistency)** is the most load-bearing lens for RFCs. The Alternatives/Rationale sections frequently drift from the chosen approach. The RFC Status badge and Architecture Review outcome must stay in sync. Milestone-table dates must align with the delivery-approach phases. **Also flag a Summary that re-narrates a linked parent PRD/epic's problem instead of linking it (the layering rule in Authoring guidance) — but only when a parent is actually linked.**
 - **Lens 1 (Memory-encoded rules):** Evergreen rule applies — no "was removed" table rows in entity/field inventories; no `post-EXT-XXXX` history references in the body. CONSULT row absence is flaggable when the RFC has cross-boundary implications.
 
 **Common failure modes:** See failure-modes.md §RFC — covers evergreen violations in data model tables, Risks & Mitigations missing Owner column, RFC Status badge out of sync with review outcome, evals omission in AI feature docs.
@@ -99,7 +109,7 @@ Six document types used across Tundra (Extensibility) and the broader Contentful
 - Decision section is in past tense once decided; no hedging
 - For a RAPID still in draft (Decider not yet named or due date in the future), present-tense or conditional phrasing in the Decision section is correct and should not be flagged as a voice violation — the past-tense rule applies only to RAPIDs whose decision has been made
 - Options comparison is neutral in framing — pros and cons stated without editorializing before the Decision section
-- The RAPID vocabulary (Recommend/Agree/Perform/Input/Decide) maps to the Tundra RFC audience table: AGREE and INPUT roles in the RFC audience table borrow directly from RAPID; CONSULT is a Tundra RFC extension not present in RAPID itself
+- The RAPID vocabulary (Recommend/Agree/Perform/Input/Decide) maps to the AIS RFC audience table: AGREE and INPUT roles in the RFC audience table borrow directly from RAPID; CONSULT is an AIS RFC extension not present in RAPID itself
 - RAPID and RFC are explicitly not alternatives: RAPID resolves a constrained upstream choice; the RFC designs the solution to implement that choice. The RFC's Reference Documentation field can link to the preceding RAPID.
 - The org's canonical RAPID definition (internal Confluence) is the normative reference for role definitions and trigger cases
 
@@ -124,7 +134,7 @@ Six document types used across Tundra (Extensibility) and the broader Contentful
 3. Context — forces at play: technological, organizational, project-local; value-neutral; states facts, not opinions; no argumentation
 4. Decision — response to the forces; full sentences, active voice: "We will…" — never passive, never hedged; argumentation lives here, not in Context
 5. Consequences — all consequences, positive, negative, and neutral; not just the justification for the decision
-6. (Optional, MADR 4.0 extension) Considered Options — explicit options comparison with Pros/Cons per option; maps to the options table patterns common in Tundra RFCs
+6. (Optional, MADR 4.0 extension) Considered Options — explicit options comparison with Pros/Cons per option; maps to the options table patterns common in AIS RFCs
 
 **Voice cues:**
 - Active voice in Decision section is a hard rule (Nygard 2011, https://www.cognitect.com/blog/2011/11/15/documenting-architecture-decisions): "We will…" not "It was decided that…"
