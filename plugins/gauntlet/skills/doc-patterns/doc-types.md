@@ -13,7 +13,7 @@ Six document types used across Tundra (Extensibility) and the broader Contentful
 **Structural template (three tiers — observed across the ECO/AIS/ProdDev corpus, not the flat template):**
 
 *Near-universal (every deliverable RFC has these):*
-1. Front-matter details table — status badge + Author + upstream link (Reference Documentation → PRD, optionally RAPID; Jira Deliverable). Canonical 6 fields: RFC Status, Author, Contributors, Reference Documentation, Jira Deliverable, Review Date.
+1. Front-matter details table — status badge (RFC Status: DRAFT/UNDER REVIEW/APPROVED/ABANDONED) + Author + upstream link (Reference Documentation → PRD, optionally RAPID; Jira Deliverable). Canonical 6 fields: RFC Status, Author, Contributors, Reference Documentation, Jira Deliverable, Review Date.
 2. Summary — what-it-does + (if no parent owns the problem) current-state problem; leads with the solution when a parent PRD/epic does own it (see Authoring guidance).
 3. Audience table — Role (AGREE/INPUT/CONSULT) | Individual(s)/Team(s) | Detail. CONSULT is an AIS/Tundra extension beyond the org AGREE/INPUT pair.
 4. Effect — observable outcomes per actor role if adopted; separate from Summary.
