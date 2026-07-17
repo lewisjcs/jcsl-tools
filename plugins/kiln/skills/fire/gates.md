@@ -11,6 +11,7 @@ lanes; PLAN and TASK gates are unchanged.
 | **SPEC-GATE** | after Designer, before Planner — on ANY DESIGN/RESEARCH run under a pausing flow-style | `spec-draft.md` summary | user types explicit approval |
 | **PLAN-GATE** | after Planner, before first Crafter — all STANDARD | `plan.md` (+ `walkthrough.md` on HIGH blast) | user types explicit approval |
 | **TASK-GATE** | after each Inspector — blocks on MEDIUM or HIGH blast | `verdict-N.md` typed fields | `spec: ✅` AND `quality: approved` |
+| **DRAFTER-APPROVAL** | before any Jira write — both the initial-write (post-SPEC-GATE) and completion-sync checkpoints | `<bundle>/diff.md` | user types explicit approval |
 
 On reject: SPEC-GATE re-dispatches the Designer with the feedback and re-presents at SPEC-GATE;
 PLAN-GATE re-dispatches the Planner with the feedback and re-presents at PLAN-GATE. Neither writes
@@ -49,13 +50,19 @@ For STANDARD, blast selects gate behavior on a three-tier scale. **Walker and bl
 | `implementation_gate` | auto-proceed | auto-proceed | block on findings (MEDIUM or HIGH blast) |
 | `hands_free` | auto-proceed | auto-proceed | auto-advance; escalate only on 2× fix-loop failure |
 
+**DRAFTER-APPROVAL is unconditional.** The Drafter's diff-approval before any Jira write pauses for
+explicit human approval under EVERY flow-style, including `hands_free` — it is never auto-proceeded.
+(Enforced in the conductor at both Drafter checkpoints.)
+
 **Precedence — tier×blast is authoritative over flow-style.** The tier×blast rules above decide
 *whether TASK-GATE fires and blocks at all*: a LOW-blast TASK-GATE is non-blocking under EVERY
 flow-style, while MEDIUM and HIGH block under every flow-style. The flow-style column only dials
 whether a gate that already fires *pauses* for human input — it never makes a LOW-blast TASK-GATE
 block, and never stops a MEDIUM/HIGH TASK-GATE from blocking. So the `guided`/`implementation_gate`
 "block on findings" cells mean "block on findings **on MEDIUM or HIGH blast**" (annotated above); on
-LOW blast they resolve to auto-advance regardless of flow-style.
+LOW blast they resolve to auto-advance regardless of flow-style. This flow-style table governs
+SPEC-GATE/PLAN-GATE/TASK-GATE only — it does NOT license hands_free (or any flow-style) to
+auto-proceed DRAFTER-APPROVAL, which pauses unconditionally regardless of flow-style or blast.
 
 Default `guided`. Owner sets per-run (`/kiln <KEY> --flow hands_free`). Never pass `flow_style` to Compounds unless the owner explicitly set one.
 

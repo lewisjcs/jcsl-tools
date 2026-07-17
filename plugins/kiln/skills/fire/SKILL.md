@@ -147,8 +147,9 @@ Read each member's done-line + return artifact. Update the spine (`TaskUpdate`).
 
 **On completion:** if this run did an initial Drafter write (a `DRAFTER: initial write` ledger entry
 exists; DESIGN/RESEARCH keyed lanes), dispatch the **Drafter** once more for a completion sync;
-otherwise skip the completion sync and go to the Curator dispatch (below). Completion sync — same template, `{{CHECKPOINT}}` = completion, NO
-approval fields; it reconciles the final plan against the ledger. If it returns `DRAFTER_NOOP`, nothing
+otherwise skip the completion sync and go to the Curator dispatch (below). Completion sync — same
+template, `{{CHECKPOINT}}` = completion, NO approval fields (re-fetch and pass the current Jira
+children); it reconciles the final plan against the ledger. If it returns `DRAFTER_NOOP`, nothing
 changed since the initial write — record and move on. If it returns `DRAFTER_AWAITING_APPROVAL: <bundle>`,
 present `<bundle>/diff.md` for approval (R1; this approval is unconditional — it holds under every
 flow-style, including `hands_free`), and ONLY on approval re-invoke the Drafter (Phase 2) with

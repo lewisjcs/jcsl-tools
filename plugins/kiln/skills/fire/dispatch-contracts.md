@@ -303,7 +303,7 @@ the atlassian CLI. Never invent scope. Never write tooling names into ticket con
 Spec source: {{RUN_FOLDER}}/spec-draft.md   (REQUIRED — if absent, return DRAFTER_BLOCKED)
 Target: update {{JIRA_KEY}}   (or "create {{PROJECT}} {{ISSUETYPE}}" on net-new — P2.2+ only)
 Subtasks: {{RUN_FOLDER}}/tasklist.md   (or "none")
-Current Jira children (fetched by the conductor and passed in): {{CHILDREN_JSON}}   (or "none")
+Current Jira children (fetched by the conductor and passed in): {{CHILDREN}}   (or "none")
 Ledger: {{RUN_FOLDER}}/drafter-ledger.md
 Format cache: {{FORMAT_CACHE_PATH}}   (or "none")
 Approval: {{APPROVAL}}   ← omit/empty on the Phase-1 render dispatch; set to "granted" on the
