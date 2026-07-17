@@ -13,7 +13,7 @@ routes into RESEARCH/DESIGN instead of halting.
 | `<KEY>` ticket: EARS AC + paths + root cause | complete | PLAN | Planner → Build |
 | `<KEY>` ticket: some AC, no paths | partial | **DESIGN** | Designer → SPEC-GATE → Planner → Build |
 | `<KEY>` ticket: title-only / thin / epic-only | sparse | **RESEARCH** | Scout → Designer → SPEC-GATE → Planner → Build |
-| Quoted string, no ticket | net-new | **DESIGN** | Designer → SPEC-GATE → Planner → Build (local kebab-slug run-id; NO Jira offer — P2.2) |
+| Quoted string, no ticket | net-new | **DESIGN** | Designer → SPEC-GATE → Drafter (create, if the user opts to file a ticket) → Planner → Build (local kebab-slug run-id) |
 | File = design doc (`## Approaches`/`## Architecture`, no AC) | design-doc | **DESIGN (mid-flow)** | Designer enters with design.md pre-supplied → convert → SPEC-GATE → Planner → Build |
 | re-invoke with active run folder + ledger | resume | RESUME | read ledger → Build from first incomplete |
 | file shape none-of-the-above | — | HALT-AND-ASK | (don't guess) |
