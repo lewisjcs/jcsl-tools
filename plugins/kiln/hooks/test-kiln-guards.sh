@@ -235,4 +235,17 @@ assert_deny "ownership: session with id binds to a lone unowned run (resume path
 rm -f "$RUN_A/.active"
 rmdir "$RUN_B" 2>/dev/null
 
+# --- static skill-content check: conductor never runs Jira writes inline ---
+# The Drafter (a dispatched member) owns Jira writes; the conductor SKILL.md must dispatch,
+# never run `atlassian jira edit/create/bulk` inline. This suite has no $KILN var — bind to
+# the real fire/SKILL.md next to this hooks dir, the same way HOOKS_DIR resolves itself above.
+CONDUCTOR_SKILL="$(cd "$HOOKS_DIR/../skills/fire" && pwd)/SKILL.md"
+if [ ! -f "$CONDUCTOR_SKILL" ]; then
+  echo "FAIL - conductor SKILL.md not found at $CONDUCTOR_SKILL"; FAILS=$((FAILS+1))
+elif grep -qE 'atlassian jira (edit|create|bulk)' "$CONDUCTOR_SKILL"; then
+  echo "FAIL - conductor SKILL.md contains an inline atlassian jira write — must dispatch the Drafter"; FAILS=$((FAILS+1))
+else
+  echo "ok   - conductor: delegates Jira writes to the Drafter (no inline atlassian jira edit/create/bulk)"
+fi
+
 echo "---"; [ "$FAILS" -eq 0 ] && echo "ALL PASS" || { echo "$FAILS FAILED"; exit 1; }
