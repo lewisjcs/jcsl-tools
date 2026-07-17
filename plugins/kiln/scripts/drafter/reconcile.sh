@@ -1,12 +1,19 @@
 #!/bin/bash
 # Subtask reconcile — decide create/update/orphan/noop per planned task vs current Jira children.
 # Usage: reconcile.sh <plan.json> <children.json> <ledger-map.json|none>
+# Exit: 0 on successful reconciliation (any decision mix); 2 on missing/unparseable input.
 set -uo pipefail
-PLAN="${1:?plan.json}"; CHILDREN="${2:?children.json}"; LEDGER="${3:?ledger-map.json|none}"
+if [ "$#" -lt 3 ]; then echo "usage: reconcile.sh <plan.json> <children.json> <ledger-map.json|none>" >&2; exit 2; fi
+PLAN="$1"; CHILDREN="$2"; LEDGER="$3"
 
-norm() { jq 'map(.title |= (ascii_downcase | gsub("^\\s+|\\s+$";"")))'; }
-plan_n=$(norm < "$PLAN")
-child_n=$(norm < "$CHILDREN")
+# Validate + normalize an input file; fail LOUDLY (exit 2) on missing/unparseable — never mask.
+norm_file() {
+  [ -f "$1" ] || { echo "reconcile: no such file: $1" >&2; exit 2; }
+  jq 'map(.title |= (ascii_downcase | gsub("^\\s+|\\s+$";"")))' < "$1" 2>/dev/null \
+    || { echo "reconcile: unparseable JSON: $1" >&2; exit 2; }
+}
+plan_n=$(norm_file "$PLAN") || exit 2
+child_n=$(norm_file "$CHILDREN") || exit 2
 
 if [ "$LEDGER" = "none" ]; then
   # No-ledger path: create-missing-only, never update.
@@ -18,8 +25,10 @@ if [ "$LEDGER" = "none" ]; then
     + [ $children[] | select(.title as $t | ($plan | map(.title) | index($t)) | not)
         | {action:"orphan", title:.title, jira_key:.key} ]'
 else
-  ledger_n=$(norm < "$LEDGER" 2>/dev/null || echo '[]')
-  # jq handles: mapped+changed→update handled by the agent (body compare); here mapped→update-candidate.
+  # With-ledger path: a bad ledger is a caller error — exit 2, do NOT degrade to empty (that would
+  # silently turn every update into a create). norm_file handles missing/unparseable.
+  ledger_n=$(norm_file "$LEDGER") || exit 2
+  # mapped→update-candidate; the agent body-compares before writing (no-delta→noop is Task 3's ledger.sh diff).
   jq -n --argjson plan "$plan_n" --argjson children "$child_n" --argjson ledger "$ledger_n" '
     ($ledger | map({(.title): .jira_key}) | add // {}) as $map
     | ($children | map(.title)) as $ctitles
