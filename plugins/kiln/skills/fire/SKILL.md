@@ -122,7 +122,8 @@ Read each member's done-line + return artifact. Update the spine (`TaskUpdate`).
   (initial write — load the Drafter Dispatch Template; pass spec-draft.md, target `update {{JIRA_KEY}}`,
   tasklist.md if it exists yet else "none", the current Jira children, and the ledger; NO approval
   fields — this is Phase 1). It returns `DRAFTER_AWAITING_APPROVAL: <bundle>`; present `<bundle>/diff.md`
-  for approval (R1). ONLY on explicit approval, re-invoke the Drafter (Phase 2) with `APPROVAL=granted`,
+  for approval (R1; this approval is unconditional — it holds under every flow-style, including
+  `hands_free`). ONLY on explicit approval, re-invoke the Drafter (Phase 2) with `APPROVAL=granted`,
   `APPROVED_BUNDLE=<bundle>`, and the same target. On `DRAFTER_DONE`/`DRAFTER_NOOP`, write ledger
   `DRAFTER: initial write {{JIRA_KEY}} | <ISO>`. On `DRAFTER_BLOCKED`, surface and HARD STOP (a
   keyless/personal run with no Jira target skips the Drafter — record `DRAFTER: skipped (keyless)`).
@@ -144,13 +145,17 @@ Read each member's done-line + return artifact. Update the spine (`TaskUpdate`).
   and "Context is high — checkpointed. Run `/clear`, then `/kiln <run-id>` to resume in a fresh
   session." Do NOT auto-`/clear`. If the run reaches `COMPLETE` before the next gate, finish normally.
 
-**On completion — final ticket sync, then the Curator:** first dispatch the **Drafter** once more
-(completion sync — same template, `{{CHECKPOINT}}` = completion, NO approval fields; it reconciles the
-final plan against the ledger). If it returns `DRAFTER_NOOP`, nothing changed since the initial write —
-record and move on. Otherwise it returns `DRAFTER_AWAITING_APPROVAL: <bundle>`; present `<bundle>/diff.md`
-for approval (R1), and ONLY on approval re-invoke (Phase 2) with `APPROVAL=granted`,
-`APPROVED_BUNDLE=<bundle>`, same target. Write ledger `DRAFTER: completion sync | <ISO>`. A keyless run
-skips this. THEN dispatch the Curator (below): load the Curator
+**On completion:** if this run did an initial Drafter write (a `DRAFTER: initial write` ledger entry
+exists; DESIGN/RESEARCH keyed lanes), dispatch the **Drafter** once more for a completion sync;
+otherwise skip straight to the Curator. Completion sync — same template, `{{CHECKPOINT}}` = completion, NO
+approval fields; it reconciles the final plan against the ledger. If it returns `DRAFTER_NOOP`, nothing
+changed since the initial write — record and move on. If it returns `DRAFTER_AWAITING_APPROVAL: <bundle>`,
+present `<bundle>/diff.md` for approval (R1; this approval is unconditional — it holds under every
+flow-style, including `hands_free`), and ONLY on approval re-invoke the Drafter (Phase 2) with
+`APPROVAL=granted`, `APPROVED_BUNDLE=<bundle>`, same target. Write ledger `DRAFTER: completion sync |
+<ISO>`. If it returns `DRAFTER_BLOCKED`, do NOT hard-stop — the build is already complete, so surface the
+reason, record ledger `DRAFTER: completion sync skipped (blocked: <reason>) | <ISO>`, and proceed to the
+Curator. A keyless run skips this. THEN dispatch the Curator (below): load the Curator
 Dispatch Template from `dispatch-contracts.md` and dispatch the Curator once, filling `{{TARGET_REPO}}`
 (the repo the run targeted), `{{COMPOUNDS_PROJECT}}` (the project id from the Planner's run, or "none"
 on native), `{{JIRA_KEY}}`, `{{ENGINE}}`, and `{{COMMIT_RANGE}}`. The Curator holds the Compounds-close
