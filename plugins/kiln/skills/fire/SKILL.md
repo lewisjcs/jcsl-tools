@@ -21,7 +21,10 @@ returns. It does not implement, plan, or design inline. Members hold the working
 
 **Ledger:** `{{RUN_FOLDER}}/progress.md`, written before every gate transition (task state + `NUDGE-SEEN`/`YIELD` flags). On a context-preservation yield the conductor also writes `handoff.md` (narrative). On resume after `/clear`, read both and continue from the first incomplete task.
 
-**Scope (P2.1):** EXECUTE / PLAN / TRIVIAL / RESUME / **DESIGN / RESEARCH** lanes; `code` + `tool-authoring` + `doc` scenarios. SPEC-GATE, Scout, and the Designer are live. Still P2.2: the `mcp/agent-app` / `infra` scenarios (they HALT) and Jira **subtask** write-back. The Curator's close-out transition (ticket → In Review + PR-link comment) is in scope. An out-of-scope scenario or ambiguous doc shape → HALT-AND-ASK. Every run binds one engine (`code`→compounds, `tool-authoring`/`doc`→native) and is ledger-tagged `engine:`.
+**Scope (P2.1):** EXECUTE / PLAN / TRIVIAL / RESUME / **DESIGN / RESEARCH** lanes; `code` + `tool-authoring` + `doc` scenarios. SPEC-GATE, Scout, and the Designer are live. Still P2.2: the `mcp/agent-app` / `infra` scenarios (they HALT). Jira ticket write-back — the Drafter
+renders the agreed spec into the team-format+EARS description and reconciles subtasks at the initial
+(post-SPEC-GATE) and completion checkpoints, always diff-gated. The Curator's close-out transition
+(ticket → In Review + PR-link comment) is in scope. An out-of-scope scenario or ambiguous doc shape → HALT-AND-ASK. Every run binds one engine (`code`→compounds, `tool-authoring`/`doc`→native) and is ledger-tagged `engine:`.
 
 ---
 
@@ -89,7 +92,7 @@ we substitute `git -C <repo>` for the same effect since the conductor must not `
 
 ## Verb 3 — Build the spine
 
-Create the `TaskCreate` progress spine — one task per phase this lane will run (e.g. PLAN-GATE → Walker (if HIGH) → per-task Crafter/Inspector → Curator (FINAL)). This is the conductor's visible state; it is the fix for "no todo list, wall of text."
+Create the `TaskCreate` progress spine — one task per phase this lane will run (e.g. Drafter (initial write, DESIGN/RESEARCH lanes) → PLAN-GATE → Walker (if HIGH) → per-task Crafter/Inspector → Drafter (completion sync) → Curator (FINAL)). This is the conductor's visible state; it is the fix for "no todo list, wall of text."
 **Immediately after the spine exists:** `touch {{RUN_FOLDER}}/.spine`. (The spine guard denies any dispatch before this file exists.)
 
 ## Verb 4 — Dispatch
@@ -115,7 +118,15 @@ Load `dispatch-contracts.md`. Dispatch the right member with the four-part contr
 
 Read each member's done-line + return artifact. Update the spine (`TaskUpdate`). Evaluate gates mechanically from typed fields (load `gates.md`):
 - **SPEC-GATE** (after Designer, DESIGN/RESEARCH lanes): present `spec-draft.md`; per flow-style, pause for
-  explicit approval. Write ledger `SPEC-GATE: approved | <ISO>`. Then dispatch the Planner.
+  explicit approval. Write ledger `SPEC-GATE: approved | <ISO>`. Then dispatch the **Drafter**
+  (initial write — load the Drafter Dispatch Template; pass spec-draft.md, target `update {{JIRA_KEY}}`,
+  tasklist.md if it exists yet else "none", the current Jira children, and the ledger; NO approval
+  fields — this is Phase 1). It returns `DRAFTER_AWAITING_APPROVAL: <bundle>`; present `<bundle>/diff.md`
+  for approval (R1). ONLY on explicit approval, re-invoke the Drafter (Phase 2) with `APPROVAL=granted`,
+  `APPROVED_BUNDLE=<bundle>`, and the same target. On `DRAFTER_DONE`/`DRAFTER_NOOP`, write ledger
+  `DRAFTER: initial write {{JIRA_KEY}} | <ISO>`. On `DRAFTER_BLOCKED`, surface and HARD STOP (a
+  keyless/personal run with no Jira target skips the Drafter — record `DRAFTER: skipped (keyless)`).
+  Then dispatch the Planner.
   On rejection or a change request: do NOT write `approved` and do NOT dispatch the Planner; re-dispatch
   the Designer with the feedback and re-present at SPEC-GATE.
 - **PLAN-GATE:** present `plan.md` (+ `walkthrough.md` if HIGH); per flow-style, pause for explicit approval. Write ledger `PLAN-GATE: approved | <ISO>`.
@@ -133,7 +144,13 @@ Read each member's done-line + return artifact. Update the spine (`TaskUpdate`).
   and "Context is high — checkpointed. Run `/clear`, then `/kiln <run-id>` to resume in a fresh
   session." Do NOT auto-`/clear`. If the run reaches `COMPLETE` before the next gate, finish normally.
 
-**On completion — dispatch the Curator (Verb 4), then adjudicate (Verb 5):** load the Curator
+**On completion — final ticket sync, then the Curator:** first dispatch the **Drafter** once more
+(completion sync — same template, `{{CHECKPOINT}}` = completion, NO approval fields; it reconciles the
+final plan against the ledger). If it returns `DRAFTER_NOOP`, nothing changed since the initial write —
+record and move on. Otherwise it returns `DRAFTER_AWAITING_APPROVAL: <bundle>`; present `<bundle>/diff.md`
+for approval (R1), and ONLY on approval re-invoke (Phase 2) with `APPROVAL=granted`,
+`APPROVED_BUNDLE=<bundle>`, same target. Write ledger `DRAFTER: completion sync | <ISO>`. A keyless run
+skips this. THEN dispatch the Curator (below): load the Curator
 Dispatch Template from `dispatch-contracts.md` and dispatch the Curator once, filling `{{TARGET_REPO}}`
 (the repo the run targeted), `{{COMPOUNDS_PROJECT}}` (the project id from the Planner's run, or "none"
 on native), `{{JIRA_KEY}}`, `{{ENGINE}}`, and `{{COMMIT_RANGE}}`. The Curator holds the Compounds-close
