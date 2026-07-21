@@ -155,7 +155,12 @@ Write via the `atlassian` CLI (never a Jira-write MCP tool; you don't hold one):
   --body-file <f>` per subtask.
 - Verify each write: `atlassian jira view <KEY>`.
 
-Then, if `{{LEDGER}}` is a path, record the outcome:
+Then, if `{{LEDGER}}` is a path, record the outcome. First assemble `<subtask-map-json>` — a JSON
+array of `{"title": <title>, "jira_key": <key>}`, one entry per subtask that now exists under the
+parent (every `<bundle>/reconcile.json` entry EXCEPT `orphan` — those are left untouched, not
+tracked): for `update`/`noop` entries, reuse the `jira_key` already in `reconcile.json`; for
+`create` entries, use the key `atlassian jira create`/`bulk` returned for that title in this
+invocation. Then run:
 `bash ${CLAUDE_PLUGIN_ROOT}/scripts/drafter/ledger.sh write {{LEDGER}} <KEY> <bundle>/description.md
 <subtask-map-json>`.
 
