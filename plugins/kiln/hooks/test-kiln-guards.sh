@@ -235,4 +235,29 @@ assert_deny "ownership: session with id binds to a lone unowned run (resume path
 rm -f "$RUN_A/.active"
 rmdir "$RUN_B" 2>/dev/null
 
+# --- static skill-content check: conductor never runs Jira writes inline ---
+# The Drafter (a dispatched member) owns Jira writes; the conductor SKILL.md must dispatch,
+# never run `atlassian jira edit/create/bulk` inline. This suite has no $KILN var — bind to
+# the real fire/SKILL.md next to this hooks dir, the same way HOOKS_DIR resolves itself above.
+CONDUCTOR_SKILL="$(cd "$HOOKS_DIR/../skills/fire" && pwd)/SKILL.md"
+if [ ! -f "$CONDUCTOR_SKILL" ]; then
+  echo "FAIL - conductor SKILL.md not found at $CONDUCTOR_SKILL"; FAILS=$((FAILS+1))
+elif grep -qE 'atlassian jira (edit|create|bulk)' "$CONDUCTOR_SKILL"; then
+  echo "FAIL - conductor SKILL.md contains an inline atlassian jira write — must dispatch the Drafter"; FAILS=$((FAILS+1))
+else
+  echo "ok   - conductor: delegates Jira writes to the Drafter (no inline atlassian jira edit/create/bulk)"
+fi
+
+# Positive half: the absence check above proves no inline writes, but not that the Drafter is
+# actually dispatched anywhere — assert both checkpoints (initial-write, completion-sync) exist.
+# Bold markers around "Drafter" are optional here (a markdown copy-edit that drops/adds ** must
+# not flip this test) — this is a floor check (>= 2), so also matching the rejection-loop
+# "re-dispatch the Drafter" lines is harmless, never a false pass on a real regression.
+drafter_dispatches=$(grep -cE 'dispatch the \*{0,2}Drafter\*{0,2}' "$CONDUCTOR_SKILL" 2>/dev/null || echo 0)
+if [ "$drafter_dispatches" -lt 2 ]; then
+  echo "FAIL - conductor SKILL.md dispatches the Drafter $drafter_dispatches time(s), expected 2 (initial-write + completion-sync)"; FAILS=$((FAILS+1))
+else
+  echo "ok   - conductor: dispatches the Drafter at both checkpoints ($drafter_dispatches found)"
+fi
+
 echo "---"; [ "$FAILS" -eq 0 ] && echo "ALL PASS" || { echo "$FAILS FAILED"; exit 1; }
