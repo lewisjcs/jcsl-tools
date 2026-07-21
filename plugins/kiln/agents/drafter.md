@@ -99,23 +99,29 @@ standalone run). Then:
   `bash ${CLAUDE_PLUGIN_ROOT}/scripts/drafter/ledger.sh desc-changed {{LEDGER}} <candidate>`.
   Exit 1 (unchanged) → description is a no-op. Exit 0 (changed or no ledger) → description will sync.
 - **Subtasks:** if `{{SUBTASKS}}` is a path (and `{{CHILDREN}}` is therefore required and present):
-  1. Build `<plan.json>` from `{{SUBTASKS}}`'s Task Breakdown: one entry per subtask,
-     `{"title": <title>, "body": <rendered body>, "body_hash": <sha256 of body>}`. Render each
-     `body` from that task's title + file targets + test strategy (never invent scope beyond what
-     the breakdown states). Hash with the same convention `ledger.sh`'s `hash_of` uses (`shasum -a
-     256`) — write `body` to a temp file and hash the file so the hash is stable byte-for-byte with
-     what will later be committed.
+  1. Build `<plan.json>` from each `## Task N` block in `{{SUBTASKS}}` (`tasklist.md`): one entry
+     per task, `{"title": <title>, "body": <rendered body>, "spec_hash": <sha256 of the input tuple>}`.
+     `spec_hash` hashes the block's DETERMINISTIC INPUT — `<title>\n<Files:>\n<Test strategy:>`
+     verbatim, newline-joined, NOT the rendered body — so re-running against an unchanged
+     tasklist.md block always reproduces the same hash even though `body`'s prose (rendered fresh
+     each time, see next) is not byte-stable. Render `body` from that block's title + file targets
+     + test strategy (never invent scope beyond what the block states); this is the text Phase 2
+     writes to Jira, but it is NOT what gets hashed. Hash with the same convention `ledger.sh`'s
+     `hash_of` uses (`shasum -a 256`) — write the input tuple to a temp file and hash the file.
   2. If `{{LEDGER}}` is a path, `ledger.sh subtask-map` PRINTS the map to stdout — it is NOT a file
      path. Capture it to a temp file first: `bash ${CLAUDE_PLUGIN_ROOT}/scripts/drafter/ledger.sh
      subtask-map {{LEDGER}} > <tmp>/ledger-map.json` (a run-folder temp, e.g.
      `{{RUN_FOLDER}}/ledger-map.json`, or `mktemp` on a standalone run). Each entry carries
-     `{title, jira_key, body_hash}` — `body_hash` is absent (compares as null) on a ledger written
+     `{title, jira_key, spec_hash}` — `spec_hash` is absent (compares as null) on a ledger written
      before this field existed, which safely falls through to `update`, never a false `noop`.
   3. Run `bash ${CLAUDE_PLUGIN_ROOT}/scripts/drafter/reconcile.sh <plan.json> {{CHILDREN}}
      <ledger-map.json|none>` — the 3rd argument is a FILE PATH (`reconcile.sh` validates `[ -f "$1" ]`
      and exits 2 if it isn't a real file). If `{{LEDGER}}` is `none`, pass the literal `none`
      (create-missing-only path) — never pipe `subtask-map` stdout directly into this argument.
-  4. Read the decision list (`create`/`update`/`orphan`/`noop`, each carrying `body_hash` alongside
+     `noop` requires BOTH a `spec_hash` match AND the title still being a live Jira child — a
+     ledger-mapped subtask deleted from Jira externally always resolves to `update` (a loud write
+     failure against the dead key), never a silent `noop`.
+  4. Read the decision list (`create`/`update`/`orphan`/`noop`, each carrying `spec_hash` alongside
      `title`/`jira_key`). Never delete orphans — leave them and flag them.
 - If the description is a no-op AND every subtask decision is `noop`, return
   `DRAFTER_NOOP: no changes needed` and stop. Do not assemble a bundle.
@@ -127,7 +133,7 @@ Persist a bundle DIRECTORY — under `{{RUN_FOLDER}}` on a Kiln run (e.g.
 - `<bundle>/reconcile.json` — the reconcile.sh decision list (the subtask create/update/orphan plan).
 - `<bundle>/subtasks.json` — the create/update manifest derived from `reconcile.json` (the atlassian
   bulk manifest Phase 2 will submit), each entry carrying `title`, `body` (from step 3.1), and
-  `body_hash`; an empty array if there are no subtasks to create or update.
+  `spec_hash`; an empty array if there are no subtasks to create or update.
 - `<bundle>/diff.md` — the human-readable diff the caller presents: description before/after,
   subtasks to create, subtasks to update, orphans left untouched and flagged, and every
   `⟨proposed⟩` AC.
@@ -166,9 +172,9 @@ Write via the `atlassian` CLI (never a Jira-write MCP tool; you don't hold one):
 - Verify each write: `atlassian jira view <KEY>`.
 
 Then, if `{{LEDGER}}` is a path, record the outcome. First assemble `<subtask-map-json>` — a JSON
-array of `{"title": <title>, "jira_key": <key>, "body_hash": <hash>}`, one entry per subtask that
+array of `{"title": <title>, "jira_key": <key>, "spec_hash": <hash>}`, one entry per subtask that
 now exists under the parent (every `<bundle>/reconcile.json` entry EXCEPT `orphan` — those are left
-untouched, not tracked): reuse `body_hash` VERBATIM from that entry's `reconcile.json`/
+untouched, not tracked): reuse `spec_hash` VERBATIM from that entry's `reconcile.json`/
 `subtasks.json` record (never recompute — Phase 2 never re-authors); for `update`/`noop` entries,
 also reuse the `jira_key` already in `reconcile.json`; for `create` entries, use the key `atlassian
 jira create`/`bulk` returned for that title in this invocation. Then run:

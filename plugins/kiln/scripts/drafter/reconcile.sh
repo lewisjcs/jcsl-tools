@@ -20,8 +20,8 @@ if [ "$LEDGER" = "none" ]; then
   out=$(jq -n --argjson plan "$plan_n" --argjson children "$child_n" '
     ($children | map(.title)) as $ctitles
     | [ $plan[] | if (.title as $t | $ctitles | index($t)) then
-          {action:"noop", title:.title, jira_key:null, body_hash:.body_hash}
-        else {action:"create", title:.title, jira_key:null, body_hash:.body_hash} end ]
+          {action:"noop", title:.title, jira_key:null, spec_hash:.spec_hash}
+        else {action:"create", title:.title, jira_key:null, spec_hash:.spec_hash} end ]
     + [ $children[] | select(.title as $t | ($plan | map(.title) | index($t)) | not)
         | {action:"orphan", title:.title, jira_key:.key} ]') \
     || { echo "reconcile: jq failed on no-ledger reconciliation" >&2; exit 2; }
@@ -29,16 +29,19 @@ else
   # With-ledger path: a bad ledger is a caller error — exit 2, do NOT degrade to empty (that would
   # silently turn every update into a create). norm_file handles missing/unparseable.
   ledger_n=$(norm_file "$LEDGER") || exit 2
-  # Mapped by title → compare body_hash: same hash → noop, different → update. A ledger entry
-  # with no body_hash (pre-hash ledger) compares as null and falls through to update — safe,
-  # never a false noop.
+  # Mapped by title → compare spec_hash: same hash AND still a live Jira child → noop; hash differs
+  # → update; title still ledger-mapped but no longer among live children (deleted externally) →
+  # update, never noop, so a dead jira_key surfaces as a loud write failure instead of vanishing
+  # silently. A ledger entry with no spec_hash (pre-hash ledger) compares as null and falls through
+  # to update — safe, never a false noop.
   out=$(jq -n --argjson plan "$plan_n" --argjson children "$child_n" --argjson ledger "$ledger_n" '
-    ($ledger | map({(.title): {jira_key: .jira_key, body_hash: .body_hash}}) | add // {}) as $map
+    ($ledger | map({(.title): {jira_key: .jira_key, spec_hash: .spec_hash}}) | add // {}) as $map
     | ($children | map(.title)) as $ctitles
     | [ $plan[] | ($map[.title]) as $entry
-        | if ($entry == null) then {action:"create", title:.title, jira_key:null, body_hash:.body_hash}
-          elif ($entry.body_hash == .body_hash) then {action:"noop", title:.title, jira_key:$entry.jira_key, body_hash:.body_hash}
-          else {action:"update", title:.title, jira_key:$entry.jira_key, body_hash:.body_hash} end ]
+        | if ($entry == null) then {action:"create", title:.title, jira_key:null, spec_hash:.spec_hash}
+          elif ($entry.spec_hash == .spec_hash) and (.title as $t | $ctitles | index($t)) then
+            {action:"noop", title:.title, jira_key:$entry.jira_key, spec_hash:.spec_hash}
+          else {action:"update", title:.title, jira_key:$entry.jira_key, spec_hash:.spec_hash} end ]
     + [ $children[] | select(.title as $t | ($plan | map(.title) | index($t)) | not)
         | {action:"orphan", title:.title, jira_key:.key} ]') \
     || { echo "reconcile: jq failed on with-ledger reconciliation" >&2; exit 2; }
