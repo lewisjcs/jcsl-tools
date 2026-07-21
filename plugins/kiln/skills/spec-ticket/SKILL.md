@@ -33,6 +33,9 @@ The Drafter runs in two phases; you hold the human-ask between them. Dispatch th
 `{{SPEC_SOURCE}}`, `{{TARGET}}`, `{{SUBTASKS}}`, `{{LEDGER}}` = `none` (standalone),
 `{{FORMAT_CACHE}}` = `none` (no persistent standalone cache in v1 — the Drafter infers or defaults the
 skeleton each time). Do NOT pass `APPROVAL`/`APPROVED_BUNDLE` here.
+Since `{{FORMAT_CACHE}}` is always `none` in v1, every dispatch is a cache miss: search for 3–5
+recent ticket keys in the target project (Jira-read) and pass them as `{{SIBLING_KEYS}}` (or `none`
+if the search turns up nothing usable) — the agent holds only `getJiraIssue`, no search.
 Before dispatching a `create`/`update` that touches subtasks, fetch the ticket's current children
 yourself (Jira-read) and pass them as `{{CHILDREN}}` — the agent holds only `getJiraIssue`, no search.
 

@@ -306,6 +306,9 @@ Subtasks: {{RUN_FOLDER}}/tasklist.md   (or "none")
 Current Jira children (fetched by the conductor and passed in): {{CHILDREN}}   (or "none")
 Ledger: {{RUN_FOLDER}}/drafter-ledger.md
 Format cache: {{FORMAT_CACHE_PATH}}   (or "none")
+Sibling keys (only if Format cache is "none" or stale — `mcp__jira__searchJiraIssuesUsingJql` for
+  3–5 recent tickets in {{JIRA_KEY}}'s project, conductor-fetched and passed in; the Drafter holds
+  no search tool): {{SIBLING_KEYS}}   (or "none")
 Approval: {{APPROVAL}}   ← omit/empty on the Phase-1 render dispatch; set to "granted" on the
                             Phase-2 re-invoke ONLY after the human approved the rendered diff.
 Approved bundle: {{APPROVED_BUNDLE}}   ← omit on Phase 1; on Phase 2 set to the exact bundle-dir path
