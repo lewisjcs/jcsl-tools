@@ -248,4 +248,13 @@ else
   echo "ok   - conductor: delegates Jira writes to the Drafter (no inline atlassian jira edit/create/bulk)"
 fi
 
+# Positive half: the absence check above proves no inline writes, but not that the Drafter is
+# actually dispatched anywhere — assert both checkpoints (initial-write, completion-sync) exist.
+drafter_dispatches=$(grep -cE 'dispatch the \*\*Drafter\*\*' "$CONDUCTOR_SKILL" 2>/dev/null || echo 0)
+if [ "$drafter_dispatches" -lt 2 ]; then
+  echo "FAIL - conductor SKILL.md dispatches the Drafter $drafter_dispatches time(s), expected 2 (initial-write + completion-sync)"; FAILS=$((FAILS+1))
+else
+  echo "ok   - conductor: dispatches the Drafter at both checkpoints ($drafter_dispatches found)"
+fi
+
 echo "---"; [ "$FAILS" -eq 0 ] && echo "ALL PASS" || { echo "$FAILS FAILED"; exit 1; }
