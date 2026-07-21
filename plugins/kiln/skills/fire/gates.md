@@ -17,6 +17,18 @@ On reject: SPEC-GATE re-dispatches the Designer with the feedback and re-present
 PLAN-GATE re-dispatches the Planner with the feedback and re-presents at PLAN-GATE. Neither writes
 `approved` nor advances until the re-presented artifact is explicitly approved.
 
+**DRAFTER-APPROVAL reject differs by checkpoint** (the two checkpoints have different downstream
+stakes — initial-write gates the Planner dispatch, completion-sync gates only a documentation sync
+on an already-complete build):
+- **Initial-write** (blocks the Planner): on reject or a change request, do NOT re-invoke Phase 2
+  and do NOT dispatch the Planner. Re-dispatch the Drafter Phase 1 with the feedback folded into
+  `{{SPEC_SOURCE}}`/the brief, re-present the new bundle's `diff.md` at DRAFTER-APPROVAL. Repeat
+  until approved — this mirrors SPEC-GATE/PLAN-GATE and holds under every flow-style (R1).
+- **Completion-sync** (does not block the Curator): on reject, re-dispatch the Drafter Phase 1 once
+  more with the feedback and re-present. If the human rejects or cancels a second time, do NOT
+  hard-stop — the build is already complete. Treat it like `DRAFTER_BLOCKED`: record ledger
+  `DRAFTER: completion sync skipped (rejected) | <ISO>` and proceed to the Curator.
+
 **SPEC-GATE fires on lane, not blast.** Blast radius is Planner-derived (Compounds classify), which
 runs AFTER SPEC-GATE — so blast is unknown at SPEC-GATE time. SPEC-GATE therefore fires whenever a
 Designer synthesized a spec (any DESIGN/RESEARCH run) under a pausing flow-style: a ticket sparse

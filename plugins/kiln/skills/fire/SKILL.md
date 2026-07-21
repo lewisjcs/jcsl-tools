@@ -118,18 +118,26 @@ Load `dispatch-contracts.md`. Dispatch the right member with the four-part contr
 
 Read each member's done-line + return artifact. Update the spine (`TaskUpdate`). Evaluate gates mechanically from typed fields (load `gates.md`):
 - **SPEC-GATE** (after Designer, DESIGN/RESEARCH lanes): present `spec-draft.md`; per flow-style, pause for
-  explicit approval. Write ledger `SPEC-GATE: approved | <ISO>`. Then dispatch the **Drafter**
+  explicit approval.
+  On rejection or a change request at THIS pause: do NOT write `approved` and do NOT dispatch the
+  Drafter or the Planner; re-dispatch the Designer with the feedback and re-present at SPEC-GATE.
+  On explicit approval, write ledger `SPEC-GATE: approved | <ISO>`. If `{{FORMAT_CACHE_PATH}}` is
+  `none` or stale, fetch 3–5 recent ticket keys from {{JIRA_KEY}}'s project
+  (`mcp__jira__searchJiraIssuesUsingJql`) to pass as `{{SIBLING_KEYS}}` (else pass `none` — the
+  Drafter holds no search tool). Then dispatch the **Drafter**
   (initial write — load the Drafter Dispatch Template; pass spec-draft.md, target `update {{JIRA_KEY}}`,
-  tasklist.md if it exists yet else "none", the current Jira children, and the ledger; NO approval
-  fields — this is Phase 1). It returns `DRAFTER_AWAITING_APPROVAL: <bundle>`; present `<bundle>/diff.md`
+  tasklist.md if it exists yet else "none", the current Jira children, the sibling keys, and the
+  ledger; NO approval fields — this is Phase 1). It returns `DRAFTER_AWAITING_APPROVAL: <bundle>`; present `<bundle>/diff.md`
   for approval (R1; this approval is unconditional — it holds under every flow-style, including
-  `hands_free`). ONLY on explicit approval, re-invoke the Drafter (Phase 2) with `APPROVAL=granted`,
+  `hands_free`).
+  On rejection or a change request AT THE DRAFTER'S DIFF: do NOT write `approved` and do NOT dispatch
+  the Planner; re-dispatch the Drafter (Phase 1, NOT Phase 2) with the feedback and re-present the new
+  bundle's `diff.md` at this same pause. Repeat until approved (see `gates.md` § DRAFTER-APPROVAL).
+  ONLY on explicit approval of the diff, re-invoke the Drafter (Phase 2) with `APPROVAL=granted`,
   `APPROVED_BUNDLE=<bundle>`, and the same target. On `DRAFTER_DONE`/`DRAFTER_NOOP`, write ledger
   `DRAFTER: initial write {{JIRA_KEY}} | <ISO>`. On `DRAFTER_BLOCKED`, surface and HARD STOP (a
   keyless/personal run with no Jira target skips the Drafter — record `DRAFTER: skipped (keyless)`).
   Then dispatch the Planner.
-  On rejection or a change request: do NOT write `approved` and do NOT dispatch the Planner; re-dispatch
-  the Designer with the feedback and re-present at SPEC-GATE.
 - **PLAN-GATE:** present `plan.md` (+ `walkthrough.md` if HIGH); per flow-style, pause for explicit approval. Write ledger `PLAN-GATE: approved | <ISO>`.
   On rejection or a change request: do NOT write `approved` and do NOT start the Build loop; re-dispatch
   the Planner with the feedback and re-present at PLAN-GATE.
@@ -152,7 +160,13 @@ template, `{{CHECKPOINT}}` = completion, NO approval fields (re-fetch and pass t
 children); it reconciles the final plan against the ledger. If it returns `DRAFTER_NOOP`, nothing
 changed since the initial write — record and move on. If it returns `DRAFTER_AWAITING_APPROVAL: <bundle>`,
 present `<bundle>/diff.md` for approval (R1; this approval is unconditional — it holds under every
-flow-style, including `hands_free`), and ONLY on approval re-invoke the Drafter (Phase 2) with
+flow-style, including `hands_free`).
+On rejection or a change request: re-dispatch the Drafter (Phase 1) once more with the feedback and
+re-present the new bundle's `diff.md`. If rejected or cancelled a SECOND time, do NOT hard-stop — the
+build is already complete — record ledger `DRAFTER: completion sync skipped (rejected) | <ISO>` and
+proceed to the Curator (same as the `DRAFTER_BLOCKED` handling below; see `gates.md` §
+DRAFTER-APPROVAL).
+ONLY on approval re-invoke the Drafter (Phase 2) with
 `APPROVAL=granted`, `APPROVED_BUNDLE=<bundle>`, same target. Write ledger `DRAFTER: completion sync |
 <ISO>`. If it returns `DRAFTER_BLOCKED`, do NOT hard-stop — the build is already complete, so surface the
 reason, record ledger `DRAFTER: completion sync skipped (blocked: <reason>) | <ISO>`, and proceed to the
