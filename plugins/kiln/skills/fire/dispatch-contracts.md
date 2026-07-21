@@ -81,7 +81,8 @@ ${CLAUDE_PLUGIN_ROOT}/skills/fire/engines.md; the bound engine for this run is: 
 breakdown, `enrich` each task per the bound engine, write it to {{RUN_FOLDER}}/tasklist.md
 (with per-task file targets, test strategy, an **Impl model:** and **Verify model:** bullet,
 and an ### Enriched context subsection), then author {{RUN_FOLDER}}/plan.md. Do NOT create Jira
-subtasks — write-back is deferred to P2.2.
+subtasks yourself — the Drafter reconciles Jira subtasks against `{{RUN_FOLDER}}/tasklist.md` at
+the SPEC-GATE and completion checkpoints; your job is only to make tasklist.md an accurate record.
 
 **Part 2 — Brief:**
 If a Jira ticket key was provided at entry, read it via the Jira MCP tool:
@@ -102,11 +103,10 @@ Write the Compounds breakdown to `{{RUN_FOLDER}}/tasklist.md` and your implement
 Required sections in {{RUN_FOLDER}}/plan.md:
 - ## Summary (1–3 sentences)
 - ## Task Breakdown (one entry per Compounds task: title, file targets, test strategy)
-- ## Jira Subtasks (always "deferred (P2.2)" this pass — not created)
+- ## Jira Subtasks (list the subtask titles from the Task Breakdown — the Drafter reconciles these
+  against Jira; you do NOT create them yourself)
 
-Jira subtasks: deferred to P2.2 — do NOT create them. The plan's Task Breakdown is the record.
-
-Done-check: Return the single line `PLANNER_DONE: {{RUN_FOLDER}}/plan.md written, tier: {{TIER}}, blast: {{BLAST_RADIUS}}, subtasks: deferred (P2.2)`
+Done-check: Return the single line `PLANNER_DONE: {{RUN_FOLDER}}/plan.md written, tier: {{TIER}}, blast: {{BLAST_RADIUS}}`
 and nothing else. The orchestrator reads {{RUN_FOLDER}}/plan.md directly.
 ```
 
