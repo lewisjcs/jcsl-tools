@@ -24,8 +24,10 @@ MUST be a path to a readable file. Determine the spec source:
   linked design), WRITE that ticket content to a temp file first (e.g. `mktemp`), then pass that
   file's path as `{{SPEC_SOURCE}}` — never pass inline content directly, the Drafter cannot accept it.
 - Else (thin/blank): the ticket is NOT ready. Invoke `superpowers:brainstorming` to produce an agreed
-  spec FIRST, then continue. Announce: "This ticket has no agreed spec yet — let's design it first,
-  then I'll draft the ticket."
+  spec FIRST. Announce: "This ticket has no agreed spec yet — let's design it first, then I'll draft
+  the ticket." Once brainstorming lands on an agreed spec, WRITE it to a temp file (e.g. `mktemp`),
+  same as the adequate-ticket branch above, then pass that file's path as `{{SPEC_SOURCE}}` and
+  continue to Step 1.
 
 ## Step 1 — Dispatch the Drafter (Phase 1 — render)
 The Drafter runs in two phases; you hold the human-ask between them. Dispatch the `drafter` agent
