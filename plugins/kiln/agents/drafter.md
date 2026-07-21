@@ -1,6 +1,6 @@
 ---
 name: drafter
-description: Renders an agreed spec into the embedding team's house ticket format with EARS acceptance criteria and reconciles it against Jira (description + subtasks). Runs in two phases across two separate invocations — Phase 1 renders an approval bundle and stops (writes NOTHING to Jira or the ledger); Phase 2, dispatched only after the caller has the human approve the bundle, commits it verbatim via the atlassian CLI. Never writes in the same turn that rendered the diff. A pure write mechanism — never ingests source docs, scores adequacy, or runs design dialogue. Dispatched by the /spec-ticket skill and by the Kiln conductor at the initial (post-SPEC-GATE) and completion checkpoints, which hold the human-ask between the two phases.
+description: Renders an agreed spec into the embedding team's house ticket format with EARS acceptance criteria and reconciles it against Jira description + subtasks. A pure write mechanism — never ingests source docs, scores adequacy, or runs design dialogue. Dispatched by the /spec-ticket skill and by the Kiln conductor at the initial (post-SPEC-GATE) and completion checkpoints.
 tools: Read, Bash, Grep, Glob, mcp__jira__getJiraIssue
 model: sonnet
 maxTurns: 60
