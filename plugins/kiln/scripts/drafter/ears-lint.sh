@@ -22,8 +22,11 @@ while IFS= read -r line; do
   [ "$(echo "$text" | grep -oiE '\bshall\b' | wc -l | tr -d ' ')" -ge 2 ] && emit "$n" compound-shall "$text"
   # non-trigger
   echo "$text" | grep -qiE 'when needed|if necessary|where appropriate' && emit "$n" non-trigger "$text"
-  # 'When' used on an error/invalid/fail path (should be If...then), anywhere in the requirement
-  echo "$text" | grep -qiE '\bwhen\b.*\b(invalid|error|failure|denied|reject|fail)\b' && emit "$n" when-on-error "$text"
+  # 'When' used on an error/invalid/fail path (should be If...then) — checked only in the
+  # trigger clause (before the first 'shall'), so a correct shall-clause mentioning "error"
+  # (e.g. "the system shall return an error code") doesn't false-positive.
+  trigger=$(echo "$text" | sed 's/[Ss][Hh][Aa][Ll][Ll].*//')
+  echo "$trigger" | grep -qiE '\bwhen\b.*\b(invalid|error|failure|denied|reject|fail)\b' && emit "$n" when-on-error "$text"
   # passive 'is <verb>ed by the system' (no active system subject)
   echo "$text" | grep -qiE '\bis\b.*\bby the system\b' && emit "$n" passive-voice "$text"
   # solution-in-requirement: shall-clause prescribes a mechanism instead of a behavior
