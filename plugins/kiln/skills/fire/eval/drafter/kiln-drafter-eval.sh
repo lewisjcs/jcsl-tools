@@ -21,6 +21,14 @@ got=$(bash "$SCRIPTS/reconcile.sh" "$FIX/reconcile-plan.json" "$FIX/reconcile-ch
 want=$(jq -c '.actions_sorted' "$EXP/drafter-reconcile-partial.json")
 [ "$got" = "$want" ] && pass "reconcile-partial-noledger" || bad "reconcile-partial-noledger" "got=$got want=$want"
 
+# Scenario 2b: reconcile WITH ledger, body_hash-aware — the highest-value regression guard (R10):
+# hash matches ledger → noop (never "update" just because a ledger entry exists); hash differs →
+# update; no title match → create. Catches a regression to the old title-only with-ledger behavior,
+# where a linked subtask could never resolve to noop.
+got=$(bash "$SCRIPTS/reconcile.sh" "$FIX/reconcile-plan-with-body.json" "$FIX/reconcile-children-ledger.json" "$FIX/reconcile-ledger-map.json" | jq -c '[.[].action] | sort')
+want=$(jq -c '.actions_sorted' "$EXP/drafter-reconcile-ledger.json")
+[ "$got" = "$want" ] && pass "reconcile-with-ledger-body-hash" || bad "reconcile-with-ledger-body-hash" "got=$got want=$want"
+
 # Scenario 3: EARS lint bad→1, good→0
 bash "$SCRIPTS/ears-lint.sh" "$FIX/ears-bad.md" >/dev/null 2>&1; be=$?
 bash "$SCRIPTS/ears-lint.sh" "$FIX/ears-good.md" >/dev/null 2>&1; ge=$?
