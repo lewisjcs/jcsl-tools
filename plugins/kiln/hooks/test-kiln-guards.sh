@@ -250,7 +250,10 @@ fi
 
 # Positive half: the absence check above proves no inline writes, but not that the Drafter is
 # actually dispatched anywhere — assert both checkpoints (initial-write, completion-sync) exist.
-drafter_dispatches=$(grep -cE 'dispatch the \*\*Drafter\*\*' "$CONDUCTOR_SKILL" 2>/dev/null || echo 0)
+# Bold markers around "Drafter" are optional here (a markdown copy-edit that drops/adds ** must
+# not flip this test) — this is a floor check (>= 2), so also matching the rejection-loop
+# "re-dispatch the Drafter" lines is harmless, never a false pass on a real regression.
+drafter_dispatches=$(grep -cE 'dispatch the \*{0,2}Drafter\*{0,2}' "$CONDUCTOR_SKILL" 2>/dev/null || echo 0)
 if [ "$drafter_dispatches" -lt 2 ]; then
   echo "FAIL - conductor SKILL.md dispatches the Drafter $drafter_dispatches time(s), expected 2 (initial-write + completion-sync)"; FAILS=$((FAILS+1))
 else

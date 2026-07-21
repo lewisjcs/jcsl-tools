@@ -122,9 +122,10 @@ Read each member's done-line + return artifact. Update the spine (`TaskUpdate`).
   On rejection or a change request at THIS pause: do NOT write `approved` and do NOT dispatch the
   Drafter or the Planner; re-dispatch the Designer with the feedback and re-present at SPEC-GATE.
   On explicit approval, write ledger `SPEC-GATE: approved | <ISO>`. If `{{FORMAT_CACHE_PATH}}` is
-  `none` or stale, fetch 3–5 recent ticket keys from {{JIRA_KEY}}'s project
-  (`mcp__jira__searchJiraIssuesUsingJql`) to pass as `{{SIBLING_KEYS}}` (else pass `none` — the
-  Drafter holds no search tool). Then dispatch the **Drafter**
+  `none` or **stale** — absent, no `skeleton_version:` line, or a `skeleton_version` other than `1`
+  (the Drafter's own staleness rule, `agents/drafter.md` § Format resolution) — fetch 3–5 recent
+  ticket keys from {{JIRA_KEY}}'s project (`mcp__jira__searchJiraIssuesUsingJql`) to pass as
+  `{{SIBLING_KEYS}}` (else pass `none` — the Drafter holds no search tool). Then dispatch the **Drafter**
   (initial write — load the Drafter Dispatch Template; pass spec-draft.md, target `update {{JIRA_KEY}}`,
   tasklist.md if it exists yet else "none", the current Jira children, the sibling keys, and the
   ledger; NO approval fields — this is Phase 1). It returns `DRAFTER_AWAITING_APPROVAL: <bundle>`; present `<bundle>/diff.md`
