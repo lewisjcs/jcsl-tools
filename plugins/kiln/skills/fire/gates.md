@@ -10,7 +10,7 @@ lanes; PLAN and TASK gates are unchanged.
 |---|---|---|---|
 | **SPEC-GATE** | after Designer, before Planner — on ANY DESIGN/RESEARCH run under a pausing flow-style | `spec-draft.md` summary | user types explicit approval |
 | **PLAN-GATE** | after Planner, before first Crafter — all STANDARD | `plan.md` (+ `walkthrough.md` on HIGH blast) | user types explicit approval |
-| **TASK-GATE** | after each Inspector — blocks on MEDIUM or HIGH blast | `verdict-N.md` typed fields | `spec: ✅` AND `quality: approved` |
+| **TASK-GATE** | after each Inspector — blocks on MEDIUM or HIGH blast | `task-N-<slug>-verdict.md` typed fields | `spec: ✅` AND `quality: approved` |
 | **DRAFTER-APPROVAL** | before any Jira write — both the initial-write (post-SPEC-GATE) and completion-sync checkpoints | `<bundle>/diff.md` | user types explicit approval |
 
 On reject: SPEC-GATE re-dispatches the Designer with the feedback and re-presents at SPEC-GATE;

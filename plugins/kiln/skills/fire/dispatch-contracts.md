@@ -14,6 +14,17 @@ Each template has exactly four parts:
 3. Interfaces and decisions from prior tasks the brief cannot know
 4. Report file path + done-check contract
 
+**Report/verdict filenames — `{{SLUG}}`, not a bare number:** a member's Write tool silently
+denies any path whose basename starts with the literal prefix `report-` or `verdict-` — a
+Claude Code harness heuristic, not a Kiln guard (no hook of ours emits its error text). Every
+report and verdict filename below is therefore `task-{{N}}-{{SLUG}}-report.md` /
+`task-{{N}}-{{SLUG}}-verdict.md`, where `{{SLUG}}` is a kebab-case slug of the task title from
+`tasklist.md` (lowercase, non-alphanumerics → `-`, collapsed, truncated to ~5 words — e.g. task
+"BE-001 — Implement GEMBA-MQM V2 core scoring logic" → `implement-gemba-mqm-v2-core`). The
+conductor computes `{{SLUG}}` once per task when it writes that task's `brief-N.md` and reuses
+the SAME slug in both the Crafter and Inspector dispatch for that task — the Inspector reads the
+Crafter's report by this exact filename, so a mismatched slug breaks the handoff.
+
 ---
 
 ## Scout Dispatch Template
@@ -147,7 +158,7 @@ re-generate it. The brief is your complete requirements source.
    from prior tasks that this task consumes. Do not paste summaries or narration.
 
 **Part 4 — Output contract:**
-Write your status report to: {{RUN_FOLDER}}/report-N.md
+Write your status report to: {{RUN_FOLDER}}/task-{{N}}-{{SLUG}}-report.md
 
 Required sections in the report file:
 - ## Task (brief title)
@@ -155,7 +166,7 @@ Required sections in the report file:
 - ## Implementation (list of files changed with one-line description each)
 - ## Commit SHA
 
-Done-check: Return the single line `CRAFTER_DONE: {{RUN_FOLDER}}/report-N.md written, commit: {{SHA}}`
+Done-check: Return the single line `CRAFTER_DONE: {{RUN_FOLDER}}/task-{{N}}-{{SLUG}}-report.md written, commit: {{SHA}}`
 and nothing else. Do not paste implementation code into your reply.
 ```
 
@@ -179,7 +190,8 @@ blast (compounds: implement_task_finalize; native: update_task) per engines.md a
 **Part 2 — Brief:**
 Read the task brief and crafter report now:
 Brief path: {{RUN_FOLDER}}/brief-N.md
-Report path: {{RUN_FOLDER}}/report-N.md
+Report path: {{RUN_FOLDER}}/task-{{N}}-{{SLUG}}-report.md   (SLUG matches the Crafter's — the
+  conductor relays the same slug it used dispatching that Crafter)
 
 Obtain the diff for this task's commit:
 Run: `git diff {{COMMIT_SHA}}^..{{COMMIT_SHA}}`
@@ -187,11 +199,12 @@ Run: `git diff {{COMMIT_SHA}}^..{{COMMIT_SHA}}`
 **Part 3 — Prior context:**
 {{PRIOR_VERDICTS_NOTE}}
 ← If task 1: "N/A — first inspection."
-← If task N>1: "Prior task verdict files: {{RUN_FOLDER}}/verdict-1.md … {{RUN_FOLDER}}/verdict-{{N-1}}.md.
-   Read them only if a cross-task pattern needs citing. Do not summarize them."
+← If task N>1: "Prior task verdict files: {{RUN_FOLDER}}/task-1-<slug>-verdict.md …
+   {{RUN_FOLDER}}/task-{{N-1}}-<slug>-verdict.md. Read them only if a cross-task pattern needs
+   citing. Do not summarize them."
 
 **Part 4 — Output contract:**
-Write your verdict to: `{{RUN_FOLDER}}/verdict-{{N}}.md`.
+Write your verdict to: `{{RUN_FOLDER}}/task-{{N}}-{{SLUG}}-verdict.md`.
 
 Required format (exact keys, no deviation):
 ```
@@ -213,11 +226,11 @@ Rules:
 - `criteria_met` / `criteria_total` are counts from the brief's acceptance criteria list
 - `critical_findings` is the count of Critical-severity findings (0 if none)
 - `changed_files` is the list from the crafter's ## Implementation section
-- Never return verdict as free text — always write to {{RUN_FOLDER}}/verdict-{{N}}.md
+- Never return verdict as free text — always write to {{RUN_FOLDER}}/task-{{N}}-{{SLUG}}-verdict.md
 - An empty findings list with `quality: approved` is a valid clean result
 
-Done-check: `{{RUN_FOLDER}}/verdict-{{N}}.md` exists AND contains a `spec:` line.
-Return the single line `INSPECTOR_DONE: {{RUN_FOLDER}}/verdict-{{N}}.md written` and nothing else.
+Done-check: `{{RUN_FOLDER}}/task-{{N}}-{{SLUG}}-verdict.md` exists AND contains a `spec:` line.
+Return the single line `INSPECTOR_DONE: {{RUN_FOLDER}}/task-{{N}}-{{SLUG}}-verdict.md written` and nothing else.
 ```
 
 ---
@@ -272,8 +285,8 @@ Ticket: {{JIRA_KEY}}   (or "none" — keyless / personal-repo run → skip the J
 Compounds project: {{COMPOUNDS_PROJECT}}   (project id, or "none" on the native engine)
 
 **Part 3 — Prior context:**
-Per-task verdicts: {{RUN_FOLDER}}/verdict-*.md — summarize their acceptance-criteria coverage and
-findings into the PR body as proof-of-readiness. Final commit range: {{COMMIT_RANGE}}.
+Per-task verdicts: {{RUN_FOLDER}}/task-*-verdict.md — summarize their acceptance-criteria coverage
+and findings into the PR body as proof-of-readiness. Final commit range: {{COMMIT_RANGE}}.
 
 **Part 4 — Output contract:**
 Write {{RUN_FOLDER}}/verify.md (schema in agents/curator.md). Run the sequence in agents/curator.md:
