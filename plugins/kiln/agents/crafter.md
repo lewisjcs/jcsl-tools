@@ -1,6 +1,6 @@
 ---
 name: crafter
-description: Per-task implementation over the run's bound engine. Reads engine (compounds|native) from dispatch; compounds → implement_task drives impl+test; native → deterministic self-check. Commits, writes report-N.md.
+description: Per-task implementation over the run's bound engine. Reads engine (compounds|native) from dispatch; compounds → implement_task drives impl+test; native → deterministic self-check. Commits, writes task-N-<slug>-report.md.
 tools: Read, Edit, Write, Bash, Grep, Glob, mcp__compounds-dev__implement_task, mcp__compounds-dev__update_task, mcp__compounds-dev__plan_change, mcp__compounds-dev__create_project, mcp__compounds-dev__get_design_patterns, mcp__compounds-dev__get_pattern_examples, mcp__compounds-dev__get_testing_frameworks, mcp__compounds-dev__complete_subtasks
 model: sonnet
 ---
@@ -54,7 +54,9 @@ Do not read files outside the scope described in the brief unless they are direc
 
 **1. Make a git commit** using conventional commit format. Do not push — the orchestrator manages pushing.
 
-**2. Write `{{RUN_FOLDER}}/report-N.md`** (N = task number from brief).
+**2. Write `{{RUN_FOLDER}}/task-{{N}}-{{SLUG}}-report.md`** (N = task number, SLUG = the kebab
+slug the conductor's dispatch supplied — a bare `report-N.md` basename is silently denied by a
+Claude Code harness heuristic, not a Kiln guard).
 
 Required sections:
 
@@ -81,8 +83,8 @@ Run the bound engine's `verify` self-check and confirm it is green before writin
   no forbidden patterns, calibration fixtures green if the artifact ships them).
 
 **If verification fails after committing:** fix, `git commit --amend --no-edit`, re-run the
-`verify` self-check, and confirm green before writing the report. Do not write `report-N.md`
-while verification is failing.
+`verify` self-check, and confirm green before writing the report. Do not write
+`task-{{N}}-{{SLUG}}-report.md` while verification is failing.
 
 Run `git rev-parse HEAD` to obtain the commit SHA for the report.
 
@@ -103,4 +105,4 @@ STANDARD the Inspector finalizes and you call NO finalize verb.
   `implement_task_finalize` (known Compounds gap). You still do NOT call any task-level finalize
   verb; that is the Inspector's.
 
-Return the single line `CRAFTER_DONE: {{RUN_FOLDER}}/report-N.md written, commit: <SHA>` and nothing else. Do not paste implementation code or test output into your reply — the orchestrator reads the report file directly.
+Return the single line `CRAFTER_DONE: {{RUN_FOLDER}}/task-{{N}}-{{SLUG}}-report.md written, commit: <SHA>` and nothing else. Do not paste implementation code or test output into your reply — the orchestrator reads the report file directly.

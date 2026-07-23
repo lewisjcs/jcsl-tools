@@ -12,7 +12,7 @@ accuracy?**
 - Run and task counts split by engine (from the ledger — deterministic).
 - Cost (tokens/turns): a **manual input** — the ledger does not hold token counts; pull them from
   the session transcript or LangFuse and attribute by the run's `ENGINE` header.
-- Accuracy: Inspector pass-rate is derivable from retained `verdict-N.md` files; post-merge defect
+- Accuracy: Inspector pass-rate is derivable from retained `task-N-<slug>-verdict.md` files; post-merge defect
   signal is a manual input.
 
 ## Why it is NOT a ship gate

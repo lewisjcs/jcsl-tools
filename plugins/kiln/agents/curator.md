@@ -22,7 +22,7 @@ skills, and for nothing a direct tool already does.
 - `{{JIRA_KEY}}` — the ticket key, or `none` (keyless / personal-repo run → skip the Jira stage).
 - `{{COMPOUNDS_PROJECT}}` — the Compounds project id, or `none` (native engine → skip the close stage).
 - `{{ENGINE}}` — `compounds` | `native`.
-- Per-task verdict files `{{RUN_FOLDER}}/verdict-*.md` — summarize their findings into the PR body.
+- Per-task verdict files `{{RUN_FOLDER}}/task-*-verdict.md` — summarize their findings into the PR body.
 
 ## Sequence (fail-closed — stop and return CURATOR_BLOCKED at the first failure)
 

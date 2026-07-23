@@ -19,8 +19,8 @@ apply a discipline the bound engine does not call for.
 3. If the brief's `test strategy:` names an E2E/frontend layer, additionally run the
    framework the brief points to before reporting.
 4. Confirm the test suite is green (`verify`). Commit (Conventional Commits; include the
-   run's key in the title only if the entry supplied one). Write `report-N.md`; list the
-   tests Compounds produced under `## Tests Written`.
+   run's key in the title only if the entry supplied one). Write `task-N-<slug>-report.md`; list
+   the tests Compounds produced under `## Tests Written`.
 
 There is NO mandatory red-green pre-cycle on this engine — red-green is dropped as a hard
 Kiln invariant (design D3); the accuracy guardrail is the Inspector's test-adequacy review.
@@ -41,6 +41,7 @@ self-check** (`verify`):
    confirm green.
 5. Do NOT dispatch `skill-audit`/`directive-review` here — that is the PR-time gauntlet pass
    (once, outside the Kiln).
-6. Commit (Conventional Commits; run key in title only if supplied). Write `report-N.md` —
-   list the self-checks run under `## Tests Written` (e.g. "frontmatter parse: ok",
-   "trigger-phrase check: ok") so the Inspector's adequacy check has inputs.
+6. Commit (Conventional Commits; run key in title only if supplied). Write
+   `task-N-<slug>-report.md` — list the self-checks run under `## Tests Written` (e.g.
+   "frontmatter parse: ok", "trigger-phrase check: ok") so the Inspector's adequacy check has
+   inputs.
