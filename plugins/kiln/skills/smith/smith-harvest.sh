@@ -22,11 +22,19 @@ if [ -f "$PROG" ]; then
   while IFS= read -r line; do
     friction_json="$(jq --arg l "$line" '. + [$l]' <<<"$friction_json")"
   done < <(grep -iE 'DEVIATION|GAP|fix loop|escalate|reverted|user caught|HARD STOP' "$PROG" || true)
-  # Timestamps: min/max of ISO stamps anywhere in the ledger.
-  ts_sorted="$(grep -oE '[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9:]+Z' "$PROG" | sort || true)"
-  if [ -n "$ts_sorted" ]; then
-    first_ts="\"$(printf '%s\n' "$ts_sorted" | head -1)\""
-    last_ts="\"$(printf '%s\n' "$ts_sorted" | tail -1)\""
+  # Timestamps: min/max of ISO stamps anywhere in the ledger. Kiln mixes
+  # minute-only (...T14:48Z) and full-second (...T14:48:45Z) precision on
+  # the same run, so a plain lexicographic sort on the raw strings mis-orders
+  # same-minute pairs (':' sorts before 'Z'). Sort on a seconds-padded key,
+  # but emit the ORIGINAL string verbatim.
+  ts_pairs="$(grep -oE '[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9:]+Z' "$PROG" | awk '{
+    orig=$0; key=$0
+    if (key !~ /T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$/) { sub(/Z$/, ":00Z", key) }
+    print key "\t" orig
+  }' | sort || true)"
+  if [ -n "$ts_pairs" ]; then
+    first_ts="\"$(printf '%s\n' "$ts_pairs" | head -1 | cut -f2)\""
+    last_ts="\"$(printf '%s\n' "$ts_pairs" | tail -1 | cut -f2)\""
   fi
   fix_loops="$(grep -icE 'fix loop|REDO' "$PROG" || true)"
 fi

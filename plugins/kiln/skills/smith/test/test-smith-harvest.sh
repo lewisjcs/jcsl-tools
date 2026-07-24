@@ -34,4 +34,12 @@ assert_eq "friction has deviation" "true" \
 assert_eq "first_ts" "2026-07-13T17:26:00Z" "$(jq -r '.first_ts' "$out")"
 assert_eq "last_ts" "2026-07-13T18:52:00Z" "$(jq -r '.last_ts' "$out")"
 
+# --- Task 2 fix: mixed-precision same-minute timestamps order chronologically ---
+out3="$(mktemp)"
+bash "$SCRIPT" --run-dir "$FIX/mixed-precision/kiln" --out "$out3"
+assert_eq "mixed-precision first_ts (minute-only, earlier)" "2026-07-13T14:48Z" \
+  "$(jq -r '.first_ts' "$out3")"
+assert_eq "mixed-precision last_ts (full-second, later)" "2026-07-13T14:48:45Z" \
+  "$(jq -r '.last_ts' "$out3")"
+
 exit $fail
