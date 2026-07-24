@@ -47,10 +47,15 @@ Kiln, never re-invokes a member, never touches a fixture.**
    ```
 
 4. **Guardrails (state these hold):** every suggestion is advisory and unverified — Slice 1 has no eval
-   gate yet (that is Slice 2). Never propose editing a fixture. Flag any suggestion whose evidence comes
-   from a run on an older Kiln version as possibly stale (compare the run's ENGINE/version ledger line).
-   If the harvest was partial (Step 1), say so up front in the briefing rather than silently reporting
-   on fewer runs than requested.
+   gate yet (that is Slice 2). Never propose editing a fixture. If the harvest was partial (Step 1),
+   say so up front in the briefing rather than silently reporting on fewer runs than requested.
+
+   **Engine-mix check.** `retro.json` carries no engine field. To note whether a suggestion's evidence
+   spans different engines, read that run's `progress.md` (it sits next to its `retro.json`) for the
+   `ENGINE: <compounds|native> | <ISO>` line — this is read-only, consistent with the tool's stance.
+   That line tells you which engine was bound, not a Kiln version; do not frame it as version-staleness.
+   If a run has no `ENGINE:` line, state in the briefing that the engine mix could not be checked for
+   that run — never imply the check ran when it didn't.
 
 ## What The Smith does NOT do (Slice 1)
 - Does not edit Kiln source, gates, or prompts.
