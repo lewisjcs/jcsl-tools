@@ -77,4 +77,42 @@ assert_eq "malformed cost: exit 0" "0" "$badcost_exit"
 assert_eq "malformed cost: cost_usd null" "null" "$(jq -r '.cost_usd' "$out5")"
 assert_eq "malformed cost: note set" "true" "$(jq -r '(.cost_note|length)>0' "$out5")"
 
+# --- Task 4 (carry-forward from Task 1 review): mixed verdict-naming
+# conventions in one run dir must not double-count tasks ---
+outmix="$(mktemp)"
+bash "$SCRIPT" --run-dir "$FIX/mixed-convention/kiln" --out "$outmix"
+assert_eq "mixed-convention task count" "3" "$(jq -r '.tasks | length' "$outmix")"
+assert_eq "mixed-convention task numbers" "1 2 3" \
+  "$(jq -r '[.tasks[].n] | sort | join(" ")' "$outmix")"
+
+# --- Task 4 (optional): multi-digit task numbers parse correctly ---
+outmulti="$(mktemp)"
+bash "$SCRIPT" --run-dir "$FIX/multidigit-convention/kiln" --out "$outmulti"
+assert_eq "multi-digit task n" "12" "$(jq -r '.tasks[0].n' "$outmulti")"
+
+# --- Task 4: idempotency ---
+r1="$(mktemp)"; r2="$(mktemp)"
+SMITH_CCUSAGE="bash $FIX/fake-ccusage.sh" bash "$SCRIPT" --run-dir "$FIX/clean-run/kiln" --out "$r1"
+SMITH_CCUSAGE="bash $FIX/fake-ccusage.sh" bash "$SCRIPT" --run-dir "$FIX/clean-run/kiln" --out "$r2"
+assert_eq "idempotent digest" "$(cat "$r1")" "$(cat "$r2")"
+
+# --- Task 4: multi-run driver mode ---
+ws="$(mktemp -d)"
+mkdir -p "$ws/projects/active/run-a/kiln" "$ws/projects/active/run-b/kiln"
+: > "$ws/projects/active/run-a/kiln/progress.md"
+: > "$ws/projects/active/run-b/kiln/progress.md"
+# stagger mtimes so --last ordering is deterministic
+touch -t 202607131700 "$ws/projects/active/run-a/kiln/progress.md"
+touch -t 202607131701 "$ws/projects/active/run-b/kiln/progress.md"
+
+driver_out="$(SMITH_CCUSAGE="bash $FIX/fake-ccusage.sh" bash "$SCRIPT" --workspace "$ws" --last 2)"
+driver_exit=$?
+assert_eq "driver: exit 0" "0" "$driver_exit"
+assert_eq "driver: prints both retro.json paths" "true" \
+  "$(printf '%s\n' "$driver_out" | grep -qF "run-a/kiln/retro.json" && printf '%s\n' "$driver_out" | grep -qF "run-b/kiln/retro.json" && echo true || echo false)"
+assert_eq "driver: writes run-a retro.json" "true" "$([ -f "$ws/projects/active/run-a/kiln/retro.json" ] && echo true || echo false)"
+assert_eq "driver: writes run-b retro.json" "true" "$([ -f "$ws/projects/active/run-b/kiln/retro.json" ] && echo true || echo false)"
+assert_eq "driver: run-a retro.json is valid JSON" "true" \
+  "$(jq -e . "$ws/projects/active/run-a/kiln/retro.json" >/dev/null 2>&1 && echo true || echo false)"
+
 exit $fail

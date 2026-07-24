@@ -2,14 +2,29 @@
 # The Smith — deterministic run-folder harvester. Read-only toward runs; writes retro.json only.
 set -euo pipefail
 
-RUN_DIR=""; OUT=""
+RUN_DIR=""; OUT=""; WORKSPACE=""; LAST=""
 while [ $# -gt 0 ]; do
   case "$1" in
-    --run-dir) RUN_DIR="$2"; shift 2 ;;
-    --out)     OUT="$2";     shift 2 ;;
+    --run-dir)   RUN_DIR="$2";   shift 2 ;;
+    --out)       OUT="$2";       shift 2 ;;
+    --workspace) WORKSPACE="$2"; shift 2 ;;
+    --last)      LAST="$2";      shift 2 ;;
     *) echo "unknown arg: $1" >&2; exit 2 ;;
   esac
 done
+
+if [ -n "$WORKSPACE" ]; then
+  [ -n "$LAST" ] || LAST=10
+  # N most-recently-modified run ledgers.
+  mapfile -t ledgers < <(ls -t "$WORKSPACE"/projects/active/*/kiln/progress.md 2>/dev/null | head -n "$LAST")
+  for pg in "${ledgers[@]}"; do
+    rd="$(dirname "$pg")"
+    "$0" --run-dir "$rd" --out "$rd/retro.json"
+    echo "$rd/retro.json"
+  done
+  exit 0
+fi
+
 [ -n "$RUN_DIR" ] && [ -n "$OUT" ] || { echo "usage: smith-harvest.sh --run-dir DIR --out FILE" >&2; exit 2; }
 [ -d "$RUN_DIR" ] || { echo "no such run dir: $RUN_DIR" >&2; exit 2; }
 
