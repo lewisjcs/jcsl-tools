@@ -130,10 +130,20 @@ else
     cost_note="empty .active stamp (legacy/unowned run)"
   else
     session_id_str="$sid"
-    # Guard ccusage major version (>=20 dedupes on message.id).
-    ver="$(ccusage --version 2>/dev/null | grep -oE '^[0-9]+' || echo 0)"
-    if [ "${ver:-0}" -lt 20 ] && [ -z "${SMITH_CCUSAGE:-}" ]; then
-      cost_note="ccusage <20 (double-counts); cost withheld"
+    # Guard ccusage major version (>=20 dedupes on message.id). ver_raw is
+    # empty when `ccusage` isn't installed (command not found) and "0" when
+    # it IS installed but prints a version this anchor can't parse — both
+    # collapse to ver=0 for the `-lt 20` comparison, but the note below must
+    # still tell absent apart from old so it doesn't warn about double-counting
+    # a binary that was never invoked.
+    ver_raw="$(ccusage --version 2>/dev/null | grep -oE '^[0-9]+' || true)"
+    ver="${ver_raw:-0}"
+    if [ "$ver" -lt 20 ] && [ -z "${SMITH_CCUSAGE:-}" ]; then
+      if [ -z "$ver_raw" ]; then
+        cost_note="ccusage not found; cost withheld"
+      else
+        cost_note="ccusage <20 (double-counts); cost withheld"
+      fi
     else
       raw="$($CCUSAGE 2>/dev/null || true)"
       c="$(jq -r --arg s "$sid" \

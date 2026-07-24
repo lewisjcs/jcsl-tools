@@ -120,6 +120,27 @@ bash "$SCRIPT" --workspace "$ws" --last abc >/dev/null 2>&1
 badlast_exit=$?
 assert_eq "bad --last: exit non-zero" "true" "$([ "$badlast_exit" -ne 0 ] && echo true || echo false)"
 
+# --- Fix: absent ccusage (not installed) gets its own wording, distinct from
+# an installed-but-old ccusage. Build a PATH containing only the coreutils
+# the harvester needs — no `ccusage` binary anywhere on it — so `command -v
+# ccusage` genuinely fails rather than relying on this machine happening not
+# to have ccusage installed.
+noccusage_dir="$(mktemp -d)"
+for t in bash jq grep sed awk sort head cut tr dirname basename mktemp tail; do
+  tp="$(command -v "$t" 2>/dev/null)"
+  [ -n "$tp" ] && ln -sf "$tp" "$noccusage_dir/$t"
+done
+outabsent="$(mktemp)"
+env -i PATH="$noccusage_dir" HOME="$HOME" \
+  bash "$SCRIPT" --run-dir "$FIX/clean-run/kiln" --out "$outabsent"
+absent_exit=$?
+assert_eq "absent ccusage: exit 0" "0" "$absent_exit"
+assert_eq "absent ccusage: cost_usd null" "null" "$(jq -r '.cost_usd' "$outabsent")"
+assert_eq "absent ccusage: note says not found" "true" \
+  "$(jq -r '.cost_note | test("not found")' "$outabsent")"
+assert_eq "absent ccusage: note does NOT say double-counts" "false" \
+  "$(jq -r '.cost_note | test("double-counts")' "$outabsent")"
+
 # --- Task 4 fix: --last N < total run count truncates to the N most-recent ---
 ws3="$(mktemp -d)"
 mkdir -p "$ws3/projects/active/run-x/kiln" "$ws3/projects/active/run-y/kiln" "$ws3/projects/active/run-z/kiln"

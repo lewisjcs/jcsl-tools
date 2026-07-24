@@ -25,7 +25,9 @@ Kiln, never re-invokes a member, never touches a fixture.**
 2. **Read the digests.** Read each printed `retro.json`. Each holds: `run_id`, `tasks` (array of
    `{n, spec, quality, criteria_met, criteria_total, critical_findings}` per task), `friction`
    (verbatim ledger lines), `first_ts`/`last_ts`, `fix_loops`, and best-effort `session_id`/`cost_usd`/
-   `cost_note`.
+   `cost_note`. `friction` is a coarse keyword net (it can match clean/summary lines like "0 gaps" or
+   "no deviations found") — read each captured line yourself and judge whether it actually indicates
+   friction before counting it; never report friction volume from the array length alone.
 
 3. **Synthesize the briefing** in this exact shape:
 
