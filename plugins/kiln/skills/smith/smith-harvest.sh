@@ -173,13 +173,19 @@ else
   fi
 fi
 
+if [ "$first_ts" = "null" ] || [ "$last_ts" = "null" ]; then
+  duration_note="duration unavailable (no parseable timestamps in ledger)"
+else
+  duration_note="calendar span (includes idle/human-gated time), not active-work time"
+fi
+
 jq -n --arg run_id "$run_id" --argjson tasks "$tasks_json" \
    --argjson friction "$friction_json" \
    --argjson first_ts "$first_ts" --argjson last_ts "$last_ts" \
    --argjson fix_loops "$fix_loops" \
    --arg session_id_str "$session_id_str" --argjson cost_usd "$cost_usd" \
-   --arg cost_note "$cost_note" \
+   --arg cost_note "$cost_note" --arg duration_note "$duration_note" \
    '{run_id:$run_id, tasks:$tasks, friction:$friction,
-     first_ts:$first_ts, last_ts:$last_ts, fix_loops:$fix_loops,
+     first_ts:$first_ts, last_ts:$last_ts, duration_note:$duration_note, fix_loops:$fix_loops,
      session_id:(if $session_id_str == "" then null else $session_id_str end),
      cost_usd:$cost_usd, cost_note:$cost_note}' > "$OUT"

@@ -202,4 +202,19 @@ assert_eq "filter: spine-only has empty tasks[]" "0" \
 assert_eq "filter: sentinel-only included" "true" \
   "$(printf '%s\n' "$filt_out" | grep -qF 'sentinel-only/kiln/retro.json' && echo true || echo false)"
 
+# --- Slice 1.5: duration_note makes calendar-vs-work-time explicit ---
+# clean-run has real timestamps -> calendar-span note
+outd="$(mktemp)"
+bash "$SCRIPT" --run-dir "$FIX/clean-run/kiln" --out "$outd"
+assert_eq "duration_note: calendar-span when ts present" "true" \
+  "$(jq -r '.duration_note | test("calendar span")' "$outd")"
+# a run with no parseable timestamps -> unavailable note
+ndir="$(mktemp -d)/kiln"; mkdir -p "$ndir"; printf 'no timestamps here\n' > "$ndir/progress.md"
+printf 'sess-x\n' > "$ndir/.completed"
+outn="$(mktemp)"
+bash "$SCRIPT" --run-dir "$ndir" --out "$outn"
+assert_eq "duration_note: unavailable when ts null" "true" \
+  "$(jq -r '.duration_note | test("unavailable")' "$outn")"
+assert_eq "first_ts still null when unparseable" "null" "$(jq -r '.first_ts' "$outn")"
+
 exit $fail
