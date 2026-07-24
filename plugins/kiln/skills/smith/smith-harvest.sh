@@ -35,6 +35,15 @@ if [ -n "$WORKSPACE" ]; then
   while IFS= read -r pg; do
     [ -n "$pg" ] || continue
     rd="$(dirname "$pg")"
+    # Build filter (sentinel-first, spine-fallback): a real Kiln run has either
+    # a run sentinel (.active live / .completed retired — same signal Slice 1.5's
+    # curator preserves) OR a plan spine (tasklist.md AND plan.md, which survive
+    # COMPLETE). Folders with neither are stray notes (support/audit dumps), not
+    # builds — skip them so the accuracy denominator counts only real runs.
+    if [ ! -f "$rd/.active" ] && [ ! -f "$rd/.completed" ] \
+       && { [ ! -f "$rd/tasklist.md" ] || [ ! -f "$rd/plan.md" ]; }; then
+      continue
+    fi
     "$0" --run-dir "$rd" --out "$rd/retro.json"
     echo "$rd/retro.json"
   done <<EOF
