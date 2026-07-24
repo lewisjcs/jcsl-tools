@@ -49,6 +49,12 @@ SMITH_CCUSAGE="bash $FIX/fake-ccusage.sh" bash "$SCRIPT" --run-dir "$FIX/clean-r
 assert_eq "session_id" "sess-clean-123" "$(jq -r '.session_id' "$out2")"
 assert_eq "cost_usd" "1.23" "$(jq -r '.cost_usd' "$out2")"
 
+# --- Slice 1.5: cost joins via .completed marker on a COMPLETED run (no .active) ---
+outc="$(mktemp)"
+SMITH_CCUSAGE="bash $FIX/fake-ccusage.sh" bash "$SCRIPT" --run-dir "$FIX/completed-run/kiln" --out "$outc"
+assert_eq "completed-run session_id from .completed" "sess-clean-123" "$(jq -r '.session_id' "$outc")"
+assert_eq "completed-run cost_usd from .completed" "1.23" "$(jq -r '.cost_usd' "$outc")"
+
 # degrade: no matching session → null cost, note set, still exits 0
 missdir="$(mktemp -d)/kiln"; mkdir -p "$missdir"; printf 'sess-absent\n' > "$missdir/.active"
 : > "$missdir/progress.md"

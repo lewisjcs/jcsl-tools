@@ -121,11 +121,15 @@ CCUSAGE="${SMITH_CCUSAGE:-ccusage session --json}"
 # (converted to JSON null in the jq body below) since a hand-quoted raw
 # --argjson literal would let an .active containing '"'/'\' break the write.
 session_id_str=""; cost_usd="null"; cost_note=""
-ACTIVE="$RUN_DIR/.active"
-if [ ! -f "$ACTIVE" ]; then
-  cost_note="no .active stamp (run may predate stamping or was cleaned on COMPLETE)"
+# A live run stamps .active; the Curator retires it to .completed at COMPLETE
+# (both hold the session id on their first line). Prefer .active (live/HALTed
+# runs), fall back to .completed (cleanly finished runs) so cost joins in every
+# terminal state, not just interrupted ones.
+STAMP="$RUN_DIR/.active"; [ -f "$STAMP" ] || STAMP="$RUN_DIR/.completed"
+if [ ! -f "$STAMP" ]; then
+  cost_note="no session stamp (run predates stamping or has neither .active nor .completed)"
 else
-  sid="$(head -1 "$ACTIVE" | tr -d '[:space:]')"
+  sid="$(head -1 "$STAMP" | tr -d '[:space:]')"
   if [ -z "$sid" ]; then
     cost_note="empty .active stamp (legacy/unowned run)"
   else
