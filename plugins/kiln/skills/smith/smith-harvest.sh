@@ -83,9 +83,40 @@ for vf in "$RUN_DIR"/verdict-*.md "$RUN_DIR"/task-*-verdict.md; do
   tasks_json="$(jq --argjson o "$obj" '. + [$o]' <<<"$tasks_json")"
 done
 
+CCUSAGE="${SMITH_CCUSAGE:-ccusage session --json}"
+session_id="null"; cost_usd="null"; cost_note=""
+ACTIVE="$RUN_DIR/.active"
+if [ ! -f "$ACTIVE" ]; then
+  cost_note="no .active stamp (run may predate stamping or was cleaned on COMPLETE)"
+else
+  sid="$(head -1 "$ACTIVE" | tr -d '[:space:]')"
+  if [ -z "$sid" ]; then
+    cost_note="empty .active stamp (legacy/unowned run)"
+  else
+    session_id="\"$sid\""
+    # Guard ccusage major version (>=20 dedupes on message.id).
+    ver="$(ccusage --version 2>/dev/null | grep -oE '^[0-9]+' || echo 0)"
+    if [ "${ver:-0}" -lt 20 ] && [ -z "${SMITH_CCUSAGE:-}" ]; then
+      cost_note="ccusage <20 (double-counts); cost withheld"
+    else
+      raw="$($CCUSAGE 2>/dev/null || true)"
+      c="$(jq -r --arg s "$sid" \
+            '(.sessions // [])[] | select(.sessionId==$s) | .costUSD' <<<"$raw" 2>/dev/null | head -1)"
+      if [ -n "$c" ] && [ "$c" != "null" ]; then
+        cost_usd="$c"
+      else
+        cost_note="no ccusage row for session $sid"
+      fi
+    fi
+  fi
+fi
+
 jq -n --arg run_id "$run_id" --argjson tasks "$tasks_json" \
    --argjson friction "$friction_json" \
    --argjson first_ts "$first_ts" --argjson last_ts "$last_ts" \
    --argjson fix_loops "$fix_loops" \
+   --argjson session_id "$session_id" --argjson cost_usd "$cost_usd" \
+   --arg cost_note "$cost_note" \
    '{run_id:$run_id, tasks:$tasks, friction:$friction,
-     first_ts:$first_ts, last_ts:$last_ts, fix_loops:$fix_loops}' > "$OUT"
+     first_ts:$first_ts, last_ts:$last_ts, fix_loops:$fix_loops,
+     session_id:$session_id, cost_usd:$cost_usd, cost_note:$cost_note}' > "$OUT"

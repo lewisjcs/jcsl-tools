@@ -42,4 +42,19 @@ assert_eq "mixed-precision first_ts (minute-only, earlier)" "2026-07-13T14:48Z" 
 assert_eq "mixed-precision last_ts (full-second, later)" "2026-07-13T14:48:45Z" \
   "$(jq -r '.last_ts' "$out3")"
 
+# --- Task 3: cost join (fake ccusage) ---
+chmod +x "$FIX/fake-ccusage.sh"
+out2="$(mktemp)"
+SMITH_CCUSAGE="bash $FIX/fake-ccusage.sh" bash "$SCRIPT" --run-dir "$FIX/clean-run/kiln" --out "$out2"
+assert_eq "session_id" "sess-clean-123" "$(jq -r '.session_id' "$out2")"
+assert_eq "cost_usd" "1.23" "$(jq -r '.cost_usd' "$out2")"
+
+# degrade: no matching session → null cost, note set, still exits 0
+missdir="$(mktemp -d)/kiln"; mkdir -p "$missdir"; printf 'sess-absent\n' > "$missdir/.active"
+: > "$missdir/progress.md"
+out3="$(mktemp)"
+SMITH_CCUSAGE="bash $FIX/fake-ccusage.sh" bash "$SCRIPT" --run-dir "$missdir" --out "$out3"
+assert_eq "missing-session cost null" "null" "$(jq -r '.cost_usd' "$out3")"
+assert_eq "missing-session note set" "true" "$(jq -r '(.cost_note|length)>0' "$out3")"
+
 exit $fail
