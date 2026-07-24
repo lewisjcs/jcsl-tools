@@ -15,6 +15,22 @@ done
 
 run_id="$(basename "$(dirname "$RUN_DIR")")"
 
+PROG="$RUN_DIR/progress.md"
+friction_json="[]"; first_ts="null"; last_ts="null"; fix_loops=0
+if [ -f "$PROG" ]; then
+  # Friction lines (case-insensitive keyword match), preserved verbatim.
+  while IFS= read -r line; do
+    friction_json="$(jq --arg l "$line" '. + [$l]' <<<"$friction_json")"
+  done < <(grep -iE 'DEVIATION|GAP|fix loop|escalate|reverted|user caught|HARD STOP' "$PROG" || true)
+  # Timestamps: min/max of ISO stamps anywhere in the ledger.
+  ts_sorted="$(grep -oE '[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9:]+Z' "$PROG" | sort || true)"
+  if [ -n "$ts_sorted" ]; then
+    first_ts="\"$(printf '%s\n' "$ts_sorted" | head -1)\""
+    last_ts="\"$(printf '%s\n' "$ts_sorted" | tail -1)\""
+  fi
+  fix_loops="$(grep -icE 'fix loop|REDO' "$PROG" || true)"
+fi
+
 # Parse a single verdict file into a task object. Field grammar is the fixed
 # Inspector output (spec:/quality:/criteria_met:/criteria_total:/critical_findings:).
 parse_verdict() { # $1 = verdict file, $2 = task number
@@ -60,4 +76,8 @@ for vf in "$RUN_DIR"/verdict-*.md "$RUN_DIR"/task-*-verdict.md; do
 done
 
 jq -n --arg run_id "$run_id" --argjson tasks "$tasks_json" \
-   '{run_id:$run_id, tasks:$tasks}' > "$OUT"
+   --argjson friction "$friction_json" \
+   --argjson first_ts "$first_ts" --argjson last_ts "$last_ts" \
+   --argjson fix_loops "$fix_loops" \
+   '{run_id:$run_id, tasks:$tasks, friction:$friction,
+     first_ts:$first_ts, last_ts:$last_ts, fix_loops:$fix_loops}' > "$OUT"

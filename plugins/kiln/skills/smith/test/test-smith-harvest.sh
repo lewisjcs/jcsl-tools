@@ -27,4 +27,11 @@ assert_eq "new-convention task quality" "approved" "$(jq -r '.tasks[0].quality' 
 assert_eq "new-convention task criteria_met" "4" "$(jq -r '.tasks[0].criteria_met' "$out2")"
 assert_eq "new-convention task critical" "0" "$(jq -r '.tasks[0].critical_findings' "$out2")"
 
+# --- Task 2: friction + timestamps ---
+assert_eq "fix_loops" "1" "$(jq -r '.fix_loops' "$out")"
+assert_eq "friction has deviation" "true" \
+  "$(jq -r '[.friction[] | test("DEVIATION")] | any' "$out")"
+assert_eq "first_ts" "2026-07-13T17:26:00Z" "$(jq -r '.first_ts' "$out")"
+assert_eq "last_ts" "2026-07-13T18:52:00Z" "$(jq -r '.last_ts' "$out")"
+
 exit $fail
