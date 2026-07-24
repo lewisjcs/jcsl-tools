@@ -137,7 +137,7 @@ else
     else
       raw="$($CCUSAGE 2>/dev/null || true)"
       c="$(jq -r --arg s "$sid" \
-            '(.sessions // [])[] | select(.sessionId==$s) | .costUSD' <<<"$raw" 2>/dev/null | head -1)"
+            '(.session // [])[] | select(.period==$s) | .totalCost' <<<"$raw" 2>/dev/null | head -1)"
       if [ -z "$c" ] || [ "$c" = "null" ]; then
         cost_note="no ccusage row for session $sid"
       elif jq -e 'tonumber' >/dev/null 2>&1 <<<"$c"; then

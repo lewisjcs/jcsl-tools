@@ -1,0 +1,7 @@
+{
+  "_note": "Captured shape of `npx ccusage@latest session --json` (v20.0.18). Redacted to period+totalCost only — no PII, no token/model breakdown detail. Kept as a committed record of the real contract the harvester's jq path must match; not consumed by any test directly (test/fixtures/fake-ccusage.sh is schema-pinned to this same shape).",
+  "session": [
+    { "period": "e52fd8c4-145e-4a8f-8a33-b30f592a26b0", "totalCost": 17.71257489999999 }
+  ],
+  "totals": {}
+}
