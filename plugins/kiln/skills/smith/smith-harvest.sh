@@ -14,14 +14,32 @@ while [ $# -gt 0 ]; do
 done
 
 if [ -n "$WORKSPACE" ]; then
-  [ -n "$LAST" ] || LAST=10
-  # N most-recently-modified run ledgers.
-  mapfile -t ledgers < <(ls -t "$WORKSPACE"/projects/active/*/kiln/progress.md 2>/dev/null | head -n "$LAST")
-  for pg in "${ledgers[@]}"; do
+  if [ -n "$LAST" ]; then
+    case "$LAST" in
+      *[!0-9]*|0) echo "usage: smith-harvest.sh --workspace DIR --last N (N must be a positive integer)" >&2; exit 2 ;;
+    esac
+  else
+    LAST=10
+  fi
+  # N most-recently-modified run ledgers. Bash-3.2-safe: no mapfile/readarray/
+  # arrays (macOS ships bash 3.2 as /bin/bash, and this script's shebang picks
+  # up whatever bash is first on PATH — mapfile is a bash-4+ builtin and would
+  # hard-fail with "command not found" there). Capture the newline-separated
+  # list into a plain string and stream it through `while read` off a heredoc,
+  # the same idiom lib-kiln-hook.sh uses to avoid the bash-3.2 empty-array trap
+  # under `set -u` — a heredoc of an empty string is simply zero iterations.
+  # `|| true` absorbs the nonzero pipeline exit `ls` produces when the glob
+  # matches nothing (unexpanded literal path passed to `ls`), which `pipefail`
+  # would otherwise propagate and trip `set -e`.
+  ledgers="$(ls -t "$WORKSPACE"/projects/active/*/kiln/progress.md 2>/dev/null | head -n "$LAST" || true)"
+  while IFS= read -r pg; do
+    [ -n "$pg" ] || continue
     rd="$(dirname "$pg")"
     "$0" --run-dir "$rd" --out "$rd/retro.json"
     echo "$rd/retro.json"
-  done
+  done <<EOF
+$ledgers
+EOF
   exit 0
 fi
 

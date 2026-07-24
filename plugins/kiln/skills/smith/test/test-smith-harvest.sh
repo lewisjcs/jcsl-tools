@@ -115,4 +115,26 @@ assert_eq "driver: writes run-b retro.json" "true" "$([ -f "$ws/projects/active/
 assert_eq "driver: run-a retro.json is valid JSON" "true" \
   "$(jq -e . "$ws/projects/active/run-a/kiln/retro.json" >/dev/null 2>&1 && echo true || echo false)"
 
+# --- Task 4 fix: --last must be a positive integer, else usage error + exit 2 ---
+bash "$SCRIPT" --workspace "$ws" --last abc >/dev/null 2>&1
+badlast_exit=$?
+assert_eq "bad --last: exit non-zero" "true" "$([ "$badlast_exit" -ne 0 ] && echo true || echo false)"
+
+# --- Task 4 fix: --last N < total run count truncates to the N most-recent ---
+ws3="$(mktemp -d)"
+mkdir -p "$ws3/projects/active/run-x/kiln" "$ws3/projects/active/run-y/kiln" "$ws3/projects/active/run-z/kiln"
+: > "$ws3/projects/active/run-x/kiln/progress.md"
+: > "$ws3/projects/active/run-y/kiln/progress.md"
+: > "$ws3/projects/active/run-z/kiln/progress.md"
+touch -t 202607131700 "$ws3/projects/active/run-x/kiln/progress.md"
+touch -t 202607131701 "$ws3/projects/active/run-y/kiln/progress.md"
+touch -t 202607131702 "$ws3/projects/active/run-z/kiln/progress.md"  # most recent
+
+trunc_out="$(SMITH_CCUSAGE="bash $FIX/fake-ccusage.sh" bash "$SCRIPT" --workspace "$ws3" --last 1)"
+assert_eq "truncation: exactly one path printed" "1" "$(printf '%s\n' "$trunc_out" | grep -c 'retro.json')"
+assert_eq "truncation: picks most-recent (run-z)" "true" \
+  "$(printf '%s\n' "$trunc_out" | grep -qF "run-z/kiln/retro.json" && echo true || echo false)"
+assert_eq "truncation: does not touch run-x" "true" "$([ ! -f "$ws3/projects/active/run-x/kiln/retro.json" ] && echo true || echo false)"
+assert_eq "truncation: does not touch run-y" "true" "$([ ! -f "$ws3/projects/active/run-y/kiln/retro.json" ] && echo true || echo false)"
+
 exit $fail
