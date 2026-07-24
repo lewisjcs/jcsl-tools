@@ -24,10 +24,11 @@ Kiln, never re-invokes a member, never touches a fixture.**
 
 2. **Read the digests.** Read each printed `retro.json`. Each holds: `run_id`, `tasks` (array of
    `{n, spec, quality, criteria_met, criteria_total, critical_findings}` per task), `friction`
-   (verbatim ledger lines), `first_ts`/`last_ts`, `fix_loops`, and best-effort `session_id`/`cost_usd`/
-   `cost_note`. `friction` is a coarse keyword net (it can match clean/summary lines like "0 gaps" or
-   "no deviations found") — read each captured line yourself and judge whether it actually indicates
-   friction before counting it; never report friction volume from the array length alone.
+   (verbatim ledger lines), `first_ts`/`last_ts`, `duration_note`, `fix_loops`, and best-effort
+   `session_id`/`cost_usd`/`cost_note`. `friction` is a coarse keyword net (it can match clean/summary
+   lines like "0 gaps" or "no deviations found") — read each captured line yourself and judge whether
+   it actually indicates friction before counting it; never report friction volume from the array
+   length alone.
 
 3. **Synthesize the briefing** in this exact shape:
 
@@ -37,7 +38,7 @@ Kiln, never re-invokes a member, never touches a fixture.**
    ### How the runs went
    - Accuracy: <M/N runs clean on first pass; total fix-loops; any HARD STOP/escalation>
    - Friction: <the 2–4 most repeated friction patterns across runs, quoted, with run ids>
-   - Speed: <median wall-clock per run from first_ts→last_ts; slowest run + why if friction explains it>
+   - Speed: <median calendar span per run (first_ts→last_ts) — NOTE: this is wall-clock incl. human-gated idle, not compute time; honor each run's duration_note; say "not comparable" for runs whose duration_note is "unavailable"; slowest run + why if friction explains it>
    - Cost: <median/total cost_usd across runs where available; note runs with cost_note (unavailable)>
 
    ### Suggestions (advisory — not applied)

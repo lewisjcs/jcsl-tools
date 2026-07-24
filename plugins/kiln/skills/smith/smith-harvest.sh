@@ -35,6 +35,15 @@ if [ -n "$WORKSPACE" ]; then
   while IFS= read -r pg; do
     [ -n "$pg" ] || continue
     rd="$(dirname "$pg")"
+    # Build filter (sentinel-first, spine-fallback): a real Kiln run has either
+    # a run sentinel (.active live / .completed retired — same signal Slice 1.5's
+    # curator preserves) OR a plan spine (tasklist.md AND plan.md, which survive
+    # COMPLETE). Folders with neither are stray notes (support/audit dumps), not
+    # builds — skip them so the accuracy denominator counts only real runs.
+    if [ ! -f "$rd/.active" ] && [ ! -f "$rd/.completed" ] \
+       && { [ ! -f "$rd/tasklist.md" ] || [ ! -f "$rd/plan.md" ]; }; then
+      continue
+    fi
     "$0" --run-dir "$rd" --out "$rd/retro.json"
     echo "$rd/retro.json"
   done <<EOF
@@ -119,15 +128,19 @@ done
 CCUSAGE="${SMITH_CCUSAGE:-ccusage session --json}"
 # session_id_str is a plain string; "" is the sentinel for "no session id"
 # (converted to JSON null in the jq body below) since a hand-quoted raw
-# --argjson literal would let an .active containing '"'/'\' break the write.
+# --argjson literal would let a STAMP file containing '"'/'\' break the write.
 session_id_str=""; cost_usd="null"; cost_note=""
-ACTIVE="$RUN_DIR/.active"
-if [ ! -f "$ACTIVE" ]; then
-  cost_note="no .active stamp (run may predate stamping or was cleaned on COMPLETE)"
+# A live run stamps .active; the Curator retires it to .completed at COMPLETE
+# (both hold the session id on their first line). Prefer .active (live/HALTed
+# runs), fall back to .completed (cleanly finished runs) so cost joins in every
+# terminal state, not just interrupted ones.
+STAMP="$RUN_DIR/.active"; [ -f "$STAMP" ] || STAMP="$RUN_DIR/.completed"
+if [ ! -f "$STAMP" ]; then
+  cost_note="no session stamp (run predates stamping or has neither .active nor .completed)"
 else
-  sid="$(head -1 "$ACTIVE" | tr -d '[:space:]')"
+  sid="$(head -1 "$STAMP" | tr -d '[:space:]')"
   if [ -z "$sid" ]; then
-    cost_note="empty .active stamp (legacy/unowned run)"
+    cost_note="empty session stamp (legacy/unowned run)"
   else
     session_id_str="$sid"
     # Guard ccusage major version (>=20 dedupes on message.id). ver_raw is
@@ -160,13 +173,19 @@ else
   fi
 fi
 
+if [ "$first_ts" = "null" ] || [ "$last_ts" = "null" ]; then
+  duration_note="duration unavailable (no parseable timestamps in ledger)"
+else
+  duration_note="calendar span (includes idle/human-gated time), not active-work time"
+fi
+
 jq -n --arg run_id "$run_id" --argjson tasks "$tasks_json" \
    --argjson friction "$friction_json" \
    --argjson first_ts "$first_ts" --argjson last_ts "$last_ts" \
    --argjson fix_loops "$fix_loops" \
    --arg session_id_str "$session_id_str" --argjson cost_usd "$cost_usd" \
-   --arg cost_note "$cost_note" \
+   --arg cost_note "$cost_note" --arg duration_note "$duration_note" \
    '{run_id:$run_id, tasks:$tasks, friction:$friction,
-     first_ts:$first_ts, last_ts:$last_ts, fix_loops:$fix_loops,
+     first_ts:$first_ts, last_ts:$last_ts, duration_note:$duration_note, fix_loops:$fix_loops,
      session_id:(if $session_id_str == "" then null else $session_id_str end),
      cost_usd:$cost_usd, cost_note:$cost_note}' > "$OUT"

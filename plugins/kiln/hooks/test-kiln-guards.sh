@@ -186,6 +186,14 @@ assert_allow "spine: Agent dispatch after spine exists" kiln-guard-spine.sh \
   "{$CWD\"tool_name\":\"Agent\",\"tool_input\":{\"subagent_type\":\"kiln:crafter\"}}"
 rm -f "$RUN_DIR/.active" "$RUN_DIR/.spine"
 
+# .completed marker (retired run) must NOT arm the spine guard — only .active does.
+# The Curator's close-out mv's .active -> .completed on COMPLETE; a completed run has
+# no .active, so kiln_active_run_dir resolves empty and the guard must fail-open (allow).
+printf 'sess-done-1\n' > "$RUN_DIR/.completed"
+assert_allow "spine: Agent dispatch allowed when only .completed present (retired run, not armed)" kiln-guard-spine.sh \
+  "{$CWD\"tool_name\":\"Agent\",\"tool_input\":{\"subagent_type\":\"kiln:crafter\"}}"
+rm -f "$RUN_DIR/.completed"
+
 # --- session-scoped run ownership (concurrent runs, one window each) ---
 # The sentinel carries its owning session_id (first line; empty = legacy/unowned). The
 # resolver binds a call to the run OWNED by the call's payload .session_id. This isolates

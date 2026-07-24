@@ -49,6 +49,12 @@ SMITH_CCUSAGE="bash $FIX/fake-ccusage.sh" bash "$SCRIPT" --run-dir "$FIX/clean-r
 assert_eq "session_id" "sess-clean-123" "$(jq -r '.session_id' "$out2")"
 assert_eq "cost_usd" "1.23" "$(jq -r '.cost_usd' "$out2")"
 
+# --- Slice 1.5: cost joins via .completed marker on a COMPLETED run (no .active) ---
+outc="$(mktemp)"
+SMITH_CCUSAGE="bash $FIX/fake-ccusage.sh" bash "$SCRIPT" --run-dir "$FIX/completed-run/kiln" --out "$outc"
+assert_eq "completed-run session_id from .completed" "sess-clean-123" "$(jq -r '.session_id' "$outc")"
+assert_eq "completed-run cost_usd from .completed" "1.23" "$(jq -r '.cost_usd' "$outc")"
+
 # degrade: no matching session → null cost, note set, still exits 0
 missdir="$(mktemp -d)/kiln"; mkdir -p "$missdir"; printf 'sess-absent\n' > "$missdir/.active"
 : > "$missdir/progress.md"
@@ -101,6 +107,9 @@ ws="$(mktemp -d)"
 mkdir -p "$ws/projects/active/run-a/kiln" "$ws/projects/active/run-b/kiln"
 : > "$ws/projects/active/run-a/kiln/progress.md"
 : > "$ws/projects/active/run-b/kiln/progress.md"
+# build filter (Slice 1.5): give each folder a sentinel so it still qualifies as a build.
+: > "$ws/projects/active/run-a/kiln/.completed"
+: > "$ws/projects/active/run-b/kiln/.completed"
 # stagger mtimes so --last ordering is deterministic
 touch -t 202607131700 "$ws/projects/active/run-a/kiln/progress.md"
 touch -t 202607131701 "$ws/projects/active/run-b/kiln/progress.md"
@@ -147,6 +156,10 @@ mkdir -p "$ws3/projects/active/run-x/kiln" "$ws3/projects/active/run-y/kiln" "$w
 : > "$ws3/projects/active/run-x/kiln/progress.md"
 : > "$ws3/projects/active/run-y/kiln/progress.md"
 : > "$ws3/projects/active/run-z/kiln/progress.md"
+# build filter (Slice 1.5): give each folder a sentinel so it still qualifies as a build.
+: > "$ws3/projects/active/run-x/kiln/.completed"
+: > "$ws3/projects/active/run-y/kiln/.completed"
+: > "$ws3/projects/active/run-z/kiln/.completed"
 touch -t 202607131700 "$ws3/projects/active/run-x/kiln/progress.md"
 touch -t 202607131701 "$ws3/projects/active/run-y/kiln/progress.md"
 touch -t 202607131702 "$ws3/projects/active/run-z/kiln/progress.md"  # most recent
@@ -157,5 +170,51 @@ assert_eq "truncation: picks most-recent (run-z)" "true" \
   "$(printf '%s\n' "$trunc_out" | grep -qF "run-z/kiln/retro.json" && echo true || echo false)"
 assert_eq "truncation: does not touch run-x" "true" "$([ ! -f "$ws3/projects/active/run-x/kiln/retro.json" ] && echo true || echo false)"
 assert_eq "truncation: does not touch run-y" "true" "$([ ! -f "$ws3/projects/active/run-y/kiln/retro.json" ] && echo true || echo false)"
+
+# --- Slice 1.5: build filter — sentinel-first, spine-fallback ---
+wsf="$(mktemp -d)"
+mkdir -p "$wsf/projects/active/note-only/kiln" \
+         "$wsf/projects/active/spine-only/kiln" \
+         "$wsf/projects/active/sentinel-only/kiln"
+# note-only: no spine, no sentinel -> EXCLUDED
+printf -- '- billing gap\n' > "$wsf/projects/active/note-only/kiln/progress.md"
+# spine-only: tasklist+plan, no sentinel, no verdicts -> INCLUDED, tasks:[]
+: > "$wsf/projects/active/spine-only/kiln/tasklist.md"
+: > "$wsf/projects/active/spine-only/kiln/plan.md"
+printf 'CODE-QUALITY-AUDIT: clean\n' > "$wsf/projects/active/spine-only/kiln/progress.md"
+# sentinel-only: .completed, no spine -> INCLUDED
+printf 'sess-x\n' > "$wsf/projects/active/sentinel-only/kiln/.completed"
+: > "$wsf/projects/active/sentinel-only/kiln/progress.md"
+# stagger mtimes so all three are within --last 10
+touch -t 202607131700 "$wsf/projects/active/note-only/kiln/progress.md"
+touch -t 202607131701 "$wsf/projects/active/spine-only/kiln/progress.md"
+touch -t 202607131702 "$wsf/projects/active/sentinel-only/kiln/progress.md"
+
+filt_out="$(SMITH_CCUSAGE="bash $FIX/fake-ccusage.sh" bash "$SCRIPT" --workspace "$wsf" --last 10)"
+assert_eq "filter: note-only excluded (no path printed)" "false" \
+  "$(printf '%s\n' "$filt_out" | grep -qF 'note-only/kiln/retro.json' && echo true || echo false)"
+assert_eq "filter: note-only writes no retro.json" "true" \
+  "$([ ! -f "$wsf/projects/active/note-only/kiln/retro.json" ] && echo true || echo false)"
+assert_eq "filter: spine-only included" "true" \
+  "$(printf '%s\n' "$filt_out" | grep -qF 'spine-only/kiln/retro.json' && echo true || echo false)"
+assert_eq "filter: spine-only has empty tasks[]" "0" \
+  "$(jq -r '.tasks | length' "$wsf/projects/active/spine-only/kiln/retro.json")"
+assert_eq "filter: sentinel-only included" "true" \
+  "$(printf '%s\n' "$filt_out" | grep -qF 'sentinel-only/kiln/retro.json' && echo true || echo false)"
+
+# --- Slice 1.5: duration_note makes calendar-vs-work-time explicit ---
+# clean-run has real timestamps -> calendar-span note
+outd="$(mktemp)"
+bash "$SCRIPT" --run-dir "$FIX/clean-run/kiln" --out "$outd"
+assert_eq "duration_note: calendar-span when ts present" "true" \
+  "$(jq -r '.duration_note | test("calendar span")' "$outd")"
+# a run with no parseable timestamps -> unavailable note
+ndir="$(mktemp -d)/kiln"; mkdir -p "$ndir"; printf 'no timestamps here\n' > "$ndir/progress.md"
+printf 'sess-x\n' > "$ndir/.completed"
+outn="$(mktemp)"
+bash "$SCRIPT" --run-dir "$ndir" --out "$outn"
+assert_eq "duration_note: unavailable when ts null" "true" \
+  "$(jq -r '.duration_note | test("unavailable")' "$outn")"
+assert_eq "first_ts still null when unparseable" "null" "$(jq -r '.first_ts' "$outn")"
 
 exit $fail
