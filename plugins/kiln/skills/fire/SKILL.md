@@ -177,7 +177,12 @@ Dispatch Template from `dispatch-contracts.md` and dispatch the Curator once, fi
 on native), `{{JIRA_KEY}}`, `{{ENGINE}}`, and `{{COMMIT_RANGE}}`. The Curator holds the Compounds-close
 and Jira-write grants the conductor cannot call. Branch on its typed return:
 - `CURATOR_DONE` → `TaskUpdate` the FINAL spine task to done; write the terse ledger `COMPLETE: <ISO>`
-  entry (P3 expands the retro); **remove the sentinels:** `rm -f {{RUN_FOLDER}}/.active {{RUN_FOLDER}}/.spine`.
+  entry (P3 expands the retro); **retire the sentinels, preserving cost attribution:** first carry the session id forward —
+  `mv {{RUN_FOLDER}}/.active {{RUN_FOLDER}}/.completed` (if `.active` is absent because a prior
+  session already retired it, leave any existing `.completed` untouched) — then `rm -f
+  {{RUN_FOLDER}}/.spine`. The `.completed` marker retains the session id so The Smith can still join
+  cost after the run ends; it does NOT arm the guard hooks (those key on `.active` only), so a
+  completed run is correctly un-guarded.
 - `CURATOR_BLOCKED` → surface the `{{RUN_FOLDER}}/verify.md` evidence to the user, leave the FINAL spine
   task `in_progress`, HARD STOP, and **leave the sentinels in place** for resume. The Curator stopped at
   the first failing stage; side-effects BEFORE that stage may already have completed (verify.md records
