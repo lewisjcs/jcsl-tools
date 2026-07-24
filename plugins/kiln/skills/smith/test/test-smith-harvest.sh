@@ -57,4 +57,24 @@ SMITH_CCUSAGE="bash $FIX/fake-ccusage.sh" bash "$SCRIPT" --run-dir "$missdir" --
 assert_eq "missing-session cost null" "null" "$(jq -r '.cost_usd' "$out3")"
 assert_eq "missing-session note set" "true" "$(jq -r '(.cost_note|length)>0' "$out3")"
 
+# --- Task 3 fix: quoted session id in .active must not crash the write ---
+qdir="$(mktemp -d)/kiln"; mkdir -p "$qdir"
+printf 'sess"quote\n' > "$qdir/.active"
+: > "$qdir/progress.md"
+out4="$(mktemp)"
+SMITH_CCUSAGE="bash $FIX/fake-ccusage.sh" bash "$SCRIPT" --run-dir "$qdir" --out "$out4"
+quoted_exit=$?
+assert_eq "quoted session id: exit 0" "0" "$quoted_exit"
+assert_eq "quoted session id: valid JSON" "true" "$(jq -e . "$out4" >/dev/null 2>&1 && echo true || echo false)"
+assert_eq "quoted session id: safely stringified" 'sess"quote' "$(jq -r '.session_id' "$out4")"
+
+# --- Task 3 fix: non-numeric costUSD from ccusage must not crash the write ---
+chmod +x "$FIX/fake-ccusage-badcost.sh"
+out5="$(mktemp)"
+SMITH_CCUSAGE="bash $FIX/fake-ccusage-badcost.sh" bash "$SCRIPT" --run-dir "$FIX/clean-run/kiln" --out "$out5"
+badcost_exit=$?
+assert_eq "malformed cost: exit 0" "0" "$badcost_exit"
+assert_eq "malformed cost: cost_usd null" "null" "$(jq -r '.cost_usd' "$out5")"
+assert_eq "malformed cost: note set" "true" "$(jq -r '(.cost_note|length)>0' "$out5")"
+
 exit $fail

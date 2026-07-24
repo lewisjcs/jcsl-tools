@@ -84,7 +84,10 @@ for vf in "$RUN_DIR"/verdict-*.md "$RUN_DIR"/task-*-verdict.md; do
 done
 
 CCUSAGE="${SMITH_CCUSAGE:-ccusage session --json}"
-session_id="null"; cost_usd="null"; cost_note=""
+# session_id_str is a plain string; "" is the sentinel for "no session id"
+# (converted to JSON null in the jq body below) since a hand-quoted raw
+# --argjson literal would let an .active containing '"'/'\' break the write.
+session_id_str=""; cost_usd="null"; cost_note=""
 ACTIVE="$RUN_DIR/.active"
 if [ ! -f "$ACTIVE" ]; then
   cost_note="no .active stamp (run may predate stamping or was cleaned on COMPLETE)"
@@ -93,7 +96,7 @@ else
   if [ -z "$sid" ]; then
     cost_note="empty .active stamp (legacy/unowned run)"
   else
-    session_id="\"$sid\""
+    session_id_str="$sid"
     # Guard ccusage major version (>=20 dedupes on message.id).
     ver="$(ccusage --version 2>/dev/null | grep -oE '^[0-9]+' || echo 0)"
     if [ "${ver:-0}" -lt 20 ] && [ -z "${SMITH_CCUSAGE:-}" ]; then
@@ -102,10 +105,13 @@ else
       raw="$($CCUSAGE 2>/dev/null || true)"
       c="$(jq -r --arg s "$sid" \
             '(.sessions // [])[] | select(.sessionId==$s) | .costUSD' <<<"$raw" 2>/dev/null | head -1)"
-      if [ -n "$c" ] && [ "$c" != "null" ]; then
+      if [ -z "$c" ] || [ "$c" = "null" ]; then
+        cost_note="no ccusage row for session $sid"
+      elif jq -e 'tonumber' >/dev/null 2>&1 <<<"$c"; then
+        # $c is confirmed valid JSON that parses to a number — safe for --argjson.
         cost_usd="$c"
       else
-        cost_note="no ccusage row for session $sid"
+        cost_note="malformed cost value from ccusage: $c"
       fi
     fi
   fi
@@ -115,8 +121,9 @@ jq -n --arg run_id "$run_id" --argjson tasks "$tasks_json" \
    --argjson friction "$friction_json" \
    --argjson first_ts "$first_ts" --argjson last_ts "$last_ts" \
    --argjson fix_loops "$fix_loops" \
-   --argjson session_id "$session_id" --argjson cost_usd "$cost_usd" \
+   --arg session_id_str "$session_id_str" --argjson cost_usd "$cost_usd" \
    --arg cost_note "$cost_note" \
    '{run_id:$run_id, tasks:$tasks, friction:$friction,
      first_ts:$first_ts, last_ts:$last_ts, fix_loops:$fix_loops,
-     session_id:$session_id, cost_usd:$cost_usd, cost_note:$cost_note}' > "$OUT"
+     session_id:(if $session_id_str == "" then null else $session_id_str end),
+     cost_usd:$cost_usd, cost_note:$cost_note}' > "$OUT"
