@@ -128,7 +128,7 @@ done
 CCUSAGE="${SMITH_CCUSAGE:-ccusage session --json}"
 # session_id_str is a plain string; "" is the sentinel for "no session id"
 # (converted to JSON null in the jq body below) since a hand-quoted raw
-# --argjson literal would let an .active containing '"'/'\' break the write.
+# --argjson literal would let a STAMP file containing '"'/'\' break the write.
 session_id_str=""; cost_usd="null"; cost_note=""
 # A live run stamps .active; the Curator retires it to .completed at COMPLETE
 # (both hold the session id on their first line). Prefer .active (live/HALTed
@@ -140,7 +140,7 @@ if [ ! -f "$STAMP" ]; then
 else
   sid="$(head -1 "$STAMP" | tr -d '[:space:]')"
   if [ -z "$sid" ]; then
-    cost_note="empty .active stamp (legacy/unowned run)"
+    cost_note="empty session stamp (legacy/unowned run)"
   else
     session_id_str="$sid"
     # Guard ccusage major version (>=20 dedupes on message.id). ver_raw is
