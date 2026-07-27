@@ -98,8 +98,9 @@ proposal means to change and how (e.g. "proposal B intends to change scenario 01
 A `CHANGED` result there is the point, not a regression.
 
 The verdict is computed directly from the per-scenario `diff-pair` outcomes (Step 1) plus the
-intended-change set — **not** from the `tally` subcommand, which compares against gold and is the
-periodic calibration-anchor path, not this per-proposal gate:
+intended-change set — **not** from the `tally` subcommand, which compares against gold and is not
+used by this per-proposal gate (see `## Calibration anchor` below, which reuses the gold `diff`
+subcommand for periodic drift detection):
 - **RECOMMENDED** iff every in-scope, non-sentinel scenario is `SAME`, OR every `CHANGED` scenario
   is in the intended-change set.
 - **OBSERVATION-ONLY** if any scenario outside the intended-change set is `CHANGED` (an unintended
@@ -164,5 +165,5 @@ K-sample majority" — plus:
 - a named list of any scenario that came back `UNSTABLE`.
 
 The anchor's job is to **detect drift**, never to gate or block a proposal — a soft ratio is the
-honest signal here, precisely because gold-per-proposal (a hard 19/19 bar) was demoted for being
-too brittle against replay stochasticity. Do not report this as a pass/fail verdict.
+honest signal here, precisely because a hard 19/19 bar is too brittle against replay stochasticity —
+the anchor exists to report drift, not to gate. Do not report this as a pass/fail verdict.
