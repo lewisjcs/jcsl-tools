@@ -6,6 +6,28 @@ Validates that The Kiln's routing decisions and gate logic match the design spec
 
 This is human-run, no CI automation. The harness is the ship-gate for any change to `SKILL.md` routing or gate logic.
 
+## Automated consumers (Smith)
+
+Two Smith modes drive this harness by dispatching conductor-role replay subagents instead of a human
+running `/kiln` by hand. Both are defined in `skills/smith/references/eval-gate.md` (the operating
+procedure) and backed by `skills/smith/smith-eval-gate.sh` (the marker-diff toolkit). They differ in
+what they compare against:
+
+- **Differential gate — `/smith --validate <proposal>`.** Per-proposal, on-demand. Replays the harness
+  against a candidate edit's prose *and* the current baseline prose under the same scenario input, then
+  labels the proposal `RECOMMENDED` or `OBSERVATION-ONLY` from the per-scenario `SAME`/`CHANGED` diff —
+  it never reads the gold `expected/` fixtures. This is a *regression* check ("did the proposal move a
+  routing output it didn't mean to?"), not a correctness check.
+- **Calibration anchor — `/smith --calibrate`.** Periodic (run before each Kiln version bump, or
+  on-demand). Replays the current prose only and compares each scenario's `K`-sample majority against
+  the gold `expected/` fixtures via the `diff` subcommand, reporting a **drift ratio** (e.g. "15/19
+  reproduce gold"). This is the *only* Smith path that reads gold; it detects drift, it does not gate.
+
+Both replay the same 19 scenarios via the same mode table (routing-halt / execution-observed / offline)
+and majority-of-`K` sampling documented in `eval-gate.md`. The human-run procedure below remains the
+authoritative gold calibration; the Smith modes automate the replay, they do not replace the fixtures
+as ground truth.
+
 ## Scenario Format
 
 Each scenario file in `scenarios/` follows this structure:
