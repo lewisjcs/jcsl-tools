@@ -62,6 +62,16 @@ Example: `[Kiln] code scenario → compounds engine bound. implement_task drives
 `**[Kiln] This is a <LANE> run, <SCENARIO> scenario — <one-line why>. Starting that path.**`
 Sparse → RESEARCH; partial / net-new / design-doc → DESIGN (per `lanes.md`). Only a P2.2 scenario (`mcp/agent-app`/`infra`) or an ambiguous doc shape → **HALT-AND-ASK** (do not guess, do not fall through to code).
 
+**Emit the machine-parseable routing marker (for the eval gate).** Immediately after the prose
+announcement, emit a fenced ` ```kiln-routing ` block echoing the decision in this exact key set —
+one value per line, lists in `[a, b]` form:
+`lane`, `tier`, `blast_radius`, `scenario_type`, `gates_fired`, `agents_dispatched`, `agents_skipped`,
+`halt_reason`. At the routing checkpoint, `tier`/`blast_radius`/`scenario_type` are `N/A` wherever they
+are not yet deterministic (design-front lanes DESIGN/RESEARCH — the Planner derives them later); assert
+only what is known now (the `eval/README.md` deterministic-at-checkpoint rule). Re-emit the marker with
+concrete tier/blast after the Planner's done-line on lanes where they become known. The keys map 1:1 to
+`eval/expected/*.json`; this marker is additive telemetry — it changes nothing about routing behavior.
+
 **Write the active-run sentinel now, stamped with this session's id:**
 `printf '%s\n' "$CLAUDE_CODE_SESSION_ID" > {{RUN_FOLDER}}/.active`. (This is what arms the guard hooks.
 The stamped session id is what scopes the guards to THIS run: Claude Code runs one Kiln run per
