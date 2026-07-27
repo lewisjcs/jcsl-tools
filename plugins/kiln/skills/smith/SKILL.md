@@ -66,9 +66,18 @@ Kiln, never re-invokes a member, never touches a fixture.**
 
 When invoked as `/smith --validate <proposal>` (a branch or diff touching Kiln routing/gate logic),
 run the eval gate instead of the briefing: load `${CLAUDE_PLUGIN_ROOT}/skills/smith/references/eval-gate.md`
-and follow it exactly (anti-gaming pre-check → 19-scenario live replay → tally → labeled report with
-self-accounted cost). The gate is the ONLY expensive Smith operation and fires only in this mode; the
-morning briefing (above) stays read-only and never triggers it.
+and follow it exactly (anti-gaming pre-check → two-sided K-sample replay (baseline vs proposal) →
+per-scenario diff-pair → labeled report with self-accounted cost). The gate is the ONLY expensive
+Smith operation in this mode; the morning briefing (above) stays read-only and never triggers it.
+
+## Mode: `--calibrate` (periodic gold anchor)
+
+When invoked as `/smith --calibrate`, load `${CLAUDE_PLUGIN_ROOT}/skills/smith/references/eval-gate.md`
+and run its "Calibration anchor" procedure: K replays per scenario against current Kiln → `majority`
+→ `diff` the representative marker vs gold → report a drift ratio. This mode is periodic — it fires
+before each Kiln version bump (a pre-release ship-checklist step) and on-demand via `/smith
+--calibrate` — never per-proposal, and it is the only Smith mode that consults gold
+(`expected/*.json`).
 
 ## What The Smith does NOT do
 - Does not edit Kiln source, gates, or prompts — it proposes and validates; Josh approves the PR.

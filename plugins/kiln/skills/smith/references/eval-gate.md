@@ -130,3 +130,39 @@ Gated against: Kiln <version> @ <commit sha>   (staleness — guardrail #4)
 - **Anti-gaming:** Step 0 rejects any fixture-touching proposal before replay.
 - **Staleness:** the report records the Kiln version/commit gated against.
 - **Cost-bounded:** on-demand only; the report self-accounts its token cost.
+
+## Calibration anchor (periodic — NOT per-proposal)
+
+This mode checks whether current Kiln prose still reproduces the gold fixtures
+(`plugins/kiln/skills/fire/eval/expected/*.json`). It is a **drift detector**, run on a cadence,
+never on a per-proposal basis — Steps 1–3 above (the differential gate) never read gold, and this
+is the **only** place gold is consulted.
+
+**Trigger:** run this anchor **before each Kiln version bump** (a pre-release step in the ship
+checklist — naturally load-bearing, since shipping always bumps the version), plus on-demand via
+`/smith --calibrate`. (A wall-clock cron was considered and rejected: nothing schedules Smith, so a
+cron with no scheduler is the rot mode this anchor exists to avoid.)
+
+**Procedure**, per `scenarios/NN-*.md`:
+1. Dispatch `K` conductor-role replays against the **current** Kiln prose — same dispatch contract
+   and mode table as Step 1 above (reference them; do not restate). Unlike the differential gate,
+   there is only one side here: current prose only.
+2. Run `majority <marker-file>...` on the `K` raw marker files to find the winning canonical line.
+   If `majority` reports `UNSTABLE` (exit 4), record the scenario as `UNSTABLE` — a drift/stability
+   signal in its own right — and do not force a gold comparison for it.
+3. Otherwise, identify the **representative raw marker file** among the `K` — the one whose `canon`
+   output equals the majority's canonical line — and run
+   `bash ${CLAUDE_PLUGIN_ROOT}/skills/smith/smith-eval-gate.sh diff <representative-marker> <expected/NN-*.json>`.
+   `diff` parses a fenced `kiln-routing` marker file, so the representative *raw marker*, never the
+   majority's canonical line, is what gets diffed — piping `majority`'s output straight into `diff`
+   would find no fenced block and fail loud on every scenario. PASS iff `diff` exits 0.
+
+**Report** a drift ratio, not a pass/fail gate — e.g. "15/19 scenarios reproduce gold on their
+K-sample majority" — plus:
+- a named list of any scenario whose majority no longer matches gold, with the `diff` field deltas
+  (`FAIL: <field> expected=x got=y`), and
+- a named list of any scenario that came back `UNSTABLE`.
+
+The anchor's job is to **detect drift**, never to gate or block a proposal — a soft ratio is the
+honest signal here, precisely because gold-per-proposal (a hard 19/19 bar) was demoted for being
+too brittle against replay stochasticity. Do not report this as a pass/fail verdict.
