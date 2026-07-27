@@ -7,8 +7,11 @@ Kiln **routing/gate logic** (`SKILL.md`/`lanes.md`/`gates.md`/`scenarios.md`) by
 
 ## Inputs
 - `<proposal>`: a git branch or a unified-diff file in the source repo carrying the candidate edit.
-- The proposed prose files (the branch's versions of the fire skill files).
-- The gold fixtures `plugins/kiln/skills/fire/eval/expected/*.json` and `thresholds.yaml`.
+- The proposed prose files (the branch's versions of the fire skill files) and the current
+  (baseline) prose files — the gate replays both sides under the same scenario input.
+- `K`: the per-side replay count (majority sample size); see `smith-eval-gate.sh majority`.
+- The gold fixtures `plugins/kiln/skills/fire/eval/expected/*.json` and `thresholds.yaml` — consulted
+  only by the periodic calibration anchor, not by this per-proposal gate.
 
 ## Step 0 — Anti-gaming pre-check (hard gate, before any replay)
 Produce the proposal's unified diff and run:
@@ -16,12 +19,35 @@ Produce the proposal's unified diff and run:
 Exit 3 → **STOP**: the proposal edits a fixture/scenario. Report REJECTED (anti-gaming) and do not replay.
 
 ## Step 1 — Per-scenario replay (19 scenarios)
-For each `scenarios/NN-*.md`, run one of three modes (see the table). Capture the conductor's
-`kiln-routing` marker (routing modes) or the observed behavior (execution/offline modes) to a file,
-then diff:
-`bash ${CLAUDE_PLUGIN_ROOT}/skills/smith/smith-eval-gate.sh diff <marker-file> <expected/NN-*.json>`
-Record `NN-name PASS` / `NN-name FAIL` to a results file. Exit 2 (unparseable marker) is a **runner
-error — FAIL the scenario loud**, never count it as pass.
+For each `scenarios/NN-*.md`, run the two-sided differential procedure below. Each side's replay is
+produced by the mode-table dispatch (the table's "PROPOSED prose" language names whichever prose is
+loaded for the side currently being replayed — the current prose for the baseline side, the proposed
+prose for the proposal side):
+
+1. **Resolve the baseline majority.** Compute
+   `bash ${CLAUDE_PLUGIN_ROOT}/skills/smith/smith-eval-gate.sh cache-key <scenario> <K> <current-prose-files>`,
+   then `cache-path <cache-dir> <key>`. If that path already exists, read it as the baseline
+   majority. Otherwise dispatch `K` conductor-role replays against the **current** prose per the
+   mode table, `canon` each resulting marker, `majority` the canonical lines, and write the result to
+   the cache path (a one-byte prose change yields a different key, so a Kiln HEAD bump
+   auto-invalidates the cache).
+2. **Produce the proposal majority.** Dispatch `K` conductor-role replays against the **proposed**
+   prose (same `## Input`, same mode, same dispatch contract), `canon` each marker, then `majority`
+   the canonical lines. The proposal side is never cached.
+3. **Compare the two majorities.**
+   `bash ${CLAUDE_PLUGIN_ROOT}/skills/smith/smith-eval-gate.sh diff-pair <baseline-majority-file> <proposal-majority-file>`:
+   - `SAME` (exit 0) → the scenario is unchanged; no regression.
+   - `CHANGED: <field>=<base>→<prop>[; …]` (exit 1) → record the named fields; the scenario changed.
+   - `UNSTABLE-side: <baseline|proposal>` (exit 4) → the `K`-majority did not resolve on that side;
+     record `UNSTABLE`. This is a runner/stability signal, distinct from a regression — cross-check
+     against the Task-6 scenario classification: an unexpected `UNSTABLE` on a scenario Task 6 called
+     stable means the proposal itself destabilized it, which is a finding in its own right.
+4. **Skip sentinel scenarios.** Any scenario Task 6 classified as a non-discriminating sentinel
+   (one whose canonical outcome cannot move under any prose change) is excluded from the
+   differential verdict — list it excluded-by-name with its reason rather than replaying it.
+
+Exit 2 (unparseable marker, surfaced via `canon`) is a **runner error — FAIL the scenario loud**,
+never count it as `SAME` or absorb it into a majority.
 
 ### Mode table
 | Scenarios | Mode | How |
@@ -58,19 +84,34 @@ from the proposed prose):
    yet knowable at routing (the `eval/README.md` deterministic-at-checkpoint rule). The supplied values are
    a distractor here, not the answer.
 
-## Step 2 — Tally + label
-`bash ${CLAUDE_PLUGIN_ROOT}/skills/smith/smith-eval-gate.sh tally <results-file> <thresholds.yaml>`
-- `RECOMMENDED` (exit 0): all 19 met their bar.
-- `OBSERVATION-ONLY` (exit 1): names each regressed scenario.
+## Step 2 — Differential labeling
+Before replay, the executor states the proposal's **intended-change set** — the scenario(s) the
+proposal means to change and how (e.g. "proposal B intends to change scenario 01's dispatch path").
+A `CHANGED` result there is the point, not a regression.
+
+The verdict is computed directly from the per-scenario `diff-pair` outcomes (Step 1) plus the
+intended-change set — **not** from the `tally` subcommand, which compares against gold and is the
+periodic calibration-anchor path, not this per-proposal gate:
+- **RECOMMENDED** iff every in-scope, non-sentinel scenario is `SAME`, OR every `CHANGED` scenario
+  is in the intended-change set.
+- **OBSERVATION-ONLY** if any scenario outside the intended-change set is `CHANGED` (an unintended
+  change), or any scenario produces a new `UNSTABLE`. Name the scenario and the changed fields (or
+  the destabilized side) in the report.
+
+State the intended-change set explicitly in the report so "the proposal changed the thing it meant
+to" is never confused with "the proposal broke something."
 
 ## Step 3 — Report (with self-accounting)
 Emit:
 ```
 ## Smith eval gate — <proposal> vs Kiln <version/commit>
 Verdict: <RECOMMENDED | OBSERVATION-ONLY>
-- <NN-name>: PASS/FAIL[ — <field> expected=x got=y]   (one line per scenario)
-Regressions: <none | list>
-Gate cost: ≈ <tokens/$ for the 19 replays>   (self-accounting — guardrail #5)
+- <NN-name>: SAME | CHANGED(<field>=<base>→<prop>[; …]) | UNSTABLE | SENTINEL-excluded (<reason>)
+  (one line per scenario)
+Baseline: <cache hit | K replays> @ <prose sha>
+Intended changes: <set>
+Unintended regressions: <none | list>
+Gate cost: ≈ <in-scope scenarios> × 2 sides × K, minus baseline cache hits   (self-accounting — guardrail #5)
 Gated against: Kiln <version> @ <commit sha>   (staleness — guardrail #4)
 ```
 
