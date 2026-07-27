@@ -1,0 +1,4 @@
+{ "scenario": "03-standard-high-blast",
+  "routing": { "lane": "PLAN", "tier": "STANDARD", "blast_radius": "HIGH", "scenario_type": "code" },
+  "gates": { "SPEC-GATE": false, "PLAN-GATE": true, "TASK-GATE": true },
+  "agents_dispatched": ["planner", "walker", "crafter", "inspector"], "agents_skipped": [] }

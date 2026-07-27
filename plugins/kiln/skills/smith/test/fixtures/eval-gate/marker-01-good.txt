@@ -1,0 +1,10 @@
+```kiln-routing
+lane: TRIVIAL
+tier: TRIVIAL
+blast_radius: N/A
+scenario_type: code
+gates_fired: []
+agents_dispatched: [crafter]
+agents_skipped: [planner, inspector, walker]
+halt_reason: null
+```

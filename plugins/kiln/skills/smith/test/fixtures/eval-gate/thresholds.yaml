@@ -1,0 +1,5 @@
+thresholds:
+  01-trivial-bugfix:
+    pass_rate: 1.0
+  09-conductor-guard-denies-inline:
+    pass_rate: 1.0
