@@ -129,6 +129,13 @@ cmd_diff_pair() { # $1 = baseline canon, $2 = proposal canon -> SAME|CHANGED|UNS
   echo "CHANGED: $out"; return 1
 }
 
+cmd_cache_key() { # $1=scenario $2=K $3.. = prose files
+  local scenario="$1" k="$2"; shift 2
+  local h; h="$(cat "$@" | shasum -a 256 | cut -c1-12)"
+  printf '%s.%s.%s\n' "$scenario" "$k" "$h"
+}
+cmd_cache_path() { printf '%s/%s.canon\n' "$1" "$2"; }
+
 case "${1:-}" in
   diff)        shift; cmd_diff "$@" ;;
   anti-gaming) shift; cmd_anti_gaming "$@" ;;
@@ -136,5 +143,7 @@ case "${1:-}" in
   canon)       shift; cmd_canon "$@" ;;
   majority)    shift; cmd_majority "$@" ;;
   diff-pair)   shift; cmd_diff_pair "$@" ;;
-  *) echo "usage: smith-eval-gate.sh {diff <marker> <expected>|anti-gaming <diff>|tally <results> <thresholds>|canon <marker>|majority <marker>...|diff-pair <baseline> <proposal>}" >&2; exit 2 ;;
+  cache-key)   shift; cmd_cache_key "$@" ;;
+  cache-path)  shift; cmd_cache_path "$@" ;;
+  *) echo "usage: smith-eval-gate.sh {diff <marker> <expected>|anti-gaming <diff>|tally <results> <thresholds>|canon <marker>|majority <marker>...|diff-pair <baseline> <proposal>|cache-key <scenario> <K> <prose-file>...|cache-path <cache-dir> <key>}" >&2; exit 2 ;;
 esac

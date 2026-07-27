@@ -100,4 +100,21 @@ bash "$SCRIPT" diff-pair "$FIX/tmp-base.canon" "$FIX/tmp-prop.canon" >/dev/null 
 assert_exit "diff-pair unstable: exit 4" "4" "$rc"
 rm -f "$FIX/tmp-base.canon" "$FIX/tmp-prop.canon"
 
+# --- cache-key: deterministic for same inputs ---
+k1="$(bash "$SCRIPT" cache-key 01-trivial 3 "$FIX/marker-01-good.txt")"
+k2="$(bash "$SCRIPT" cache-key 01-trivial 3 "$FIX/marker-01-good.txt")"
+assert_eq "cache-key: deterministic" "$k1" "$k2"
+
+# --- cache-key: changes when K changes ---
+k3="$(bash "$SCRIPT" cache-key 01-trivial 5 "$FIX/marker-01-good.txt")"
+assert_eq "cache-key: K-sensitive" "false" "$([ "$k1" = "$k3" ] && echo true || echo false)"
+
+# --- cache-key: changes when prose changes ---
+k4="$(bash "$SCRIPT" cache-key 01-trivial 3 "$FIX/marker-01-wronglane.txt")"
+assert_eq "cache-key: prose-sensitive" "false" "$([ "$k1" = "$k4" ] && echo true || echo false)"
+
+# --- cache-path: composes dir + key + .canon ---
+out="$(bash "$SCRIPT" cache-path /tmp/smith-cache "$k1")"
+assert_eq "cache-path: composes" "/tmp/smith-cache/$k1.canon" "$out"
+
 exit $fail
