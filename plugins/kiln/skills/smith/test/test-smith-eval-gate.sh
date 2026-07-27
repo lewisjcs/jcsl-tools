@@ -51,6 +51,11 @@ out="$(bash "$SCRIPT" anti-gaming "$FIX/diff-rename-touches-scenario.patch" 2>&1
 assert_exit "anti-gaming rename: exit 3" "3" "$rc"
 assert_eq  "anti-gaming rename: names scenarios/" "true" "$(printf '%s' "$out" | grep -q 'scenarios/' && echo true || echo false)"
 
+# --- anti-gaming: a + content line MENTIONING eval/expected/ (header touches lanes.md only) -> exit 0 ---
+# Guards the header-only scan: mentioning a fixture path in prose is not touching the fixture file.
+bash "$SCRIPT" anti-gaming "$FIX/diff-content-mentions-fixture.patch" >/dev/null 2>&1; rc=$?
+assert_exit "anti-gaming content-mention: exit 0 (content line ignored)" "0" "$rc"
+
 # --- tally: all pass -> RECOMMENDED, exit 0 ---
 out="$(bash "$SCRIPT" tally "$FIX/results-all-pass.txt" "$FIX/thresholds.yaml")"; rc=$?
 assert_eq  "tally all-pass: RECOMMENDED" "true" "$(printf '%s' "$out" | grep -q 'RECOMMENDED' && echo true || echo false)"
@@ -112,6 +117,10 @@ assert_eq "cache-key: K-sensitive" "false" "$([ "$k1" = "$k3" ] && echo true || 
 # --- cache-key: changes when prose changes ---
 k4="$(bash "$SCRIPT" cache-key 01-trivial 3 "$FIX/marker-01-wronglane.txt")"
 assert_eq "cache-key: prose-sensitive" "false" "$([ "$k1" = "$k4" ] && echo true || echo false)"
+
+# --- cache-key: fails loud with zero prose files (never blocks on stdin or hashes empty) ---
+bash "$SCRIPT" cache-key 01-trivial 3 </dev/null >/dev/null 2>&1; rc=$?
+assert_exit "cache-key no-files: exit 2 (fail-loud)" "2" "$rc"
 
 # --- cache-path: composes dir + key + .canon ---
 out="$(bash "$SCRIPT" cache-path /tmp/smith-cache "$k1")"

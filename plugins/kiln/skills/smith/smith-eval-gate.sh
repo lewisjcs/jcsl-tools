@@ -131,6 +131,9 @@ cmd_diff_pair() { # $1 = baseline canon, $2 = proposal canon -> SAME|CHANGED|UNS
 
 cmd_cache_key() { # $1=scenario $2=K $3.. = prose files
   local scenario="$1" k="$2"; shift 2
+  # Fail loud with zero prose files rather than block on stdin (cat with no args reads
+  # stdin) or silently hash the empty string — the cache key must reflect real prose.
+  if [ "$#" -eq 0 ]; then echo "cache-key: no prose files given (need >=1)" >&2; return 2; fi
   local h; h="$(cat "$@" | shasum -a 256 | cut -c1-12)"
   printf '%s.%s.%s\n' "$scenario" "$k" "$h"
 }
