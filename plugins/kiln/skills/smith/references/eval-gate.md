@@ -13,6 +13,28 @@ Kiln **routing/gate logic** (`SKILL.md`/`lanes.md`/`gates.md`/`scenarios.md`) by
 - The gold fixtures `plugins/kiln/skills/fire/eval/expected/*.json` and `thresholds.yaml` — consulted
   only by the periodic calibration anchor, not by this per-proposal gate.
 
+## Scope selection (cost lever — opt-out to `--full`)
+The gate's cost is `in-scope scenarios × 2 sides × K`, so the executor picks the in-scope set before
+replaying. This is an **executor judgment, not a mechanized step** — routing is holistic, so a
+mechanical scoper would over-include to the full set in almost every real case (routing prose changes
+rarely leave a routing scenario provably untouchable), buying no narrowing for real code and
+maintenance cost. Apply this rule instead:
+
+- **Scope to every scenario whose fixture or mode plausibly involves the edited section**, and **when
+  unsure, include it.** The heuristic must over-include — a false `SAME` from an omitted scenario is a
+  missed regression, the one failure this gate exists to prevent.
+- A proposal that touches a routing section of `lanes.md`/`gates.md`/`SKILL.md`/`scenarios.md` scopes
+  to **all routing scenarios** unless a specific scenario can be *shown* untouchable by the edit.
+- A proposal that touches **no routing prose at all** scopes to empty — there is nothing to
+  differentially test (and Step 0 anti-gaming still runs).
+- `--full` **forces the entire non-sentinel set**, ignoring any narrowing — use it whenever the
+  proposal's blast is uncertain or the edit spans multiple routing sections.
+
+Whichever set you pick, **name the excluded scenarios in the report** (Step 3) — a scenario left out of
+scope is a scenario not tested, and silent omission reads as coverage it did not have. Excluding a
+scenario for cost is distinct from the coverage the gate structurally cannot provide at all (see
+`## Scope — what a routing-marker diff can and cannot see`).
+
 ## Step 0 — Anti-gaming pre-check (hard gate, before any replay)
 Produce the proposal's unified diff and run:
 `bash ${CLAUDE_PLUGIN_ROOT}/skills/smith/smith-eval-gate.sh anti-gaming <diff-file>`
