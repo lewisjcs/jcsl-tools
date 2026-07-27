@@ -28,26 +28,34 @@ prose for the proposal side):
    `bash ${CLAUDE_PLUGIN_ROOT}/skills/smith/smith-eval-gate.sh cache-key <scenario> <K> <current-prose-files>`,
    then `cache-path <cache-dir> <key>`. If that path already exists, read it as the baseline
    majority. Otherwise dispatch `K` conductor-role replays against the **current** prose per the
-   mode table, `canon` each resulting marker, `majority` the canonical lines, and write the result to
-   the cache path (a one-byte prose change yields a different key, so a Kiln HEAD bump
-   auto-invalidates the cache).
+   mode table, then run `majority <marker-file>...` on the `K` raw marker files directly (`majority`
+   canonicalizes each marker internally — do not pre-run `canon` on them). Its output is the
+   canonical majority line; write it to the cache path (a one-byte prose change yields a different
+   key, so a Kiln HEAD bump auto-invalidates the cache).
 2. **Produce the proposal majority.** Dispatch `K` conductor-role replays against the **proposed**
-   prose (same `## Input`, same mode, same dispatch contract), `canon` each marker, then `majority`
-   the canonical lines. The proposal side is never cached.
+   prose (same `## Input`, same mode, same dispatch contract), then run `majority` on those `K` raw
+   marker files directly to get the proposal's canonical majority line. The proposal side is never
+   cached.
 3. **Compare the two majorities.**
    `bash ${CLAUDE_PLUGIN_ROOT}/skills/smith/smith-eval-gate.sh diff-pair <baseline-majority-file> <proposal-majority-file>`:
    - `SAME` (exit 0) → the scenario is unchanged; no regression.
    - `CHANGED: <field>=<base>→<prop>[; …]` (exit 1) → record the named fields; the scenario changed.
    - `UNSTABLE-side: <baseline|proposal>` (exit 4) → the `K`-majority did not resolve on that side;
-     record `UNSTABLE`. This is a runner/stability signal, distinct from a regression — cross-check
-     against the Task-6 scenario classification: an unexpected `UNSTABLE` on a scenario Task 6 called
-     stable means the proposal itself destabilized it, which is a finding in its own right.
+     record `UNSTABLE(<baseline|proposal>)`, carrying the side. This is a runner/stability signal,
+     distinct from a regression, and its meaning depends on which side went unstable:
+     - `UNSTABLE-side: proposal` is **always** a finding — the proposed prose failed to resolve a
+       majority under the same input the baseline resolved.
+     - `UNSTABLE-side: baseline` is a finding **only if** Task 6 did not already classify that
+       scenario's baseline as unstable. A scenario Task 6 already knew was non-discriminating at the
+       baseline is a sentinel and is handled by point 4 below (skip), not flagged here — a cached
+       baseline majority that is chronically unstable must not re-flag every future proposal as a
+       "new" instability.
 4. **Skip sentinel scenarios.** Any scenario Task 6 classified as a non-discriminating sentinel
    (one whose canonical outcome cannot move under any prose change) is excluded from the
    differential verdict — list it excluded-by-name with its reason rather than replaying it.
 
-Exit 2 (unparseable marker, surfaced via `canon`) is a **runner error — FAIL the scenario loud**,
-never count it as `SAME` or absorb it into a majority.
+Exit 2 (unparseable marker — `majority`'s internal per-marker canonicalization fails loud) is a
+**runner error — FAIL the scenario loud**, never count it as `SAME` or absorb it into a majority.
 
 ### Mode table
 | Scenarios | Mode | How |
@@ -95,8 +103,10 @@ periodic calibration-anchor path, not this per-proposal gate:
 - **RECOMMENDED** iff every in-scope, non-sentinel scenario is `SAME`, OR every `CHANGED` scenario
   is in the intended-change set.
 - **OBSERVATION-ONLY** if any scenario outside the intended-change set is `CHANGED` (an unintended
-  change), or any scenario produces a new `UNSTABLE`. Name the scenario and the changed fields (or
-  the destabilized side) in the report.
+  change), or any scenario is a finding-grade `UNSTABLE` per Step 1 point 3's side rule (a proposal
+  side is always a finding; a baseline side is a finding only when Task 6 did not already classify
+  that scenario's baseline as unstable). Name the scenario, the changed fields, or the unstable side
+  in the report.
 
 State the intended-change set explicitly in the report so "the proposal changed the thing it meant
 to" is never confused with "the proposal broke something."
@@ -106,7 +116,7 @@ Emit:
 ```
 ## Smith eval gate — <proposal> vs Kiln <version/commit>
 Verdict: <RECOMMENDED | OBSERVATION-ONLY>
-- <NN-name>: SAME | CHANGED(<field>=<base>→<prop>[; …]) | UNSTABLE | SENTINEL-excluded (<reason>)
+- <NN-name>: SAME | CHANGED(<field>=<base>→<prop>[; …]) | UNSTABLE(<baseline|proposal>) | SENTINEL-excluded (<reason>)
   (one line per scenario)
 Baseline: <cache hit | K replays> @ <prose sha>
 Intended changes: <set>
