@@ -1,0 +1,152 @@
+#!/usr/bin/env bash
+# The Smith — deterministic eval-gate core. Never dispatches an agent; operates on
+# a captured kiln-routing marker vs a gold expected/*.json fixture. Bash-3.2-safe.
+set -uo pipefail
+
+# Parse a ```kiln-routing fenced block into flat `key=value` pairs on stdout.
+# Exits 2 (fail-loud) if no fenced block is present.
+parse_marker() { # $1 = marker file
+  awk '
+    /^```kiln-routing/ { inb=1; next }
+    inb && /^```/      { inb=0; next }
+    inb                { print }
+  ' "$1"
+}
+
+marker_val() { # $1 = parsed-lines, $2 = key -> value (trimmed), lists kept as-is
+  printf '%s\n' "$1" | sed -n "s/^$2:[[:space:]]*//p" | head -1
+}
+# Normalize a list "[a, b]" or JSON array to sorted space-joined tokens for comparison.
+norm_list() { printf '%s' "$1" | tr -d '[]"' | tr ',' '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | grep -v '^$' | sort | tr '\n' ' ' | sed 's/[[:space:]]*$//'; }
+
+cmd_diff() { # $1 = marker file, $2 = expected json
+  local mf="$1" ef="$2" parsed rc=0
+  parsed="$(parse_marker "$mf")"
+  if [ -z "$parsed" ]; then echo "FAIL: unparseable marker (no kiln-routing block)" >&2; return 2; fi
+  # scalar routing fields
+  local f
+  for f in lane tier blast_radius scenario_type; do
+    local got want
+    got="$(marker_val "$parsed" "$f")"
+    want="$(jq -r --arg k "$f" '.routing[$k] // "N/A"' "$ef")"
+    if [ "$got" != "$want" ]; then echo "FAIL: $f expected=$want got=$got"; rc=1; fi
+  done
+  # gates: each expected gate key must match the marker's gates_fired membership
+  local fired; fired="$(norm_list "$(marker_val "$parsed" gates_fired)")"
+  local gk
+  for gk in $(jq -r '.gates | keys[]' "$ef"); do
+    local wantfired; wantfired="$(jq -r --arg g "$gk" '.gates[$g]' "$ef")"
+    local isfired=false
+    case " $fired " in *" $gk "*) isfired=true ;; esac
+    if [ "$wantfired" = "true" ] && [ "$isfired" = "false" ]; then echo "FAIL: gate $gk expected=fired got=not-fired"; rc=1; fi
+    if [ "$wantfired" = "false" ] && [ "$isfired" = "true" ]; then echo "FAIL: gate $gk expected=not-fired got=fired"; rc=1; fi
+  done
+  # dispatched / skipped members
+  local gotd wantd gots wants
+  gotd="$(norm_list "$(marker_val "$parsed" agents_dispatched)")"
+  wantd="$(norm_list "$(jq -r '.agents_dispatched // [] | @json' "$ef")")"
+  [ "$gotd" != "$wantd" ] && { echo "FAIL: agents_dispatched expected=[$wantd] got=[$gotd]"; rc=1; }
+  gots="$(norm_list "$(marker_val "$parsed" agents_skipped)")"
+  wants="$(norm_list "$(jq -r '.agents_skipped // [] | @json' "$ef")")"
+  [ "$gots" != "$wants" ] && { echo "FAIL: agents_skipped expected=[$wants] got=[$gots]"; rc=1; }
+  [ "$rc" = 0 ] && echo "PASS"
+  return "$rc"
+}
+
+cmd_anti_gaming() { # $1 = unified diff file
+  local df="$1" bad
+  # Scan diff HEADER lines only (never +/- content lines): ---/+++ (unified, with or
+  # without a/ b/ prefix), diff --git (both sides), and rename from/rename to (pure
+  # renames carry no ---/+++ lines at all). Anchor on the path SUFFIX
+  # eval/(expected|scenarios)/... rather than a hardcoded full prefix, so the check
+  # survives --no-prefix diffs and diffs rooted below plugins/kiln/skills/fire/.
+  bad="$(grep -E '^(--- |\+\+\+ |diff --git |rename from |rename to )' "$df" \
+    | sed -E 's#^(--- |\+\+\+ |diff --git |rename from |rename to )##' \
+    | tr ' ' '\n' \
+    | sed -E 's#^(a|b)/##' \
+    | grep -oE '([^[:space:]]*/)?eval/(expected|scenarios)/[^[:space:]]+' \
+    | head -1 || true)"
+  if [ -n "$bad" ]; then echo "REJECTED: proposal diff touches a fixture/scenario: $bad" >&2; return 3; fi
+  return 0
+}
+
+cmd_tally() { # $1 = results file (lines "<scenario> PASS|FAIL"), $2 = thresholds.yaml
+  local rf="$1" regressions=0
+  # A scenario at pass_rate 1.0 fails the bar on any FAIL. (All bars are 1.0 today;
+  # a sub-1.0 bar would need run-count aggregation — out of scope, all thresholds are 1.0.)
+  while IFS= read -r line; do
+    [ -n "$line" ] || continue
+    local sc st; sc="${line%% *}"; st="${line##* }"
+    if [ "$st" = "FAIL" ]; then echo "OBSERVATION-ONLY: $sc regressed"; regressions=$((regressions+1)); fi
+  done < "$rf"
+  if [ "$regressions" = 0 ]; then echo "RECOMMENDED"; return 0; fi
+  return 1
+}
+
+cmd_canon() { # $1 = marker file -> canonical single line; exit 2 if unparseable
+  local mf="$1" parsed
+  parsed="$(parse_marker "$mf")"
+  if [ -z "$parsed" ]; then echo "FAIL: unparseable marker (no kiln-routing block)" >&2; return 2; fi
+  local lane tier blast st gates disp skip halt
+  lane="$(marker_val "$parsed" lane)";           tier="$(marker_val "$parsed" tier)"
+  blast="$(marker_val "$parsed" blast_radius)";  st="$(marker_val "$parsed" scenario_type)"
+  gates="$(norm_list "$(marker_val "$parsed" gates_fired)")"
+  disp="$(norm_list "$(marker_val "$parsed" agents_dispatched)")"
+  skip="$(norm_list "$(marker_val "$parsed" agents_skipped)")"
+  halt="$(marker_val "$parsed" halt_reason)"; [ "$halt" = "null" ] && halt=""
+  printf '%s|%s|%s|%s|%s|%s|%s|%s\n' "$lane" "$tier" "$blast" "$st" "$gates" "$disp" "$skip" "$halt"
+}
+
+cmd_majority() { # $@ = marker files -> mode canonical line, or UNSTABLE (exit 4)
+  local tmp; tmp="$(mktemp)"
+  local mf
+  for mf in "$@"; do cmd_canon "$mf" >> "$tmp" || { rm -f "$tmp"; return 2; }; done
+  # tally identical canonical lines; sort by count desc
+  local top topn runner runnern
+  top="$(sort "$tmp" | uniq -c | sort -rn | head -1)"
+  runner="$(sort "$tmp" | uniq -c | sort -rn | sed -n '2p')"
+  topn="$(printf '%s' "$top" | awk '{print $1}')"
+  runnern="$(printf '%s' "$runner" | awk '{print $1}')"; runnern="${runnern:-0}"
+  rm -f "$tmp"
+  if [ "$topn" -le "$runnern" ]; then echo "UNSTABLE"; return 4; fi
+  printf '%s\n' "$top" | sed -E 's/^[[:space:]]*[0-9]+[[:space:]]+//'
+}
+
+cmd_diff_pair() { # $1 = baseline canon, $2 = proposal canon -> SAME|CHANGED|UNSTABLE-side
+  local b p; b="$(cat "$1")"; p="$(cat "$2")"
+  if [ "$b" = "UNSTABLE" ]; then echo "UNSTABLE-side: baseline" >&2; return 4; fi
+  if [ "$p" = "UNSTABLE" ]; then echo "UNSTABLE-side: proposal" >&2; return 4; fi
+  if [ "$b" = "$p" ]; then echo "SAME"; return 0; fi
+  # name each differing pipe-field
+  local names="lane tier blast_radius scenario_type gates_fired agents_dispatched agents_skipped halt_reason"
+  local i=1 out=""
+  local IFS='|'; local ba=($b); local pa=($p); unset IFS
+  for fld in $names; do
+    local bv="${ba[$((i-1))]:-}" pv="${pa[$((i-1))]:-}"
+    if [ "$bv" != "$pv" ]; then out="${out:+$out; }${fld}=${bv}→${pv}"; fi
+    i=$((i+1))
+  done
+  echo "CHANGED: $out"; return 1
+}
+
+cmd_cache_key() { # $1=scenario $2=K $3.. = prose files
+  local scenario="$1" k="$2"; shift 2
+  # Fail loud with zero prose files rather than block on stdin (cat with no args reads
+  # stdin) or silently hash the empty string — the cache key must reflect real prose.
+  if [ "$#" -eq 0 ]; then echo "cache-key: no prose files given (need >=1)" >&2; return 2; fi
+  local h; h="$(cat "$@" | shasum -a 256 | cut -c1-12)"
+  printf '%s.%s.%s\n' "$scenario" "$k" "$h"
+}
+cmd_cache_path() { printf '%s/%s.canon\n' "$1" "$2"; }
+
+case "${1:-}" in
+  diff)        shift; cmd_diff "$@" ;;
+  anti-gaming) shift; cmd_anti_gaming "$@" ;;
+  tally)       shift; cmd_tally "$@" ;;
+  canon)       shift; cmd_canon "$@" ;;
+  majority)    shift; cmd_majority "$@" ;;
+  diff-pair)   shift; cmd_diff_pair "$@" ;;
+  cache-key)   shift; cmd_cache_key "$@" ;;
+  cache-path)  shift; cmd_cache_path "$@" ;;
+  *) echo "usage: smith-eval-gate.sh {diff <marker> <expected>|anti-gaming <diff>|tally <results> <thresholds>|canon <marker>|majority <marker>...|diff-pair <baseline> <proposal>|cache-key <scenario> <K> <prose-file>...|cache-path <cache-dir> <key>}" >&2; exit 2 ;;
+esac

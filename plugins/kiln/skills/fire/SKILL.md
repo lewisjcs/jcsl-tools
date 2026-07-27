@@ -62,6 +62,61 @@ Example: `[Kiln] code scenario → compounds engine bound. implement_task drives
 `**[Kiln] This is a <LANE> run, <SCENARIO> scenario — <one-line why>. Starting that path.**`
 Sparse → RESEARCH; partial / net-new / design-doc → DESIGN (per `lanes.md`). Only a P2.2 scenario (`mcp/agent-app`/`infra`) or an ambiguous doc shape → **HALT-AND-ASK** (do not guess, do not fall through to code).
 
+**Emit the machine-parseable routing marker (for the eval gate).** Immediately after the prose
+announcement, emit a fenced ` ```kiln-routing ` block echoing the decision in this exact key set —
+one value per line, lists in `[a, b]` form:
+`lane`, `tier`, `blast_radius`, `scenario_type`, `gates_fired`, `agents_dispatched`, `agents_skipped`,
+`halt_reason`. **Assert every value that is deterministic at this checkpoint; emit `N/A` only for a value
+that genuinely cannot be derived yet.** Concretely:
+- On a **build lane** (TRIVIAL/PLAN/EXECUTE) the complexity classification is an *input* to routing, so
+  `tier` and `blast_radius` are concrete here — emit them (e.g. `tier: STANDARD`, `blast_radius: LOW`),
+  never `N/A`. (Verb 2's "the Planner derives tier + blast" note describes who *authors* them in a live
+  run; when the classification is already resolved, the marker records the resolved values.)
+- Emit `N/A` for `tier`/`blast_radius` only on a **design-front lane** (DESIGN/RESEARCH), where the
+  Designer synthesizes targets and the Planner derives blast only after SPEC-GATE.
+- Emit `N/A` for `scenario_type` only when the signal it classifies on is not present — e.g. the change's
+  file-path shape (`src/` vs `**/skills/**`, per `scenarios.md`) is not determinable from what routing was
+  given. Do not guess a `scenario_type` the inputs do not support.
+
+Re-emit the marker with concrete tier/blast after the Planner's done-line on any design-front lane where
+they become known. The keys map 1:1 to `eval/expected/*.json`; this marker is additive telemetry — it
+changes nothing about routing behavior (the `eval/README.md` deterministic-at-checkpoint rule).
+
+**Serialization is fixed — the marker records the routing you already decided, it does not re-decide.**
+The comparison is exact-string, so the *grammar* below is mandatory even though the *values* remain your
+live routing judgment (from `lanes.md`/`gates.md`, never from this list):
+- **Member tokens are lowercase and drawn from this closed vocabulary:** `crafter`, `planner`,
+  `inspector`, `walker`, `designer`, `scout`, `curator`. Write them lowercase in both `agents_dispatched`
+  and `agents_skipped` (`crafter`, never `Crafter`). The Drafter is a real member but is **never** named
+  in either list — it is Jira write-back, out of the marker's routing vocabulary.
+- **`agents_skipped` is the lane's eligible roster minus what you dispatched — not every member.** A build
+  lane (TRIVIAL/PLAN/EXECUTE) draws its roster from `{planner, walker, crafter, inspector}` (plus
+  `curator` only once a run reaches close-out); a design-front lane (DESIGN/RESEARCH) draws from
+  `{scout, designer, planner}`. Members outside the lane's roster appear in **neither** list — e.g. a
+  PLAN/LOW run skips `[walker]` only, not `scout`/`designer`/`curator`. `curator` is listed in
+  `agents_dispatched` only on a run you drive through close-out; on a routing-halt it is neither
+  dispatched nor skipped.
+- **`gates_fired` enumerates every gate this run fires that is determinable at this checkpoint — not just
+  the gate you are paused at.** Which gates fire is the `gates.md` logic (do not restate it here); the
+  serialization rule is completeness: a DESIGN/RESEARCH run lists `[SPEC-GATE, PLAN-GATE]` at the routing
+  checkpoint (both are lane-determined and knowable now) even though you have only reached SPEC-GATE. A
+  gate that does not block (a LOW-blast TASK-GATE) is **not** "fired." Omit any gate whose firing depends
+  on a value still `N/A` at this checkpoint (e.g. a design-front TASK-GATE, blast-dependent, blast unknown).
+
+Worked example — grammar only, values chosen to match no fixture (a HIGH-blast tool-authoring run;
+copying it onto any gold scenario mismatches `scenario_type` and fails, so it teaches serialization
+without supplying an answer):
+```kiln-routing
+lane: PLAN
+tier: STANDARD
+blast_radius: HIGH
+scenario_type: tool-authoring
+gates_fired: [PLAN-GATE, TASK-GATE]
+agents_dispatched: [planner, walker, crafter, inspector]
+agents_skipped: []
+halt_reason: N/A
+```
+
 **Write the active-run sentinel now, stamped with this session's id:**
 `printf '%s\n' "$CLAUDE_CODE_SESSION_ID" > {{RUN_FOLDER}}/.active`. (This is what arms the guard hooks.
 The stamped session id is what scopes the guards to THIS run: Claude Code runs one Kiln run per
