@@ -1,0 +1,10 @@
+```kiln-routing
+lane: PLAN
+tier: STANDARD
+blast_radius: HIGH
+scenario_type: code
+gates_fired: [PLAN-GATE, TASK-GATE]
+agents_dispatched: [planner, crafter, inspector]
+agents_skipped: [walker]
+halt_reason: null
+```

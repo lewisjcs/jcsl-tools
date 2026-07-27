@@ -62,4 +62,42 @@ assert_eq  "tally one-fail: OBSERVATION-ONLY" "true" "$(printf '%s' "$out" | gre
 assert_eq  "tally one-fail: names scenario 09" "true" "$(printf '%s' "$out" | grep -q '09' && echo true || echo false)"
 assert_exit "tally one-fail: exit 1" "1" "$rc"
 
+# --- canon: two markers differing only in list ORDER canonicalize identically ---
+a="$(bash "$SCRIPT" canon "$FIX/marker-order-a.txt")"
+b="$(bash "$SCRIPT" canon "$FIX/marker-order-b.txt")"
+assert_eq "canon: order-insensitive" "$a" "$b"
+
+# --- canon: unparseable marker -> exit 2 (fail-loud) ---
+bash "$SCRIPT" canon "$FIX/marker-garbage.txt" >/dev/null 2>&1; rc=$?
+assert_exit "canon garbage: exit 2" "2" "$rc"
+
+# --- majority: 3 markers, 2 agree -> prints the agreed canonical form, exit 0 ---
+out="$(bash "$SCRIPT" majority "$FIX/marker-01-good.txt" "$FIX/marker-01-good.txt" "$FIX/marker-01-wronglane.txt")"; rc=$?
+assert_eq  "majority 2:1: picks the pair" "$(bash "$SCRIPT" canon "$FIX/marker-01-good.txt")" "$out"
+assert_exit "majority 2:1: exit 0" "0" "$rc"
+
+# --- majority: 1:1:1 tie -> UNSTABLE, exit 4 ---
+out="$(bash "$SCRIPT" majority "$FIX/marker-01-good.txt" "$FIX/marker-01-wronglane.txt" "$FIX/marker-03-wronggate.txt")"; rc=$?
+assert_eq  "majority tie: UNSTABLE" "UNSTABLE" "$out"
+assert_exit "majority tie: exit 4" "4" "$rc"
+
+# --- diff-pair: identical majorities -> SAME, exit 0 ---
+maj="$(bash "$SCRIPT" canon "$FIX/marker-01-good.txt")"
+printf '%s\n' "$maj" > "$FIX/tmp-base.canon"; printf '%s\n' "$maj" > "$FIX/tmp-prop.canon"
+out="$(bash "$SCRIPT" diff-pair "$FIX/tmp-base.canon" "$FIX/tmp-prop.canon")"; rc=$?
+assert_eq  "diff-pair same: SAME" "SAME" "$out"
+assert_exit "diff-pair same: exit 0" "0" "$rc"
+
+# --- diff-pair: lane differs -> CHANGED names the field, exit 1 ---
+bash "$SCRIPT" canon "$FIX/marker-01-wronglane.txt" > "$FIX/tmp-prop.canon"
+out="$(bash "$SCRIPT" diff-pair "$FIX/tmp-base.canon" "$FIX/tmp-prop.canon")"; rc=$?
+assert_eq  "diff-pair changed: names lane" "true" "$(printf '%s' "$out" | grep -qi 'CHANGED' && printf '%s' "$out" | grep -q 'TRIVIAL' && echo true || echo false)"
+assert_exit "diff-pair changed: exit 1" "1" "$rc"
+
+# --- diff-pair: UNSTABLE side propagates -> exit 4 ---
+printf 'UNSTABLE\n' > "$FIX/tmp-prop.canon"
+bash "$SCRIPT" diff-pair "$FIX/tmp-base.canon" "$FIX/tmp-prop.canon" >/dev/null 2>&1; rc=$?
+assert_exit "diff-pair unstable: exit 4" "4" "$rc"
+rm -f "$FIX/tmp-base.canon" "$FIX/tmp-prop.canon"
+
 exit $fail

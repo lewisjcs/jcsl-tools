@@ -83,9 +83,58 @@ cmd_tally() { # $1 = results file (lines "<scenario> PASS|FAIL"), $2 = threshold
   return 1
 }
 
+cmd_canon() { # $1 = marker file -> canonical single line; exit 2 if unparseable
+  local mf="$1" parsed
+  parsed="$(parse_marker "$mf")"
+  if [ -z "$parsed" ]; then echo "FAIL: unparseable marker (no kiln-routing block)" >&2; return 2; fi
+  local lane tier blast st gates disp skip halt
+  lane="$(marker_val "$parsed" lane)";           tier="$(marker_val "$parsed" tier)"
+  blast="$(marker_val "$parsed" blast_radius)";  st="$(marker_val "$parsed" scenario_type)"
+  gates="$(norm_list "$(marker_val "$parsed" gates_fired)")"
+  disp="$(norm_list "$(marker_val "$parsed" agents_dispatched)")"
+  skip="$(norm_list "$(marker_val "$parsed" agents_skipped)")"
+  halt="$(marker_val "$parsed" halt_reason)"; [ "$halt" = "null" ] && halt=""
+  printf '%s|%s|%s|%s|%s|%s|%s|%s\n' "$lane" "$tier" "$blast" "$st" "$gates" "$disp" "$skip" "$halt"
+}
+
+cmd_majority() { # $@ = marker files -> mode canonical line, or UNSTABLE (exit 4)
+  local tmp; tmp="$(mktemp)"
+  local mf
+  for mf in "$@"; do cmd_canon "$mf" >> "$tmp" || { rm -f "$tmp"; return 2; }; done
+  # tally identical canonical lines; sort by count desc
+  local top topn runner runnern
+  top="$(sort "$tmp" | uniq -c | sort -rn | head -1)"
+  runner="$(sort "$tmp" | uniq -c | sort -rn | sed -n '2p')"
+  topn="$(printf '%s' "$top" | awk '{print $1}')"
+  runnern="$(printf '%s' "$runner" | awk '{print $1}')"; runnern="${runnern:-0}"
+  rm -f "$tmp"
+  if [ "$topn" -le "$runnern" ]; then echo "UNSTABLE"; return 4; fi
+  printf '%s\n' "$top" | sed -E 's/^[[:space:]]*[0-9]+[[:space:]]+//'
+}
+
+cmd_diff_pair() { # $1 = baseline canon, $2 = proposal canon -> SAME|CHANGED|UNSTABLE-side
+  local b p; b="$(cat "$1")"; p="$(cat "$2")"
+  if [ "$b" = "UNSTABLE" ]; then echo "UNSTABLE-side: baseline" >&2; return 4; fi
+  if [ "$p" = "UNSTABLE" ]; then echo "UNSTABLE-side: proposal" >&2; return 4; fi
+  if [ "$b" = "$p" ]; then echo "SAME"; return 0; fi
+  # name each differing pipe-field
+  local names="lane tier blast_radius scenario_type gates_fired agents_dispatched agents_skipped halt_reason"
+  local i=1 out=""
+  local IFS='|'; local ba=($b); local pa=($p); unset IFS
+  for fld in $names; do
+    local bv="${ba[$((i-1))]:-}" pv="${pa[$((i-1))]:-}"
+    if [ "$bv" != "$pv" ]; then out="${out:+$out; }${fld}=${bv}→${pv}"; fi
+    i=$((i+1))
+  done
+  echo "CHANGED: $out"; return 1
+}
+
 case "${1:-}" in
   diff)        shift; cmd_diff "$@" ;;
   anti-gaming) shift; cmd_anti_gaming "$@" ;;
   tally)       shift; cmd_tally "$@" ;;
-  *) echo "usage: smith-eval-gate.sh {diff <marker> <expected>|anti-gaming <diff>|tally <results> <thresholds>}" >&2; exit 2 ;;
+  canon)       shift; cmd_canon "$@" ;;
+  majority)    shift; cmd_majority "$@" ;;
+  diff-pair)   shift; cmd_diff_pair "$@" ;;
+  *) echo "usage: smith-eval-gate.sh {diff <marker> <expected>|anti-gaming <diff>|tally <results> <thresholds>|canon <marker>|majority <marker>...|diff-pair <baseline> <proposal>}" >&2; exit 2 ;;
 esac
