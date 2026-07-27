@@ -36,6 +36,21 @@ out="$(bash "$SCRIPT" anti-gaming "$FIX/diff-touches-fixture.patch" 2>&1)"; rc=$
 assert_exit "anti-gaming fixture: exit 3" "3" "$rc"
 assert_eq  "anti-gaming fixture: names expected/" "true" "$(printf '%s' "$out" | grep -q 'expected/' && echo true || echo false)"
 
+# --- anti-gaming: --no-prefix diff (no a/ b/ prefix) touching expected/ -> exit 3 ---
+out="$(bash "$SCRIPT" anti-gaming "$FIX/diff-noprefix-touches-fixture.patch" 2>&1)"; rc=$?
+assert_exit "anti-gaming no-prefix: exit 3" "3" "$rc"
+assert_eq  "anti-gaming no-prefix: names expected/" "true" "$(printf '%s' "$out" | grep -q 'expected/' && echo true || echo false)"
+
+# --- anti-gaming: subdir-rooted diff (no plugins/kiln/skills/fire/ segment) touching expected/ -> exit 3 ---
+out="$(bash "$SCRIPT" anti-gaming "$FIX/diff-subdirrooted-touches-fixture.patch" 2>&1)"; rc=$?
+assert_exit "anti-gaming subdir-rooted: exit 3" "3" "$rc"
+assert_eq  "anti-gaming subdir-rooted: names expected/" "true" "$(printf '%s' "$out" | grep -q 'expected/' && echo true || echo false)"
+
+# --- anti-gaming: pure-rename diff (diff --git/rename from/rename to, no ---/+++) moving scenario -> exit 3 ---
+out="$(bash "$SCRIPT" anti-gaming "$FIX/diff-rename-touches-scenario.patch" 2>&1)"; rc=$?
+assert_exit "anti-gaming rename: exit 3" "3" "$rc"
+assert_eq  "anti-gaming rename: names scenarios/" "true" "$(printf '%s' "$out" | grep -q 'scenarios/' && echo true || echo false)"
+
 # --- tally: all pass -> RECOMMENDED, exit 0 ---
 out="$(bash "$SCRIPT" tally "$FIX/results-all-pass.txt" "$FIX/thresholds.yaml")"; rc=$?
 assert_eq  "tally all-pass: RECOMMENDED" "true" "$(printf '%s' "$out" | grep -q 'RECOMMENDED' && echo true || echo false)"

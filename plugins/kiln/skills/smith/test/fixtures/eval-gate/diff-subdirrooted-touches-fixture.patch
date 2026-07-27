@@ -1,0 +1,5 @@
+--- a/eval/expected/01-trivial-bugfix.json
++++ b/eval/expected/01-trivial-bugfix.json
+@@ -1,1 +1,1 @@
+-  "lane": "TRIVIAL",
++  "lane": "EXECUTE",

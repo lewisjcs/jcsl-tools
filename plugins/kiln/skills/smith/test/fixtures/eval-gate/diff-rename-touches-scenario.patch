@@ -1,0 +1,4 @@
+diff --git a/plugins/kiln/skills/fire/eval/scenarios/01-trivial-bugfix.md b/plugins/kiln/skills/fire/scenarios-archive/01-trivial-bugfix.md
+similarity index 100%
+rename from plugins/kiln/skills/fire/eval/scenarios/01-trivial-bugfix.md
+rename to plugins/kiln/skills/fire/scenarios-archive/01-trivial-bugfix.md

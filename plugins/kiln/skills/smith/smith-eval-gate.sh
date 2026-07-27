@@ -55,7 +55,17 @@ cmd_diff() { # $1 = marker file, $2 = expected json
 
 cmd_anti_gaming() { # $1 = unified diff file
   local df="$1" bad
-  bad="$(grep -E '^\+\+\+ |^--- ' "$df" | grep -oE '(a|b)/plugins/kiln/skills/fire/eval/(expected|scenarios)/[^[:space:]]+' | head -1 || true)"
+  # Scan diff HEADER lines only (never +/- content lines): ---/+++ (unified, with or
+  # without a/ b/ prefix), diff --git (both sides), and rename from/rename to (pure
+  # renames carry no ---/+++ lines at all). Anchor on the path SUFFIX
+  # eval/(expected|scenarios)/... rather than a hardcoded full prefix, so the check
+  # survives --no-prefix diffs and diffs rooted below plugins/kiln/skills/fire/.
+  bad="$(grep -E '^(--- |\+\+\+ |diff --git |rename from |rename to )' "$df" \
+    | sed -E 's#^(--- |\+\+\+ |diff --git |rename from |rename to )##' \
+    | tr ' ' '\n' \
+    | sed -E 's#^(a|b)/##' \
+    | grep -oE '([^[:space:]]*/)?eval/(expected|scenarios)/[^[:space:]]+' \
+    | head -1 || true)"
   if [ -n "$bad" ]; then echo "REJECTED: proposal diff touches a fixture/scenario: $bad" >&2; return 3; fi
   return 0
 }
