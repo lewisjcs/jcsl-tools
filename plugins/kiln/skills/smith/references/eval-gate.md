@@ -132,6 +132,24 @@ Gated against: Kiln <version> @ <commit sha>   (staleness — guardrail #4)
 - **Staleness:** the report records the Kiln version/commit gated against.
 - **Cost-bounded:** on-demand only; the report self-accounts its token cost.
 
+## Scope — what a routing-marker diff can and cannot see
+The gate diffs the `kiln-routing` marker, which the conductor emits at the **Verb 2 routing
+checkpoint**. It therefore discriminates changes to **routing outputs** — lane, tier, blast_radius,
+scenario_type, gates_fired, and the dispatch/skip roster. A `SAME` verdict means "routing output
+unchanged," not "behavior unchanged." Two proposal classes are outside its reach — route them through
+the matching control below rather than reading a routing `SAME` as a full clearance:
+
+- **Verb-4 (Build-loop) execution-behavior changes.** How the conductor behaves *after* the routing
+  checkpoint — e.g. whether it dispatches a member or applies an edit inline — is decided in the Build
+  loop, after the marker is emitted, so the marker records the dispatch *plan*, not the runtime
+  behavior. A proposal that relaxes the conductor guard in prose can gate `RECOMMENDED` while still
+  changing execution. Pair such a proposal with `hooks/test-kiln-guards.sh` (the guard's own test) and
+  a go-live-review; a routing `SAME` is not evidence the guard held.
+- **Non-output detection/perf changes.** A change to *how fast* or *by what path* a routing decision is
+  reached, with no change to the decision itself, yields a byte-identical marker → `SAME`. The gate
+  correctly reports no regression but cannot confirm the intended speedup — that needs a separate
+  measure (e.g. a wall-clock or step-count comparison), not this differential.
+
 ## Calibration anchor (periodic — NOT per-proposal)
 
 This mode checks whether current Kiln prose still reproduces the gold fixtures
