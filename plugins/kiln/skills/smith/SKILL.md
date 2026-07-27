@@ -49,9 +49,11 @@ Kiln, never re-invokes a member, never touches a fixture.**
    - This briefing read <N> runs; harvester + synthesis ≈ <rough token/$ if known>.
    ```
 
-4. **Guardrails (state these hold):** every suggestion is advisory and unverified — Slice 1 has no eval
-   gate yet (that is Slice 2). Never propose editing a fixture. If the harvest was partial (Step 1),
-   say so up front in the briefing rather than silently reporting on fewer runs than requested.
+4. **Guardrails (state these hold):** every suggestion is advisory and unverified — the morning briefing
+   does NOT run the eval gate, so a briefing suggestion stays advisory until it is validated via
+   `/smith --validate` (see that mode above). Never propose editing a fixture. If the harvest was
+   partial (Step 1), say so up front in the briefing rather than silently reporting on fewer runs than
+   requested.
 
    **Engine-mix check.** `retro.json` carries no engine field. To note whether a suggestion's evidence
    spans different engines, read that run's `progress.md` (it sits next to its `retro.json`) for the
@@ -60,7 +62,16 @@ Kiln, never re-invokes a member, never touches a fixture.**
    If a run has no `ENGINE:` line, state in the briefing that the engine mix could not be checked for
    that run — never imply the check ran when it didn't.
 
-## What The Smith does NOT do (Slice 1)
-- Does not edit Kiln source, gates, or prompts.
-- Does not re-invoke Kiln members or replay runs.
-- Does not run the eval harness (Slice 2).
+## Mode: `--validate <proposal>` (eval gate — on-demand, opt-in)
+
+When invoked as `/smith --validate <proposal>` (a branch or diff touching Kiln routing/gate logic),
+run the eval gate instead of the briefing: load `${CLAUDE_PLUGIN_ROOT}/skills/smith/references/eval-gate.md`
+and follow it exactly (anti-gaming pre-check → 19-scenario live replay → tally → labeled report with
+self-accounted cost). The gate is the ONLY expensive Smith operation and fires only in this mode; the
+morning briefing (above) stays read-only and never triggers it.
+
+## What The Smith does NOT do
+- Does not edit Kiln source, gates, or prompts — it proposes and validates; Josh approves the PR.
+- Does not autonomously adopt a proposal — a Recommended label plus Josh's approval ships it.
+- Does not touch a fixture or scenario (anti-gaming — the gate rejects such proposals).
+- In `--validate`, the conductor-role replays are dry (no source writes, no PRs, no live-workspace mutation).
