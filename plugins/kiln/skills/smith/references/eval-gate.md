@@ -36,6 +36,28 @@ Kiln conductor for calibration; it receives the proposed prose file contents, th
 the marker and halt. It must NOT write source, open PRs, or touch the live workspace — it is a dry
 replay. It reports the marker text back as its result.
 
+The dispatch prompt MUST carry these three replay rules verbatim (the pilot failed without them —
+they fix serialization drift, not routing judgment; the routing decision stays the agent's to derive
+from the proposed prose):
+1. **Marker grammar is the proposed `SKILL.md` Verb 2 spec** ("Serialization is fixed" block): lowercase
+   closed member vocabulary `{crafter, planner, inspector, walker, designer, scout, curator}`; `drafter`
+   never listed; `agents_skipped` = the lane's eligible roster minus dispatched, not every member;
+   `gates_fired` enumerates every gate the run fires that is determinable at the checkpoint (a
+   DESIGN/RESEARCH run lists `[SPEC-GATE, PLAN-GATE]` even while paused at SPEC-GATE), a non-blocking
+   LOW TASK-GATE is not "fired". Emit the marker with exactly these keys and forms — the gate compares
+   by exact string.
+2. **The supplied `compounds_classification`/`blast_radius` stand in for Compounds' classify output** (the
+   harness can't run Compounds). On a build lane (TRIVIAL/PLAN/EXECUTE) where tier/blast are deterministic
+   at the routing checkpoint, consume them as that dependency's result and map through the proposed prose
+   (a `TRIVIAL` classification routes the fast-path per the proposed `gates.md`; if the proposal broke that
+   rule, the marker will mis-route and the scenario correctly FAILs). Do NOT invent a classification the
+   `## Input` did not supply.
+3. **On design-front lanes (DESIGN/RESEARCH), `tier`/`blast_radius`/`scenario_type` are `N/A` at the
+   routing checkpoint regardless of any supplied `compounds_classification`/`blast_radius`** — the Designer
+   has not synthesized targets and the Planner derives blast only after SPEC-GATE, so those hints are not
+   yet knowable at routing (the `eval/README.md` deterministic-at-checkpoint rule). The supplied values are
+   a distractor here, not the answer.
+
 ## Step 2 — Tally + label
 `bash ${CLAUDE_PLUGIN_ROOT}/skills/smith/smith-eval-gate.sh tally <results-file> <thresholds.yaml>`
 - `RECOMMENDED` (exit 0): all 19 met their bar.
