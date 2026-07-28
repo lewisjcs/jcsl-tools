@@ -1,0 +1,10 @@
+--- a/plugins/kiln/skills/fire/SKILL.md
++++ b/plugins/kiln/skills/fire/SKILL.md
+@@ -52,7 +52,7 @@
+-Load `lanes.md` and `scenarios.md`. Determine lane + scenario now.
++Load `lanes.md` and `scenarios.md`. Determine lane + scenario now, with no other change.
+--- a/plugins/kiln/skills/fire/lanes.md
++++ b/plugins/kiln/skills/fire/lanes.md
+@@ -18,6 +18,7 @@
+ | file shape none-of-the-above | — | HALT-AND-ASK | (don't guess) |
++| new-entry-shape-2 | — | RESEARCH | route to scout sweep |

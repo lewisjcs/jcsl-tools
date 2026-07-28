@@ -171,4 +171,23 @@ out="$(bash "$SCRIPT" classify "$FIX/diff-guard-clean.patch")"
 out2="$(bash "$SCRIPT" classify "$FIX/diff-unrelated.patch")"
 assert_eq "classify unrelated: unsure" "true" "$(printf '%s' "$out2" | grep -q 'unsure' && echo true || echo false)"
 
+# --- classify: multi-file diff touching a non-script hooks/kiln-guard-* path PLUS an
+# unrelated .sh file must NOT bleed across lines into guard-hook-code (case globs match
+# newlines; matching per-line, not against the whole multi-line header blob, prevents this) ---
+out="$(bash "$SCRIPT" classify "$FIX/diff-multifile-nohook.patch")"
+assert_eq "classify multifile no-hook: no guard-hook-code (no cross-line bleed)" "false" "$(printf '%s' "$out" | grep -q 'guard-hook-code' && echo true || echo false)"
+
+# --- classify: multi-file diff touching TWO real routing files -> routing-output
+# appears exactly once (dedup holds across multiple matching files) ---
+out="$(bash "$SCRIPT" classify "$FIX/diff-multifile-tworouting.patch")"
+assert_eq "classify multifile two-routing: routing-output present" "true" "$(printf '%s' "$out" | grep -q 'routing-output' && echo true || echo false)"
+assert_eq "classify multifile two-routing: routing-output appears exactly once" "1" "$(printf '%s' "$out" | tr ' ' '\n' | grep -c '^routing-output$')"
+
+# --- classify: missing/unreadable file degrades to unsure, NOT guard-relaxation
+# (cmd_guard_relax exit 2 = unreadable must not be conflated with exit 5 = relaxation match) ---
+out="$(bash "$SCRIPT" classify "$FIX/does-not-exist-nonexistent.patch" 2>/dev/null)"; rc=$?
+assert_eq "classify missing file: unsure" "true" "$(printf '%s' "$out" | grep -q 'unsure' && echo true || echo false)"
+assert_eq "classify missing file: no guard-relaxation" "false" "$(printf '%s' "$out" | grep -q 'guard-relaxation' && echo true || echo false)"
+assert_exit "classify missing file: exit 0 (always advisory)" "0" "$rc"
+
 exit $fail

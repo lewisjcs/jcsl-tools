@@ -1,0 +1,10 @@
+--- a/plugins/kiln/hooks/kiln-guard-a.txt
++++ b/plugins/kiln/hooks/kiln-guard-a.txt
+@@ -1,3 +1,4 @@
+ some notes
++about the guard
+--- a/plugins/kiln/skills/smith/smith-eval-gate.sh
++++ b/plugins/kiln/skills/smith/smith-eval-gate.sh
+@@ -1,3 +1,4 @@
+ #!/usr/bin/env bash
++# unrelated shell edit

@@ -86,14 +86,25 @@ cmd_guard_relax() { # $1 = unified diff file -> exit 5 if an ADDED line authoriz
 }
 
 cmd_classify() { # $1 = unified diff file -> space-separated dream-class set (always exit 0)
-  local df="$1" classes="" hdrs
+  local df="$1" classes="" hdrs h
   hdrs="$(grep -E '^(--- |\+\+\+ |diff --git )' "$df" | sed -E 's#^(--- |\+\+\+ |diff --git )##' | tr ' ' '\n' | sed -E 's#^(a|b)/##' | grep -v '^$' | sort -u)"
-  # guard hook CODE edit
-  case "$hdrs" in *hooks/kiln-guard-*.sh*) classes="$classes guard-hook-code" ;; esac
-  # routing-output: edits a routing-bearing prose file
-  case "$hdrs" in *skills/fire/lanes.md*|*skills/fire/gates.md*|*skills/fire/scenarios.md*|*skills/fire/SKILL.md*) classes="$classes routing-output" ;; esac
-  # guard-relaxation prose (reuse the Task-1 scan)
-  if ! cmd_guard_relax "$df" >/dev/null 2>&1; then classes="$classes guard-relaxation"; fi
+  # path-based classes: match each header path INDIVIDUALLY (case globs match
+  # newlines too, so matching against the whole multi-line $hdrs blob lets a
+  # pattern bleed across two unrelated paths on a multi-file diff).
+  while IFS= read -r h; do
+    [ -n "$h" ] || continue
+    # guard hook CODE edit
+    case "$h" in *hooks/kiln-guard-*.sh) classes="$classes guard-hook-code" ;; esac
+    # routing-output: edits a routing-bearing prose file (suffix match — header
+    # paths carry the diff's root prefix, e.g. plugins/kiln/skills/fire/gates.md)
+    case "$h" in *skills/fire/lanes.md|*skills/fire/gates.md|*skills/fire/scenarios.md|*skills/fire/SKILL.md) classes="$classes routing-output" ;; esac
+  done <<EOF
+$hdrs
+EOF
+  # guard-relaxation prose (reuse the Task-1 scan): only an actual relaxation
+  # match (exit 5) adds the class. An unreadable file (exit 2) falls through
+  # to unsure like any other unmatched input, rather than being misclassified.
+  cmd_guard_relax "$df" >/dev/null 2>&1; case $? in 5) classes="$classes guard-relaxation" ;; esac
   # detection/perf prose (speed of a decision, no routing-output token) — heuristic phrase set
   if grep -E '^\+([^+]|$)' "$df" | grep -iqE 'fast-detect|short-circuit|without waiting|reached faster|redundant work|how fast'; then classes="$classes detection-perf"; fi
   classes="$(printf '%s\n' $classes | grep -v '^$' | sort -u | tr '\n' ' ' | sed 's/[[:space:]]*$//')"
