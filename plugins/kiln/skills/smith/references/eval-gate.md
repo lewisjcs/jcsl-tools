@@ -3,7 +3,7 @@
 Loaded on demand by `smith/SKILL.md` when Josh asks to validate a Kiln proposal. The gate is
 **on-demand only** — the morning briefing never triggers it. It validates a proposal that touches
 Kiln **routing/gate logic** (`SKILL.md`/`lanes.md`/`gates.md`/`scenarios.md`) by live-replaying the
-19-scenario harness against the *proposed* prose, then labels it.
+21-scenario harness against the *proposed* prose, then labels it.
 
 ## Inputs
 - `<proposal>`: a git branch or a unified-diff file in the source repo carrying the candidate edit.
@@ -40,7 +40,7 @@ Produce the proposal's unified diff and run:
 `bash ${CLAUDE_PLUGIN_ROOT}/skills/smith/smith-eval-gate.sh anti-gaming <diff-file>`
 Exit 3 → **STOP**: the proposal edits a fixture/scenario. Report REJECTED (anti-gaming) and do not replay.
 
-## Step 1 — Per-scenario replay (19 scenarios)
+## Step 1 — Per-scenario replay (21 scenarios)
 For each `scenarios/NN-*.md`, run the two-sided differential procedure below. Each side's replay is
 produced by the mode-table dispatch (the table's "PROPOSED prose" language names whichever prose is
 loaded for the side currently being replayed — the current prose for the baseline side, the proposed
@@ -82,9 +82,14 @@ Exit 2 (unparseable marker — `majority`'s internal per-marker canonicalization
 ### Mode table
 | Scenarios | Mode | How |
 |---|---|---|
-| 01–08, 10–12, 19 | **routing-halt** | Dispatch a conductor-role agent loaded with the PROPOSED prose + the scenario `## Input`; instruct it to run through Verb 2, emit the `kiln-routing` marker, and HALT at the routing checkpoint (no member dispatch). Diff the marker. |
+| 01–08, 10–12, 19, 20–21 | **routing-halt** | Dispatch a conductor-role agent loaded with the PROPOSED prose + the scenario `## Input`; instruct it to run through Verb 2, emit the `kiln-routing` marker, and HALT at the routing checkpoint (no member dispatch). Diff the marker. 20–21 are the REVIEW lane: fire's first Verb-2 branch delegates to `/process-review-feedback` and emits its `lane: REVIEW` routing-halt marker (empty dispatch/skip lists, delegation `halt_reason`) — the same halt-at-Verb-2 shape as 06's HALT-AND-ASK, differing only in the lane value and an empty roster. |
 | 13–18 | **execution-observed** | Same dispatch, but drive until the fixture's asserted execution field is observable (`engine_behavior`, finalize verb, verify-fail-block, native-skip) — then halt. Default: "run until the asserted behavior is observable." These are the expensive minority. |
 | 09 | **offline** | Do NOT live-replay. Run `bash plugins/kiln/hooks/test-kiln-guards.sh`; PASS iff it exits 0 (asserts conductor-denied + member-allowed). |
+
+Note: the REVIEW routing-halt (20–21) diffs only fire's OWN routing decision. The
+`/process-review-feedback` internal flow (Sifter → SIFT-GATE → Finisher) it hands off to is NOT
+marker-instrumented — no fixture asserts those agents/gates, and this harness cannot see them. That is
+a known coverage gap, not a passing signal (see `## Scope — what a routing-marker diff can and cannot see`).
 
 **Conductor-role dispatch contract (routing/execution modes):** the agent is told it is playing the
 Kiln conductor for calibration; it receives the proposed prose file contents, the scenario `## Input`
@@ -198,12 +203,12 @@ cron with no scheduler is the rot mode this anchor exists to avoid.)
    majority's canonical line, is what gets diffed — piping `majority`'s output straight into `diff`
    would find no fenced block and fail loud on every scenario. PASS iff `diff` exits 0.
 
-**Report** a drift ratio, not a pass/fail gate — e.g. "15/19 scenarios reproduce gold on their
+**Report** a drift ratio, not a pass/fail gate — e.g. "17/21 scenarios reproduce gold on their
 K-sample majority" — plus:
 - a named list of any scenario whose majority no longer matches gold, with the `diff` field deltas
   (`FAIL: <field> expected=x got=y`), and
 - a named list of any scenario that came back `UNSTABLE`.
 
 The anchor's job is to **detect drift**, never to gate or block a proposal — a soft ratio is the
-honest signal here, precisely because a hard 19/19 bar is too brittle against replay stochasticity —
+honest signal here, precisely because a hard 21/21 bar is too brittle against replay stochasticity —
 the anchor exists to report drift, not to gate. Do not report this as a pass/fail verdict.

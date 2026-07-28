@@ -1,7 +1,8 @@
 {
   "scenario": "20-review-nl-entry",
-  "routing": { "lane": "REVIEW", "delegated_to": "process-review-feedback", "tier": "N/A", "blast_radius": "N/A", "scenario_type": "N/A" },
-  "gates": { "SIFT-GATE": true, "PLAN-GATE": false, "TASK-GATE": false },
-  "agents_dispatched": ["sifter", "finisher"],
-  "agents_skipped": ["planner", "walker", "scout", "designer", "curator", "diagnostician"]
+  "routing": { "lane": "REVIEW", "tier": "N/A", "blast_radius": "N/A", "scenario_type": "N/A" },
+  "gates": { "PLAN-GATE": false, "TASK-GATE": false },
+  "agents_dispatched": [],
+  "agents_skipped": [],
+  "halt_reason": "review-feedback entry — delegating to /process-review-feedback; fire routes and hands off, orchestrating no members itself"
 }
