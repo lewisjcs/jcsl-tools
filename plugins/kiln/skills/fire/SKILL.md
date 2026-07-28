@@ -54,6 +54,8 @@ those consumers fall through to the ticket body (they already read `spec-draft.m
 
 Load `lanes.md` and `scenarios.md`. Determine lane + scenario now (from the entry + ticket). Tier + blast are NOT known yet — the Planner derives them from Compounds' classify step and returns them in its done-line; update the announcement with them after the Planner runs.
 
+- **PR-feedback entry (checked FIRST, before engine-bind / sentinel / branch)** (a PR URL/`#number`, NL feedback phrasing referencing the PR, a ticket In Review with an open PR carrying unresolved threads, or `--review`) → announce `**[Kiln] This is a review-feedback run — delegating to /process-review-feedback.**` and INVOKE the `process-review-feedback` skill with the resolved entry. Fire is one caller; it does not orchestrate the flow itself. Do NOT bind the engine, write the active-run sentinel, or create a work branch for this entry, and do NOT enter the build lanes. Relay the skill's final report and STOP Verb 2 here.
+
 **Bind the engine (router — a lookup, not judgment).** Load `engines.md`. Map the resolved scenario → engine per its router table: `code` → compounds; `tool-authoring`/`doc` → native; `mcp/agent-app`/`infra` → compounds but DORMANT (still HALT — do not route this pass). Write the ledger header `ENGINE: <compounds|native> | <ISO>` and **narrate the binding** (why-narration, always on regardless of flow-style):
 `[Kiln] <scenario> scenario → <engine> engine bound. <impl driver>; Inspector enforces <verify focus>. engine: <engine>.`
 Example: `[Kiln] code scenario → compounds engine bound. implement_task drives impl; Inspector enforces test adequacy. engine: compounds.`
