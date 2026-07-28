@@ -126,4 +126,18 @@ assert_exit "cache-key no-files: exit 2 (fail-loud)" "2" "$rc"
 out="$(bash "$SCRIPT" cache-path /tmp/smith-cache "$k1")"
 assert_eq "cache-path: composes" "/tmp/smith-cache/$k1.canon" "$out"
 
+# --- guard-relax: proposal-A-shaped diff (adds inline-edit prose) -> exit 5, names the line ---
+out="$(bash "$SCRIPT" guard-relax "$FIX/diff-guard-relax.patch" 2>&1)"; rc=$?
+assert_exit "guard-relax A-shape: exit 5" "5" "$rc"
+assert_eq  "guard-relax A-shape: flags RELAXATION" "true" "$(printf '%s' "$out" | grep -q 'RELAXATION' && echo true || echo false)"
+
+# --- guard-relax: routing-only diff (no relaxation phrase) -> exit 0 ---
+bash "$SCRIPT" guard-relax "$FIX/diff-guard-clean.patch" >/dev/null 2>&1; rc=$?
+assert_exit "guard-relax clean: exit 0" "0" "$rc"
+
+# --- guard-relax: content-line mention only in a REMOVED (-) line is not a relaxation add -> exit 0 ---
+# Guards the added-lines-only scan: removing inline-edit prose is a tightening, not a relaxation.
+bash "$SCRIPT" guard-relax "$FIX/diff-guard-removal.patch" >/dev/null 2>&1; rc=$?
+assert_exit "guard-relax removal-only: exit 0" "0" "$rc"
+
 exit $fail

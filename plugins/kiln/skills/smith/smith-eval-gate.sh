@@ -70,6 +70,19 @@ cmd_anti_gaming() { # $1 = unified diff file
   return 0
 }
 
+cmd_guard_relax() { # $1 = unified diff file -> exit 5 if an ADDED line authorizes a guard-forbidden action
+  local df="$1" bad
+  # Scan ADDED content lines only (^+ but not the +++ header). The guard forbids the
+  # main-thread conductor editing shipped source inline; flag prose that authorizes it.
+  # Phrase set is documented + case-insensitive; keep it small and specific to avoid
+  # false positives on legitimate member-dispatch prose.
+  bad="$(grep -E '^\+([^+]|$)' "$df" \
+    | grep -iE 'conductor may .*edit|apply the edit (directly|inline)|skip the crafter dispatch|inline fast-path' \
+    | head -1 || true)"
+  if [ -n "$bad" ]; then echo "RELAXATION: ${bad#+}" >&2; return 5; fi
+  return 0
+}
+
 cmd_tally() { # $1 = results file (lines "<scenario> PASS|FAIL"), $2 = thresholds.yaml
   local rf="$1" regressions=0
   # A scenario at pass_rate 1.0 fails the bar on any FAIL. (All bars are 1.0 today;
@@ -142,11 +155,12 @@ cmd_cache_path() { printf '%s/%s.canon\n' "$1" "$2"; }
 case "${1:-}" in
   diff)        shift; cmd_diff "$@" ;;
   anti-gaming) shift; cmd_anti_gaming "$@" ;;
+  guard-relax) shift; cmd_guard_relax "$@" ;;
   tally)       shift; cmd_tally "$@" ;;
   canon)       shift; cmd_canon "$@" ;;
   majority)    shift; cmd_majority "$@" ;;
   diff-pair)   shift; cmd_diff_pair "$@" ;;
   cache-key)   shift; cmd_cache_key "$@" ;;
   cache-path)  shift; cmd_cache_path "$@" ;;
-  *) echo "usage: smith-eval-gate.sh {diff <marker> <expected>|anti-gaming <diff>|tally <results> <thresholds>|canon <marker>|majority <marker>...|diff-pair <baseline> <proposal>|cache-key <scenario> <K> <prose-file>...|cache-path <cache-dir> <key>}" >&2; exit 2 ;;
+  *) echo "usage: smith-eval-gate.sh {diff <marker> <expected>|anti-gaming <diff>|guard-relax <diff>|tally <results> <thresholds>|canon <marker>|majority <marker>...|diff-pair <baseline> <proposal>|cache-key <scenario> <K> <prose-file>...|cache-path <cache-dir> <key>}" >&2; exit 2 ;;
 esac
