@@ -41,3 +41,7 @@ thresholds:
     pass_rate: 1.0
   19-standard-medium-blast:
     pass_rate: 1.0
+  20-review-nl-entry:
+    pass_rate: 1.0
+  21-review-bootstrap-external-pr:
+    pass_rate: 1.0
