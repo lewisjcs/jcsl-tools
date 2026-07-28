@@ -148,4 +148,27 @@ assert_exit "guard-relax removal-only: exit 0" "0" "$rc"
 bash "$SCRIPT" guard-relax "$FIX/does-not-exist-nonexistent.patch" >/dev/null 2>&1; rc=$?
 assert_exit "guard-relax missing file: exit 2 (fail-loud)" "2" "$rc"
 
+# --- classify: guard-relaxation prose (proposal-A shape) -> includes guard-relaxation (+ routing-output, since it edits SKILL.md routing prose) ---
+out="$(bash "$SCRIPT" classify "$FIX/diff-guard-relax.patch")"
+assert_eq "classify A-shape: has guard-relaxation" "true" "$(printf '%s' "$out" | grep -q 'guard-relaxation' && echo true || echo false)"
+
+# --- classify: edits the guard hook code itself -> guard-hook-code ---
+out="$(bash "$SCRIPT" classify "$FIX/diff-hookcode.patch")"
+assert_eq "classify hook-code: has guard-hook-code" "true" "$(printf '%s' "$out" | grep -q 'guard-hook-code' && echo true || echo false)"
+
+# --- classify: routing table edit only -> routing-output, no guard/perf ---
+out="$(bash "$SCRIPT" classify "$FIX/diff-routing-only.patch")"
+assert_eq "classify routing: has routing-output" "true" "$(printf '%s' "$out" | grep -q 'routing-output' && echo true || echo false)"
+assert_eq "classify routing: no guard-relaxation" "false" "$(printf '%s' "$out" | grep -q 'guard-relaxation' && echo true || echo false)"
+
+# --- classify: detection-speed prose only (proposal-B shape) -> detection-perf ---
+out="$(bash "$SCRIPT" classify "$FIX/diff-detection-perf.patch")"
+assert_eq "classify B-shape: has detection-perf" "true" "$(printf '%s' "$out" | grep -q 'detection-perf' && echo true || echo false)"
+
+# --- classify: empty/unmatched diff -> unsure ---
+out="$(bash "$SCRIPT" classify "$FIX/diff-guard-clean.patch")"
+# diff-guard-clean touches lanes.md routing table -> routing-output; use a truly-unmatched fixture for unsure:
+out2="$(bash "$SCRIPT" classify "$FIX/diff-unrelated.patch")"
+assert_eq "classify unrelated: unsure" "true" "$(printf '%s' "$out2" | grep -q 'unsure' && echo true || echo false)"
+
 exit $fail

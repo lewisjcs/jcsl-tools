@@ -1,0 +1,5 @@
+--- a/plugins/kiln/skills/fire/SKILL.md
++++ b/plugins/kiln/skills/fire/SKILL.md
+@@ -52,7 +52,7 @@
+-Load `lanes.md` and `scenarios.md`. Determine lane + scenario now.
++Load `lanes.md` and `scenarios.md`. Determine lane + scenario now. If the entry already carries a resolved `compounds_classification: TRIVIAL` signal, tier is known now without waiting on the Planner.

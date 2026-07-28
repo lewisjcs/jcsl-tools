@@ -85,6 +85,22 @@ cmd_guard_relax() { # $1 = unified diff file -> exit 5 if an ADDED line authoriz
   return 0
 }
 
+cmd_classify() { # $1 = unified diff file -> space-separated dream-class set (always exit 0)
+  local df="$1" classes="" hdrs
+  hdrs="$(grep -E '^(--- |\+\+\+ |diff --git )' "$df" | sed -E 's#^(--- |\+\+\+ |diff --git )##' | tr ' ' '\n' | sed -E 's#^(a|b)/##' | grep -v '^$' | sort -u)"
+  # guard hook CODE edit
+  case "$hdrs" in *hooks/kiln-guard-*.sh*) classes="$classes guard-hook-code" ;; esac
+  # routing-output: edits a routing-bearing prose file
+  case "$hdrs" in *skills/fire/lanes.md*|*skills/fire/gates.md*|*skills/fire/scenarios.md*|*skills/fire/SKILL.md*) classes="$classes routing-output" ;; esac
+  # guard-relaxation prose (reuse the Task-1 scan)
+  if ! cmd_guard_relax "$df" >/dev/null 2>&1; then classes="$classes guard-relaxation"; fi
+  # detection/perf prose (speed of a decision, no routing-output token) — heuristic phrase set
+  if grep -E '^\+([^+]|$)' "$df" | grep -iqE 'fast-detect|short-circuit|without waiting|reached faster|redundant work|how fast'; then classes="$classes detection-perf"; fi
+  classes="$(printf '%s\n' $classes | grep -v '^$' | sort -u | tr '\n' ' ' | sed 's/[[:space:]]*$//')"
+  [ -z "$classes" ] && classes="unsure"
+  printf '%s\n' "$classes"
+}
+
 cmd_tally() { # $1 = results file (lines "<scenario> PASS|FAIL"), $2 = thresholds.yaml
   local rf="$1" regressions=0
   # A scenario at pass_rate 1.0 fails the bar on any FAIL. (All bars are 1.0 today;
@@ -158,11 +174,12 @@ case "${1:-}" in
   diff)        shift; cmd_diff "$@" ;;
   anti-gaming) shift; cmd_anti_gaming "$@" ;;
   guard-relax) shift; cmd_guard_relax "$@" ;;
+  classify)    shift; cmd_classify "$@" ;;
   tally)       shift; cmd_tally "$@" ;;
   canon)       shift; cmd_canon "$@" ;;
   majority)    shift; cmd_majority "$@" ;;
   diff-pair)   shift; cmd_diff_pair "$@" ;;
   cache-key)   shift; cmd_cache_key "$@" ;;
   cache-path)  shift; cmd_cache_path "$@" ;;
-  *) echo "usage: smith-eval-gate.sh {diff <marker> <expected>|anti-gaming <diff>|guard-relax <diff>|tally <results> <thresholds>|canon <marker>|majority <marker>...|diff-pair <baseline> <proposal>|cache-key <scenario> <K> <prose-file>...|cache-path <cache-dir> <key>}" >&2; exit 2 ;;
+  *) echo "usage: smith-eval-gate.sh {diff <marker> <expected>|anti-gaming <diff>|guard-relax <diff>|classify <diff>|tally <results> <thresholds>|canon <marker>|majority <marker>...|diff-pair <baseline> <proposal>|cache-key <scenario> <K> <prose-file>...|cache-path <cache-dir> <key>}" >&2; exit 2 ;;
 esac

@@ -1,0 +1,5 @@
+--- a/plugins/kiln/hooks/kiln-guard-conductor.sh
++++ b/plugins/kiln/hooks/kiln-guard-conductor.sh
+@@ -10,6 +10,7 @@
+ # deny main-thread edits to repos/ source while a run is active
++# (relaxed: allow one-line edits)
