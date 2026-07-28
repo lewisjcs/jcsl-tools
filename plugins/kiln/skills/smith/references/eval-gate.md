@@ -69,6 +69,7 @@ prose for the proposal side):
    canonicalizes each marker internally — do not pre-run `canon` on them). Its output is the
    canonical majority line; write it to the cache path (a one-byte prose change yields a different
    key, so a Kiln HEAD bump auto-invalidates the cache).
+   **Free-rider calibration:** having resolved the baseline majority for this scenario, also record a gold-diff for it — identify the representative raw marker (the one whose `canon` equals the majority) and run `smith-eval-gate.sh diff <representative> <expected/NN-*.json>`, appending `NN: PASS|FAIL(<fields>)` to a `calibration-freeride.txt` for this run. This is the partial-coverage anchor (only in-scope scenarios); it is NOT a gate on the proposal — it is drift telemetry captured for free from replays already done.
 2. **Produce the proposal majority.** Dispatch `K` conductor-role replays against the **proposed**
    prose (same `## Input`, same mode, same dispatch contract), then run `majority` on those `K` raw
    marker files directly to get the proposal's canonical majority line. The proposal side is never
@@ -214,10 +215,9 @@ This mode checks whether current Kiln prose still reproduces the gold fixtures
 never on a per-proposal basis — Steps 1–3 above (the differential gate) never read gold, and this
 is the **only** place gold is consulted.
 
-**Trigger:** run this anchor **before each Kiln version bump** (a pre-release step in the ship
-checklist — naturally load-bearing, since shipping always bumps the version), plus on-demand via
-`/smith --calibrate`. (A wall-clock cron was considered and rejected: nothing schedules Smith, so a
-cron with no scheduler is the rot mode this anchor exists to avoid.)
+**Trigger:** run this anchor before each Kiln version bump, plus on-demand via `/smith --calibrate`.
+
+**Release-preflight floor (the only mandatory trigger):** before a Kiln version bump, check `git diff <last-calibration-commit>..HEAD -- plugins/kiln/skills/fire/{SKILL,lanes,gates,scenarios}.md`. If routing prose changed AND no `--validate` run recorded a free-ride calibration covering it since that commit, the bump is BLOCKED until a full-19 `--calibrate` runs and its drift ratio is recorded in the PR. This makes the anchor fire exactly when drift risk is introduced, and never on idle weeks — an unrun anchor is strictly worse than none.
 
 **Procedure**, per `scenarios/NN-*.md`:
 1. Dispatch `K` conductor-role replays against the **current** Kiln prose — same dispatch contract
