@@ -215,7 +215,7 @@ This mode checks whether current Kiln prose still reproduces the gold fixtures
 never on a per-proposal basis — Steps 1–3 above (the differential gate) never read gold, and this
 is the **only** place gold is consulted.
 
-**Trigger:** run this anchor before each Kiln version bump, plus on-demand via `/smith --calibrate`.
+**Trigger:** on-demand via `/smith --calibrate`. The version-bump case is governed entirely by the release-preflight floor below — it is NOT a blanket "run before every bump" rule.
 
 **Release-preflight floor (the only mandatory trigger):** before a Kiln version bump, check `git diff <last-calibration-commit>..HEAD -- plugins/kiln/skills/fire/{SKILL,lanes,gates,scenarios}.md`. If routing prose changed AND no `--validate` run recorded a free-ride calibration covering it since that commit, the bump is BLOCKED until a full-19 `--calibrate` runs and its drift ratio is recorded in the PR. This makes the anchor fire exactly when drift risk is introduced, and never on idle weeks — an unrun anchor is strictly worse than none.
 
