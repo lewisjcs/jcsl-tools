@@ -55,6 +55,7 @@ cmd_diff() { # $1 = marker file, $2 = expected json
 
 cmd_anti_gaming() { # $1 = unified diff file
   local df="$1" bad
+  [ -r "$df" ] || { echo "anti-gaming: cannot read diff file: $df" >&2; return 2; }
   # Scan diff HEADER lines only (never +/- content lines): ---/+++ (unified, with or
   # without a/ b/ prefix), diff --git (both sides), and rename from/rename to (pure
   # renames carry no ---/+++ lines at all). Anchor on the path SUFFIX
@@ -72,6 +73,7 @@ cmd_anti_gaming() { # $1 = unified diff file
 
 cmd_guard_relax() { # $1 = unified diff file -> exit 5 if an ADDED line authorizes a guard-forbidden action
   local df="$1" bad
+  [ -r "$df" ] || { echo "guard-relax: cannot read diff file: $df" >&2; return 2; }
   # Scan ADDED content lines only (^+ but not the +++ header). The guard forbids the
   # main-thread conductor editing shipped source inline; flag prose that authorizes it.
   # Phrase set is documented + case-insensitive; keep it small and specific to avoid

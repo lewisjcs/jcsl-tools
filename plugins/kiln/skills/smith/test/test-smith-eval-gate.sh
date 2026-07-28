@@ -56,6 +56,10 @@ assert_eq  "anti-gaming rename: names scenarios/" "true" "$(printf '%s' "$out" |
 bash "$SCRIPT" anti-gaming "$FIX/diff-content-mentions-fixture.patch" >/dev/null 2>&1; rc=$?
 assert_exit "anti-gaming content-mention: exit 0 (content line ignored)" "0" "$rc"
 
+# --- anti-gaming: unreadable/missing diff file -> exit 2, fail-loud (never a silent 0/3 pass) ---
+bash "$SCRIPT" anti-gaming "$FIX/does-not-exist-nonexistent.patch" >/dev/null 2>&1; rc=$?
+assert_exit "anti-gaming missing file: exit 2 (fail-loud)" "2" "$rc"
+
 # --- tally: all pass -> RECOMMENDED, exit 0 ---
 out="$(bash "$SCRIPT" tally "$FIX/results-all-pass.txt" "$FIX/thresholds.yaml")"; rc=$?
 assert_eq  "tally all-pass: RECOMMENDED" "true" "$(printf '%s' "$out" | grep -q 'RECOMMENDED' && echo true || echo false)"
@@ -139,5 +143,9 @@ assert_exit "guard-relax clean: exit 0" "0" "$rc"
 # Guards the added-lines-only scan: removing inline-edit prose is a tightening, not a relaxation.
 bash "$SCRIPT" guard-relax "$FIX/diff-guard-removal.patch" >/dev/null 2>&1; rc=$?
 assert_exit "guard-relax removal-only: exit 0" "0" "$rc"
+
+# --- guard-relax: unreadable/missing diff file -> exit 2, fail-loud (never a silent 0/5 pass) ---
+bash "$SCRIPT" guard-relax "$FIX/does-not-exist-nonexistent.patch" >/dev/null 2>&1; rc=$?
+assert_exit "guard-relax missing file: exit 2 (fail-loud)" "2" "$rc"
 
 exit $fail
