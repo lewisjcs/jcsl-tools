@@ -35,6 +35,21 @@ scope is a scenario not tested, and silent omission reads as coverage it did not
 scenario for cost is distinct from the coverage the gate structurally cannot provide at all (see
 `## Scope — what a routing-marker diff can and cannot see`).
 
+## Step -1 — Classify & route (before anything else)
+Produce the proposal's unified diff and run:
+`bash ${CLAUDE_PLUGIN_ROOT}/skills/smith/smith-eval-gate.sh classify <diff-file>`
+The output is the dream-class set. Route to EVERY matching control (a diff often hits more than one):
+
+| Class | Control | On finding |
+|---|---|---|
+| `routing-output` | the differential gate (Steps 0–3 below) | `CHANGED` outside the intended set → Observation-only |
+| `guard-hook-code` | `bash plugins/kiln/hooks/test-kiln-guards.sh` (exit 0 = held) | non-zero → Observation-only: guard hook regressed |
+| `guard-relaxation` | `bash …/smith-eval-gate.sh guard-relax <diff-file>` (exit 5 = flagged) | exit 5 → Observation-only: authorizes a guard-forbidden action |
+| `detection-perf` | NONE the marker can see — measure out-of-band (§ Two-part label) | never Recommended on the gate alone |
+| `unsure` | none | annotate gate-blind; do NOT stamp Recommended |
+
+**Conservative rule:** if the set contains `unsure`, or a class whose only control is out-of-band, the proposal is NEVER stamped Recommended on gate evidence alone — it is labeled gate-blind and handed to Josh with whatever out-of-band evidence exists. The routing gate stays a *routing* gate; this step is what stops a routing `SAME` from silently clearing a change the marker cannot see.
+
 ## Step 0 — Anti-gaming pre-check (hard gate, before any replay)
 Produce the proposal's unified diff and run:
 `bash ${CLAUDE_PLUGIN_ROOT}/skills/smith/smith-eval-gate.sh anti-gaming <diff-file>`
@@ -136,6 +151,8 @@ subcommand for periodic drift detection):
   that scenario's baseline as unstable). Name the scenario, the changed fields, or the unstable side
   in the report.
 
+**Aggregate across controls.** The verdict is the AND of every routed control: RECOMMENDED iff the routing-gate verdict is RECOMMENDED (per the rule above) AND every other routed control passed (guard-hook exit 0; guard-relax exit 0) AND no class was left gate-blind-unproven. Any single control's finding → OBSERVATION-ONLY, naming the control and the finding. A `detection-perf` or `unsure` class present with no confirming out-of-band evidence → gate-blind → not Recommended.
+
 State the intended-change set explicitly in the report so "the proposal changed the thing it meant
 to" is never confused with "the proposal broke something."
 
@@ -152,6 +169,19 @@ Unintended regressions: <none | list>
 Gate cost: ≈ <in-scope scenarios> × 2 sides × K, minus baseline cache hits   (self-accounting — guardrail #5)
 Gated against: Kiln <version> @ <commit sha>   (staleness — guardrail #4)
 ```
+
+### Two-part label (when the proposal's value is not gate-visible)
+When a class is `detection-perf` (the routing gate reports `SAME` but the intended win is invisible to the marker — see `## Scope`), the label MUST split what the gate proved from what it did not:
+```
+Proposal <id> — <intent>
+  Safety:   [routing gate] SAME across in-scope scenarios — no routing regression
+            [guard-relax]  clean — no guard-forbidden authorization added
+  Efficacy: [out-of-band]  <metric> <before> → <after> on <real run id>  (a SAMPLE, not a benchmark)
+  Class:    <classes>  (detection/perf is marker-blind — efficacy NOT gate-provable by design)
+  Version:  gated against Kiln <commit>/<version>
+  Label:    RECOMMENDED (safety proven by gate+guard-relax; efficacy measured out-of-band)
+```
+The efficacy line is a MEASUREMENT, never a pass/fail gate — state that verbatim so no reader mistakes it for a threshold. Record the Kiln version/commit gated against (staleness).
 
 ## Guardrails (state they hold)
 - **External anchor:** the label comes from the live replay, never self-graded reasoning.
