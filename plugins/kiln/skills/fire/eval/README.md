@@ -2,7 +2,7 @@
 
 ## Harness Purpose
 
-Validates that The Kiln's routing decisions and gate logic match the design spec. Nineteen scenarios (01–19) cover every lane, gate combination, scenario type, and the conductor-guard behavior: 01–09 cover the P1 lanes (TRIVIAL/PLAN/EXECUTE), gates, scenario types, and the guard; 10–12 cover the P2.1 DESIGN/RESEARCH/design-doc-mid-flow routes; 13–14 cover the Compounds-engine behavior (code→Compounds, tool-authoring→native); 15 covers the context-preservation yield at a gate boundary; 16–18 cover the Curator close-out (compounds-engine, verify-fail-blocked, and native-engine skip); 19 covers the MEDIUM-blast rung — TASK-GATE blocks but the Walker does not dispatch. A calibration run compares The Kiln's announced decisions against the gold JSON fixtures in `expected/`.
+Validates that The Kiln's routing decisions and gate logic match the design spec. Twenty-one scenarios (01–21) cover every lane, gate combination, scenario type, and the conductor-guard behavior: 01–09 cover the P1 lanes (TRIVIAL/PLAN/EXECUTE), gates, scenario types, and the guard; 10–12 cover the P2.1 DESIGN/RESEARCH/design-doc-mid-flow routes; 13–14 cover the Compounds-engine behavior (code→Compounds, tool-authoring→native); 15 covers the context-preservation yield at a gate boundary; 16–18 cover the Curator close-out (compounds-engine, verify-fail-blocked, and native-engine skip); 19 covers the MEDIUM-blast rung — TASK-GATE blocks but the Walker does not dispatch; 20–21 cover the REVIEW lane's delegation to `/process-review-feedback` (20: NL feedback phrasing on an in-review ticket, resume path; 21: an external PR URL with no run folder, bootstrap path) — each is a routing-halt: fire's first Verb-2 branch classifies the entry as `lane: REVIEW`, hands off to the skill, and emits a marker with empty dispatch/skip lists and a delegation `halt_reason`. Both fixtures assert only fire's own routing decision — NOT the Sifter/Finisher/SIFT-GATE, which belong to `/process-review-feedback`'s internal flow and are outside fire's routing vocabulary (and not marker-instrumented; a known coverage gap). A calibration run compares The Kiln's announced decisions against the gold JSON fixtures in `expected/`.
 
 This is human-run, no CI automation. The harness is the ship-gate for any change to `SKILL.md` routing or gate logic.
 
@@ -23,7 +23,7 @@ what they compare against:
   the gold `expected/` fixtures via the `diff` subcommand, reporting a **drift ratio** (e.g. "15/19
   reproduce gold"). This is the *only* Smith path that reads gold; it detects drift, it does not gate.
 
-Both replay the same 19 scenarios via the same mode table (routing-halt / execution-observed / offline)
+Both replay the same 21 scenarios via the same mode table (routing-halt / execution-observed / offline)
 and majority-of-`K` sampling documented in `eval-gate.md`. The human-run procedure below remains the
 authoritative gold calibration; the Smith modes automate the replay, they do not replace the fixtures
 as ground truth.
@@ -114,7 +114,7 @@ Never retrofit a fixture to match observed output (gaming). A fixture reflects t
 
 ## Pass/Fail Criteria
 
-**Pass:** All twelve scenarios produce routing decisions that exactly match every field in their `expected/*.json` fixture.
+**Pass:** All twenty-one scenarios produce routing decisions that exactly match every field in their `expected/*.json` fixture.
 
 **Fail:** Any field mismatch in any scenario. Common failure modes:
 - Wrong lane (e.g., routing a sparse ticket to EXECUTE instead of RESEARCH, or skipping SPEC-GATE on a DESIGN run)

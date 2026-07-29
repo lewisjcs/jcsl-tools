@@ -1,0 +1,8 @@
+{
+  "scenario": "21-review-bootstrap-external-pr",
+  "routing": { "lane": "REVIEW", "tier": "N/A", "blast_radius": "N/A", "scenario_type": "N/A" },
+  "gates": { "PLAN-GATE": false, "TASK-GATE": false },
+  "agents_dispatched": [],
+  "agents_skipped": [],
+  "halt_reason": "review-feedback entry — delegating to /process-review-feedback; fire routes and hands off, orchestrating no members itself"
+}

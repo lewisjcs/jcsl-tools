@@ -54,6 +54,20 @@ those consumers fall through to the ticket body (they already read `spec-draft.m
 
 Load `lanes.md` and `scenarios.md`. Determine lane + scenario now (from the entry + ticket). Tier + blast are NOT known yet — the Planner derives them from Compounds' classify step and returns them in its done-line; update the announcement with them after the Planner runs.
 
+- **PR-feedback entry (checked FIRST, before engine-bind / sentinel / branch)** (a PR URL/`#number`, NL feedback phrasing referencing the PR, a ticket In Review with an open PR carrying unresolved threads, or `--review`) → announce `**[Kiln] This is a review-feedback run — delegating to /process-review-feedback.**` and INVOKE the `process-review-feedback` skill with the resolved entry. Fire is one caller; it does not orchestrate the flow itself. Do NOT bind the engine, write the active-run sentinel, or create a work branch for this entry, and do NOT enter the build lanes.
+  **Emit the routing marker for this halt BEFORE stopping** (fire short-circuits here, ahead of the general marker-emit step below, so the REVIEW branch emits its own minimal marker). This is a routing-halt: fire decides the lane and hands off — it never binds an engine, classifies a `scenario_type`, or dispatches a Kiln member, so every value except `lane` and `halt_reason` is `N/A`/empty. The Sifter, Finisher, and SIFT-GATE belong to `/process-review-feedback`'s internal flow, NOT to fire's routing vocabulary — they are never named here (see the marker-grammar `REVIEW` rule below). Emit exactly:
+  ```kiln-routing
+  lane: REVIEW
+  tier: N/A
+  blast_radius: N/A
+  scenario_type: N/A
+  gates_fired: []
+  agents_dispatched: []
+  agents_skipped: []
+  halt_reason: review-feedback entry — delegating to /process-review-feedback; fire routes and hands off, orchestrating no members itself
+  ```
+  Then relay the skill's final report and STOP Verb 2 here.
+
 **Bind the engine (router — a lookup, not judgment).** Load `engines.md`. Map the resolved scenario → engine per its router table: `code` → compounds; `tool-authoring`/`doc` → native; `mcp/agent-app`/`infra` → compounds but DORMANT (still HALT — do not route this pass). Write the ledger header `ENGINE: <compounds|native> | <ISO>` and **narrate the binding** (why-narration, always on regardless of flow-style):
 `[Kiln] <scenario> scenario → <engine> engine bound. <impl driver>; Inspector enforces <verify focus>. engine: <engine>.`
 Example: `[Kiln] code scenario → compounds engine bound. implement_task drives impl; Inspector enforces test adequacy. engine: compounds.`
@@ -96,6 +110,15 @@ live routing judgment (from `lanes.md`/`gates.md`, never from this list):
   PLAN/LOW run skips `[walker]` only, not `scout`/`designer`/`curator`. `curator` is listed in
   `agents_dispatched` only on a run you drive through close-out; on a routing-halt it is neither
   dispatched nor skipped.
+- **`REVIEW` is a routing-halt lane — a valid `lane` value that dispatches and skips NO members.** A
+  PR-feedback entry (Verb 2's first branch) hands off to `/process-review-feedback` before fire binds an
+  engine or enters a build lane, so fire runs none of its own members: BOTH `agents_dispatched` and
+  `agents_skipped` are `[]`, and `halt_reason` carries the delegation reason (same shape as the
+  `HALT-AND-ASK` routing-halt, differing only in that HALT-AND-ASK's roster is the build set it declined
+  while REVIEW's roster is empty — fire never owned any member for this entry). The Sifter, Finisher, and
+  Diagnostician are `/process-review-feedback`'s agents and SIFT-GATE is its gate; none is a fire member,
+  so none is ever named in `agents_dispatched`, `agents_skipped`, or `gates_fired`. (Fire's routing marker
+  records only fire's decision; the skill's internal flow is not marker-instrumented — a known follow-up.)
 - **`gates_fired` enumerates every gate this run fires that is determinable at this checkpoint — not just
   the gate you are paused at.** Which gates fire is the `gates.md` logic (do not restate it here); the
   serialization rule is completeness: a DESIGN/RESEARCH run lists `[SPEC-GATE, PLAN-GATE]` at the routing

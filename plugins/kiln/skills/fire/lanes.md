@@ -16,6 +16,10 @@ routes into RESEARCH/DESIGN instead of halting.
 | Quoted string, no ticket | net-new | **DESIGN** | Designer → SPEC-GATE → Planner → Build (local kebab-slug run-id; NO Jira offer — P2.2) |
 | File = design doc (`## Approaches`/`## Architecture`, no AC) | design-doc | **DESIGN (mid-flow)** | Designer enters with design.md pre-supplied → convert → SPEC-GATE → Planner → Build |
 | re-invoke with active run folder + ledger | resume | RESUME | read ledger → Build from first incomplete |
+| NL feedback phrasing referencing the PR ("got comments/feedback on the PR", "reviewer left notes", "address the review comments on the PR") | review-nl | **→ /process-review-feedback** | (delegated — fire is one caller) |
+| A PR URL or `#<number>` (+ repo) | review-direct | **→ /process-review-feedback** | (delegated) |
+| `<KEY>` ticket In Review + open PR with unresolved threads | review-pending | **→ /process-review-feedback** | (delegated) |
+| `<KEY> --review` explicit flag | review-forced | **→ /process-review-feedback** | (delegated) |
 | file shape none-of-the-above | — | HALT-AND-ASK | (don't guess) |
 
 ## Doc-shape detection (borrowed from the Gauntlet tiebreaker)
@@ -44,3 +48,20 @@ is derived from the SYNTHESIZED file targets after the Designer runs, and may re
 
 If the change spans multiple repos, DO NOT silently mis-route. Announce:
 "This spans N repos — the Kiln runs one repo per run. This is N single-repo runs." Then stop and let the user choose.
+
+## REVIEW entry (delegated to /process-review-feedback)
+
+Review-feedback reception is NOT an in-conductor lane — it lives in the standalone
+`/process-review-feedback` skill (gauntlet-style; the conductor is one caller). When fire detects a
+PR-feedback entry (NL phrasing referencing the PR, a PR URL/`#number`, a ticket already In Review with
+unresolved threads, or `--review`), it announces the REVIEW path and INVOKES that skill with the
+resolved entry, then relays the skill's outcome. Fire does not re-implement PR resolution, the Sifter,
+SIFT-GATE, routing, or the Finisher — the skill owns all of it. The run-folder/ledger convention is
+shared, so a fire-authored run resumes seamlessly under the skill.
+
+**Disambiguation:** "address the feedback" delegates here ONLY when an open PR with unresolved threads
+exists; otherwise it is design feedback (SPEC-GATE re-dispatch), not this path.
+
+**Precedence:** the REVIEW rows take precedence over the shape-based lane rows above them. When a PR-feedback signal is present (a PR URL/`#number`, NL phrasing referencing the PR, `--review`, or a `<KEY>` whose ticket is In Review with an open PR carrying unresolved threads), route to `/process-review-feedback` even if the same `<KEY>` would otherwise match a `complete`/`partial`/`spec` row on its body shape — an In-Review ticket with an open PR under review is past the build lanes. **Tie-breaker vs. `resume`:** an active `{{RUN_FOLDER}}` for the key normally routes `resume`, but a REVIEW signal still wins — the run-folder/ledger convention is shared, so `/process-review-feedback` picks up that same run folder on its own resume path (Step 0b). The one exception: if the run folder's ledger shows an INCOMPLETE build loop (a task without `DONE`, no `SIFT-GATE` line), that is a forward-pass resume, not review feedback — finish the build (`resume`) before the PR can have review threads.
+
+**Best-guess routing (fire does not confirm the signal itself).** Fire routes to REVIEW on the ENTRY SHAPE (a PR ref / NL phrasing / `--review` / an In-Review ticket) — it does NOT verify that an open PR with unresolved threads actually exists; that determination belongs to `/process-review-feedback` Step 0, which HALT-AND-ASKs ("No open PR with unresolved review threads — nothing to process.") if the signal was wrong. So fire's route here is a best-guess hand-off, and the skill is the authority that confirms or rejects it. Fire never silently mis-builds on a bad guess — the worst case is a clean halt inside the skill.
