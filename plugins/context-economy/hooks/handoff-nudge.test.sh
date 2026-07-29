@@ -47,11 +47,19 @@ assert "missing transcript exits 0" "0" "$(run_rc "$(payload "$TMP/nope.jsonl" s
 T="$(make_transcript 130000)"
 assert "no event log is silent" "SILENT" "$(run "$(payload "$T" s5)")"
 
-# 6. Escalation: second fire uses stronger wording ("Strongly consider").
+# 6. Freshness: fires once per NEW boundary, not every prompt on the same boundary.
 T="$(make_transcript 130000)"; mk_events s6 yes
-_=$(printf '%s' "$(payload "$T" s6)" | bash "$HOOK")   # fire #1
-out2="$(printf '%s' "$(payload "$T" s6)" | bash "$HOOK")"  # fire #2
-assert "second fire escalates" "yes" "$(echo "$out2" | grep -q 'Strongly consider' && echo yes || echo no)"
+assert "first fire on new boundary" "FIRED" "$(run "$(payload "$T" s6)")"
+assert "same boundary again is silent" "SILENT" "$(run "$(payload "$T" s6)")"
+printf '{"kind":"boundary","boundary":"pr","turn":9,"load":130000}\n' >> "$HOME/.claude/hooks/state/events-s6.jsonl"
+assert "new boundary re-fires" "FIRED" "$(run "$(payload "$T" s6)")"
+
+# 7. Escalation: second fire (on a NEW boundary) uses stronger wording ("Strongly consider").
+T="$(make_transcript 130000)"; mk_events s7 yes
+_=$(printf '%s' "$(payload "$T" s7)" | bash "$HOOK")   # fire #1 gentle
+printf '{"kind":"boundary","boundary":"pr","turn":9,"load":130000}\n' >> "$HOME/.claude/hooks/state/events-s7.jsonl"
+out2="$(printf '%s' "$(payload "$T" s7)" | bash "$HOOK")"  # fire #2 on new boundary
+assert "second fire (new boundary) escalates" "yes" "$(echo "$out2" | grep -q 'Strongly consider' && echo yes || echo no)"
 
 echo "PASS=$PASS FAIL=$FAIL"
 [ "$FAIL" -eq 0 ]

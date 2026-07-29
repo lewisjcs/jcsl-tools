@@ -18,8 +18,15 @@ STATE_DIR="$HOME/.claude/hooks/state"
 LOG="$STATE_DIR/events-$SESSION_ID.jsonl"
 [ -f "$LOG" ] || exit 0
 
-# A boundary must exist in the log (clean stopping point).
-BOUNDARY=$(jq -r 'select(.kind=="boundary") | .boundary' "$LOG" 2>/dev/null | tail -1)
+# A NEW boundary must exist since the last fire (clean stopping point, not every prompt).
+# The event log is append-only, so its line count is a monotonic position marker.
+# Fail-open: an unreadable/absent position file means POS=0 (treat all as new) — fails toward nudging.
+POS_FILE="$STATE_DIR/handoff-nudgepos-$SESSION_ID"
+POS=$(cat "$POS_FILE" 2>/dev/null); [[ "$POS" =~ ^[0-9]+$ ]] || POS=0
+BOUNDARY_LINE=$(grep -n '"kind":"boundary"' "$LOG" 2>/dev/null | tail -1 | cut -d: -f1)
+[[ "$BOUNDARY_LINE" =~ ^[0-9]+$ ]] || exit 0        # no boundary event at all → silent
+[ "$BOUNDARY_LINE" -gt "$POS" ] || exit 0           # boundary already nudged → silent
+BOUNDARY=$(sed -n "${BOUNDARY_LINE}p" "$LOG" 2>/dev/null | jq -r '.boundary // empty' 2>/dev/null)
 [ -n "$BOUNDARY" ] || exit 0
 
 # Token-load proxy: tokens on the most recent assistant turn.
@@ -43,8 +50,9 @@ PY
 [[ "$LOAD" =~ ^[0-9]+$ ]] || exit 0
 [ "$LOAD" -ge "$THRESH" ] || exit 0
 
-# Escalation counter (fires every prompt once conditions hold; wording escalates).
+# Escalation counter (fires once per new boundary; wording escalates on successive fires).
 mkdir -p "$STATE_DIR" 2>/dev/null || exit 0
+echo "$BOUNDARY_LINE" > "$POS_FILE" 2>/dev/null
 CTR_FILE="$STATE_DIR/handoff-nudged-$SESSION_ID"
 CTR=$(cat "$CTR_FILE" 2>/dev/null); [[ "$CTR" =~ ^[0-9]+$ ]] || CTR=0
 CTR=$((CTR+1)); echo "$CTR" > "$CTR_FILE" 2>/dev/null
