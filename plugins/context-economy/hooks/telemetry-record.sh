@@ -14,25 +14,36 @@ SKILL=$(echo "$INPUT" | jq -r '.tool_input.skill // "unknown"' 2>/dev/null)
 [ -n "$HOME" ] || exit 0
 [ -n "$SESSION_ID" ] || exit 0
 
+STATE_DIR="$HOME/.claude/hooks/state"
+
 # Decide what event (if any) this tool call represents.
 KIND=""; FIELD=""; VAL=""
 case "$TOOL" in
   Skill)
     KIND="skill"; FIELD="skill"; VAL="$SKILL" ;;
   TodoWrite)
-    if echo "$INPUT" | jq -e '.tool_input.todos[]? | select(.status=="completed")' >/dev/null 2>&1; then
+    # Claude Code resends the FULL todo list every call, so "any item completed" is a
+    # level, not an edge — it would fire a boundary on every call for the rest of the
+    # session once the first item completes. Track the completed COUNT's high-water
+    # mark per session and only fire when it grows (a genuinely new completion).
+    COMPLETED_N=$(echo "$INPUT" | jq '[.tool_input.todos[]? | select(.status=="completed")] | length' 2>/dev/null)
+    [[ "$COMPLETED_N" =~ ^[0-9]+$ ]] || COMPLETED_N=0
+    TODO_MARK="$STATE_DIR/todo-completed-n-$SESSION_ID"
+    PREV_N=$(cat "$TODO_MARK" 2>/dev/null); [[ "$PREV_N" =~ ^[0-9]+$ ]] || PREV_N=0
+    if [ "$COMPLETED_N" -gt "$PREV_N" ]; then
+      mkdir -p "$STATE_DIR" 2>/dev/null && echo "$COMPLETED_N" > "$TODO_MARK" 2>/dev/null
       KIND="boundary"; FIELD="boundary"; VAL="todo"
     fi ;;
   Bash)
     CMD=$(echo "$INPUT" | jq -r '.tool_input.command // ""' 2>/dev/null)
-    if echo "$CMD" | grep -Eq '\bgh +pr +create\b|\bcreate_pull_request\b'; then KIND="boundary"; FIELD="boundary"; VAL="pr"
-    elif echo "$CMD" | grep -Eq '\bgit +commit\b'; then KIND="boundary"; FIELD="boundary"; VAL="commit"
+    # Anchor to command position (start-of-string or after &&/;/|/||), not any substring
+    # match, so a mention like `git log --grep="git commit"` doesn't false-fire.
+    if echo "$CMD" | grep -Eq '(^|&&|\;|\|\||\|)[[:space:]]*(gh[[:space:]]+pr[[:space:]]+create|create_pull_request)\b'; then KIND="boundary"; FIELD="boundary"; VAL="pr"
+    elif echo "$CMD" | grep -Eq '(^|&&|\;|\|\||\|)[[:space:]]*git[[:space:]]+commit\b'; then KIND="boundary"; FIELD="boundary"; VAL="commit"
     fi ;;
 esac
 [ -n "$KIND" ] || exit 0
-
-STATE_DIR="$HOME/.claude/hooks/state"
-LOG="$STATE_DIR/events-$SESSION_ID.jsonl"
+LOG="$STATE_DIR/ce-events-$SESSION_ID.jsonl"
 
 # turn count + token-load proxy from the transcript (dedup asst usage by message.id).
 METRICS=$(python3 - "$TRANSCRIPT" <<'PY'
@@ -65,7 +76,7 @@ LOAD="${METRICS##* }"
 [[ "$LOAD" =~ ^[0-9]+$ ]] || LOAD=0
 
 mkdir -p "$STATE_DIR" 2>/dev/null || exit 0
-find "$STATE_DIR" -name 'events-*.jsonl' -type f -mtime +30 -delete 2>/dev/null
+find "$STATE_DIR" -name 'ce-events-*.jsonl' -type f -mtime +30 -delete 2>/dev/null
 
 { jq -nc --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --arg s "$SESSION_ID" \
          --arg kind "$KIND" --arg field "$FIELD" --arg val "$VAL" \

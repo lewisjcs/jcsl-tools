@@ -52,7 +52,7 @@ Three lifecycle hooks register via `hooks/hooks.json`. All are reminders — non
 
 | Hook | Event | Role | Env knob(s) | Default |
 |------|-------|------|-------------|---------|
-| `telemetry-record.sh` | `PostToolUse` (matcher `Skill\|TodoWrite\|Bash`) | Records skill-firing + task-boundary events to `~/.claude/hooks/state/events-<session>.jsonl` | — | — |
+| `telemetry-record.sh` | `PostToolUse` (matcher `Skill\|TodoWrite\|Bash`) | Records skill-firing + task-boundary events to `~/.claude/hooks/state/ce-events-<session>.jsonl` | — | — |
 | `handoff-nudge.sh` | `UserPromptSubmit` (matcher `*`) | **Primary.** Mid-session, boundary-gated handoff nudge — fires when token load is high at a clean task boundary | `CONTEXT_LOAD_NUDGE_TOKENS` | `120000` |
 | `context-reset-nudge.sh` | `Stop` (matcher `*`) | **Backstop (trial).** Turn-count nudge, raised behind the mid-session nudge; retained until Phase 2 retro data confirms the mid-session nudge suffices | `CONTEXT_NUDGE_TURNS`, `CONTEXT_NUDGE_MIN_USER_TURNS` | `150`, `5` |
 

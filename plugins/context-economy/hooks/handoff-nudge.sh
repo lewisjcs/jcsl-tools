@@ -15,7 +15,7 @@ THRESH="${CONTEXT_LOAD_NUDGE_TOKENS:-120000}"
 [[ "$THRESH" =~ ^[0-9]+$ ]] || exit 0
 
 STATE_DIR="$HOME/.claude/hooks/state"
-LOG="$STATE_DIR/events-$SESSION_ID.jsonl"
+LOG="$STATE_DIR/ce-events-$SESSION_ID.jsonl"
 [ -f "$LOG" ] || exit 0
 
 # A NEW boundary must exist since the last fire (clean stopping point, not every prompt).
@@ -51,11 +51,17 @@ PY
 [ "$LOAD" -ge "$THRESH" ] || exit 0
 
 # Escalation counter (fires once per new boundary; wording escalates on successive fires).
+# Write the position marker FIRST and gate the nudge on it succeeding — mirrors
+# context-reset-nudge.sh's fire-once pattern. If the state dir is unwritable we cannot
+# record that we fired, so staying silent (not emitting the nudge) is the only way to
+# honor once-per-boundary; emitting anyway would re-fire on every subsequent prompt.
+# Redirections are grouped so a failing `>` (dir unwritable) is caught by 2>/dev/null too —
+# `cmd > file 2>/dev/null` alone lets the shell's own "Permission denied" leak to stderr.
 mkdir -p "$STATE_DIR" 2>/dev/null || exit 0
-echo "$BOUNDARY_LINE" > "$POS_FILE" 2>/dev/null
+{ echo "$BOUNDARY_LINE" > "$POS_FILE"; } 2>/dev/null || exit 0
 CTR_FILE="$STATE_DIR/handoff-nudged-$SESSION_ID"
 CTR=$(cat "$CTR_FILE" 2>/dev/null); [[ "$CTR" =~ ^[0-9]+$ ]] || CTR=0
-CTR=$((CTR+1)); echo "$CTR" > "$CTR_FILE" 2>/dev/null
+CTR=$((CTR+1)); { echo "$CTR" > "$CTR_FILE"; } 2>/dev/null
 
 if [ "$CTR" -ge 2 ]; then
   MSG="Context load is high and you just hit a '$BOUNDARY' boundary — this is a clean checkpoint. Strongly consider invoking the context-economy handoff skill now, then /clear. (nudge #$CTR)"

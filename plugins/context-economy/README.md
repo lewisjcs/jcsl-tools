@@ -38,7 +38,7 @@ Three hooks work together across the session lifecycle. All are reminders — no
 
 ### `telemetry-record.sh` (PostToolUse, matcher `Skill|TodoWrite|Bash`)
 
-Appends one JSONL event per Skill firing or task-boundary tool call (a completed `TodoWrite` item, a `git commit`, or a `gh pr create`) to `~/.claude/hooks/state/events-<session_id>.jsonl`. Each event carries a distinct-turn count and a token-load proxy (last assistant turn's `input_tokens + cache_read + cache_creation`). This log is the shared substrate the handoff nudge reads to detect boundaries — no config knobs.
+Appends one JSONL event per Skill firing or task-boundary tool call (a completed `TodoWrite` item, a `git commit`, or a `gh pr create`) to `~/.claude/hooks/state/ce-events-<session_id>.jsonl`. Each event carries a distinct-turn count and a token-load proxy (last assistant turn's `input_tokens + cache_read + cache_creation`). This log is the shared substrate the handoff nudge reads to detect boundaries — no config knobs.
 
 ### `handoff-nudge.sh` (UserPromptSubmit, matcher `*`) — **primary**
 
