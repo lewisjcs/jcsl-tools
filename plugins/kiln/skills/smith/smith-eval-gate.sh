@@ -55,6 +55,7 @@ cmd_diff() { # $1 = marker file, $2 = expected json
 
 cmd_anti_gaming() { # $1 = unified diff file
   local df="$1" bad
+  [ -r "$df" ] || { echo "anti-gaming: cannot read diff file: $df" >&2; return 2; }
   # Scan diff HEADER lines only (never +/- content lines): ---/+++ (unified, with or
   # without a/ b/ prefix), diff --git (both sides), and rename from/rename to (pure
   # renames carry no ---/+++ lines at all). Anchor on the path SUFFIX
@@ -68,6 +69,73 @@ cmd_anti_gaming() { # $1 = unified diff file
     | head -1 || true)"
   if [ -n "$bad" ]; then echo "REJECTED: proposal diff touches a fixture/scenario: $bad" >&2; return 3; fi
   return 0
+}
+
+cmd_guard_relax() { # $1 = unified diff file -> exit 5 if an ADDED line authorizes a guard-forbidden action
+  local df="$1" bad
+  [ -r "$df" ] || { echo "guard-relax: cannot read diff file: $df" >&2; return 2; }
+  # Scan ADDED content lines only (^+ but not the +++ header). The guard forbids the
+  # main-thread conductor editing shipped source inline / skipping the Crafter; flag prose
+  # that authorizes it. A fixed-phrase whitelist is trivially evaded by rephrasing and can
+  # split a single authorization across two added lines, so we instead:
+  #   1. JOIN all added lines into one stream (a clause may straddle a line break),
+  #   2. split that stream into CLAUSES on . ; : boundaries,
+  #   3. flag a clause that matches a relaxation CATEGORY (semantic, not one fixed phrase)
+  #      AND carries no negation token — so "the conductor may NEVER edit inline" (a
+  #      tightening) is not misread as authorization.
+  # Bash-3.2/macOS-awk-safe: no \b (unsupported by BWK awk) — normalize punctuation to
+  # spaces and match space-padded ` token ` forms instead. Clause-level negation scoping
+  # biases toward missing a relaxation over misflagging a tightening; the structural
+  # guard-hook pairing (eval-gate.md Step -1) is the backstop against a missed prose match.
+  bad="$(grep -E '^\+([^+]|$)' "$df" | sed -E 's/^\+//' | awk '
+    { buf = buf " " tolower($0) }
+    END {
+      n = split(buf, cl, /[.;:]/)
+      for (i = 1; i <= n; i++) {
+        c = cl[i]
+        gsub(/[^a-z0-9]+/, " ", c); c = " " c " "
+        # negation guard: a clause that forbids the action is a tightening, not a relaxation
+        if (c ~ / (not|never|cannot|cant|dont|doesnt|wont) /) continue
+        # relaxation categories (conductor edits shipped source inline / skips the Crafter):
+        if (c ~ /(authoriz|permit|allow|may|can|able to|free to|allowed to).*(edit|writ|apply|modif|chang).*(inline|in place|directly|itself|without dispatch|without a crafter|without the crafter|without dispatching)/ ||
+            c ~ /(edit|writ|apply|modif|chang).*(inline|in place|directly).*(without|instead of|rather than).*(crafter|dispatch|member)/ ||
+            c ~ /(skip|skips|bypass|forgo|forego|avoid|omit|without).*(crafter|craft|dispatch|member|delegat)/ ||
+            c ~ /inline fast path/) {
+          gsub(/^ +| +$/, "", c); print c; exit
+        }
+      }
+    }' || true)"
+  if [ -n "$bad" ]; then echo "RELAXATION: ${bad}" >&2; return 5; fi
+  return 0
+}
+
+cmd_classify() { # $1 = unified diff file -> space-separated dream-class set (always exit 0)
+  local df="$1" classes="" hdrs h
+  hdrs="$(grep -E '^(--- |\+\+\+ |diff --git )' "$df" | sed -E 's#^(--- |\+\+\+ |diff --git )##' | tr ' ' '\n' | sed -E 's#^(a|b)/##' | grep -v '^$' | sort -u)"
+  # path-based classes: match each header path INDIVIDUALLY (case globs match
+  # newlines too, so matching against the whole multi-line $hdrs blob lets a
+  # pattern bleed across two unrelated paths on a multi-file diff).
+  while IFS= read -r h; do
+    [ -n "$h" ] || continue
+    # guard hook CODE edit — the guard hooks themselves AND their test harness
+    # (test-kiln-guards.sh is the control eval-gate.md names for this class; the bare
+    # kiln-guard-*.sh glob does not match it, so name it explicitly).
+    case "$h" in *hooks/kiln-guard-*.sh|*hooks/test-kiln-guards.sh) classes="$classes guard-hook-code" ;; esac
+    # routing-output: edits a routing-bearing prose file (suffix match — header
+    # paths carry the diff's root prefix, e.g. plugins/kiln/skills/fire/gates.md)
+    case "$h" in *skills/fire/lanes.md|*skills/fire/gates.md|*skills/fire/scenarios.md|*skills/fire/SKILL.md) classes="$classes routing-output" ;; esac
+  done <<EOF
+$hdrs
+EOF
+  # guard-relaxation prose (reuse the Task-1 scan): only an actual relaxation
+  # match (exit 5) adds the class. An unreadable file (exit 2) falls through
+  # to unsure like any other unmatched input, rather than being misclassified.
+  cmd_guard_relax "$df" >/dev/null 2>&1; case $? in 5) classes="$classes guard-relaxation" ;; esac
+  # detection/perf prose (speed of a decision, no routing-output token) — heuristic phrase set
+  if grep -E '^\+([^+]|$)' "$df" | grep -iqE 'fast-detect|short-circuit|without waiting|reached faster|redundant work|how fast'; then classes="$classes detection-perf"; fi
+  classes="$(printf '%s\n' $classes | grep -v '^$' | sort -u | tr '\n' ' ' | sed 's/[[:space:]]*$//')"
+  [ -z "$classes" ] && classes="unsure"
+  printf '%s\n' "$classes"
 }
 
 cmd_tally() { # $1 = results file (lines "<scenario> PASS|FAIL"), $2 = thresholds.yaml
@@ -142,11 +210,13 @@ cmd_cache_path() { printf '%s/%s.canon\n' "$1" "$2"; }
 case "${1:-}" in
   diff)        shift; cmd_diff "$@" ;;
   anti-gaming) shift; cmd_anti_gaming "$@" ;;
+  guard-relax) shift; cmd_guard_relax "$@" ;;
+  classify)    shift; cmd_classify "$@" ;;
   tally)       shift; cmd_tally "$@" ;;
   canon)       shift; cmd_canon "$@" ;;
   majority)    shift; cmd_majority "$@" ;;
   diff-pair)   shift; cmd_diff_pair "$@" ;;
   cache-key)   shift; cmd_cache_key "$@" ;;
   cache-path)  shift; cmd_cache_path "$@" ;;
-  *) echo "usage: smith-eval-gate.sh {diff <marker> <expected>|anti-gaming <diff>|tally <results> <thresholds>|canon <marker>|majority <marker>...|diff-pair <baseline> <proposal>|cache-key <scenario> <K> <prose-file>...|cache-path <cache-dir> <key>}" >&2; exit 2 ;;
+  *) echo "usage: smith-eval-gate.sh {diff <marker> <expected>|anti-gaming <diff>|guard-relax <diff>|classify <diff>|tally <results> <thresholds>|canon <marker>|majority <marker>...|diff-pair <baseline> <proposal>|cache-key <scenario> <K> <prose-file>...|cache-path <cache-dir> <key>}" >&2; exit 2 ;;
 esac

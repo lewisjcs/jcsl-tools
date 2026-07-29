@@ -65,19 +65,20 @@ Kiln, never re-invokes a member, never touches a fixture.**
 ## Mode: `--validate <proposal>` (eval gate — on-demand, opt-in)
 
 When invoked as `/smith --validate <proposal>` (a branch or diff touching Kiln routing/gate logic),
-run the eval gate instead of the briefing: load `${CLAUDE_PLUGIN_ROOT}/skills/smith/references/eval-gate.md`
-and follow it exactly (anti-gaming pre-check → two-sided K-sample replay (baseline vs proposal) →
-per-scenario diff-pair → labeled report with self-accounted cost). The gate is the ONLY expensive
+run the eval gate instead of the briefing: load `${CLAUDE_PLUGIN_ROOT}/skills/smith/references/eval-gate.md` and follow it exactly (**Step -1 classify & route** → anti-gaming pre-check → per-class controls: two-sided K-sample routing replay, guard-hook test, guard-relax check → aggregated two-part labeled report with self-accounted cost). A routing `SAME` never clears a class the marker cannot see — the classifier routes those to their own control or labels them gate-blind. The gate is the ONLY expensive
 Smith operation in this mode; the morning briefing (above) stays read-only and never triggers it.
 
 ## Mode: `--calibrate` (periodic gold anchor)
 
 When invoked as `/smith --calibrate`, load `${CLAUDE_PLUGIN_ROOT}/skills/smith/references/eval-gate.md`
 and run its "Calibration anchor" procedure: K replays per scenario against current Kiln → `majority`
-→ `diff` the representative marker vs gold → report a drift ratio. This mode is periodic — it fires
-before each Kiln version bump (a pre-release ship-checklist step) and on-demand via `/smith
---calibrate` — never per-proposal, and it is the only Smith mode that consults gold
-(`expected/*.json`).
+→ `diff` the representative marker vs gold → report a drift ratio. This mode runs on-demand via
+`/smith --calibrate` — never per-proposal — and it is the only Smith mode that consults gold
+(`expected/*.json`). The version-bump case is conditional, not a blanket pre-release step: it is
+mandatory only when routing prose changed since the last recorded calibration without an
+intervening `--validate` free-ride (the release-preflight floor — see the free-rider note below).
+
+**Free-rider (A′):** a `--validate` run already replays the current prose per in-scope scenario (its baseline side). That run records a partial-coverage gold-diff from those same markers at no extra replay cost — so a validated PR needs no separate `--calibrate`. The dedicated full-21 `--calibrate` is the *floor*: it fires (a) on-demand, and (b) as a release-preflight when routing prose changed since the last recorded calibration WITHOUT an intervening `--validate`. Both modes persist their result to the ledger file `${CLAUDE_PLUGIN_ROOT}/skills/smith/.last-calibration` (one active record: `<sha> <coverage> <date> <ratio>`), which is what the release-preflight floor reads to know "since when" — a recorded calibration always states its coverage (`partial-freeride` vs `full-21`) so a partial ride is never mistaken for a full anchor. See `references/eval-gate.md` → Calibration anchor for the read/write contract.
 
 ## What The Smith does NOT do
 - Does not edit Kiln source, gates, or prompts — it proposes and validates; Josh approves the PR.

@@ -1,0 +1,6 @@
+--- a/plugins/kiln/skills/fire/SKILL.md
++++ b/plugins/kiln/skills/fire/SKILL.md
+@@ -13,6 +13,8 @@
+ the lane visible, builds a progress spine, dispatches members.
++**Exception — TRIVIAL fast-path:** for a trivial change the conductor skips
++the crafter and edits inline.

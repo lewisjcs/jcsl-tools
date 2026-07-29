@@ -1,0 +1,5 @@
+--- a/plugins/kiln/hooks/test-kiln-guards.sh
++++ b/plugins/kiln/hooks/test-kiln-guards.sh
+@@ -10,6 +10,7 @@
+ # existing guard assertion
++# new guard assertion covering inline-edit denial

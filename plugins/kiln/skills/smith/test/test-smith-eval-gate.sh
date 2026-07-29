@@ -56,6 +56,10 @@ assert_eq  "anti-gaming rename: names scenarios/" "true" "$(printf '%s' "$out" |
 bash "$SCRIPT" anti-gaming "$FIX/diff-content-mentions-fixture.patch" >/dev/null 2>&1; rc=$?
 assert_exit "anti-gaming content-mention: exit 0 (content line ignored)" "0" "$rc"
 
+# --- anti-gaming: unreadable/missing diff file -> exit 2, fail-loud (never a silent 0/3 pass) ---
+bash "$SCRIPT" anti-gaming "$FIX/does-not-exist-nonexistent.patch" >/dev/null 2>&1; rc=$?
+assert_exit "anti-gaming missing file: exit 2 (fail-loud)" "2" "$rc"
+
 # --- tally: all pass -> RECOMMENDED, exit 0 ---
 out="$(bash "$SCRIPT" tally "$FIX/results-all-pass.txt" "$FIX/thresholds.yaml")"; rc=$?
 assert_eq  "tally all-pass: RECOMMENDED" "true" "$(printf '%s' "$out" | grep -q 'RECOMMENDED' && echo true || echo false)"
@@ -125,5 +129,90 @@ assert_exit "cache-key no-files: exit 2 (fail-loud)" "2" "$rc"
 # --- cache-path: composes dir + key + .canon ---
 out="$(bash "$SCRIPT" cache-path /tmp/smith-cache "$k1")"
 assert_eq "cache-path: composes" "/tmp/smith-cache/$k1.canon" "$out"
+
+# --- guard-relax: proposal-A-shaped diff (adds inline-edit prose) -> exit 5, names the line ---
+out="$(bash "$SCRIPT" guard-relax "$FIX/diff-guard-relax.patch" 2>&1)"; rc=$?
+assert_exit "guard-relax A-shape: exit 5" "5" "$rc"
+assert_eq  "guard-relax A-shape: flags RELAXATION" "true" "$(printf '%s' "$out" | grep -q 'RELAXATION' && echo true || echo false)"
+
+# --- guard-relax: routing-only diff (no relaxation phrase) -> exit 0 ---
+bash "$SCRIPT" guard-relax "$FIX/diff-guard-clean.patch" >/dev/null 2>&1; rc=$?
+assert_exit "guard-relax clean: exit 0" "0" "$rc"
+
+# --- guard-relax: content-line mention only in a REMOVED (-) line is not a relaxation add -> exit 0 ---
+# Guards the added-lines-only scan: removing inline-edit prose is a tightening, not a relaxation.
+bash "$SCRIPT" guard-relax "$FIX/diff-guard-removal.patch" >/dev/null 2>&1; rc=$?
+assert_exit "guard-relax removal-only: exit 0" "0" "$rc"
+
+# --- guard-relax: unreadable/missing diff file -> exit 2, fail-loud (never a silent 0/5 pass) ---
+bash "$SCRIPT" guard-relax "$FIX/does-not-exist-nonexistent.patch" >/dev/null 2>&1; rc=$?
+assert_exit "guard-relax missing file: exit 2 (fail-loud)" "2" "$rc"
+
+# --- guard-relax: PARAPHRASE evasion — authorizes inline edit in words that dodge the fixed
+# phrase set ("authorized to write the fix in place without dispatching a crafter") -> exit 5 ---
+out="$(bash "$SCRIPT" guard-relax "$FIX/diff-guard-paraphrase.patch" 2>&1)"; rc=$?
+assert_exit "guard-relax paraphrase: exit 5 (not evaded)" "5" "$rc"
+
+# --- guard-relax: SPLIT across two added lines — "skip the crafter / dispatch and apply the edit"
+# straddles a line break; single-line matching would miss it, joined matching catches it -> exit 5 ---
+bash "$SCRIPT" guard-relax "$FIX/diff-guard-split.patch" >/dev/null 2>&1; rc=$?
+assert_exit "guard-relax split-lines: exit 5 (joined-line match)" "5" "$rc"
+
+# --- guard-relax: NEGATION tightening — "the conductor may never edit shipped source inline"
+# TIGHTENS the guard; it must NOT be misflagged as a relaxation -> exit 0 ---
+bash "$SCRIPT" guard-relax "$FIX/diff-guard-tighten.patch" >/dev/null 2>&1; rc=$?
+assert_exit "guard-relax negation-tighten: exit 0 (not a false positive)" "0" "$rc"
+
+# --- classify: guard-relaxation prose (proposal-A shape) -> includes guard-relaxation (+ routing-output, since it edits SKILL.md routing prose) ---
+out="$(bash "$SCRIPT" classify "$FIX/diff-guard-relax.patch")"
+assert_eq "classify A-shape: has guard-relaxation" "true" "$(printf '%s' "$out" | grep -q 'guard-relaxation' && echo true || echo false)"
+
+# --- classify: edits the guard hook code itself -> guard-hook-code ---
+out="$(bash "$SCRIPT" classify "$FIX/diff-hookcode.patch")"
+assert_eq "classify hook-code: has guard-hook-code" "true" "$(printf '%s' "$out" | grep -q 'guard-hook-code' && echo true || echo false)"
+
+# --- classify: edits the guard TEST HARNESS (test-kiln-guards.sh) — the file eval-gate.md names
+# as the guard-hook-code control — must also classify guard-hook-code so the control routes ---
+out="$(bash "$SCRIPT" classify "$FIX/diff-testharness.patch")"
+assert_eq "classify test-harness: has guard-hook-code" "true" "$(printf '%s' "$out" | grep -q 'guard-hook-code' && echo true || echo false)"
+
+# --- classify: PARAPHRASE relaxation prose still classifies guard-relaxation (classify reuses
+# guard-relax; the evasion fix must close the classify path too, not just the standalone check) ---
+out="$(bash "$SCRIPT" classify "$FIX/diff-guard-paraphrase.patch")"
+assert_eq "classify paraphrase: has guard-relaxation" "true" "$(printf '%s' "$out" | grep -q 'guard-relaxation' && echo true || echo false)"
+
+# --- classify: routing table edit only -> routing-output, no guard/perf ---
+out="$(bash "$SCRIPT" classify "$FIX/diff-routing-only.patch")"
+assert_eq "classify routing: has routing-output" "true" "$(printf '%s' "$out" | grep -q 'routing-output' && echo true || echo false)"
+assert_eq "classify routing: no guard-relaxation" "false" "$(printf '%s' "$out" | grep -q 'guard-relaxation' && echo true || echo false)"
+
+# --- classify: detection-speed prose only (proposal-B shape) -> detection-perf ---
+out="$(bash "$SCRIPT" classify "$FIX/diff-detection-perf.patch")"
+assert_eq "classify B-shape: has detection-perf" "true" "$(printf '%s' "$out" | grep -q 'detection-perf' && echo true || echo false)"
+
+# --- classify: empty/unmatched diff -> unsure ---
+out="$(bash "$SCRIPT" classify "$FIX/diff-guard-clean.patch")"
+# diff-guard-clean touches lanes.md routing table -> routing-output; use a truly-unmatched fixture for unsure:
+out2="$(bash "$SCRIPT" classify "$FIX/diff-unrelated.patch")"
+assert_eq "classify unrelated: unsure" "true" "$(printf '%s' "$out2" | grep -q 'unsure' && echo true || echo false)"
+
+# --- classify: multi-file diff touching a non-script hooks/kiln-guard-* path PLUS an
+# unrelated .sh file must NOT bleed across lines into guard-hook-code (case globs match
+# newlines; matching per-line, not against the whole multi-line header blob, prevents this) ---
+out="$(bash "$SCRIPT" classify "$FIX/diff-multifile-nohook.patch")"
+assert_eq "classify multifile no-hook: no guard-hook-code (no cross-line bleed)" "false" "$(printf '%s' "$out" | grep -q 'guard-hook-code' && echo true || echo false)"
+
+# --- classify: multi-file diff touching TWO real routing files -> routing-output
+# appears exactly once (dedup holds across multiple matching files) ---
+out="$(bash "$SCRIPT" classify "$FIX/diff-multifile-tworouting.patch")"
+assert_eq "classify multifile two-routing: routing-output present" "true" "$(printf '%s' "$out" | grep -q 'routing-output' && echo true || echo false)"
+assert_eq "classify multifile two-routing: routing-output appears exactly once" "1" "$(printf '%s' "$out" | tr ' ' '\n' | grep -c '^routing-output$')"
+
+# --- classify: missing/unreadable file degrades to unsure, NOT guard-relaxation
+# (cmd_guard_relax exit 2 = unreadable must not be conflated with exit 5 = relaxation match) ---
+out="$(bash "$SCRIPT" classify "$FIX/does-not-exist-nonexistent.patch" 2>/dev/null)"; rc=$?
+assert_eq "classify missing file: unsure" "true" "$(printf '%s' "$out" | grep -q 'unsure' && echo true || echo false)"
+assert_eq "classify missing file: no guard-relaxation" "false" "$(printf '%s' "$out" | grep -q 'guard-relaxation' && echo true || echo false)"
+assert_exit "classify missing file: exit 0 (always advisory)" "0" "$rc"
 
 exit $fail

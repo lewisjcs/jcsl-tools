@@ -1,0 +1,5 @@
+--- a/plugins/kiln/skills/fire/gates.md
++++ b/plugins/kiln/skills/fire/gates.md
+@@ -20,6 +20,7 @@
+ | STANDARD | HIGH | PLAN-GATE + TASK-GATE + Walker |
++| STANDARD | CRITICAL | PLAN-GATE + TASK-GATE + Walker + go-live |

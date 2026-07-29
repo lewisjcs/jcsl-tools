@@ -1,0 +1,6 @@
+--- a/plugins/kiln/skills/fire/SKILL.md
++++ b/plugins/kiln/skills/fire/SKILL.md
+@@ -13,8 +13,7 @@
+ the lane visible, builds a progress spine.
+-**Exception:** the conductor MAY apply the edit directly via `Edit`.
+ Members hold the working tools.
