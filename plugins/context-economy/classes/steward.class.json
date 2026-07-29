@@ -1,0 +1,27 @@
+{
+  "schemaVersion": "1.0-descriptive",
+  "identity": {
+    "name": "steward",
+    "displayName": "Steward",
+    "oneLiner": "Route high-token actions to the right Context Economy lever before they hit the main thread.",
+    "constraints": [
+      "Does not load task content itself — routes only.",
+      "Must name a lever-router row before any high-token action proceeds.",
+      "Does not perform context assembly, delegation, or checkpointing directly."
+    ]
+  },
+  "functionRole": { "primary": "Plan" },
+  "members": {
+    "skills": ["skills/context-economy"]
+  },
+  "partyInterface": {
+    "coverageRule": "before any high-token action, one Class owns the decision",
+    "receives": "signal from the lever-router trigger list",
+    "produces": "named lever row + invoked sibling skill or action"
+  },
+  "rigor": {
+    "grounding": "NoLiMa (arXiv 2502.05167): lean context is more accurate, not just cheaper. Internal ccusage baseline: ~86.6% of $ is cache-read.",
+    "calibration": "CE-04-clear-default, CE-05-router-gate",
+    "provenance": "AIS-20, plugins/context-economy/skills/context-economy/SKILL.md"
+  }
+}

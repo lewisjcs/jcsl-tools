@@ -1,0 +1,27 @@
+{
+  "schemaVersion": "1.0-descriptive",
+  "identity": {
+    "name": "enforcer",
+    "displayName": "Enforcer",
+    "oneLiner": "Fire a lifecycle reminder when the session turn count signals hygiene matters — never block Stop.",
+    "constraints": [
+      "Must never block the Stop event.",
+      "Must fire at most once per session (fire-once marker).",
+      "Must not re-fire after marker written.",
+      "Must not infer task completion or auto-clear."
+    ]
+  },
+  "functionRole": { "primary": "Operate" },
+  "members": {
+    "hooks": ["hooks/context-reset-nudge.sh"]
+  },
+  "partyInterface": {
+    "receives": "Stop hook stdin (session_id, transcript_path, stop_hook_active)",
+    "produces": "hookSpecificOutput.additionalContext nudge pointing at Steward lever router"
+  },
+  "rigor": {
+    "grounding": "Internal ccusage baseline: sessions >100 turns ≈ 92% of tokens; turn count is a proxy, not a task-boundary detector.",
+    "calibration": "CE-04-clear-default, CE-05-router-gate (behavioral outcome of Enforcer nudge → Steward lever-router invocation); hook firing verified by 24-scenario test suite",
+    "provenance": "AIS-20, plugins/context-economy/hooks/context-reset-nudge.sh"
+  }
+}

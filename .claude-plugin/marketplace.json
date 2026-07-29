@@ -39,6 +39,16 @@
       "repository": "https://github.com/lewisjcs/jcsl-tools",
       "keywords": ["research", "discovery", "fan-out", "synthesis"],
       "category": "development-workflows"
+    },
+    {
+      "name": "context-economy",
+      "source": "./plugins/context-economy",
+      "displayName": "Context Economy",
+      "description": "Context Economy Party — Steward, Assembler, Delegator, Chronicler, Observer skills plus telemetry + a boundary-gated mid-session handoff nudge for spending Claude Code context economically. Invoke via the context-economy skill.",
+      "author": { "name": "Josh C.S. Lewis" },
+      "repository": "https://github.com/lewisjcs/jcsl-tools",
+      "keywords": ["context", "tokens", "handoff", "telemetry", "hooks", "self-improvement"],
+      "category": "development-workflows"
     }
   ]
 }
