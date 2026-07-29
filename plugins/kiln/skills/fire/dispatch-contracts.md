@@ -388,11 +388,14 @@ landed. There is NO Jira transition and NO Compounds close (the PR already exist
 
 **Part 2 — Brief:**
 PR: {{OWNER}}/{{REPO}} #{{PR_NUMBER}}   Run folder: {{RUN_FOLDER}}
-Post 👍 via mcp__github__add_reply_to_pull_request_comment with reaction: "+1" (no body); post approved
-replies with body set (in-thread, using the numeric commentId).
+Target repo: {{TARGET_REPO}}   (push with git -C {{TARGET_REPO}}; the conductor must not cd. Verify the
+  push succeeds BEFORE posting any 👍 — a reaction claims the fix is on the remote.)
+Post 👍 via mcp__github__add_reply_to_pull_request_comment with reaction: "+1" (no body); post replies
+carrying reply_approved: true with body set (in-thread, using the numeric commentId). Read finish.md
+first if it exists and skip anything already recorded there (resume dedupe).
 
 **Part 3 — Prior context:**
-Approved dispositions: {{RUN_FOLDER}}/sift.md (as amended at SIFT-GATE).
+Approved dispositions: {{RUN_FOLDER}}/sift.md (as amended at SIFT-GATE — post only reply_approved entries).
 Landed-commit map (which accepted comment landed in which commit): {{LANDED_MAP}}.
 
 **Part 4 — Output contract:**
