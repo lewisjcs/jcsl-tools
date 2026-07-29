@@ -3,7 +3,7 @@
   "identity": {
     "name": "enforcer",
     "displayName": "Enforcer",
-    "oneLiner": "Fire a lifecycle reminder when the session turn count signals hygiene matters — never block Stop.",
+    "oneLiner": "Fire a mid-session, boundary-gated handoff nudge (primary) and a turn-count Stop nudge (backstop, trial) — advisory only, never blocking.",
     "constraints": [
       "Must never block the Stop event.",
       "Must fire at most once per session (fire-once marker).",
@@ -13,7 +13,7 @@
   },
   "functionRole": { "primary": "Operate" },
   "members": {
-    "hooks": ["hooks/context-reset-nudge.sh"]
+    "hooks": ["hooks/handoff-nudge.sh", "hooks/context-reset-nudge.sh"]
   },
   "partyInterface": {
     "receives": "Stop hook stdin (session_id, transcript_path, stop_hook_active)",

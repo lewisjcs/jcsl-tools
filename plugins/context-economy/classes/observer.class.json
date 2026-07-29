@@ -3,7 +3,7 @@
   "identity": {
     "name": "observer",
     "displayName": "Observer",
-    "oneLiner": "Surface session cost and cache-read share so bloating context is visible before the bill, not after.",
+    "oneLiner": "Record skill-firing and task-boundary telemetry, and surface session cost and cache-read share so bloating context is visible before the bill, not after.",
     "constraints": [
       "Must never block or delay any tool call.",
       "Must not emit pricing data to agent context (outputs to statusLine widget only).",
@@ -14,7 +14,7 @@
   },
   "functionRole": { "primary": "Operate" },
   "members": {
-    "hooks": ["hooks/cost-statusline.py"]
+    "hooks": ["hooks/telemetry-record.sh", "hooks/cost-statusline.py"]
   },
   "partyInterface": {
     "receives": "Claude Code statusLine payload (transcript_path, model, context_window) via stdin",
