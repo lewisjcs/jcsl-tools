@@ -86,5 +86,21 @@ assert "git commit writes boundary=commit" "commit" "$(jq -r '.boundary' "$HOME/
 printf '%s' '{"session_id":"sb4","transcript_path":"'"$T"'","tool_name":"Bash","tool_input":{"command":"ls -la"}}' | bash "$HOOK"
 assert "unrelated bash writes nothing" "0" "$([ -f "$HOME/.claude/hooks/state/events-sb4.jsonl" ] && wc -l < "$HOME/.claude/hooks/state/events-sb4.jsonl" | tr -d ' ' || echo 0)"
 
+# 10. Bash gh pr create → boundary=pr.
+printf '%s' '{"session_id":"sb5","transcript_path":"'"$T"'","tool_name":"Bash","tool_input":{"command":"gh pr create --title x"}}' | bash "$HOOK"
+assert "gh pr create writes boundary=pr" "pr" "$(jq -r '.boundary' "$HOME/.claude/hooks/state/events-sb5.jsonl")"
+
+# 11. Bash create_pull_request (alternate form) → boundary=pr.
+printf '%s' '{"session_id":"sb6","transcript_path":"'"$T"'","tool_name":"Bash","tool_input":{"command":"create_pull_request"}}' | bash "$HOOK"
+assert "create_pull_request writes boundary=pr" "pr" "$(jq -r '.boundary' "$HOME/.claude/hooks/state/events-sb6.jsonl")"
+
+# 12. Bash chained commit+pr → boundary=pr (PR is the stronger checkpoint, not commit).
+printf '%s' '{"session_id":"sb7","transcript_path":"'"$T"'","tool_name":"Bash","tool_input":{"command":"git commit -m x && gh pr create --title y"}}' | bash "$HOOK"
+assert "chained commit+pr writes boundary=pr not commit" "pr" "$(jq -r '.boundary' "$HOME/.claude/hooks/state/events-sb7.jsonl")"
+
+# 13. Bash prose substring "git commitment ceremony" → no event (word-boundary the commit regex).
+printf '%s' '{"session_id":"sb8","transcript_path":"'"$T"'","tool_name":"Bash","tool_input":{"command":"echo \"git commitment ceremony\""}}' | bash "$HOOK"
+assert "prose substring writes nothing" "0" "$([ -f "$HOME/.claude/hooks/state/events-sb8.jsonl" ] && wc -l < "$HOME/.claude/hooks/state/events-sb8.jsonl" | tr -d ' ' || echo 0)"
+
 echo "PASS=$PASS FAIL=$FAIL"
 [ "$FAIL" -eq 0 ]

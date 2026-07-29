@@ -25,8 +25,8 @@ case "$TOOL" in
     fi ;;
   Bash)
     CMD=$(echo "$INPUT" | jq -r '.tool_input.command // ""' 2>/dev/null)
-    if echo "$CMD" | grep -Eq 'git +commit'; then KIND="boundary"; FIELD="boundary"; VAL="commit"
-    elif echo "$CMD" | grep -Eq 'gh +pr +create|create_pull_request'; then KIND="boundary"; FIELD="boundary"; VAL="pr"
+    if echo "$CMD" | grep -Eq '\bgh +pr +create\b|\bcreate_pull_request\b'; then KIND="boundary"; FIELD="boundary"; VAL="pr"
+    elif echo "$CMD" | grep -Eq '\bgit +commit\b'; then KIND="boundary"; FIELD="boundary"; VAL="commit"
     fi ;;
 esac
 [ -n "$KIND" ] || exit 0
