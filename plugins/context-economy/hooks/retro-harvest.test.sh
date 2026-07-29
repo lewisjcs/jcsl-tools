@@ -59,5 +59,35 @@ DC="$SD/ce-retro-C.json"
 assert "C counts 1 correction turn" "1" "$(jq -r '.rework.within_session.correction_turns' "$DC")"
 assert "C counts 1 repeated file read" "1" "$(jq -r '.rework.within_session.repeated_file_reads' "$DC")"
 
+# Session D: post-assistant user turns "I know" / "not sure now" must NOT count as
+# corrections — bare short cues like "no" are substrings of "know"/"now"/"not", but
+# these turns don't actually contain the whole-word cue "no".
+TD="$TMP/trd.jsonl"; : > "$TD"
+printf '{"type":"assistant","message":{"id":"d1","model":"claude-opus-4","usage":{"cache_read_input_tokens":1}}}\n' >> "$TD"
+printf '{"type":"user","message":{"role":"user","content":"I know"}}\n' >> "$TD"
+printf '{"type":"assistant","message":{"id":"d2","model":"claude-opus-4","usage":{"cache_read_input_tokens":1}}}\n' >> "$TD"
+printf '{"type":"user","message":{"role":"user","content":"not sure now"}}\n' >> "$TD"
+printf '{"session":"D","kind":"boundary","boundary":"commit","turn":1,"load":10,"transcript":"%s"}\n' "$TD" > "$SD/ce-events-D.jsonl"
+bash "$H" --last 10 --state-dir "$SD" >/dev/null
+DD="$SD/ce-retro-D.json"
+assert "D: 'I know'/'not sure now' are not corrections" "0" "$(jq -r '.rework.within_session.correction_turns' "$DD")"
+
+# Session E: predecessor E1 + resume session E2 (linked via handoff marker) both Read
+# the same overlapping file path → post_resume_rereads counts the intersection.
+TE1="$TMP/tre1.jsonl"; : > "$TE1"
+printf '{"type":"assistant","message":{"id":"e1a","model":"claude-opus-4","usage":{"cache_read_input_tokens":1},"content":[{"type":"tool_use","name":"Read","input":{"file_path":"/x/shared.ts"}}]}}\n' >> "$TE1"
+printf '{"type":"assistant","message":{"id":"e1b","model":"claude-opus-4","usage":{"cache_read_input_tokens":1},"content":[{"type":"tool_use","name":"Read","input":{"file_path":"/x/only-in-e1.ts"}}]}}\n' >> "$TE1"
+printf '{"session":"E1","kind":"skill","skill":"noop","turn":1,"load":10,"transcript":"%s"}\n' "$TE1" > "$SD/ce-events-E1.jsonl"
+
+TE2="$TMP/tre2.jsonl"; : > "$TE2"
+printf '{"type":"assistant","message":{"id":"e2a","model":"claude-opus-4","usage":{"cache_read_input_tokens":1},"content":[{"type":"tool_use","name":"Read","input":{"file_path":"/x/shared.ts"}}]}}\n' >> "$TE2"
+printf '{"type":"assistant","message":{"id":"e2b","model":"claude-opus-4","usage":{"cache_read_input_tokens":1},"content":[{"type":"tool_use","name":"Read","input":{"file_path":"/x/only-in-e2.ts"}}]}}\n' >> "$TE2"
+HFE="$TMP/handoff-e.md"; printf '<!-- ce-session: E1 -->\n# Handoff\n' > "$HFE"
+printf '{"session":"E2","kind":"resumed-from","handoff":"%s","turn":1,"load":10,"transcript":"%s"}\n' "$HFE" "$TE2" > "$SD/ce-events-E2.jsonl"
+bash "$H" --last 10 --state-dir "$SD" >/dev/null
+DE2="$SD/ce-retro-E2.json"
+assert "E2 links predecessor E1" "E1" "$(jq -r '.rework.cross_clear.linked_predecessor' "$DE2")"
+assert "E2 post_resume_rereads counts overlapping file (1)" "1" "$(jq -r '.rework.cross_clear.post_resume_rereads' "$DE2")"
+
 echo "PASS=$PASS FAIL=$FAIL"
 [ "$FAIL" -eq 0 ]

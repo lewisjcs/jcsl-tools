@@ -18,10 +18,14 @@ SKILLS="context-economy context-assembly delegating-to-subagents handoff observe
 
 rework_for() {  # $1=transcript path → prints "CORRECTIONS REPEATED"
   python3 - "$1" <<'PY'
-import sys, json, os
+import sys, json, os, re
 p = sys.argv[1] if len(sys.argv)>1 else ""
 corr=0; reads={}
-CUES=("no","wrong","undo","re-read","reread","that's not","thats not","not right","revert")
+# Single-token cues must match a whole word (punctuation-stripped), not any
+# substring — otherwise "no" false-fires inside "know"/"now"/"not"/"cannot".
+# Multi-word phrase cues are safe as plain substrings (low collision risk).
+SINGLE_CUES=("no","wrong","undo","reread","revert")
+PHRASE_CUES=("that's not","thats not","not right","re-read")
 if p and os.path.isfile(p):
     prev_assistant=False
     with open(p, errors="replace") as f:
@@ -34,7 +38,10 @@ if p and os.path.isfile(p):
                 text = c if isinstance(c,str) else " ".join(
                     b.get("text","") for b in c if isinstance(b,dict)) if isinstance(c,list) else ""
                 low=text.strip().lower()
-                if prev_assistant and len(low)<=40 and any(low.startswith(q) or q in low for q in CUES):
+                words=re.findall(r"[a-z']+", low)
+                is_cue = any(q in words for q in SINGLE_CUES) or \
+                         any(q in low for q in PHRASE_CUES)
+                if prev_assistant and len(low)<=40 and is_cue:
                     corr+=1
                 prev_assistant=False
             elif t=="assistant":
