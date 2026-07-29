@@ -16,6 +16,7 @@ Write a structured handoff so you can `/clear` and resume a long task lean — t
 2. **Write the handoff file** with exactly these sections:
 
    ```markdown
+   <!-- ce-session: <the current session_id> -->
    # Handoff — <task> — <date>
    ## Goal           — what we're accomplishing (1–2 sentences)
    ## State          — what's done + what's in flight (verified truth, not assumed)
@@ -23,6 +24,8 @@ Write a structured handoff so you can `/clear` and resume a long task lean — t
    ## Key paths      — files / artifacts / tickets the next session needs
    ## Open questions — unresolved decisions, things to verify
    ```
+
+   The `ce-session` comment lets the context-economy retro link this handoff to the session that produced it — leave it intact.
 
 3. **Print the resume prompt** (do not write it to a file). Keep it short — its job is to seed a LEAN session. Reference the file by its ACTUAL written path:
 

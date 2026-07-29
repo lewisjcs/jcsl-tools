@@ -120,5 +120,21 @@ SB10B='{"session_id":"sb10","transcript_path":"'"$T"'","tool_name":"TodoWrite","
 printf '%s' "$SB10B" | bash "$HOOK"
 assert "growing completed count fires a new boundary" "2" "$(wc -l < "$HOME/.claude/hooks/state/ce-events-sb10.jsonl" | tr -d ' ')"
 
+# 17. A Read of a handoff-*.md file stamps a resumed-from event once.
+T="$(make_transcript 6)"
+RD='{"session_id":"sr1","transcript_path":"'"$T"'","tool_name":"Read","tool_input":{"file_path":"/proj/.handoffs/handoff-2026-07-29.md"}}'
+printf '%s' "$RD" | bash "$HOOK"
+LOG="$HOME/.claude/hooks/state/ce-events-sr1.jsonl"
+assert "handoff Read writes resumed-from" "resumed-from" "$(jq -r '.kind' "$LOG")"
+assert "resumed-from records handoff path" "/proj/.handoffs/handoff-2026-07-29.md" "$(jq -r '.handoff' "$LOG")"
+
+# 18. A second Read of a handoff file in the same session does NOT re-stamp.
+printf '%s' "$RD" | bash "$HOOK"
+assert "resumed-from fires once per session" "1" "$(wc -l < "$LOG" | tr -d ' ')"
+
+# 19. A Read of a NON-handoff file writes nothing.
+printf '%s' '{"session_id":"sr2","transcript_path":"'"$T"'","tool_name":"Read","tool_input":{"file_path":"/proj/src/index.ts"}}' | bash "$HOOK"
+assert "non-handoff Read writes nothing" "0" "$([ -f "$HOME/.claude/hooks/state/ce-events-sr2.jsonl" ] && wc -l < "$HOME/.claude/hooks/state/ce-events-sr2.jsonl" | tr -d ' ' || echo 0)"
+
 echo "PASS=$PASS FAIL=$FAIL"
 [ "$FAIL" -eq 0 ]
