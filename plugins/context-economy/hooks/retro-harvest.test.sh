@@ -33,6 +33,7 @@ assert "denominator is 5" "5" "$(jq -r '.firing.denominator' "$DA")"
 assert "one boundary captured" "1" "$(jq -r '.boundaries | length' "$DA")"
 assert "boundary carries optimistic ROI" "optimistic" "$(jq -r '.boundaries[0].model' "$DA")"
 assert "no resumed-from → cross_clear null" "null" "$(jq -r '.rework.cross_clear' "$DA")"
+assert "turns_total is max turn" "2" "$(jq -r '.turns_total' "$DA")"
 
 # Session B: has a resumed-from marker pointing at a handoff file that names predecessor A.
 HF="$TMP/handoff.md"; printf '<!-- ce-session: A -->\n# Handoff\n' > "$HF"
@@ -44,6 +45,19 @@ bash "$H" --last 10 --state-dir "$SD" >/dev/null
 DB="$SD/ce-retro-B.json"
 assert "B links predecessor A via marker" "A" "$(jq -r '.rework.cross_clear.linked_predecessor' "$DB")"
 assert "B link_source is marker" "marker" "$(jq -r '.rework.cross_clear.link_source' "$DB")"
+
+
+# Session C: transcript with a short user-correction turn + a repeated Read of the same path.
+TC="$TMP/trc.jsonl"; : > "$TC"
+printf '{"type":"assistant","message":{"id":"a1","model":"claude-opus-4","usage":{"cache_read_input_tokens":1}}}\n' >> "$TC"
+printf '{"type":"user","message":{"role":"user","content":"no, that is wrong"}}\n' >> "$TC"
+printf '{"type":"assistant","message":{"id":"a2","model":"claude-opus-4","usage":{"cache_read_input_tokens":1},"content":[{"type":"tool_use","name":"Read","input":{"file_path":"/x/dup.ts"}}]}}\n' >> "$TC"
+printf '{"type":"assistant","message":{"id":"a3","model":"claude-opus-4","usage":{"cache_read_input_tokens":1},"content":[{"type":"tool_use","name":"Read","input":{"file_path":"/x/dup.ts"}}]}}\n' >> "$TC"
+printf '{"session":"C","kind":"boundary","boundary":"commit","turn":1,"load":10,"transcript":"%s"}\n' "$TC" > "$SD/ce-events-C.jsonl"
+bash "$H" --last 10 --state-dir "$SD" >/dev/null
+DC="$SD/ce-retro-C.json"
+assert "C counts 1 correction turn" "1" "$(jq -r '.rework.within_session.correction_turns' "$DC")"
+assert "C counts 1 repeated file read" "1" "$(jq -r '.rework.within_session.repeated_file_reads' "$DC")"
 
 echo "PASS=$PASS FAIL=$FAIL"
 [ "$FAIL" -eq 0 ]
