@@ -91,7 +91,8 @@ find "$STATE_DIR" -name 'ce-events-*.jsonl' -type f -mtime +30 -delete 2>/dev/nu
 
 { jq -nc --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --arg s "$SESSION_ID" \
          --arg kind "$KIND" --arg field "$FIELD" --arg val "$VAL" \
+         --arg tr "$TRANSCRIPT" \
          --argjson turn "$TURN" --argjson load "$LOAD" \
-    '{ts:$ts, session:$s, kind:$kind} + {($field):$val} + {turn:$turn, load:$load}' \
+    '{ts:$ts, session:$s, kind:$kind} + {($field):$val} + {turn:$turn, load:$load} + {transcript:$tr}' \
     >> "$LOG"; } 2>/dev/null || true
 exit 0

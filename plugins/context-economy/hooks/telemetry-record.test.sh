@@ -48,6 +48,7 @@ assert "one event line written" "1" "$(wc -l < "$LOG" | tr -d ' ')"
 assert "event names the skill" "context-economy:handoff" "$(jq -r '.skill' "$LOG")"
 assert "event kind is skill" "skill" "$(jq -r '.kind' "$LOG")"
 assert "turn count recorded (12)" "12" "$(jq -r '.turn' "$LOG")"
+assert "event records transcript path" "$T" "$(jq -r '.transcript' "$LOG")"
 
 # 2. Non-Skill tool call is ignored (no event).
 printf '%s' '{"session_id":"sess2","transcript_path":"'"$T"'","tool_name":"Read","tool_input":{"file_path":"/x"}}' | bash "$HOOK"
