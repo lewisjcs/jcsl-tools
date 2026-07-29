@@ -5,9 +5,9 @@ description: Use for a context-economy retrospective — how have my recent sess
 
 # Context-Economy Retro (read-only)
 
-Reads the Phase 1 telemetry spine + transcripts for recent spine-backed sessions and briefs on
-firing coverage, handoff+clear ROI (optimistic), and a rework/accuracy watch. **Proposes only —
-never edits a SKILL.md, fixture, or opens a PR.** That is Phase 4.
+Reads the telemetry spine (`~/.claude/hooks/state/ce-events-*.jsonl`) + transcripts for recent
+spine-backed sessions and briefs on firing coverage, handoff+clear ROI (optimistic), and a
+rework/accuracy watch. **Proposes only — never edits a SKILL.md, fixture, or opens a PR.**
 
 ## Steps
 
