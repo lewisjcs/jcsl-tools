@@ -58,23 +58,30 @@ def main():
         return
 
     pricing = _cs.load_pricing() if _cs else {}
-    turns = list(_turns(path))
-    tail = turns[boundary:] if 0 <= boundary < len(turns) else []
-    if not tail or _cs is None:
-        print(json.dumps({"error": "no tail turns or primitives unavailable", "model": "optimistic"}))
+    try:
+        turns = list(_turns(path))
+        tail = turns[boundary:] if 0 <= boundary < len(turns) else []
+        if not tail or _cs is None:
+            print(json.dumps({"error": "no tail turns or primitives unavailable", "model": "optimistic"}))
+            return
+
+        realized = 0.0
+        for model, usage in tail:
+            realized += _cs.cost_for(model, usage, pricing)
+
+        # Counterfactual: same tail length, each turn pays cache_read on a re-growing
+        # prefix (floor + growth×i) at the tail's representative model rate.
+        rep_model = tail[0][0]
+        cf = 0.0
+        for i, _ in enumerate(tail):
+            cf_tokens = CF_FLOOR_TOKENS + CF_GROWTH_PER_TURN * i
+            cf += _cs.cost_for(rep_model, {"cache_read_input_tokens": cf_tokens}, pricing)
+    except Exception as e:
+        # Fail-open: transcript read or cost summing can hit OSError,
+        # PermissionError, etc. mid-read — honor "exit 0 in all cases"
+        # independent of the consumer.
+        print(json.dumps({"error": str(e) or type(e).__name__, "model": "optimistic"}))
         return
-
-    realized = 0.0
-    for model, usage in tail:
-        realized += _cs.cost_for(model, usage, pricing)
-
-    # Counterfactual: same tail length, each turn pays cache_read on a re-growing
-    # prefix (floor + growth×i) at the tail's representative model rate.
-    rep_model = tail[0][0]
-    cf = 0.0
-    for i, _ in enumerate(tail):
-        cf_tokens = CF_FLOOR_TOKENS + CF_GROWTH_PER_TURN * i
-        cf += _cs.cost_for(rep_model, {"cache_read_input_tokens": cf_tokens}, pricing)
 
     realized = round(realized, 4)
     cf = round(cf, 4)
