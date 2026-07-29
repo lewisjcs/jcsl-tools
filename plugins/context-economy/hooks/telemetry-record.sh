@@ -6,12 +6,12 @@ command -v jq >/dev/null      || exit 0
 command -v python3 >/dev/null || exit 0
 
 INPUT=$(cat)
-TOOL=$(echo "$INPUT" | jq -r '.tool_name // empty')
+TOOL=$(echo "$INPUT" | jq -r '.tool_name // empty' 2>/dev/null)
 [ "$TOOL" = "Skill" ] || exit 0
 
-SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // empty')
-TRANSCRIPT=$(echo "$INPUT" | jq -r '.transcript_path // empty')
-SKILL=$(echo "$INPUT" | jq -r '.tool_input.skill // .tool_input.command // "unknown"')
+SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // empty' 2>/dev/null)
+TRANSCRIPT=$(echo "$INPUT" | jq -r '.transcript_path // empty' 2>/dev/null)
+SKILL=$(echo "$INPUT" | jq -r '.tool_input.skill // "unknown"' 2>/dev/null)
 [ -n "$HOME" ] || exit 0
 [ -n "$SESSION_ID" ] || exit 0
 
@@ -51,8 +51,8 @@ LOAD="${METRICS##* }"
 mkdir -p "$STATE_DIR" 2>/dev/null || exit 0
 find "$STATE_DIR" -name 'events-*.jsonl' -type f -mtime +30 -delete 2>/dev/null
 
-jq -nc --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --arg s "$SESSION_ID" \
-       --arg sk "$SKILL" --argjson turn "$TURN" --argjson load "$LOAD" \
-  '{ts:$ts, session:$s, kind:"skill", skill:$sk, turn:$turn, load:$load}' \
-  >> "$LOG" 2>/dev/null || true
+{ jq -nc --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --arg s "$SESSION_ID" \
+         --arg sk "$SKILL" --argjson turn "$TURN" --argjson load "$LOAD" \
+    '{ts:$ts, session:$s, kind:"skill", skill:$sk, turn:$turn, load:$load}' \
+    >> "$LOG"; } 2>/dev/null || true
 exit 0
