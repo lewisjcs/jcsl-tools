@@ -1,0 +1,10 @@
+{
+  "data": [
+    { "name": "Claude Code - Turn 1", "sessionId": "sess-fixture", "totalCost": 1.135467249999 },
+    { "name": "Claude Code - Turn 2", "sessionId": "sess-fixture", "totalCost": 1.356344749998 },
+    { "name": "crafter · Turn 1",     "sessionId": "sess-fixture", "totalCost": 0.086963999996 },
+    { "name": "crafter · Turn 2",     "sessionId": "sess-fixture", "totalCost": 0.357749699998 },
+    { "name": "inspector · Turn 1",   "sessionId": "sess-fixture", "totalCost": 0.415781399999 }
+  ],
+  "meta": { "page": 1, "limit": 50, "totalItems": 5, "totalPages": 1 }
+}
