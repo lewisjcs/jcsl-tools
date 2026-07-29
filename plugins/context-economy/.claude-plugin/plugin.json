@@ -2,5 +2,8 @@
   "name": "context-economy",
   "version": "0.2.2",
   "description": "Context Economy Party — six Classes (Steward, Assembler, Delegator, Chronicler, Enforcer, Observer) with procedural skills, behavioral fixtures, a mid-session boundary-gated handoff nudge (with turn-count Stop backstop), a task/skill telemetry recorder, and a cost/cache statusline widget for spending Claude Code context economically.",
-  "author": { "name": "Applied AI Solutions — Technical Quality Team" }
+  "author": { "name": "Josh C.S. Lewis" },
+  "repository": "https://github.com/lewisjcs/jcsl-tools",
+  "license": "MIT",
+  "keywords": ["context", "tokens", "handoff", "telemetry", "hooks", "self-improvement"]
 }
