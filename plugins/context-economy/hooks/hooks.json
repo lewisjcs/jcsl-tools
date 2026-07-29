@@ -1,15 +1,27 @@
 {
-  "description": "Once per session, when assistant turns >= CONTEXT_NUDGE_TURNS (default 100) AND human turns >= CONTEXT_NUDGE_MIN_USER_TURNS (default 5), nudge to apply the context-economy clear-vs-compact decision (handoff/clear/compact). Composite gate eliminates agentic fan-out false positives. Reminder only — never blocks Stop.",
+  "description": "Records skill-firing + task-boundary telemetry on PostToolUse, emits a mid-session, boundary-gated handoff nudge on UserPromptSubmit when context load is high at a clean stopping point, and keeps the turn-count Stop nudge as a late backstop (trial). All hooks fail open — never block the harness.",
   "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Skill|TodoWrite|Bash",
+        "hooks": [
+          { "type": "command", "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/telemetry-record.sh", "timeout": 10 }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "matcher": "*",
+        "hooks": [
+          { "type": "command", "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/handoff-nudge.sh", "timeout": 10 }
+        ]
+      }
+    ],
     "Stop": [
       {
         "matcher": "*",
         "hooks": [
-          {
-            "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/context-reset-nudge.sh",
-            "timeout": 10
-          }
+          { "type": "command", "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/context-reset-nudge.sh", "timeout": 10 }
         ]
       }
     ]

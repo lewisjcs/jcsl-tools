@@ -5,7 +5,7 @@ Complete installation and wiring instructions for the `context-economy` plugin.
 ## Prerequisites
 
 - **python3** — stdlib only; no pip installs needed
-- **jq** — required by the Enforcer hook (`context-reset-nudge.sh`)
+- **jq** — required by all three lifecycle hooks (`telemetry-record.sh`, `handoff-nudge.sh`, `context-reset-nudge.sh`)
 - **ccstatusline** — npm package for the statusLine widget: `npm install -g ccstatusline` or invoked via `npx`
 - **Claude Code** — version that supports `statusLine.type = "command"` and `customCommands[]`
 
@@ -46,33 +46,37 @@ Then add the Observer cost widget as a `customCommands` entry so ccstatusline ca
 
 `preserveColors: true` passes the ANSI color codes through the powerline segment renderer. The `${CLAUDE_PLUGIN_ROOT}` variable is resolved by Claude Code to the plugin's install path at runtime.
 
-## Env var knobs
+## Hooks and env var knobs
 
-The Enforcer hook (`context-reset-nudge.sh`) exposes two calibrated defaults:
+Three lifecycle hooks register via `hooks/hooks.json`. All are reminders — none block the harness.
 
-| Variable | Default | Source |
-|----------|---------|--------|
-| `CONTEXT_NUDGE_TURNS` | `100` | Fleet N=185: asst_msgs≥100 → 81.6% of spend; 100% marathon recall |
-| `CONTEXT_NUDGE_MIN_USER_TURNS` | `5` | Fleet N=185: human_turns≥5 eliminates 100% of agentic FPs |
+| Hook | Event | Role | Env knob(s) | Default |
+|------|-------|------|-------------|---------|
+| `telemetry-record.sh` | `PostToolUse` (matcher `Skill\|TodoWrite\|Bash`) | Records skill-firing + task-boundary events to `~/.claude/hooks/state/events-<session>.jsonl` | — | — |
+| `handoff-nudge.sh` | `UserPromptSubmit` (matcher `*`) | **Primary.** Mid-session, boundary-gated handoff nudge — fires when token load is high at a clean task boundary | `CONTEXT_LOAD_NUDGE_TOKENS` | `120000` |
+| `context-reset-nudge.sh` | `Stop` (matcher `*`) | **Backstop (trial).** Turn-count nudge, raised behind the mid-session nudge; retained until Phase 2 retro data confirms the mid-session nudge suffices | `CONTEXT_NUDGE_TURNS`, `CONTEXT_NUDGE_MIN_USER_TURNS` | `150`, `5` |
 
 Set in your shell profile or Claude Code environment to override:
 
 ```bash
-export CONTEXT_NUDGE_TURNS=80          # lower to nudge sooner
-export CONTEXT_NUDGE_MIN_USER_TURNS=0  # set to 0 to disable the human-turn floor
+export CONTEXT_LOAD_NUDGE_TOKENS=90000  # lower to nudge sooner (mid-session, primary)
+export CONTEXT_NUDGE_TURNS=100          # lower to nudge sooner (Stop, backstop)
+export CONTEXT_NUDGE_MIN_USER_TURNS=0   # set to 0 to disable the human-turn floor
 ```
 
-Both defaults are calibrated against a 185-session fleet corpus. Change them only after reviewing the supporting calibration data.
+The `context-reset-nudge.sh` turn-count defaults are calibrated against a 185-session fleet corpus (originally `CONTEXT_NUDGE_TURNS=100`; raised to `150` so the Stop backstop sits behind the mid-session nudge rather than co-firing with it). Change calibrated defaults only after reviewing the supporting calibration data.
 
-## Verify the hook
+## Verify the hooks
 
-Run the full Enforcer hook test suite (40 scenarios; exits non-zero on any failure):
+Run all three hook test suites (each exits non-zero on any failure):
 
 ```bash
+bash "${CLAUDE_PLUGIN_ROOT}/hooks/telemetry-record.test.sh"
+bash "${CLAUDE_PLUGIN_ROOT}/hooks/handoff-nudge.test.sh"
 bash "${CLAUDE_PLUGIN_ROOT}/hooks/context-reset-nudge.test.sh"
 ```
 
-All 40 scenarios should print `ok` and the final line should read `PASS=40 FAIL=0`.
+Each suite prints `ok` per scenario and a final `PASS=<n> FAIL=0` line.
 
 ## Verify the widget
 

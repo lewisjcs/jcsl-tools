@@ -17,7 +17,7 @@ INPUT=$(cat)
 
 SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // empty')
 TRANSCRIPT=$(echo "$INPUT" | jq -r '.transcript_path // empty')
-THRESHOLD="${CONTEXT_NUDGE_TURNS:-100}"  # fleet N=185: asst_msgs≥100 → 81.6% of spend; 100% marathon recall
+THRESHOLD="${CONTEXT_NUDGE_TURNS:-150}"  # backstop default: sits behind the mid-session load+boundary nudge (trial 2026-07-29). Lower via env to nudge sooner.
 MIN_USER_TURNS="${CONTEXT_NUDGE_MIN_USER_TURNS:-5}"  # fleet N=185: human_turns≥5 eliminates 100% of agentic FPs
 STATE_DIR="$HOME/.claude/hooks/state"
 # Marker is namespaced (nudged-ce-) so the prune below can never touch another tool's
@@ -97,7 +97,7 @@ printf '%s session=%s turns=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$SESSION_ID"
 jq -nc --arg n "$TURNS" --arg h "$HUMAN_TURNS" '{
   hookSpecificOutput: {
     hookEventName: "Stop",
-    additionalContext: ("~\($n) assistant turns / \($h) human turns. Invoke the context-economy skill lever router: handoff+clear at a task boundary, compact only if uncheckpointable. Reminder, not a block.")
+    additionalContext: ("~\($n) assistant turns / \($h) human turns and no mid-session handoff nudge has landed — backstop reminder. Invoke the context-economy skill lever router: handoff+clear at a task boundary, compact only if uncheckpointable. Reminder, not a block.")
   }
 }'
 exit 0

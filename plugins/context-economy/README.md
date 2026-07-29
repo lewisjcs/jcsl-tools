@@ -2,7 +2,7 @@
 
 A Claude Code plugin implementing the **Context Economy Party** — six Classes working together to spend main-thread context economically without sacrificing accuracy.
 
-**No build step, nothing to install** — five markdown skills, one bash hook, one Python statusline widget. The hook uses `jq` and `python3` when present and no-ops safely if either is missing.
+**No build step, nothing to install** — five markdown skills, four bash hooks, one Python statusline widget. Every hook uses `jq` and `python3` when present and no-ops safely if either is missing.
 
 ## The Party
 
@@ -12,8 +12,8 @@ A Claude Code plugin implementing the **Context Economy Party** — six Classes 
 | **Assembler** | Scopes context before it hits the main thread | `skills/context-assembly` |
 | **Delegator** | Pushes bounded work off-thread with a four-part dispatch contract | `skills/delegating-to-subagents` |
 | **Chronicler** | Checkpoints before `/clear` so work resumes lean | `skills/handoff` |
-| **Enforcer** | Fires a lifecycle nudge at the session turn threshold | `hooks/context-reset-nudge.sh` |
-| **Observer** | Surfaces session cost and cache-read share mid-session | `hooks/cost-statusline.py` |
+| **Enforcer** | Fires a mid-session, boundary-gated handoff nudge (primary) plus a turn-count Stop nudge (backstop, trial) | `hooks/handoff-nudge.sh`, `hooks/context-reset-nudge.sh` |
+| **Observer** | Records skill-firing + task-boundary telemetry; surfaces session cost and cache-read share mid-session | `hooks/telemetry-record.sh`, `hooks/cost-statusline.py` |
 
 **Party coverage rule:** Before any high-token action (multi-file read, broad grep, large log pull, Task/explore dispatch, session reset), name which Class owns the decision and invoke its skill.
 
@@ -32,16 +32,32 @@ A Claude Code plugin implementing the **Context Economy Party** — six Classes 
 | `delegating-to-subagents` | Delegator dispatch gate: delegate-vs-keep table, four-part contract, worked example, return contract. |
 | `handoff` | Chronicler checkpoint: writes `.handoffs/<date>.md` + copy-pasteable resume prompt before `/clear`. |
 
-## Hook: Enforcer
+## Hooks: Observer + Enforcer
 
-Once per session, fires when **both** conditions hold: assistant turns ≥ `CONTEXT_NUDGE_TURNS` (default 100) AND human turns ≥ `CONTEXT_NUDGE_MIN_USER_TURNS` (default 5). The human-turn floor eliminates false positives from agentic fan-out sessions (100+ assistant turns from subagent loops with 1–3 human prompts). Reminder only — never blocks Stop.
+Three hooks work together across the session lifecycle. All are reminders — none ever block the harness.
+
+### `telemetry-record.sh` (PostToolUse, matcher `Skill|TodoWrite|Bash`)
+
+Appends one JSONL event per Skill firing or task-boundary tool call (a completed `TodoWrite` item, a `git commit`, or a `gh pr create`) to `~/.claude/hooks/state/events-<session_id>.jsonl`. Each event carries a distinct-turn count and a token-load proxy (last assistant turn's `input_tokens + cache_read + cache_creation`). This log is the shared substrate the handoff nudge reads to detect boundaries — no config knobs.
+
+### `handoff-nudge.sh` (UserPromptSubmit, matcher `*`) — **primary**
+
+Fires when the token-load proxy is at or above `CONTEXT_LOAD_NUDGE_TOKENS` (default `120000`) **and** a new task boundary has landed since the last fire — a clean stopping point, not every prompt. Escalates wording on repeat fires within the same session.
 
 ```bash
-export CONTEXT_NUDGE_TURNS=100          # lower to nudge sooner
+export CONTEXT_LOAD_NUDGE_TOKENS=120000   # lower to nudge sooner
+```
+
+### `context-reset-nudge.sh` (Stop, matcher `*`) — **backstop, trial**
+
+Fires once per session when **both** conditions hold: assistant turns ≥ `CONTEXT_NUDGE_TURNS` (default now `150`) AND human turns ≥ `CONTEXT_NUDGE_MIN_USER_TURNS` (default `5`). The human-turn floor eliminates false positives from agentic fan-out sessions (150+ assistant turns from subagent loops with 1–3 human prompts). The turn default was raised from 100 to sit behind the mid-session handoff nudge — this hook now catches only long-but-low-load sessions or ones with no clean boundary. It is retained during the trial and may be retired once Phase 2 retro data confirms the mid-session nudge suffices on its own.
+
+```bash
+export CONTEXT_NUDGE_TURNS=150          # lower to nudge sooner
 export CONTEXT_NUDGE_MIN_USER_TURNS=5   # set to 0 to disable the floor
 ```
 
-The gate defaults are calibrated against a 185-session fleet corpus (0% false positive rate at `asst_msgs ≥ 100 AND human_turns ≥ 5`, 100% marathon session recall). The hook fires at most once per session (fire-once marker), parses the transcript JSONL (deduped on `message.id`), and appends an auditable line to `~/.claude/hooks/state/context-nudge.log`. Any missing input exits 0 silently (fail-closed).
+The turn-count gate defaults are calibrated against a 185-session fleet corpus. The hook fires at most once per session (fire-once marker), parses the transcript JSONL (deduped on `message.id`), and appends an auditable line to `~/.claude/hooks/state/context-nudge.log`. Any missing input exits 0 silently (fail-closed).
 
 ## Behavioral fixtures
 
@@ -63,12 +79,14 @@ See `fixtures/README.md` for the verify procedure. Target: ≥3/5 pass before sh
 
 ## Install
 
-Enable through Claude Code plugin configuration. The hook registers via `hooks/hooks.json` using `${CLAUDE_PLUGIN_ROOT}` — no machine-specific paths, no edits to your personal `settings.json`. Restart Claude Code after enabling.
+Enable through Claude Code plugin configuration. All three hooks register via `hooks/hooks.json` using `${CLAUDE_PLUGIN_ROOT}` — no machine-specific paths, no edits to your personal `settings.json`. Restart Claude Code after enabling.
 
 ## Verify
 
 ```bash
-bash hooks/context-reset-nudge.test.sh   # 40 scenarios; exits non-zero on any failure
+bash hooks/telemetry-record.test.sh      # exits non-zero on any failure
+bash hooks/handoff-nudge.test.sh         # exits non-zero on any failure
+bash hooks/context-reset-nudge.test.sh   # exits non-zero on any failure
 ```
 
 ## Research grounding
