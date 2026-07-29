@@ -64,7 +64,7 @@ export CONTEXT_NUDGE_TURNS=100          # lower to nudge sooner (Stop, backstop)
 export CONTEXT_NUDGE_MIN_USER_TURNS=0   # set to 0 to disable the human-turn floor
 ```
 
-The `context-reset-nudge.sh` turn-count defaults are calibrated against a 185-session fleet corpus (originally `CONTEXT_NUDGE_TURNS=100`; raised to `150` so the Stop backstop sits behind the mid-session nudge rather than co-firing with it). Change calibrated defaults only after reviewing the supporting calibration data.
+The `context-reset-nudge.sh` turn-count defaults are calibrated against a 185-session fleet corpus; the default `CONTEXT_NUDGE_TURNS=150` keeps the Stop backstop behind the mid-session nudge rather than co-firing with it. Change calibrated defaults only after reviewing the supporting calibration data.
 
 ## Verify the hooks
 

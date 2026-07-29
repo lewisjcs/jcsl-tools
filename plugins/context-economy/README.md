@@ -2,7 +2,7 @@
 
 A Claude Code plugin implementing the **Context Economy Party** — six Classes working together to spend main-thread context economically without sacrificing accuracy.
 
-**No build step, nothing to install** — five markdown skills, four bash hooks, one Python statusline widget. Every hook uses `jq` and `python3` when present and no-ops safely if either is missing.
+**No build step, nothing to install** — five markdown skills, three bash hooks, one Python statusline widget. Every hook uses `jq` and `python3` when present and no-ops safely if either is missing.
 
 ## The Party
 
@@ -50,7 +50,7 @@ export CONTEXT_LOAD_NUDGE_TOKENS=120000   # lower to nudge sooner
 
 ### `context-reset-nudge.sh` (Stop, matcher `*`) — **backstop, trial**
 
-Fires once per session when **both** conditions hold: assistant turns ≥ `CONTEXT_NUDGE_TURNS` (default now `150`) AND human turns ≥ `CONTEXT_NUDGE_MIN_USER_TURNS` (default `5`). The human-turn floor eliminates false positives from agentic fan-out sessions (150+ assistant turns from subagent loops with 1–3 human prompts). The turn default was raised from 100 to sit behind the mid-session handoff nudge — this hook now catches only long-but-low-load sessions or ones with no clean boundary. It is retained during the trial and may be retired once Phase 2 retro data confirms the mid-session nudge suffices on its own.
+Fires once per session when **both** conditions hold: assistant turns ≥ `CONTEXT_NUDGE_TURNS` (default `150`) AND human turns ≥ `CONTEXT_NUDGE_MIN_USER_TURNS` (default `5`). The human-turn floor eliminates false positives from agentic fan-out sessions (150+ assistant turns from subagent loops with 1–3 human prompts). As a backstop, it sits behind the mid-session handoff nudge: it catches long-but-low-load sessions, or ones with no clean boundary, that the primary nudge does not. (trial)
 
 ```bash
 export CONTEXT_NUDGE_TURNS=150          # lower to nudge sooner
