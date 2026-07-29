@@ -148,6 +148,21 @@ assert_exit "guard-relax removal-only: exit 0" "0" "$rc"
 bash "$SCRIPT" guard-relax "$FIX/does-not-exist-nonexistent.patch" >/dev/null 2>&1; rc=$?
 assert_exit "guard-relax missing file: exit 2 (fail-loud)" "2" "$rc"
 
+# --- guard-relax: PARAPHRASE evasion — authorizes inline edit in words that dodge the fixed
+# phrase set ("authorized to write the fix in place without dispatching a crafter") -> exit 5 ---
+out="$(bash "$SCRIPT" guard-relax "$FIX/diff-guard-paraphrase.patch" 2>&1)"; rc=$?
+assert_exit "guard-relax paraphrase: exit 5 (not evaded)" "5" "$rc"
+
+# --- guard-relax: SPLIT across two added lines — "skip the crafter / dispatch and apply the edit"
+# straddles a line break; single-line matching would miss it, joined matching catches it -> exit 5 ---
+bash "$SCRIPT" guard-relax "$FIX/diff-guard-split.patch" >/dev/null 2>&1; rc=$?
+assert_exit "guard-relax split-lines: exit 5 (joined-line match)" "5" "$rc"
+
+# --- guard-relax: NEGATION tightening — "the conductor may never edit shipped source inline"
+# TIGHTENS the guard; it must NOT be misflagged as a relaxation -> exit 0 ---
+bash "$SCRIPT" guard-relax "$FIX/diff-guard-tighten.patch" >/dev/null 2>&1; rc=$?
+assert_exit "guard-relax negation-tighten: exit 0 (not a false positive)" "0" "$rc"
+
 # --- classify: guard-relaxation prose (proposal-A shape) -> includes guard-relaxation (+ routing-output, since it edits SKILL.md routing prose) ---
 out="$(bash "$SCRIPT" classify "$FIX/diff-guard-relax.patch")"
 assert_eq "classify A-shape: has guard-relaxation" "true" "$(printf '%s' "$out" | grep -q 'guard-relaxation' && echo true || echo false)"
@@ -155,6 +170,16 @@ assert_eq "classify A-shape: has guard-relaxation" "true" "$(printf '%s' "$out" 
 # --- classify: edits the guard hook code itself -> guard-hook-code ---
 out="$(bash "$SCRIPT" classify "$FIX/diff-hookcode.patch")"
 assert_eq "classify hook-code: has guard-hook-code" "true" "$(printf '%s' "$out" | grep -q 'guard-hook-code' && echo true || echo false)"
+
+# --- classify: edits the guard TEST HARNESS (test-kiln-guards.sh) — the file eval-gate.md names
+# as the guard-hook-code control — must also classify guard-hook-code so the control routes ---
+out="$(bash "$SCRIPT" classify "$FIX/diff-testharness.patch")"
+assert_eq "classify test-harness: has guard-hook-code" "true" "$(printf '%s' "$out" | grep -q 'guard-hook-code' && echo true || echo false)"
+
+# --- classify: PARAPHRASE relaxation prose still classifies guard-relaxation (classify reuses
+# guard-relax; the evasion fix must close the classify path too, not just the standalone check) ---
+out="$(bash "$SCRIPT" classify "$FIX/diff-guard-paraphrase.patch")"
+assert_eq "classify paraphrase: has guard-relaxation" "true" "$(printf '%s' "$out" | grep -q 'guard-relaxation' && echo true || echo false)"
 
 # --- classify: routing table edit only -> routing-output, no guard/perf ---
 out="$(bash "$SCRIPT" classify "$FIX/diff-routing-only.patch")"

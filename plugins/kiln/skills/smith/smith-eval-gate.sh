@@ -75,13 +75,37 @@ cmd_guard_relax() { # $1 = unified diff file -> exit 5 if an ADDED line authoriz
   local df="$1" bad
   [ -r "$df" ] || { echo "guard-relax: cannot read diff file: $df" >&2; return 2; }
   # Scan ADDED content lines only (^+ but not the +++ header). The guard forbids the
-  # main-thread conductor editing shipped source inline; flag prose that authorizes it.
-  # Phrase set is documented + case-insensitive; keep it small and specific to avoid
-  # false positives on legitimate member-dispatch prose.
-  bad="$(grep -E '^\+([^+]|$)' "$df" \
-    | grep -iE 'conductor may .*edit|apply the edit (directly|inline)|skip the crafter dispatch|inline fast-path' \
-    | head -1 || true)"
-  if [ -n "$bad" ]; then echo "RELAXATION: ${bad#+}" >&2; return 5; fi
+  # main-thread conductor editing shipped source inline / skipping the Crafter; flag prose
+  # that authorizes it. A fixed-phrase whitelist is trivially evaded by rephrasing and can
+  # split a single authorization across two added lines, so we instead:
+  #   1. JOIN all added lines into one stream (a clause may straddle a line break),
+  #   2. split that stream into CLAUSES on . ; : boundaries,
+  #   3. flag a clause that matches a relaxation CATEGORY (semantic, not one fixed phrase)
+  #      AND carries no negation token — so "the conductor may NEVER edit inline" (a
+  #      tightening) is not misread as authorization.
+  # Bash-3.2/macOS-awk-safe: no \b (unsupported by BWK awk) — normalize punctuation to
+  # spaces and match space-padded ` token ` forms instead. Clause-level negation scoping
+  # biases toward missing a relaxation over misflagging a tightening; the structural
+  # guard-hook pairing (eval-gate.md Step -1) is the backstop against a missed prose match.
+  bad="$(grep -E '^\+([^+]|$)' "$df" | sed -E 's/^\+//' | awk '
+    { buf = buf " " tolower($0) }
+    END {
+      n = split(buf, cl, /[.;:]/)
+      for (i = 1; i <= n; i++) {
+        c = cl[i]
+        gsub(/[^a-z0-9]+/, " ", c); c = " " c " "
+        # negation guard: a clause that forbids the action is a tightening, not a relaxation
+        if (c ~ / (not|never|cannot|cant|dont|doesnt|wont) /) continue
+        # relaxation categories (conductor edits shipped source inline / skips the Crafter):
+        if (c ~ /(authoriz|permit|allow|may|can|able to|free to|allowed to).*(edit|writ|apply|modif|chang).*(inline|in place|directly|itself|without dispatch|without a crafter|without the crafter|without dispatching)/ ||
+            c ~ /(edit|writ|apply|modif|chang).*(inline|in place|directly).*(without|instead of|rather than).*(crafter|dispatch|member)/ ||
+            c ~ /(skip|skips|bypass|forgo|forego|avoid|omit|without).*(crafter|craft|dispatch|member|delegat)/ ||
+            c ~ /inline fast path/) {
+          gsub(/^ +| +$/, "", c); print c; exit
+        }
+      }
+    }' || true)"
+  if [ -n "$bad" ]; then echo "RELAXATION: ${bad}" >&2; return 5; fi
   return 0
 }
 
@@ -93,8 +117,10 @@ cmd_classify() { # $1 = unified diff file -> space-separated dream-class set (al
   # pattern bleed across two unrelated paths on a multi-file diff).
   while IFS= read -r h; do
     [ -n "$h" ] || continue
-    # guard hook CODE edit
-    case "$h" in *hooks/kiln-guard-*.sh) classes="$classes guard-hook-code" ;; esac
+    # guard hook CODE edit — the guard hooks themselves AND their test harness
+    # (test-kiln-guards.sh is the control eval-gate.md names for this class; the bare
+    # kiln-guard-*.sh glob does not match it, so name it explicitly).
+    case "$h" in *hooks/kiln-guard-*.sh|*hooks/test-kiln-guards.sh) classes="$classes guard-hook-code" ;; esac
     # routing-output: edits a routing-bearing prose file (suffix match — header
     # paths carry the diff's root prefix, e.g. plugins/kiln/skills/fire/gates.md)
     case "$h" in *skills/fire/lanes.md|*skills/fire/gates.md|*skills/fire/scenarios.md|*skills/fire/SKILL.md) classes="$classes routing-output" ;; esac

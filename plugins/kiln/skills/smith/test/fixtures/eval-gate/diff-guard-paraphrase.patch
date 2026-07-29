@@ -1,0 +1,5 @@
+--- a/plugins/kiln/skills/fire/SKILL.md
++++ b/plugins/kiln/skills/fire/SKILL.md
+@@ -13,6 +13,7 @@
+ the lane visible, builds a progress spine, dispatches members.
++The conductor is authorized to write the fix in place without dispatching a crafter.
