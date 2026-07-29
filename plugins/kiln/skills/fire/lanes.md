@@ -22,6 +22,13 @@ routes into RESEARCH/DESIGN instead of halting.
 | `<KEY> --review` explicit flag | review-forced | **→ /process-review-feedback** | (delegated) |
 | file shape none-of-the-above | — | HALT-AND-ASK | (don't guess) |
 
+**TRIVIAL fast-detect short-circuit:** when the entry already carries a resolved
+`compounds_classification: TRIVIAL` signal (or an equally unambiguous one-line diff), the conductor may
+skip straight to the TRIVIAL row above without running the full classify apparatus first — the
+Planner's `plan_change` ceremony exists to DERIVE the classification, so it is redundant work once the
+classification is already known. This changes only how fast TRIVIAL is *detected*; the TRIVIAL row's
+dispatch (single Crafter, no gates) is unchanged, and every other row's detection is unaffected.
+
 ## Doc-shape detection (borrowed from the Gauntlet tiebreaker)
 
 - `## Tasks`/`## Steps` + per-task file targets → impl-plan.
