@@ -67,5 +67,24 @@ assert ".load equals last turn's usage sum" "42" "$(jq -r '.load' "$LOG_LOAD")"
 STDERR_OUT=$(printf 'not json {{{' | bash "$HOOK" 2>&1 1>/dev/null)
 assert "malformed stdin is silent on stderr" "" "$STDERR_OUT"
 
+# 6. TodoWrite with a completed item → boundary=todo event.
+T="$(make_transcript 8)"
+printf '%s' '{"session_id":"sb1","transcript_path":"'"$T"'","tool_name":"TodoWrite","tool_input":{"todos":[{"status":"completed","content":"x"},{"status":"pending","content":"y"}]}}' | bash "$HOOK"
+LOG="$HOME/.claude/hooks/state/events-sb1.jsonl"
+assert "todo-completed writes boundary" "boundary" "$(jq -r '.kind' "$LOG")"
+assert "todo boundary labelled todo" "todo" "$(jq -r '.boundary' "$LOG")"
+
+# 7. TodoWrite with NO completed item → no event.
+printf '%s' '{"session_id":"sb2","transcript_path":"'"$T"'","tool_name":"TodoWrite","tool_input":{"todos":[{"status":"pending","content":"y"}]}}' | bash "$HOOK"
+assert "todo without completed writes nothing" "0" "$([ -f "$HOME/.claude/hooks/state/events-sb2.jsonl" ] && wc -l < "$HOME/.claude/hooks/state/events-sb2.jsonl" | tr -d ' ' || echo 0)"
+
+# 8. Bash git commit → boundary=commit.
+printf '%s' '{"session_id":"sb3","transcript_path":"'"$T"'","tool_name":"Bash","tool_input":{"command":"git commit -m \"x\""}}' | bash "$HOOK"
+assert "git commit writes boundary=commit" "commit" "$(jq -r '.boundary' "$HOME/.claude/hooks/state/events-sb3.jsonl")"
+
+# 9. Bash unrelated command → no event.
+printf '%s' '{"session_id":"sb4","transcript_path":"'"$T"'","tool_name":"Bash","tool_input":{"command":"ls -la"}}' | bash "$HOOK"
+assert "unrelated bash writes nothing" "0" "$([ -f "$HOME/.claude/hooks/state/events-sb4.jsonl" ] && wc -l < "$HOME/.claude/hooks/state/events-sb4.jsonl" | tr -d ' ' || echo 0)"
+
 echo "PASS=$PASS FAIL=$FAIL"
 [ "$FAIL" -eq 0 ]
