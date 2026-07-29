@@ -23,10 +23,24 @@ routes into RESEARCH/DESIGN instead of halting.
 | file shape none-of-the-above | — | HALT-AND-ASK | (don't guess) |
 
 **TRIVIAL fast-detect short-circuit:** when the entry already carries a resolved
-`compounds_classification: TRIVIAL` signal (or an equally unambiguous one-line diff), the conductor may
-skip straight to the TRIVIAL row above without running the full classify apparatus first — the
-Planner's `plan_change` ceremony exists to DERIVE the classification, so it is redundant work once the
-classification is already known. This changes only how fast TRIVIAL is *detected*; the TRIVIAL row's
+`compounds_classification: TRIVIAL` signal, the conductor may skip straight to the TRIVIAL row above
+without running the full classify apparatus first — the Planner's `plan_change` ceremony exists to
+DERIVE the classification, so it is redundant work once the classification is already known.
+
+The fast path is not blind trust in the supplied signal — it is gated by a **mechanical
+re-verification** the conductor can run at the routing checkpoint. Take the fast path only when BOTH
+hold:
+1. the entry carries `compounds_classification: TRIVIAL`, AND
+2. the change's diff (or, for a not-yet-written change, its named targets) **touches only
+   comments, docs, or whitespace — no routing logic, no gate logic, no control flow, and no more
+   than one source line of behavior.** This is the checkable definition of "trivial"; the TRIVIAL
+   row's own contract is a genuine one-line change.
+
+If the signal says `TRIVIAL` but the diff fails check 2 (it touches routing/gate logic or more than a
+single behavioral line), the signal is stale or wrong — **do NOT fast-path; fall through to the full
+classify apparatus** so `plan_change` re-derives the tier. A wrong `TRIVIAL` is the one dangerous case,
+because the TRIVIAL row's dispatch has zero gates; the re-verification is what makes trusting the
+signal safe. This changes only how fast a *correctly-TRIVIAL* change is detected; the TRIVIAL row's
 dispatch (single Crafter, no gates) is unchanged, and every other row's detection is unaffected.
 
 ## Doc-shape detection (borrowed from the Gauntlet tiebreaker)

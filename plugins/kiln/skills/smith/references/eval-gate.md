@@ -11,7 +11,10 @@ Kiln **routing/gate logic** (`SKILL.md`/`lanes.md`/`gates.md`/`scenarios.md`) by
   (baseline) prose files — the gate replays both sides under the same scenario input.
 - `K`: the per-side replay count (majority sample size); see `smith-eval-gate.sh majority`.
 - The gold fixtures `plugins/kiln/skills/fire/eval/expected/*.json` and `thresholds.yaml` — consulted
-  only by the periodic calibration anchor, not by this per-proposal gate.
+  by the periodic calibration anchor and by the one free-rider capture inside Step 1.1 (which reuses
+  the anchor's `diff`-vs-gold on markers it already replayed). The per-proposal *routing verdict*
+  (Steps 0–3) never reads gold; the free-ride is drift telemetry riding alongside it, not part of the
+  verdict.
 
 ## Scope selection (cost lever — opt-out to `--full`)
 The gate's cost is `in-scope scenarios × 2 sides × K`, so the executor picks the in-scope set before
@@ -214,8 +217,11 @@ the matching control below rather than reading a routing `SAME` as a full cleara
 
 This mode checks whether current Kiln prose still reproduces the gold fixtures
 (`plugins/kiln/skills/fire/eval/expected/*.json`). It is a **drift detector**, run on a cadence,
-never on a per-proposal basis — Steps 1–3 above (the differential gate) never read gold, and this
-is the **only** place gold is consulted.
+never on a per-proposal basis — the differential gate's *verdict* (Steps 1–3 above) never reads gold.
+Gold is consulted in exactly two places, and both are drift telemetry, never the routing verdict:
+this calibration anchor, and the Step 1.1 free-rider (which reuses this section's `diff`-vs-gold on
+baseline markers the gate already replayed). The free-ride is the partial-coverage version of what
+this anchor does over the full 21.
 
 **Trigger:** on-demand via `/smith --calibrate`. The version-bump case is governed entirely by the release-preflight floor below — it is NOT a blanket "run before every bump" rule.
 
