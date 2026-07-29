@@ -1,0 +1,20 @@
+# Smith calibration ledger — persistence for the release-preflight floor.
+#
+# The floor (references/eval-gate.md → Calibration anchor) blocks a Kiln version bump when
+# routing prose changed since the last recorded calibration without an intervening --validate
+# free-ride. It needs a commit to diff against; this file is that commit's home.
+#
+# Format: exactly one active record line (comments start with #), space-separated:
+#   <commit-sha> <coverage> <iso-date> <drift-ratio>
+#     commit-sha  — HEAD when the calibration replay ran (what the floor diffs: git diff <sha>..HEAD)
+#     coverage    — full-21 | partial-freeride
+#     iso-date    — YYYY-MM-DD the calibration ran
+#     drift-ratio — reproduced/total vs gold (soft signal, not a gate)
+#
+# Writers (both overwrite the active record line, never append history):
+#   /smith --calibrate     — after a full-21 run: coverage=full-21
+#   /smith --validate       — the free-ride records coverage=partial-freeride (only if no full-21
+#                             record already covers HEAD's routing prose)
+# Reader: the release-preflight floor. A partial-freeride record satisfies the floor only for the
+# routing sections its in-scope scenarios covered; a full-21 record satisfies it unconditionally.
+00c49a04e5e77e7b582d1db2fc9c77bec24def11 full-21 2026-07-28 18/21

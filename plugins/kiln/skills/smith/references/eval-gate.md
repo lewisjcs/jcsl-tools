@@ -44,9 +44,11 @@ The output is the dream-class set. Route to EVERY matching control (a diff often
 |---|---|---|
 | `routing-output` | the differential gate (Steps 0–3 below) | `CHANGED` outside the intended set → Observation-only |
 | `guard-hook-code` | `bash plugins/kiln/hooks/test-kiln-guards.sh` (exit 0 = held) | non-zero → Observation-only: guard hook regressed |
-| `guard-relaxation` | `bash …/smith-eval-gate.sh guard-relax <diff-file>` (exit 5 = flagged) | exit 5 → Observation-only: authorizes a guard-forbidden action |
+| `guard-relaxation` | BOTH `bash …/smith-eval-gate.sh guard-relax <diff-file>` (exit 5 = flagged) AND `bash plugins/kiln/hooks/test-kiln-guards.sh` (exit 0 = held) | guard-relax exit 5 OR guard-hook non-zero → Observation-only: authorizes/enables a guard-forbidden action |
 | `detection-perf` | NONE the marker can see — measure out-of-band (§ Two-part label) | never Recommended on the gate alone |
 | `unsure` | none | annotate gate-blind; do NOT stamp Recommended |
+
+**`guard-relaxation` pairs two controls, not one.** The `guard-relax` prose scan is a best-effort heuristic — it catches the phrasings it knows, but prose can always be reworded past a text matcher. So a `guard-relaxation` class routes to the guard's own regression test (`test-kiln-guards.sh`) *in addition to* the prose scan: the test asserts the runtime guard still denies inline conductor edits and allows member edits, which no rewording of the proposal's prose can evade. A `guard-relaxation` proposal is therefore never Recommended on a `guard-relax` exit 0 alone — the guard-hook test must also pass, and a genuine relaxation of the guard's own logic fails it. (This is the enforcement of the pairing the § Scope section describes for Verb-4 execution changes.)
 
 **Conservative rule:** if the set contains `unsure`, or a class whose only control is out-of-band, the proposal is NEVER stamped Recommended on gate evidence alone — it is labeled gate-blind and handed to Josh with whatever out-of-band evidence exists. The routing gate stays a *routing* gate; this step is what stops a routing `SAME` from silently clearing a change the marker cannot see.
 
@@ -69,7 +71,7 @@ prose for the proposal side):
    canonicalizes each marker internally — do not pre-run `canon` on them). Its output is the
    canonical majority line; write it to the cache path (a one-byte prose change yields a different
    key, so a Kiln HEAD bump auto-invalidates the cache).
-   **Free-rider calibration:** having resolved the baseline majority for this scenario, also record a gold-diff for it — identify the representative raw marker (the one whose `canon` equals the majority) and run `smith-eval-gate.sh diff <representative> <expected/NN-*.json>`, appending `NN: PASS|FAIL(<fields>)` to a `calibration-freeride.txt` for this run. This is the partial-coverage anchor (only in-scope scenarios); it is NOT a gate on the proposal — it is drift telemetry captured for free from replays already done.
+   **Free-rider calibration:** having resolved the baseline majority for this scenario, also record a gold-diff for it — identify the representative raw marker (the one whose `canon` equals the majority) and run `smith-eval-gate.sh diff <representative> <expected/NN-*.json>`, appending `NN: PASS|FAIL(<fields>)` to a `calibration-freeride.txt` for this run. This is the partial-coverage anchor (only in-scope scenarios); it is NOT a gate on the proposal — it is drift telemetry captured for free from replays already done. At the end of the `--validate` run, if no `full-21` record in `.last-calibration` already covers HEAD's routing prose, write the free-ride summary to the ledger as `<HEAD-sha> partial-freeride <YYYY-MM-DD> <reproduced>/<in-scope-count>` so the release-preflight floor can see this validation satisfied the covered routing sections (see the ledger's own header for the write contract).
 2. **Produce the proposal majority.** Dispatch `K` conductor-role replays against the **proposed**
    prose (same `## Input`, same mode, same dispatch contract), then run `majority` on those `K` raw
    marker files directly to get the proposal's canonical majority line. The proposal side is never
@@ -152,7 +154,7 @@ subcommand for periodic drift detection):
   that scenario's baseline as unstable). Name the scenario, the changed fields, or the unstable side
   in the report.
 
-**Aggregate across controls.** The verdict is the AND of every routed control: RECOMMENDED iff the routing-gate verdict is RECOMMENDED (per the rule above) AND every other routed control passed (guard-hook exit 0; guard-relax exit 0) AND no class was left gate-blind-unproven. Any single control's finding → OBSERVATION-ONLY, naming the control and the finding. A `detection-perf` or `unsure` class present with no confirming out-of-band evidence → gate-blind → not Recommended.
+**Aggregate across controls.** The verdict is the AND of every routed control: RECOMMENDED iff the routing-gate verdict is RECOMMENDED (per the rule above) AND every other routed control passed AND no class was left gate-blind-unproven. "Every other routed control passed" means: guard-hook `test-kiln-guards.sh` exit 0 wherever `guard-hook-code` OR `guard-relaxation` was routed (both classes require it), and `guard-relax` exit 0 wherever `guard-relaxation` was routed. Any single control's finding → OBSERVATION-ONLY, naming the control and the finding. A `detection-perf` or `unsure` class present with no confirming out-of-band evidence → gate-blind → not Recommended.
 
 State the intended-change set explicitly in the report so "the proposal changed the thing it meant
 to" is never confused with "the proposal broke something."
@@ -217,7 +219,7 @@ is the **only** place gold is consulted.
 
 **Trigger:** on-demand via `/smith --calibrate`. The version-bump case is governed entirely by the release-preflight floor below — it is NOT a blanket "run before every bump" rule.
 
-**Release-preflight floor (the only mandatory trigger):** before a Kiln version bump, check `git diff <last-calibration-commit>..HEAD -- plugins/kiln/skills/fire/{SKILL,lanes,gates,scenarios}.md`. If routing prose changed AND no `--validate` run recorded a free-ride calibration covering it since that commit, the bump is BLOCKED until a full-21 `--calibrate` runs and its drift ratio is recorded in the PR. This makes the anchor fire exactly when drift risk is introduced, and never on idle weeks — an unrun anchor is strictly worse than none.
+**Release-preflight floor (the only mandatory trigger):** before a Kiln version bump, read the last-calibration commit from the ledger file `${CLAUDE_PLUGIN_ROOT}/skills/smith/.last-calibration` (the active record line's first field — see that file's header for the format), then check `git diff <that-commit>..HEAD -- plugins/kiln/skills/fire/{SKILL,lanes,gates,scenarios}.md`. If routing prose changed AND the ledger record does not cover it (a `full-21` record covers unconditionally; a `partial-freeride` record covers only the routing sections its in-scope scenarios exercised), the bump is BLOCKED until a full-21 `--calibrate` runs — which rewrites `.last-calibration` with the new HEAD, `full-21`, and the drift ratio (also recorded in the PR). This makes the anchor fire exactly when drift risk is introduced, and never on idle weeks — an unrun anchor is strictly worse than none. The ledger is the single source of truth for "since when": if `.last-calibration` is absent or unreadable, treat it as never-calibrated and require a full-21 run before the bump.
 
 **Procedure**, per `scenarios/NN-*.md`:
 1. Dispatch `K` conductor-role replays against the **current** Kiln prose — same dispatch contract
@@ -242,3 +244,10 @@ K-sample majority" — plus:
 The anchor's job is to **detect drift**, never to gate or block a proposal — a soft ratio is the
 honest signal here, precisely because a hard 21/21 bar is too brittle against replay stochasticity —
 the anchor exists to report drift, not to gate. Do not report this as a pass/fail verdict.
+
+**Record the calibration in the ledger.** After a full-21 `--calibrate` run, overwrite the active
+record line in `${CLAUDE_PLUGIN_ROOT}/skills/smith/.last-calibration` with
+`<HEAD-sha> full-21 <YYYY-MM-DD> <reproduced>/<total>` (the same drift ratio just reported). This is
+what the release-preflight floor reads to know "since when." A `--validate` free-ride writes the same
+line with coverage `partial-freeride` **only if** no `full-21` record already covers HEAD's routing
+prose — a partial ride must never overwrite a stronger full anchor.
