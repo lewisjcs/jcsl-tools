@@ -1,0 +1,7 @@
+{
+  "schemaVersion": "1.0-descriptive",
+  "name": "context-economy-party",
+  "focus": "spend main-thread context economically without sacrificing accuracy",
+  "coverageRule": "before any high-token action (multi-file read, broad grep, large log pull, Task/explore dispatch, session reset), name which Class owns the decision and invoke its skill",
+  "members": ["steward", "assembler", "delegator", "chronicler", "enforcer", "observer"]
+}

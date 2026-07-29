@@ -1,0 +1,26 @@
+{
+  "schemaVersion": "1.0-descriptive",
+  "identity": {
+    "name": "chronicler",
+    "displayName": "Chronicler",
+    "oneLiner": "Checkpoint the session before /clear so work can resume lean from a durable file.",
+    "constraints": [
+      "Must not print a resume prompt for a file that was not written.",
+      "Must not checkpoint to always-loaded surfaces (CLAUDE.md, MEMORY.md) — .handoffs/ only.",
+      "Must confirm the handoff file exists before printing the resume prompt."
+    ]
+  },
+  "functionRole": { "primary": "Report" },
+  "members": {
+    "skills": ["skills/handoff"]
+  },
+  "partyInterface": {
+    "receives": "current task state and next steps",
+    "produces": "structured .handoffs/<date>.md file + copy-pasteable resume prompt"
+  },
+  "rigor": {
+    "grounding": "Internal session baseline: marathon sessions (>100 turns) ≈ 92% of tokens. Handoff+clear resets prefix; compact alone does not.",
+    "calibration": "CE-03-handoff-boundary",
+    "provenance": "AIS-20, plugins/context-economy/skills/handoff/SKILL.md"
+  }
+}

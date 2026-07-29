@@ -1,0 +1,29 @@
+{
+  "description": "Records skill-firing + task-boundary telemetry on PostToolUse, emits a mid-session, boundary-gated handoff nudge on UserPromptSubmit when context load is high at a clean stopping point, and keeps the turn-count Stop nudge as a late backstop (trial). All hooks fail open — never block the harness.",
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Skill|TodoWrite|Bash",
+        "hooks": [
+          { "type": "command", "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/telemetry-record.sh", "timeout": 10 }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "matcher": "*",
+        "hooks": [
+          { "type": "command", "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/handoff-nudge.sh", "timeout": 10 }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "*",
+        "hooks": [
+          { "type": "command", "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/context-reset-nudge.sh", "timeout": 10 }
+        ]
+      }
+    ]
+  }
+}

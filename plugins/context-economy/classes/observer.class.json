@@ -1,0 +1,28 @@
+{
+  "schemaVersion": "1.0-descriptive",
+  "identity": {
+    "name": "observer",
+    "displayName": "Observer",
+    "oneLiner": "Record skill-firing and task-boundary telemetry, and surface session cost and cache-read share so bloating context is visible before the bill, not after.",
+    "constraints": [
+      "Must never block or delay any tool call.",
+      "Must not emit pricing data to agent context (outputs to statusLine widget only).",
+      "Must exit 0 silently on all parse/IO errors.",
+      "Must remain stdlib-only — no third-party Python packages.",
+      "Must prefer live LiteLLM pricing (cached 24h) over hardcoded fallback rates."
+    ]
+  },
+  "functionRole": { "primary": "Operate" },
+  "members": {
+    "hooks": ["hooks/telemetry-record.sh", "hooks/cost-statusline.py"]
+  },
+  "partyInterface": {
+    "receives": "Claude Code statusLine payload (transcript_path, model, context_window) via stdin",
+    "produces": "ANSI-colored cost · cache% widget string for ccstatusline customCommands embedding"
+  },
+  "rigor": {
+    "grounding": "Fleet corpus N=185: cache_read = 94.8% of tokens (p50); Opus = 96.9% of spend. Source: projects/active/token-optimization/enforcer-gate-calibration.md (2026-06-17). Pricing sourced live from LiteLLM (same URL as ccusage v20.0.14): https://raw.githubusercontent.com/BerriAI/litellm/main/model_prices_and_context_window.json",
+    "calibration": "CE-04-clear-default, CE-05-router-gate (Observer signal → Steward invocation); live pricing fetch verified 2026-06-18: claude-opus-4-8 $5/$25, claude-sonnet-4-6 $3/$15, claude-haiku-4-5 $1/$5, claude-fable-5 $10/$50",
+    "provenance": "AIS-43, plugins/context-economy/hooks/cost-statusline.py"
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "schemaVersion": "1.0-descriptive",
+  "identity": {
+    "name": "delegator",
+    "displayName": "Delegator",
+    "oneLiner": "Push bounded find/parse/exec work off the main thread with a four-part dispatch contract.",
+    "constraints": [
+      "Must not dispatch without explicit inputs, ordered steps, output contract, and concrete done-check.",
+      "Must not delegate synthesis, judgment, or cross-cutting decisions.",
+      "Must not accept raw tool dumps from subagents — structured summary + paths only."
+    ]
+  },
+  "functionRole": { "primary": "Plan" },
+  "members": {
+    "skills": ["skills/delegating-to-subagents"]
+  },
+  "partyInterface": {
+    "receives": "bounded task with structured output requirement",
+    "produces": "subagent dispatch prompt with four-part contract; receives summary + paths + done-check result"
+  },
+  "rigor": {
+    "grounding": "Live per-tier pricing (platform.claude.com): Opus→Sonnet is a deterministic per-token cut. Noisy work in subagent fresh context never bloats Opus prefix.",
+    "calibration": "CE-01-delegate-search",
+    "provenance": "AIS-20, plugins/context-economy/skills/delegating-to-subagents/SKILL.md"
+  }
+}
