@@ -29,7 +29,10 @@ DA="$SD/ce-retro-A.json"
 assert "digest A written" "true" "$([ -f "$DA" ] && echo true || echo false)"
 assert "firing includes handoff" "true" "$(jq -r '.firing.fired | index("handoff") != null' "$DA")"
 assert "context-assembly is dormant" "true" "$(jq -r '.firing.never_fired | index("context-assembly") != null' "$DA")"
-assert "denominator is 5" "5" "$(jq -r '.firing.denominator' "$DA")"
+# Denominator is derived from skills on disk (5 shipped, excluding context-economy-retro).
+assert "denominator is 5 (derived from disk)" "5" "$(jq -r '.firing.denominator' "$DA")"
+assert "observer is expected_dormant (carve-out)" "true" "$(jq -r '.firing.expected_dormant | index("observer") != null' "$DA")"
+assert "context-economy-retro NOT counted" "false" "$(jq -r '(.firing.fired + .firing.never_fired) | index("context-economy-retro") != null' "$DA")"
 assert "one boundary captured" "1" "$(jq -r '.boundaries | length' "$DA")"
 assert "boundary carries optimistic ROI" "optimistic" "$(jq -r '.boundaries[0].model' "$DA")"
 assert "no resumed-from → cross_clear null" "null" "$(jq -r '.rework.cross_clear' "$DA")"
@@ -45,6 +48,25 @@ bash "$H" --last 10 --state-dir "$SD" >/dev/null
 DB="$SD/ce-retro-B.json"
 assert "B links predecessor A via marker" "A" "$(jq -r '.rework.cross_clear.linked_predecessor' "$DB")"
 assert "B link_source is marker" "marker" "$(jq -r '.rework.cross_clear.link_source' "$DB")"
+
+# Session BN: a resumed-from event whose handoff has NO real ce-session marker (an unstamped
+# PENDING placeholder — stamp hook never ran). This must yield cross_clear == null, NOT a
+# {linked_predecessor:"null"|"PENDING"} object. Regression guard for the bash-"null"-string bug:
+# building the object made the `!= null` guards report every unlinked session as linked.
+HFP="$TMP/handoff-pending.md"; printf '<!-- ce-session: PENDING -->\n# Handoff\n' > "$HFP"
+TBN="$(mk_transcript 3)"
+printf '{"session":"BN","kind":"resumed-from","handoff":"%s","turn":1,"load":50,"transcript":"%s"}\n' "$HFP" "$TBN" > "$SD/ce-events-BN.jsonl"
+bash "$H" --last 10 --state-dir "$SD" >/dev/null
+DBN="$SD/ce-retro-BN.json"
+assert "resumed-from + PENDING marker → cross_clear null (not false link)" "null" "$(jq -r '.rework.cross_clear' "$DBN")"
+
+# Session BM: resumed-from event, handoff file exists but has NO marker line at all → also null.
+HFM="$TMP/handoff-nomarker.md"; printf '# Handoff\nno marker\n' > "$HFM"
+TBM="$(mk_transcript 3)"
+printf '{"session":"BM","kind":"resumed-from","handoff":"%s","turn":1,"load":50,"transcript":"%s"}\n' "$HFM" "$TBM" > "$SD/ce-events-BM.jsonl"
+bash "$H" --last 10 --state-dir "$SD" >/dev/null
+DBM="$SD/ce-retro-BM.json"
+assert "resumed-from + markerless handoff → cross_clear null" "null" "$(jq -r '.rework.cross_clear' "$DBM")"
 
 
 # Session C: transcript with a short user-correction turn + a repeated Read of the same path.

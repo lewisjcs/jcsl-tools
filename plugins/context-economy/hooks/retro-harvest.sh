@@ -13,8 +13,30 @@ done
 case "$LAST" in *[!0-9]*|0) echo "usage: retro-harvest.sh --last N (positive int)" >&2; exit 2 ;; esac
 command -v jq >/dev/null || { echo "jq required" >&2; exit 3; }
 command -v python3 >/dev/null || { echo "python3 required" >&2; exit 3; }
-ROI="$(cd "$(dirname "$0")" && pwd)/retro-roi.py"
-SKILLS="context-economy context-assembly delegating-to-subagents handoff observer"
+HOOK_DIR="$(cd "$(dirname "$0")" && pwd)"
+ROI="$HOOK_DIR/retro-roi.py"
+
+# Derive the shipped-skill set from disk so firing coverage can't silently desync when a
+# skill is added or removed. Exclude context-economy-retro itself (the retro doesn't fire
+# during a normal session; counting it would guarantee a false "dormant" flag).
+SKILLS_DIR="$HOOK_DIR/../skills"
+SKILLS=""
+if [ -d "$SKILLS_DIR" ]; then
+  for d in "$SKILLS_DIR"/*/; do
+    name="$(basename "$d")"
+    [ "$name" = "context-economy-retro" ] && continue
+    [ -f "$d/SKILL.md" ] || continue
+    SKILLS="$SKILLS $name"
+  done
+fi
+# Fallback to the known set if the glob found nothing (e.g. run outside the plugin tree).
+[ -n "$SKILLS" ] || SKILLS="context-economy context-assembly delegating-to-subagents handoff observer"
+DENOM="$(echo $SKILLS | wc -w | tr -d ' ')"
+
+# Skills that are dormant BY DESIGN — flagging them as dormancy candidates is a false
+# positive. observer's output IS the statusline widget, so it intentionally never fires
+# as a Skill call. Kept as a documented constant, not derived (design intent isn't on disk).
+EXPECTED_DORMANT_JSON='["observer"]'
 
 rework_for() {  # $1=transcript path → prints "CORRECTIONS REPEATED"
   python3 - "$1" <<'PY'
@@ -86,12 +108,19 @@ $(jq -c 'select(.kind=="boundary")' "$sp" 2>/dev/null)
 EOF
 
   # Cross-clear link: a resumed-from event → read predecessor session from the handoff file.
-  cross='null'
+  # Only claim a link when a real ce-session marker is present. A missing marker must leave
+  # cross='null' (the bash sentinel) — NOT a {linked_predecessor:"null"} object, whose
+  # `!= null` truthiness would falsely report every unlinked session as linked. Also ignore
+  # an unstamped PENDING placeholder (handoff written but the stamp hook never ran).
+  cross='null'; pred=""
   hf="$(jq -r 'select(.kind=="resumed-from") | .handoff' "$sp" 2>/dev/null | tail -n1)"
   if [ -n "$hf" ] && [ "$hf" != "null" ] && [ -f "$hf" ]; then
     pred="$(grep -m1 -oE 'ce-session: *[^ ]+' "$hf" 2>/dev/null | sed 's/ce-session: *//')"
-    [ -n "$pred" ] || pred="null"
-    cross="$(jq -nc --arg p "$pred" '{linked_predecessor:$p, link_source:"marker", post_resume_rereads:null}')"
+    if [ -n "$pred" ] && [ "$pred" != "PENDING" ]; then
+      cross="$(jq -nc --arg p "$pred" '{linked_predecessor:$p, link_source:"marker", post_resume_rereads:null}')"
+    else
+      pred=""
+    fi
   fi
 
   # Post-resume re-reads: files Read in both the predecessor transcript and this one.
@@ -140,8 +169,9 @@ PY
     --argjson fired "$fired_json" --argjson never "$never_json" \
     --argjson bnd "$boundaries_json" --argjson cross "$cross" \
     --argjson corr "$corr" --argjson rep "$rep" \
+    --argjson denom "${DENOM:-5}" --argjson dormant "$EXPECTED_DORMANT_JSON" \
     '{session:$s, first_ts:$f, last_ts:$l, turns_total:$tt,
-      firing:{fired:$fired, never_fired:$never, denominator:5},
+      firing:{fired:$fired, never_fired:$never, denominator:$denom, expected_dormant:$dormant},
       boundaries:$bnd,
       rework:{within_session:{correction_turns:$corr, repeated_file_reads:$rep}, cross_clear:$cross},
       lenses_available:(["firing"] + (if ($bnd|length)>0 then ["roi"] else [] end) + (if $cross!=null then ["accuracy"] else [] end)),

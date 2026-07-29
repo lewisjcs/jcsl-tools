@@ -6,6 +6,12 @@ turn to session end. Counterfactual (OPTIMISTIC): if context had been reset at
 the boundary, the prefix re-grows linearly from a small floor — ignores any
 re-orientation/rework cost, hence optimistic. All error paths print an error
 object and exit 0 (fail-open, never fabricate).
+
+Network note: rates come from cost-statusline.load_pricing(), which is cache-first
+(reads a local pricing.json within its TTL) but MAY make a one-time live fetch with
+a 2s timeout when the cache is missing/stale, falling back to {} on any failure. In
+normal use the statusline keeps that cache warm, so the retro path reads locally; the
+fetch is the cold-cache exception, not the rule. It never blocks (fail-open).
 """
 import sys, os, json
 

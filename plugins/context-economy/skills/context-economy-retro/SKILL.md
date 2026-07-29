@@ -16,10 +16,16 @@ rework/accuracy watch. **Proposes only — never edits a SKILL.md, fixture, or o
    It writes one `ce-retro-<session>.json` per spine-backed session under `~/.claude/hooks/state/`
    and prints their paths. If it prints zero paths, there is no telemetry yet — say so and stop
    (the spine only fills as the plugin is used across sessions).
+   Note: ROI pricing is cache-first but may trigger a one-time, 2s-timeout, fail-open network
+   fetch on a cold cache (see `retro-roi.py`) — harvest still completes offline (ROI just reports
+   its error object for that boundary).
 
-2. **Read each digest.** Each holds `firing` (fired/never_fired/denominator=5), `boundaries` (each
-   with optimistic ROI: realized/counterfactual/savings_foregone), `rework`
-   (within_session + marker-linked cross_clear), and `lenses_available`.
+2. **Read each digest.** Each holds `firing` (fired/never_fired/`denominator`/`expected_dormant`),
+   `boundaries` (each with optimistic ROI: realized/counterfactual/savings_foregone), `rework`
+   (within_session + marker-linked cross_clear), and `lenses_available`. The `denominator` is
+   derived from the skills on disk (not hardcoded), and `expected_dormant` lists skills that are
+   dormant BY DESIGN (e.g. `observer`, whose output is the statusline widget) — subtract those
+   from the dormancy candidates below so they are never flagged as needing a fix.
 
 3. **Synthesize the briefing** in this exact shape:
 
@@ -27,8 +33,9 @@ rework/accuracy watch. **Proposes only — never edits a SKILL.md, fixture, or o
 
    ### Firing coverage
    - Fired across corpus: <skills + how many sessions each>
-   - NEVER fired: <dormant skills> ← dormancy candidates
-   - (denominator: 5 shipped skills)
+   - NEVER fired: <dormant skills, EXCLUDING those in `expected_dormant`> ← dormancy candidates
+   - Dormant by design (not flagged): <skills in `expected_dormant`, e.g. observer>
+   - (denominator: <`denominator` from the digest> shipped skills)
 
    ### ROI — estimated savings foregone (OPTIMISTIC; ignores re-orientation cost)
    - Boundaries where a reset would have saved: <realized vs counterfactual $ per session>
