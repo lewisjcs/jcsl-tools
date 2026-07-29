@@ -54,7 +54,7 @@ Three lifecycle hooks register via `hooks/hooks.json`. All are reminders — non
 |------|-------|------|-------------|---------|
 | `telemetry-record.sh` | `PostToolUse` (matcher `Skill\|TodoWrite\|Bash`) | Records skill-firing + task-boundary events to `~/.claude/hooks/state/ce-events-<session>.jsonl` | — | — |
 | `handoff-nudge.sh` | `UserPromptSubmit` (matcher `*`) | **Primary.** Mid-session, boundary-gated handoff nudge — fires when token load is high at a clean task boundary | `CONTEXT_LOAD_NUDGE_TOKENS` | `120000` |
-| `context-reset-nudge.sh` | `Stop` (matcher `*`) | **Backstop (trial).** Turn-count nudge, raised behind the mid-session nudge; retained until Phase 2 retro data confirms the mid-session nudge suffices | `CONTEXT_NUDGE_TURNS`, `CONTEXT_NUDGE_MIN_USER_TURNS` | `150`, `5` |
+| `context-reset-nudge.sh` | `Stop` (matcher `*`) | **Backstop (trial).** Turn-count nudge, raised behind the mid-session nudge; retained until retro data confirms the mid-session nudge suffices | `CONTEXT_NUDGE_TURNS`, `CONTEXT_NUDGE_MIN_USER_TURNS` | `150`, `5` |
 
 Set in your shell profile or Claude Code environment to override:
 
@@ -77,6 +77,23 @@ bash "${CLAUDE_PLUGIN_ROOT}/hooks/context-reset-nudge.test.sh"
 ```
 
 Each suite prints `ok` per scenario and a final `PASS=<n> FAIL=0` line.
+
+## Retro
+
+Once the plugin has been used across several sessions, the telemetry spine (`ce-events-<session>.jsonl`
+files under `~/.claude/hooks/state/`) has enough history to retro over. Invoke `/context-economy-retro`
+(or run the harvester directly: `bash "${CLAUDE_PLUGIN_ROOT}/hooks/retro-harvest.sh" --last 10`) to get
+a read-only briefing on firing coverage, optimistic handoff+clear ROI, and a rework/accuracy watch. It
+is advisory only — it never edits a skill or opens a PR.
+
+The retro reads only **spine-backed** sessions — ones with an events log. Freshly enabled or very
+short sessions will not have one yet; the spine fills in as normal usage accrues, and the retro says
+so rather than reporting on fewer sessions/lenses silently.
+
+Two telemetry details it depends on: `telemetry-record.sh` stamps a `resumed-from` event (once per
+session) the first time a session reads a `handoff-*.md` file, and every handoff file the `handoff`
+skill writes carries a `<!-- ce-session: <session_id> -->` marker at the top. Together they let the
+retro link a resumed session back to the one that produced its handoff, without guessing from content.
 
 ## Verify the widget
 

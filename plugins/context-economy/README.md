@@ -31,6 +31,7 @@ A Claude Code plugin implementing the **Context Economy Party** — six Classes 
 | `context-assembly` | Assembler patterns: grep-first, read-narrow, delegate exploration, return contract. Invoked from context-economy before loading files or logs. |
 | `delegating-to-subagents` | Delegator dispatch gate: delegate-vs-keep table, four-part contract, worked example, return contract. |
 | `handoff` | Chronicler checkpoint: writes `.handoffs/<date>.md` + copy-pasteable resume prompt before `/clear`. |
+| `context-economy-retro` | Read-only retro over the telemetry spine: firing coverage, optimistic handoff+clear ROI, and a rework/accuracy watch. Advisory suggestions only — never edits a skill or opens a PR. |
 
 ## Hooks: Observer + Enforcer
 

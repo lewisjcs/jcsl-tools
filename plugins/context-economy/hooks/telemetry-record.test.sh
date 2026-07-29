@@ -48,6 +48,7 @@ assert "one event line written" "1" "$(wc -l < "$LOG" | tr -d ' ')"
 assert "event names the skill" "context-economy:handoff" "$(jq -r '.skill' "$LOG")"
 assert "event kind is skill" "skill" "$(jq -r '.kind' "$LOG")"
 assert "turn count recorded (12)" "12" "$(jq -r '.turn' "$LOG")"
+assert "event records transcript path" "$T" "$(jq -r '.transcript' "$LOG")"
 
 # 2. Non-Skill tool call is ignored (no event).
 printf '%s' '{"session_id":"sess2","transcript_path":"'"$T"'","tool_name":"Read","tool_input":{"file_path":"/x"}}' | bash "$HOOK"
@@ -119,6 +120,31 @@ assert "unchanged completed count fires boundary once, not 3x" "1" "$(wc -l < "$
 SB10B='{"session_id":"sb10","transcript_path":"'"$T"'","tool_name":"TodoWrite","tool_input":{"todos":[{"status":"completed","content":"A"},{"status":"completed","content":"B"}]}}'
 printf '%s' "$SB10B" | bash "$HOOK"
 assert "growing completed count fires a new boundary" "2" "$(wc -l < "$HOME/.claude/hooks/state/ce-events-sb10.jsonl" | tr -d ' ')"
+
+# 17. A Read of a handoff-*.md file stamps a resumed-from event once.
+T="$(make_transcript 6)"
+RD='{"session_id":"sr1","transcript_path":"'"$T"'","tool_name":"Read","tool_input":{"file_path":"/proj/.handoffs/handoff-2026-07-29.md"}}'
+printf '%s' "$RD" | bash "$HOOK"
+LOG="$HOME/.claude/hooks/state/ce-events-sr1.jsonl"
+assert "handoff Read writes resumed-from" "resumed-from" "$(jq -r '.kind' "$LOG")"
+assert "resumed-from records handoff path" "/proj/.handoffs/handoff-2026-07-29.md" "$(jq -r '.handoff' "$LOG")"
+
+# 18. A second Read of a handoff file in the same session does NOT re-stamp.
+printf '%s' "$RD" | bash "$HOOK"
+assert "resumed-from fires once per session" "1" "$(wc -l < "$LOG" | tr -d ' ')"
+
+# 19. A Read of a NON-handoff file writes nothing.
+printf '%s' '{"session_id":"sr2","transcript_path":"'"$T"'","tool_name":"Read","tool_input":{"file_path":"/proj/src/index.ts"}}' | bash "$HOOK"
+assert "non-handoff Read writes nothing" "0" "$([ -f "$HOME/.claude/hooks/state/ce-events-sr2.jsonl" ] && wc -l < "$HOME/.claude/hooks/state/ce-events-sr2.jsonl" | tr -d ' ' || echo 0)"
+
+# 20. DISPATCH REACHABILITY: the resumed-from branch above only ever fires in production if
+#     hooks.json's PostToolUse matcher actually routes Read tool calls to this hook. Tests
+#     that pipe stdin directly (17-19) bypass the matcher, so they'd stay green even if the
+#     matcher never included Read (the exact dead-code bug this suite must guard). Assert the
+#     real config, not the piped path.
+HJSON="$DIR/hooks.json"
+MATCHER="$(jq -r '.hooks.PostToolUse[] | select((.hooks // []) | any(.command | test("telemetry-record.sh"))) | .matcher' "$HJSON")"
+assert "hooks.json routes Read to telemetry-record (resumed-from reachable)" "true" "$(echo "$MATCHER" | grep -qw Read && echo true || echo false)"
 
 echo "PASS=$PASS FAIL=$FAIL"
 [ "$FAIL" -eq 0 ]

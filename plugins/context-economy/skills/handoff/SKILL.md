@@ -16,6 +16,7 @@ Write a structured handoff so you can `/clear` and resume a long task lean — t
 2. **Write the handoff file** with exactly these sections:
 
    ```markdown
+   <!-- ce-session: PENDING -->
    # Handoff — <task> — <date>
    ## Goal           — what we're accomplishing (1–2 sentences)
    ## State          — what's done + what's in flight (verified truth, not assumed)
@@ -23,6 +24,12 @@ Write a structured handoff so you can `/clear` and resume a long task lean — t
    ## Key paths      — files / artifacts / tickets the next session needs
    ## Open questions — unresolved decisions, things to verify
    ```
+
+   Write the marker literally as `PENDING` — do not try to fill in a session id. A
+   PostToolUse hook (`handoff-stamp.sh`) rewrites that line with the real `session_id`
+   on write; that stamped marker is what the context-economy retro matches on to link
+   this handoff to the session that produced it. Leave the `<!-- ce-session: ... -->`
+   comment intact.
 
 3. **Print the resume prompt** (do not write it to a file). Keep it short — its job is to seed a LEAN session. Reference the file by its ACTUAL written path:
 

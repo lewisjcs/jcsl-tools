@@ -1,11 +1,12 @@
 {
-  "description": "Records skill-firing + task-boundary telemetry on PostToolUse, emits a mid-session, boundary-gated handoff nudge on UserPromptSubmit when context load is high at a clean stopping point, and keeps the turn-count Stop nudge as a late backstop (trial). All hooks fail open — never block the harness.",
+  "description": "Records skill-firing + task-boundary telemetry on PostToolUse (Read stamps a resumed-from event on handoff reads; Write triggers the ce-session marker stamp on handoff writes), emits a mid-session, boundary-gated handoff nudge on UserPromptSubmit when context load is high at a clean stopping point, and keeps the turn-count Stop nudge as a late backstop (trial). All hooks fail open — never block the harness.",
   "hooks": {
     "PostToolUse": [
       {
-        "matcher": "Skill|TodoWrite|Bash",
+        "matcher": "Skill|TodoWrite|Bash|Read|Write",
         "hooks": [
-          { "type": "command", "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/telemetry-record.sh", "timeout": 10 }
+          { "type": "command", "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/telemetry-record.sh", "timeout": 10 },
+          { "type": "command", "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/handoff-stamp.sh", "timeout": 10 }
         ]
       }
     ],

@@ -41,6 +41,17 @@ case "$TOOL" in
     if echo "$CMD" | grep -Eq '(^|&&|\;|\|\||\|)[[:space:]]*(gh[[:space:]]+pr[[:space:]]+create|create_pull_request)\b'; then KIND="boundary"; FIELD="boundary"; VAL="pr"
     elif echo "$CMD" | grep -Eq '(^|&&|\;|\|\||\|)[[:space:]]*git[[:space:]]+commit\b'; then KIND="boundary"; FIELD="boundary"; VAL="commit"
     fi ;;
+  Read)
+    FPATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // ""' 2>/dev/null)
+    # Only a handoff file signals a resume. Match basename handoff-*.md.
+    case "$(basename "$FPATH")" in
+      handoff-*.md)
+        RESUMED_MARK="$STATE_DIR/resumed-from-$SESSION_ID"
+        if [ ! -f "$RESUMED_MARK" ]; then
+          mkdir -p "$STATE_DIR" 2>/dev/null && : > "$RESUMED_MARK" 2>/dev/null
+          KIND="resumed-from"; FIELD="handoff"; VAL="$FPATH"
+        fi ;;
+    esac ;;
 esac
 [ -n "$KIND" ] || exit 0
 LOG="$STATE_DIR/ce-events-$SESSION_ID.jsonl"
@@ -80,7 +91,8 @@ find "$STATE_DIR" -name 'ce-events-*.jsonl' -type f -mtime +30 -delete 2>/dev/nu
 
 { jq -nc --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --arg s "$SESSION_ID" \
          --arg kind "$KIND" --arg field "$FIELD" --arg val "$VAL" \
+         --arg tr "$TRANSCRIPT" \
          --argjson turn "$TURN" --argjson load "$LOAD" \
-    '{ts:$ts, session:$s, kind:$kind} + {($field):$val} + {turn:$turn, load:$load}' \
+    '{ts:$ts, session:$s, kind:$kind} + {($field):$val} + {turn:$turn, load:$load} + {transcript:$tr}' \
     >> "$LOG"; } 2>/dev/null || true
 exit 0
