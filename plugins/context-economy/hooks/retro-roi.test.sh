@@ -22,8 +22,14 @@ mk() {
 }
 echo "retro-roi.py"
 T="$(mk)"
-# Force fallback pricing (no network in tests): unset any cache by pointing HOME at TMP.
+# Force fallback pricing (no network in tests): pointing HOME at TMP alone only
+# dodges the pricing CACHE — load_pricing() still falls through to a live
+# LiteLLM fetch on a cache miss. Seed an empty cache file so it's a HIT (on
+# empty {}) instead, deterministically forcing the FALLBACK_PRICING path with
+# no network call.
 export HOME="$TMP"
+mkdir -p "$HOME/.cache/context-economy-statusline"
+echo '{}' > "$HOME/.cache/context-economy-statusline/pricing.json"
 OUT="$(python3 "$ROI" "$T" 2)"
 assert "tail_turns from boundary index 2 = 3" "3" "$(echo "$OUT" | jq -r '.tail_turns')"
 assert "realized tail = 3 turns × \$0.50 = 1.5" "1.5" "$(echo "$OUT" | jq -r '.realized_tail_usd')"
