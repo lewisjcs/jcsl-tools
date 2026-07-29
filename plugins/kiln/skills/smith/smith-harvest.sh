@@ -173,6 +173,22 @@ else
   fi
 fi
 
+# Per-member cost (Slice 3a): join Langfuse per-subagent trace cost onto this run
+# by session id. Additive to the coarse cost_usd above; the ccusage path is untouched.
+# Fail-open: any reader failure yields the empty object, never a harvest failure.
+# SMITH_LANGFUSE_COST override mirrors SMITH_CCUSAGE (keeps the test offline).
+cost_by_member='{"members":[],"conductor_cost_usd":null,"note":"no session id"}'
+if [ -n "$session_id_str" ]; then
+  READER="${SMITH_LANGFUSE_COST:-bash $(dirname "$0")/smith-langfuse-cost.sh}"
+  cbm="$($READER "$session_id_str" 2>/dev/null || true)"
+  # Only accept valid JSON with a members array; otherwise keep the fail-open default.
+  if [ -n "$cbm" ] && jq -e 'has("members")' >/dev/null 2>&1 <<<"$cbm"; then
+    cost_by_member="$cbm"
+  else
+    cost_by_member='{"members":[],"conductor_cost_usd":null,"note":"reader unavailable"}'
+  fi
+fi
+
 if [ "$first_ts" = "null" ] || [ "$last_ts" = "null" ]; then
   duration_note="duration unavailable (no parseable timestamps in ledger)"
 else
@@ -185,7 +201,8 @@ jq -n --arg run_id "$run_id" --argjson tasks "$tasks_json" \
    --argjson fix_loops "$fix_loops" \
    --arg session_id_str "$session_id_str" --argjson cost_usd "$cost_usd" \
    --arg cost_note "$cost_note" --arg duration_note "$duration_note" \
+   --argjson cost_by_member "$cost_by_member" \
    '{run_id:$run_id, tasks:$tasks, friction:$friction,
      first_ts:$first_ts, last_ts:$last_ts, duration_note:$duration_note, fix_loops:$fix_loops,
      session_id:(if $session_id_str == "" then null else $session_id_str end),
-     cost_usd:$cost_usd, cost_note:$cost_note}' > "$OUT"
+     cost_usd:$cost_usd, cost_note:$cost_note, cost_by_member:$cost_by_member}' > "$OUT"
