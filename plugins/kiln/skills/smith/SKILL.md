@@ -78,7 +78,7 @@ and run its "Calibration anchor" procedure: K replays per scenario against curre
 mandatory only when routing prose changed since the last recorded calibration without an
 intervening `--validate` free-ride (the release-preflight floor — see the free-rider note below).
 
-**Free-rider (A′):** a `--validate` run already replays the current prose per in-scope scenario (its baseline side). That run records a partial-coverage gold-diff from those same markers at no extra replay cost — so a validated PR needs no separate `--calibrate`. The dedicated full-19 `--calibrate` is the *floor*: it fires (a) on-demand, and (b) as a release-preflight when routing prose changed since the last recorded calibration WITHOUT an intervening `--validate`. A recorded calibration always states its coverage (partial free-ride vs full-19) so a partial ride is never mistaken for a full anchor.
+**Free-rider (A′):** a `--validate` run already replays the current prose per in-scope scenario (its baseline side). That run records a partial-coverage gold-diff from those same markers at no extra replay cost — so a validated PR needs no separate `--calibrate`. The dedicated full-21 `--calibrate` is the *floor*: it fires (a) on-demand, and (b) as a release-preflight when routing prose changed since the last recorded calibration WITHOUT an intervening `--validate`. A recorded calibration always states its coverage (partial free-ride vs full-21) so a partial ride is never mistaken for a full anchor.
 
 ## What The Smith does NOT do
 - Does not edit Kiln source, gates, or prompts — it proposes and validates; Josh approves the PR.

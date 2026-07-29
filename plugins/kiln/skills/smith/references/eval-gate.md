@@ -217,7 +217,7 @@ is the **only** place gold is consulted.
 
 **Trigger:** on-demand via `/smith --calibrate`. The version-bump case is governed entirely by the release-preflight floor below — it is NOT a blanket "run before every bump" rule.
 
-**Release-preflight floor (the only mandatory trigger):** before a Kiln version bump, check `git diff <last-calibration-commit>..HEAD -- plugins/kiln/skills/fire/{SKILL,lanes,gates,scenarios}.md`. If routing prose changed AND no `--validate` run recorded a free-ride calibration covering it since that commit, the bump is BLOCKED until a full-19 `--calibrate` runs and its drift ratio is recorded in the PR. This makes the anchor fire exactly when drift risk is introduced, and never on idle weeks — an unrun anchor is strictly worse than none.
+**Release-preflight floor (the only mandatory trigger):** before a Kiln version bump, check `git diff <last-calibration-commit>..HEAD -- plugins/kiln/skills/fire/{SKILL,lanes,gates,scenarios}.md`. If routing prose changed AND no `--validate` run recorded a free-ride calibration covering it since that commit, the bump is BLOCKED until a full-21 `--calibrate` runs and its drift ratio is recorded in the PR. This makes the anchor fire exactly when drift risk is introduced, and never on idle weeks — an unrun anchor is strictly worse than none.
 
 **Procedure**, per `scenarios/NN-*.md`:
 1. Dispatch `K` conductor-role replays against the **current** Kiln prose — same dispatch contract
