@@ -1,6 +1,6 @@
 ---
 name: smith
-description: The Smith — reads recent Kiln runs and briefs you on how they went (accuracy, friction, speed, cost) with advisory suggestions for improving the tool. Use for "how have my Kiln runs been going", "kiln retro", "smith briefing", "review my last N kiln runs", or a morning tool-health check. Read-only — proposes, never edits.
+description: The Smith — reads recent Kiln runs and briefs you on how they went (accuracy, friction, speed, cost) with advisory suggestions for improving the tool. Use for "how have my Kiln runs been going", "kiln retro", "smith briefing", "review my last N kiln runs", or a morning tool-health check. Also "emit suggestions", "save suggestions to record", "validate proposal", or "implement suggestion". Read-only — proposes, never edits.
 ---
 
 # The Smith — Kiln Run Retrospective (read-only)
@@ -90,8 +90,25 @@ intervening `--validate` free-ride (the release-preflight floor — see the free
 
 **Free-rider (A′):** a `--validate` run already replays the current prose per in-scope scenario (its baseline side). That run records a partial-coverage gold-diff from those same markers at no extra replay cost — so a validated PR needs no separate `--calibrate`. The dedicated full-21 `--calibrate` is the *floor*: it fires (a) on-demand, and (b) as a release-preflight when routing prose changed since the last recorded calibration WITHOUT an intervening `--validate`. Both modes persist their result to the ledger file `${CLAUDE_PLUGIN_ROOT}/skills/smith/.last-calibration` (one active record: `<sha> <coverage> <date> <ratio>`), which is what the release-preflight floor reads to know "since when" — a recorded calibration always states its coverage (`partial-freeride` vs `full-21`) so a partial ride is never mistaken for a full anchor. See `references/eval-gate.md` → Calibration anchor for the read/write contract.
 
+## Mode: `--emit-suggestions` (durable suggestions — on-demand; read + local write only)
+
+When invoked as `/smith --emit-suggestions`, load
+`${CLAUDE_PLUGIN_ROOT}/skills/smith/references/emit-suggestions.md` and follow its `--emit-suggestions`
+procedure: harvest read-only, filter each candidate through the evidence triangle, and write survivors
+to `smith-suggestions/<date>.md` via `smith-suggestions.sh emit-record`. This mode makes NO outward
+write and NEVER runs the eval gate — it is the read-only briefing plus a filtered local file write.
+The gate runs only later, attended, via `implement <id>`.
+
+## Mode: `implement <id>` (gate-then-draft — attended; the first outward write)
+
+When invoked as `/smith implement <id>`, load the same reference and follow its `implement <id>`
+procedure: load the record, anti-gaming pre-check, run the eval gate (`references/eval-gate.md`), and
+draft a GitHub DRAFT PR ONLY if the verdict is RECOMMENDED. Per-suggestion consent only — never batch.
+The loop never merges; Josh's merge is the gate.
+
 ## What The Smith does NOT do
 - Does not edit Kiln source, gates, or prompts — it proposes and validates; Josh approves the PR.
 - Does not autonomously adopt a proposal — a Recommended label plus Josh's approval ships it.
 - Does not touch a fixture or scenario (anti-gaming — the gate rejects such proposals).
 - In `--validate`, the conductor-role replays are dry (no source writes, no PRs, no live-workspace mutation).
+- Does not run `--emit-suggestions` on a cadence by itself (that trigger is Plan B); a human runs it, and the first outward write (`implement <id>`) always waits for Josh's explicit per-suggestion pick.
