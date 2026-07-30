@@ -163,6 +163,15 @@ PY
   first_ts="$(jq -r '.ts // empty' "$sp" 2>/dev/null | head -n1)"
   last_ts="$(jq -r '.ts // empty' "$sp" 2>/dev/null | tail -n1)"
 
+  # Langfuse cost lens (real $ — grounds the optimistic ROI). Fail-open: the reader
+  # always prints valid JSON and exits 0, so a substrate-down session just carries
+  # nulls and drops the "langfuse" lens. CONSUMES the substrate; never instruments.
+  cost_json="$("$HOOK_DIR/ce-langfuse-cost.sh" "$session" 2>/dev/null \
+    || echo '{"session_cost_usd":null,"conductor_cost_usd":null,"delegation_cost_usd":null,"members":[],"note":"reader failed"}')"
+  if ! jq -e . >/dev/null 2>&1 <<<"$cost_json"; then
+    cost_json='{"session_cost_usd":null,"conductor_cost_usd":null,"delegation_cost_usd":null,"members":[],"note":"reader output invalid"}'
+  fi
+
   out="$STATE_DIR/ce-retro-$session.json"
   jq -nc \
     --arg s "$session" --arg f "$first_ts" --arg l "$last_ts" --argjson tt "${turns_total:-0}" \
@@ -170,11 +179,16 @@ PY
     --argjson bnd "$boundaries_json" --argjson cross "$cross" \
     --argjson corr "$corr" --argjson rep "$rep" \
     --argjson denom "${DENOM:-5}" --argjson dormant "$EXPECTED_DORMANT_JSON" \
+    --argjson cost "$cost_json" \
     '{session:$s, first_ts:$f, last_ts:$l, turns_total:$tt,
       firing:{fired:$fired, never_fired:$never, denominator:$denom, expected_dormant:$dormant},
       boundaries:$bnd,
       rework:{within_session:{correction_turns:$corr, repeated_file_reads:$rep}, cross_clear:$cross},
-      lenses_available:(["firing"] + (if ($bnd|length)>0 then ["roi"] else [] end) + (if $cross!=null then ["accuracy"] else [] end)),
+      cost:$cost,
+      lenses_available:(["firing"]
+        + (if ($bnd|length)>0 then ["roi"] else [] end)
+        + (if $cross!=null then ["accuracy"] else [] end)
+        + (if ($cost.session_cost_usd != null) then ["langfuse"] else [] end)),
       notes:[]}' > "$out" 2>/dev/null || continue
   echo "$out"
 done <<EOF
