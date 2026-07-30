@@ -21,7 +21,7 @@ mk_events() {  # $1=session  $2=include-boundary(yes/no)
   [ "$2" = "yes" ] && printf '{"kind":"boundary","boundary":"commit","turn":6,"load":130000}\n' >> "$d/ce-events-$s.jsonl"
 }
 payload() { printf '{"session_id":"%s","transcript_path":"%s","user_prompt":"next"}' "$2" "$1"; }
-run() { if printf '%s' "$1" | bash "$HOOK" | grep -q "checkpoint"; then echo FIRED; else echo SILENT; fi; }
+run() { if printf '%s' "$1" | bash "$HOOK" | grep -q "context-economy"; then echo FIRED; else echo SILENT; fi; }
 run_rc() { printf '%s' "$1" | bash "$HOOK" >/dev/null 2>&1; echo "$?"; }
 assert() { if [ "$2" = "$3" ]; then PASS=$((PASS+1)); echo "  ok   — $1"; else FAIL=$((FAIL+1)); echo "  FAIL — $1 (exp $2 got $3)"; fi; }
 
@@ -59,14 +59,30 @@ T="$(make_transcript 130000)"; mk_events s7 yes
 _=$(printf '%s' "$(payload "$T" s7)" | bash "$HOOK")   # fire #1 gentle
 printf '{"kind":"boundary","boundary":"pr","turn":9,"load":130000}\n' >> "$HOME/.claude/hooks/state/ce-events-s7.jsonl"
 out2="$(printf '%s' "$(payload "$T" s7)" | bash "$HOOK")"  # fire #2 on new boundary
-assert "second fire (new boundary) escalates" "yes" "$(echo "$out2" | grep -q 'Strongly consider' && echo yes || echo no)"
+assert "second fire (new boundary) escalates" "yes" "$(echo "$out2" | grep -q '(nudge #' && echo yes || echo no)"
+
+# 7b. Routing invariant: first fire names context-economy AND offers the compact option
+#     (the old short-circuit commanded an unconditional clear and never offered compact).
+T="$(make_transcript 130000)"; mk_events s7b yes
+out7b="$(printf '%s' "$(payload "$T" s7b)" | bash "$HOOK")"
+assert "first fire routes to context-economy decision" "yes" "$(echo "$out7b" | grep -q 'context-economy' && echo yes || echo no)"
+assert "first fire offers compact (not unconditional clear)" "yes" "$(echo "$out7b" | grep -q 'compact' && echo yes || echo no)"
+
+# 7c. Escalated fire ALSO routes through the decision (guards against Approach-B regression).
+T="$(make_transcript 130000)"; mk_events s7c yes
+_=$(printf '%s' "$(payload "$T" s7c)" | bash "$HOOK")
+printf '{"kind":"boundary","boundary":"pr","turn":9,"load":130000}\n' >> "$HOME/.claude/hooks/state/ce-events-s7c.jsonl"
+out7c="$(printf '%s' "$(payload "$T" s7c)" | bash "$HOOK")"
+assert "escalated fire still names context-economy" "yes" "$(echo "$out7c" | grep -q 'context-economy' && echo yes || echo no)"
+assert "escalated fire still offers compact" "yes" "$(echo "$out7c" | grep -q 'compact' && echo yes || echo no)"
+assert "escalated fire still offers keep going" "yes" "$(echo "$out7c" | grep -q 'keep going' && echo yes || echo no)"
 
 # 8. Unwritable state dir → silent (fail-open the nudge itself, don't leak stderr, don't
 #    re-fire every prompt because the position marker never got written).
 T="$(make_transcript 130000)"; mk_events s8 yes
 chmod 555 "$HOME/.claude/hooks/state"
 out8="$(printf '%s' "$(payload "$T" s8)" | bash "$HOOK" 2>"$TMP/stderr8")"
-assert "unwritable state dir is silent" "SILENT" "$(echo "$out8" | grep -q "checkpoint" && echo FIRED || echo SILENT)"
+assert "unwritable state dir is silent" "SILENT" "$(echo "$out8" | grep -q "context-economy" && echo FIRED || echo SILENT)"
 assert "unwritable state dir leaks no stderr" "" "$(cat "$TMP/stderr8")"
 chmod 755 "$HOME/.claude/hooks/state"
 
