@@ -30,6 +30,12 @@ Kiln, never re-invokes a member, never touches a fixture.**
    it actually indicates friction before counting it; never report friction volume from the array
    length alone.
 
+   Each digest also carries `cost_by_member` (Slice 3a): `{members:[{agent, turns, cost_usd}],
+   conductor_cost_usd, note}` — per-Kiln-member cost joined from the local Langfuse substrate by
+   session id. It is best-effort and fail-open: an empty `members` array with a `note` is the normal
+   case for runs that predate member-trace wiring or when the substrate is down — never treat empty
+   members as an error, and read the `note` to see why.
+
 3. **Synthesize the briefing** in this exact shape:
 
    ```
@@ -40,6 +46,10 @@ Kiln, never re-invokes a member, never touches a fixture.**
    - Friction: <the 2–4 most repeated friction patterns across runs, quoted, with run ids>
    - Speed: <median calendar span per run (first_ts→last_ts) — NOTE: this is wall-clock incl. human-gated idle, not compute time; honor each run's duration_note; say "not comparable" for runs whose duration_note is "unavailable"; slowest run + why if friction explains it>
    - Cost: <median/total cost_usd across runs where available; note runs with cost_note (unavailable)>
+     <when cost_by_member has members: the per-member split (Crafter/Inspector/Curator/conductor),
+     stated as DIRECTIONAL — read patterns across runs, not point values. Single-run per-member $
+     carries LLM non-determinism (a same-config control moved +26.8% at n=1); precise deltas need
+     n≥3–5 repeats. Never present a one-run per-member number as precise.>
 
    ### Suggestions (advisory — not applied)
    - <each suggestion ties to a SPECIFIC repeated signal, names the file it would touch

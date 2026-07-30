@@ -32,6 +32,24 @@ if [ -n "$WORKSPACE" ]; then
   # matches nothing (unexpanded literal path passed to `ls`), which `pipefail`
   # would otherwise propagate and trip `set -e`.
   ledgers="$(ls -t "$WORKSPACE"/projects/active/*/kiln/progress.md 2>/dev/null | head -n "$LAST" || true)"
+  # Batch-cached Langfuse liveness (finding 4): probe the substrate ONCE here rather
+  # than paying a per-run health-check round trip (5s timeout each) across the batch.
+  # Only meaningful for the default reader hitting a real (possibly-down) substrate;
+  # an injected reader (tests) or a missing .env needs no network, so skip the probe.
+  if [ -z "${SMITH_LANGFUSE_COST:-}" ]; then
+    ENV_FILE="${SMITH_LANGFUSE_ENV:-$HOME/Development/jcslOS/substrate/langfuse-observability/.env}"
+    if [ -f "$ENV_FILE" ]; then
+      # shellcheck disable=SC1090
+      set -a; . "$ENV_FILE"; set +a
+      BASE="${CC_LANGFUSE_BASE_URL:-${LANGFUSE_BASE_URL:-http://localhost:3000}}"
+      case "$BASE" in
+        http://localhost:*|http://127.0.0.1:*)
+          curl -sf -o /dev/null --max-time 5 "$BASE/api/public/health" \
+            || export SMITH_LANGFUSE_DOWN=1 ;;
+        *) export SMITH_LANGFUSE_DOWN=1 ;;
+      esac
+    fi
+  fi
   while IFS= read -r pg; do
     [ -n "$pg" ] || continue
     rd="$(dirname "$pg")"
@@ -173,6 +191,23 @@ else
   fi
 fi
 
+# Per-member cost (Slice 3a): join Langfuse per-subagent trace cost onto this run
+# by session id. Additive to the coarse cost_usd above; the ccusage path is untouched.
+# Fail-open: any reader failure yields the empty object, never a harvest failure.
+# SMITH_LANGFUSE_COST override mirrors SMITH_CCUSAGE (keeps the test offline).
+cost_by_member='{"members":[],"conductor_cost_usd":null,"note":"no session id"}'
+if [ -n "$session_id_str" ]; then
+  READER="${SMITH_LANGFUSE_COST:-bash $(dirname "$0")/smith-langfuse-cost.sh}"
+  cbm="$($READER "$session_id_str" 2>/dev/null || true)"
+  # Only accept valid JSON whose `members` is actually an array (not merely present —
+  # a string/object there would corrupt the documented contract); else fail-open default.
+  if [ -n "$cbm" ] && jq -e '(.members|type)=="array"' >/dev/null 2>&1 <<<"$cbm"; then
+    cost_by_member="$cbm"
+  else
+    cost_by_member='{"members":[],"conductor_cost_usd":null,"note":"reader unavailable"}'
+  fi
+fi
+
 if [ "$first_ts" = "null" ] || [ "$last_ts" = "null" ]; then
   duration_note="duration unavailable (no parseable timestamps in ledger)"
 else
@@ -185,7 +220,8 @@ jq -n --arg run_id "$run_id" --argjson tasks "$tasks_json" \
    --argjson fix_loops "$fix_loops" \
    --arg session_id_str "$session_id_str" --argjson cost_usd "$cost_usd" \
    --arg cost_note "$cost_note" --arg duration_note "$duration_note" \
+   --argjson cost_by_member "$cost_by_member" \
    '{run_id:$run_id, tasks:$tasks, friction:$friction,
      first_ts:$first_ts, last_ts:$last_ts, duration_note:$duration_note, fix_loops:$fix_loops,
      session_id:(if $session_id_str == "" then null else $session_id_str end),
-     cost_usd:$cost_usd, cost_note:$cost_note}' > "$OUT"
+     cost_usd:$cost_usd, cost_note:$cost_note, cost_by_member:$cost_by_member}' > "$OUT"

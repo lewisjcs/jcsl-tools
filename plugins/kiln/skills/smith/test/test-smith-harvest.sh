@@ -217,4 +217,49 @@ assert_eq "duration_note: unavailable when ts null" "true" \
   "$(jq -r '.duration_note | test("unavailable")' "$outn")"
 assert_eq "first_ts still null when unparseable" "null" "$(jq -r '.first_ts' "$outn")"
 
+# --- Slice 3a: cost_by_member spliced from the langfuse reader (injected) ---
+fakereader="$(mktemp)"; cat > "$fakereader" <<'SH'
+#!/usr/bin/env bash
+# Fake langfuse reader: ignores the session arg, emits a fixed per-member object.
+printf '%s\n' '{"members":[{"agent":"crafter","turns":2,"cost_usd":0.44}],"conductor_cost_usd":2.49,"note":""}'
+SH
+chmod +x "$fakereader"
+outm="$(mktemp)"
+SMITH_CCUSAGE="bash $FIX/fake-ccusage.sh" SMITH_LANGFUSE_COST="bash $fakereader" \
+  bash "$SCRIPT" --run-dir "$FIX/clean-run/kiln" --out "$outm"
+assert_eq "cost_by_member present" "true" "$(jq -e 'has("cost_by_member")' "$outm")"
+assert_eq "cost_by_member member agent" "crafter" "$(jq -r '.cost_by_member.members[0].agent' "$outm")"
+assert_eq "cost_by_member conductor cost" "2.49" "$(jq -r '.cost_by_member.conductor_cost_usd' "$outm")"
+# coarse cost_usd still present and unchanged (additive, not a replacement)
+assert_eq "coarse cost_usd untouched" "1.23" "$(jq -r '.cost_usd' "$outm")"
+
+# --- Slice 3a: fail-open — reader can't reach the substrate → cost_by_member is the empty object, still valid ---
+# Point the reader's substrate .env at a guaranteed-nonexistent path so it takes its
+# "no substrate .env" fail-open branch on ANY host. Without this the test would
+# silently exercise the LIVE-query branch on a machine where the substrate is up
+# (e.g. the author's dev box) and pass by coincidence, not by testing fail-open.
+outnm="$(mktemp)"
+SMITH_CCUSAGE="bash $FIX/fake-ccusage.sh" \
+SMITH_LANGFUSE_COST="bash $FIX/../../smith-langfuse-cost.sh" \
+SMITH_LANGFUSE_ENV="/nonexistent/smith-langfuse-test-no-such.env" \
+  bash "$SCRIPT" --run-dir "$FIX/clean-run/kiln" --out "$outnm"
+assert_eq "fail-open cost_by_member is object" "object" "$(jq -r '.cost_by_member | type' "$outnm")"
+assert_eq "fail-open members empty" "0" "$(jq -r '.cost_by_member.members | length' "$outnm")"
+
+# --- Slice 3a: reader output with a non-array `members` is rejected to the fail-open default ---
+# A reader that emits { "members": "oops" } satisfies has("members") but violates the
+# documented array contract; the harvester must reject it, not splice a corrupt shape.
+badreader="$(mktemp)"; cat > "$badreader" <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' '{"members":"not-an-array","conductor_cost_usd":1.0,"note":""}'
+SH
+chmod +x "$badreader"
+outbad="$(mktemp)"
+SMITH_CCUSAGE="bash $FIX/fake-ccusage.sh" SMITH_LANGFUSE_COST="bash $badreader" \
+  bash "$SCRIPT" --run-dir "$FIX/clean-run/kiln" --out "$outbad"
+assert_eq "non-array members rejected → members is array" "array" "$(jq -r '.cost_by_member.members | type' "$outbad")"
+assert_eq "non-array members rejected → empty" "0" "$(jq -r '.cost_by_member.members | length' "$outbad")"
+assert_eq "non-array members rejected → note says unavailable" "true" \
+  "$(jq -r '.cost_by_member.note | test("unavailable")' "$outbad")"
+
 exit $fail
