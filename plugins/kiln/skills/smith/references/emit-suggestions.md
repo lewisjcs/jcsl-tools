@@ -74,7 +74,12 @@ draft happen only later, attended, via `implement <id>` (below).
    `dismissed` suppression). Check the suppress-list (step 3) and the existing dated files before
    phrasing a `change`, so a re-run does not resurface a candidate under new wording.
    - `<id>`: stable id in the format `<today>-NN`, `NN` zero-padded per file (`2026-07-30-01`,
-     `2026-07-30-02`, …).
+     `2026-07-30-02`, …). Before assigning `NN`, read the target `<today>.md` (if it already
+     exists) and set `NN` to one greater than the highest existing `NN` found in a `##
+     <today>-NN` header in that file (start at `01` if the file does not yet exist or has no such
+     header). `NN` must be unique within the file — never restart at `-01` on a same-day second
+     `--emit-suggestions` run, or a fresh record can collide with (and its id resolve to) an
+     existing one.
    - `<signal>`: the empirical-signal leg — the repeated pattern, quoted, WITH its run-ids.
    - `<target>`: the exact file the edit would touch (from the eval-legibility leg).
    - `<change>`: one line describing the proposed edit; append `[gate-blind: <class>]` when the class
