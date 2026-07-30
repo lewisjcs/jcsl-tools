@@ -1,6 +1,6 @@
 {
   "name": "kiln",
-  "version": "2.15.0",
+  "version": "2.15.1",
   "description": "Complexity-proportionate implementation Party — thin conductor enforces gates via PreToolUse hooks; scenario-dispatched verification (code + tool-authoring); /process-review-feedback handles a PR's review threads (Sifter → SIFT-GATE → build loop → Finisher)",
   "author": { "name": "Josh C.S. Lewis" },
   "repository": "https://github.com/lewisjcs/jcsl-tools",
