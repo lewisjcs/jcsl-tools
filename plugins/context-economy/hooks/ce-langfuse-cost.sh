@@ -2,6 +2,10 @@
 # Context-Economy — per-session Langfuse cost reader. <session-id> -> cost JSON.
 # CONSUMES the promoted substrate at substrate/langfuse-observability/ (traces API);
 # never re-instruments. Fail-open: always prints valid JSON and exits 0.
+# Deliberate fork of kiln/skills/smith/smith-langfuse-cost.sh: same substrate contract,
+# credential precedence, and zero-egress guard, but adds a session-level delegation_cost_usd
+# rollup this retro needs. Kept as an independent copy (no shared lib) — extract a common
+# reducer only if a third consumer appears.
 # NOTE: Langfuse attributes cost per agent/turn, NOT per skill — per-skill cost is
 # impossible here (died with OTEL, see reference_langfuse_spike_exists). This lens
 # grounds the ROI number (real session cost) + delegation cost, not skill cost.
@@ -61,6 +65,7 @@ result="$(jq -c '
       members: $members,
       note: "" }' <<<"$raw" 2>/dev/null || true)"
 
+# Guard the reducer output itself (defense in depth — a shape we did not anticipate).
 if [ -z "$result" ] || ! jq -e . >/dev/null 2>&1 <<<"$result"; then
   emit_empty "reducer produced no valid output"
 fi

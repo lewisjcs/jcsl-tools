@@ -52,7 +52,7 @@ rework/accuracy watch. **Proposes only — never edits a SKILL.md, fixture, or o
      this is the concrete payoff of `delegating-to-subagents`; near-zero across a corpus
      where you dispatched agents is itself a dormancy signal for that skill.
    - Conductor (main-thread) cost: <sum of `cost.conductor_cost_usd`>
-   - Sessions missing this lens (substrate down): <count> — reported as unavailable, not $0
+   - Sessions missing this lens (substrate down): <count> — unavailable, not $0 (per Step 2)
    - Note: this is measured $ (reconciles 1.00× with ccusage per-model), UNLIKE the
      optimistic ROI above. Ground the "did clearing save money" judgment on the ratio of
      ROI `savings_foregone` to real `session_cost_usd`, not on the optimistic number alone.
@@ -63,6 +63,9 @@ rework/accuracy watch. **Proposes only — never edits a SKILL.md, fixture, or o
    - ⚠ Flagged: <sessions that saved $ but showed rework — flagged, not celebrated>
 
    ### Suggestions (advisory — NOT applied, NOT eval-verified)
+   - Before citing a section, open the flagged skill's `SKILL.md` (read-only) to confirm
+     the section name exists; if the file can't be located, omit the section reference
+     rather than inventing one.
    - <each ties to a SPECIFIC signal, names the exact SKILL.md section a fix would touch,
      and states it is NOT eval-verified. e.g. "context-assembly never fired in 8/10 sessions —
      consider a trigger phrase in its description; unverified.">

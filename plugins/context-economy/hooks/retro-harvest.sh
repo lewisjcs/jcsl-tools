@@ -79,6 +79,27 @@ PY
 
 # N most-recently-modified spine files.
 spines="$(ls -t "$STATE_DIR"/ce-events-*.jsonl 2>/dev/null | head -n "$LAST" || true)"
+
+# Batch-cached Langfuse liveness (mirrors smith-harvest.sh): probe the substrate ONCE
+# here rather than paying a per-session health-check round trip (5s timeout each) across
+# the loop below. Each ce-langfuse-cost.sh reader honors CE_LANGFUSE_DOWN and short-circuits.
+# Only meaningful for the default reader hitting a real (possibly-down) substrate; an
+# injected fixture (CE_LANGFUSE_RESPONSE, tests) or a missing .env needs no network — skip.
+if [ -z "${CE_LANGFUSE_RESPONSE:-}" ]; then
+  ENV_FILE="${CE_LANGFUSE_ENV:-$HOME/Development/jcslOS/substrate/langfuse-observability/.env}"
+  if [ -f "$ENV_FILE" ]; then
+    # shellcheck disable=SC1090
+    set -a; . "$ENV_FILE"; set +a
+    BASE="${CC_LANGFUSE_BASE_URL:-${LANGFUSE_BASE_URL:-http://localhost:3000}}"
+    case "$BASE" in
+      http://localhost:*|http://127.0.0.1:*)
+        curl -sf -o /dev/null --max-time 5 "$BASE/api/public/health" \
+          || export CE_LANGFUSE_DOWN=1 ;;
+      *) export CE_LANGFUSE_DOWN=1 ;;
+    esac
+  fi
+fi
+
 while IFS= read -r sp; do
   [ -n "$sp" ] || continue
   session="$(basename "$sp" | sed 's/^ce-events-//; s/\.jsonl$//')"
