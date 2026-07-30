@@ -92,6 +92,14 @@ bash "$SCRIPT" emit-record "$f5" 2026-07-30-02 "gates.md" "strip LOW TASK-GATE l
   "routing-output" "dup" "dup" "n/a"; assert_eq "dup emit exits 1" "1" "$?"
 assert_eq "dup not appended" "" "$(bash "$SCRIPT" get-field "$f5" 2026-07-30-02 status)"
 
+# --- Task 5 extra: emit-record id-guard fires even when (target,change) differs ---
+# (proves the new `## <id>` presence check is independent of cmd_is_duplicate)
+bash "$SCRIPT" emit-record "$f5" 2026-07-30-01 "SKILL.md" "an unrelated change" \
+  "routing-output" "sig" "principle" "n/a"
+assert_eq "duplicate id emit exits 1" "1" "$?"
+assert_eq "original record's target unchanged" "gates.md" "$(bash "$SCRIPT" get-field "$f5" 2026-07-30-01 target)"
+assert_eq "original record's change unchanged" "strip LOW TASK-GATE line" "$(bash "$SCRIPT" get-field "$f5" 2026-07-30-01 change)"
+
 # --- Task 5 extra: emit-record dedup is cross-FILE within the same dir ---
 d6="$(mktemp -d)"; f6a="$d6/2026-07-30.md"; f6b="$d6/2026-07-31.md"
 bash "$SCRIPT" emit-record "$f6a" 2026-07-30-01 "X" "Y" "routing-output" "sig" "principle" "n/a"

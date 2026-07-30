@@ -95,10 +95,20 @@ cmd_set_status() { # $1=file $2=id $3=field $4=value
   ' "$f" > "$tmp" && mv "$tmp" "$f"
 }
 
-# Append a proposed record IFF (target,change) is new across the file's dir.
+# Append a proposed record IFF the id is new in $f AND (target,change) is new
+# across the file's dir. The id-presence probe uses the same shape as
+# cmd_set_status's: an awk probe that prints "Y" the instant it sees the
+# matching `## <id>` header, rather than trusting get-field's return value
+# alone (get-field's "" is ambiguous between absent and present-but-empty —
+# irrelevant here since a header line is never empty, but the probe shape is
+# reused for consistency and because get-field only reports on a *field*
+# inside the section, not on whether the `## <id>` header itself exists).
 cmd_emit_record() { # $1=file $2=id $3=target $4=change $5=class $6=signal $7=principle $8=cost_evidence
   local f="$1" id="$2" target="$3" change="$4" class="$5" signal="$6" principle="$7" cost="$8"
   local dir; dir="$(dirname "$f")"
+  if [ -r "$f" ] && [ -n "$(awk -v id="## $id" '$0 == id { print "Y"; exit }' "$f")" ]; then
+    echo "emit-record: id already exists — not written: $id in $f" >&2; return 1
+  fi
   if cmd_is_duplicate "$dir" "$target" "$change" >/dev/null 2>&1; then
     echo "emit-record: duplicate (target,change) — not written" >&2; return 1
   fi
