@@ -26,6 +26,10 @@ rework/accuracy watch. **Proposes only — never edits a SKILL.md, fixture, or o
    derived from the skills on disk (not hardcoded), and `expected_dormant` lists skills that are
    dormant BY DESIGN (e.g. `observer`, whose output is the statusline widget) — subtract those
    from the dormancy candidates below so they are never flagged as needing a fix.
+   Each digest also holds `cost` (real Langfuse $: `session_cost_usd`,
+   `conductor_cost_usd`, `delegation_cost_usd`, `members[]`) when the substrate was
+   live — signaled by `"langfuse"` in `lenses_available`. All-null `cost` means the
+   substrate was down for that session; report it as unavailable, never as $0.
 
 3. **Synthesize the briefing** in this exact shape:
 
@@ -42,12 +46,26 @@ rework/accuracy watch. **Proposes only — never edits a SKILL.md, fixture, or o
    - Corpus total estimated savings foregone: <$X> — directional, NOT measured
    - Sessions with no boundary / no reset opportunity: <count>
 
+   ### Real cost (Langfuse — penny-exact, sessions where the substrate was live)
+   - Total session cost: <sum of `cost.session_cost_usd` across langfuse-lens sessions>
+   - Delegation cost (work pushed to subagents): <sum of `cost.delegation_cost_usd`> —
+     this is the concrete payoff of `delegating-to-subagents`; near-zero across a corpus
+     where you dispatched agents is itself a dormancy signal for that skill.
+   - Conductor (main-thread) cost: <sum of `cost.conductor_cost_usd`>
+   - Sessions missing this lens (substrate down): <count> — unavailable, not $0 (per Step 2)
+   - Note: this is measured $ (reconciles 1.00× with ccusage per-model), UNLIKE the
+     optimistic ROI above. Ground the "did clearing save money" judgment on the ratio of
+     ROI `savings_foregone` to real `session_cost_usd`, not on the optimistic number alone.
+
    ### Accuracy watch (rework proxy — for your judgment; never auto-concludes "worth it")
    - Within-session: <correction turns, repeated reads> by session
    - Cross-clear (marker-linked pairs only): <post-resume re-reads>
    - ⚠ Flagged: <sessions that saved $ but showed rework — flagged, not celebrated>
 
    ### Suggestions (advisory — NOT applied, NOT eval-verified)
+   - Before citing a section, open the flagged skill's `SKILL.md` (read-only) to confirm
+     the section name exists; if the file can't be located, omit the section reference
+     rather than inventing one.
    - <each ties to a SPECIFIC signal, names the exact SKILL.md section a fix would touch,
      and states it is NOT eval-verified. e.g. "context-assembly never fired in 8/10 sessions —
      consider a trigger phrase in its description; unverified.">
@@ -60,6 +78,9 @@ rework/accuracy watch. **Proposes only — never edits a SKILL.md, fixture, or o
    `"model":"optimistic"`; keep that framing). A session that saved money but shows rework is
    flagged, not celebrated — accuracy is primary. If the harvest was partial or a session lacked a
    lens (`lenses_available`), say so rather than silently reporting on fewer sessions/lenses.
+   The Langfuse cost lens is measured (not optimistic) but only covers sessions where the
+   local substrate was running; never extrapolate a corpus total from a partial-coverage
+   lens — state the covered-session count alongside any cost sum.
 
 ## When NOT to use
 Skip mid-task — this is an offline retro, not a live signal. For live cost/cache state use the

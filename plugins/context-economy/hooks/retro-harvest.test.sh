@@ -111,5 +111,24 @@ DE2="$SD/ce-retro-E2.json"
 assert "E2 links predecessor E1" "E1" "$(jq -r '.rework.cross_clear.linked_predecessor' "$DE2")"
 assert "E2 post_resume_rereads counts overlapping file (1)" "1" "$(jq -r '.rework.cross_clear.post_resume_rereads' "$DE2")"
 
+# --- NEW: langfuse cost lens folds into the digest ---
+LF_STATE="$(mktemp -d)"
+printf '{"kind":"skill","skill":"handoff","turn":3,"ts":"2026-07-30T10:00:00Z"}\n' > "$LF_STATE/ce-events-lfsess.jsonl"
+LF_RESP="$(mktemp)"
+cat > "$LF_RESP" <<'JSON'
+{"data":[
+  {"name":"Claude Code - Turn 1","sessionId":"lfsess","totalCost":1.5},
+  {"name":"crafter · Turn 1","sessionId":"lfsess","totalCost":0.5}
+],"meta":{}}
+JSON
+export CE_LANGFUSE_RESPONSE="$LF_RESP"
+bash "$H" --last 1 --state-dir "$LF_STATE" >/dev/null
+dg="$LF_STATE/ce-retro-lfsess.json"
+assert "digest written" "true" "$( [ -f "$dg" ] && echo true || echo false )"
+assert "cost.session_cost_usd = 2" "2" "$(jq -r '.cost.session_cost_usd' "$dg")"
+assert "cost.delegation_cost_usd = 0.5" "0.5" "$(jq -r '.cost.delegation_cost_usd' "$dg")"
+assert "langfuse in lenses_available" "true" "$(jq -r '.lenses_available | index("langfuse") != null' "$dg")"
+unset CE_LANGFUSE_RESPONSE
+
 echo "PASS=$PASS FAIL=$FAIL"
 [ "$FAIL" -eq 0 ]
