@@ -64,7 +64,7 @@ CTR=$(cat "$CTR_FILE" 2>/dev/null); [[ "$CTR" =~ ^[0-9]+$ ]] || CTR=0
 CTR=$((CTR+1)); { echo "$CTR" > "$CTR_FILE"; } 2>/dev/null
 
 if [ "$CTR" -ge 2 ]; then
-  MSG="Context load is high and you just hit a '$BOUNDARY' boundary — a clean checkpoint. Invoke the context-economy skill to decide clear vs. compact now; if you clear, use the handoff skill first, then /clear. (nudge #$CTR)"
+  MSG="Context load is high and you just hit a '$BOUNDARY' boundary — a clean checkpoint. Invoke the context-economy skill to decide whether to clear, compact, or keep going; if you clear, use the handoff skill first, then /clear. (nudge #$CTR)"
 else
   MSG="~${LOAD} tokens of context; you just hit a '$BOUNDARY' boundary. Invoke the context-economy skill to decide whether to clear, compact, or keep going — if you clear, write a handoff first. Reminder, not a block."
 fi

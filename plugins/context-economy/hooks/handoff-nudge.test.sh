@@ -75,6 +75,7 @@ printf '{"kind":"boundary","boundary":"pr","turn":9,"load":130000}\n' >> "$HOME/
 out7c="$(printf '%s' "$(payload "$T" s7c)" | bash "$HOOK")"
 assert "escalated fire still names context-economy" "yes" "$(echo "$out7c" | grep -q 'context-economy' && echo yes || echo no)"
 assert "escalated fire still offers compact" "yes" "$(echo "$out7c" | grep -q 'compact' && echo yes || echo no)"
+assert "escalated fire still offers keep going" "yes" "$(echo "$out7c" | grep -q 'keep going' && echo yes || echo no)"
 
 # 8. Unwritable state dir → silent (fail-open the nudge itself, don't leak stderr, don't
 #    re-fire every prompt because the position marker never got written).
