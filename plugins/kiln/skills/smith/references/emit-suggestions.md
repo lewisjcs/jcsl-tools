@@ -65,14 +65,18 @@ draft happen only later, attended, via `implement <id>` (below).
    <change> <class> <signal> <principle> <cost_evidence>` — pass the arguments in exactly that order.
    `emit-record` writes a record with `status: proposed` and leaves `eval_verdict` and `pr` empty
    (they are filled later by `implement <id>`); you supply the other seven values. It dedups against
-   the whole `smith-suggestions/` dir on `(target, change)` in ANY status (Task 3), so a re-run is
-   idempotent — a `(target, change)` already `proposed`, `drafted`, or `dismissed` is silently not
-   re-written (the command prints `duplicate … — not written` and exits 1; that is expected, not an
-   error).
+   the whole `smith-suggestions/` dir on **exact-string** `(target, change)` in ANY status (Task 3): a
+   `(target, change)` already `proposed`, `drafted`, or `dismissed` is silently not re-written (the
+   command prints `duplicate … — not written` and exits 1; that is expected, not an error). The dedup
+   is therefore idempotent only for a **byte-identical** `(target, change)` — the key is exact, not
+   semantic. When you re-spot a candidate you have surfaced before, reuse its prior `change` wording
+   verbatim; a paraphrase reads as a new `(target, change)` and will re-write it (and defeat a prior
+   `dismissed` suppression). Check the suppress-list (step 3) and the existing dated files before
+   phrasing a `change`, so a re-run does not resurface a candidate under new wording.
    - `<id>`: stable id in the format `<today>-NN`, `NN` zero-padded per file (`2026-07-30-01`,
      `2026-07-30-02`, …).
    - `<signal>`: the empirical-signal leg — the repeated pattern, quoted, WITH its run-ids.
-   - `<target>`: the exact file the edit would touch (from the eval-provability leg).
+   - `<target>`: the exact file the edit would touch (from the eval-legibility leg).
    - `<change>`: one line describing the proposed edit; append `[gate-blind: <class>]` when the class
      set is `detection-perf`/`unsure`.
    - `<class>`: the class set that `classify` emitted.
@@ -113,8 +117,12 @@ never batch multiple ids on one approval (`feedback_outward_facing_edit_consent_
 
 5. **Branch on verdict:**
    - **RECOMMENDED** → `set-status <file> <id> status validated-recommended`, proceed to draft.
-   - **OBSERVATION-ONLY / gate-blind** → `set-status <file> <id> status validated-observation`; report
-     the failing control BY NAME; do NOT draft. Josh hand-fixes those. STOP.
+   - **OBSERVATION-ONLY / gate-blind** → `set-status <file> <id> status validated-observation`; do NOT
+     draft. Josh hand-fixes those. STOP. Report BY NAME: for an OBSERVATION-ONLY verdict, the control
+     that failed (the `CHANGED` scenario, the unstable side, or the non-zero guard control); for a
+     gate-blind verdict there is no failing control — instead name the marker-blind class and what it
+     left unproven (the two-part label of `eval-gate.md` Step 3, e.g. `detection-perf` → efficacy not
+     gate-provable).
    - By construction (`eval-gate.md` Step -1) a `guard-relaxation` class is forced OBSERVATION-ONLY —
      it can never reach step 6.
 

@@ -99,4 +99,21 @@ bash "$SCRIPT" emit-record "$f6b" 2026-07-31-01 "X" "Y" "routing-output" "sig2" 
 assert_eq "cross-file dup emit exits 1" "1" "$?"
 assert_eq "cross-file dup not appended to second file" "" "$(bash "$SCRIPT" get-field "$f6b" 2026-07-31-01 status)"
 
+# --- emit-record full-field round-trip: every field label reads back (guards a silent label typo) ---
+d7="$(mktemp -d)"; f7="$d7/2026-07-30.md"
+bash "$SCRIPT" emit-record "$f7" 2026-07-30-01 "SKILL.md" "add pre-stamp edit ban" \
+  "routing-output" "signal-text with runs r1,r2" "feedback_x principle" "n/a"
+assert_eq "roundtrip signal"       "signal-text with runs r1,r2" "$(bash "$SCRIPT" get-field "$f7" 2026-07-30-01 signal)"
+assert_eq "roundtrip change"       "add pre-stamp edit ban"      "$(bash "$SCRIPT" get-field "$f7" 2026-07-30-01 change)"
+assert_eq "roundtrip class"        "routing-output"              "$(bash "$SCRIPT" get-field "$f7" 2026-07-30-01 class)"
+assert_eq "roundtrip principle"    "feedback_x principle"        "$(bash "$SCRIPT" get-field "$f7" 2026-07-30-01 principle)"
+assert_eq "roundtrip cost_evidence" "n/a"                        "$(bash "$SCRIPT" get-field "$f7" 2026-07-30-01 cost_evidence)"
+
+# --- get-field preserves an internal colon in a value (realistic for a signal line) ---
+d8="$(mktemp -d)"; f8="$d8/2026-07-30.md"
+bash "$SCRIPT" emit-record "$f8" 2026-07-30-01 "SKILL.md" "c" "routing-output" \
+  'gate-blind: detection-perf on run r1: r2' "p" "n/a"
+assert_eq "colon-in-value preserved" "gate-blind: detection-perf on run r1: r2" \
+  "$(bash "$SCRIPT" get-field "$f8" 2026-07-30-01 signal)"
+
 echo; if [ "$fail" = 0 ]; then echo "ALL PASS"; else echo "SOME FAILED"; exit 1; fi
