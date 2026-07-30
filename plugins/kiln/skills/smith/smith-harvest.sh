@@ -32,6 +32,24 @@ if [ -n "$WORKSPACE" ]; then
   # matches nothing (unexpanded literal path passed to `ls`), which `pipefail`
   # would otherwise propagate and trip `set -e`.
   ledgers="$(ls -t "$WORKSPACE"/projects/active/*/kiln/progress.md 2>/dev/null | head -n "$LAST" || true)"
+  # Batch-cached Langfuse liveness (finding 4): probe the substrate ONCE here rather
+  # than paying a per-run health-check round trip (5s timeout each) across the batch.
+  # Only meaningful for the default reader hitting a real (possibly-down) substrate;
+  # an injected reader (tests) or a missing .env needs no network, so skip the probe.
+  if [ -z "${SMITH_LANGFUSE_COST:-}" ]; then
+    ENV_FILE="${SMITH_LANGFUSE_ENV:-$HOME/Development/jcslOS/substrate/langfuse-observability/.env}"
+    if [ -f "$ENV_FILE" ]; then
+      # shellcheck disable=SC1090
+      set -a; . "$ENV_FILE"; set +a
+      BASE="${CC_LANGFUSE_BASE_URL:-${LANGFUSE_BASE_URL:-http://localhost:3000}}"
+      case "$BASE" in
+        http://localhost:*|http://127.0.0.1:*)
+          curl -sf -o /dev/null --max-time 5 "$BASE/api/public/health" \
+            || export SMITH_LANGFUSE_DOWN=1 ;;
+        *) export SMITH_LANGFUSE_DOWN=1 ;;
+      esac
+    fi
+  fi
   while IFS= read -r pg; do
     [ -n "$pg" ] || continue
     rd="$(dirname "$pg")"
@@ -181,8 +199,9 @@ cost_by_member='{"members":[],"conductor_cost_usd":null,"note":"no session id"}'
 if [ -n "$session_id_str" ]; then
   READER="${SMITH_LANGFUSE_COST:-bash $(dirname "$0")/smith-langfuse-cost.sh}"
   cbm="$($READER "$session_id_str" 2>/dev/null || true)"
-  # Only accept valid JSON with a members array; otherwise keep the fail-open default.
-  if [ -n "$cbm" ] && jq -e 'has("members")' >/dev/null 2>&1 <<<"$cbm"; then
+  # Only accept valid JSON whose `members` is actually an array (not merely present —
+  # a string/object there would corrupt the documented contract); else fail-open default.
+  if [ -n "$cbm" ] && jq -e '(.members|type)=="array"' >/dev/null 2>&1 <<<"$cbm"; then
     cost_by_member="$cbm"
   else
     cost_by_member='{"members":[],"conductor_cost_usd":null,"note":"reader unavailable"}'

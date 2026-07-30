@@ -15,6 +15,10 @@ if [ -n "${SMITH_LANGFUSE_RESPONSE:-}" ]; then
   [ -f "$SMITH_LANGFUSE_RESPONSE" ] || emit_empty "response file not found"
   raw="$(cat "$SMITH_LANGFUSE_RESPONSE")"
 else
+  # Batch-cached liveness (finding 4): a --workspace harvest probes the substrate
+  # once up front and exports this when it's down, so each per-run reader skips its
+  # own 5s health-check timeout instead of re-paying it N times across the batch.
+  [ "${SMITH_LANGFUSE_DOWN:-}" = "1" ] && emit_empty "langfuse unreachable (substrate down, batch-cached)"
   # Credentials from the substrate .env (CC-prefixed, per its README consume-contract).
   ENV_FILE="${SMITH_LANGFUSE_ENV:-$HOME/Development/jcslOS/substrate/langfuse-observability/.env}"
   [ -f "$ENV_FILE" ] || emit_empty "no substrate .env ($ENV_FILE)"
@@ -24,6 +28,14 @@ else
   SK="${CC_LANGFUSE_SECRET_KEY:-${LANGFUSE_SECRET_KEY:-}}"
   BASE="${CC_LANGFUSE_BASE_URL:-${LANGFUSE_BASE_URL:-http://localhost:3000}}"
   [ -n "$PK" ] && [ -n "$SK" ] || emit_empty "incomplete substrate credentials"
+  # Zero-egress hard line: the substrate is localhost-only by design, so the base
+  # URL credentials attach to MUST be localhost. Same allowlist the substrate's own
+  # preflight.sh enforces — a reader that consumes it shares its guard rather than
+  # trusting an externally-configurable URL to be private.
+  case "$BASE" in
+    http://localhost:*|http://127.0.0.1:*) : ;;
+    *) emit_empty "refusing non-localhost base url (zero-egress guard)" ;;
+  esac
   # Liveness: unreachable substrate → fail open (design §6 Langfuse-liveness).
   curl -sf -o /dev/null --max-time 5 "$BASE/api/public/health" \
     || emit_empty "langfuse unreachable (substrate down)"
@@ -72,7 +84,7 @@ mcount="$(jq -r '.members | length' <<<"$result")"
 ccost="$(jq -r '.conductor_cost_usd' <<<"$result")"
 if [ "$mcount" -eq 0 ]; then
   if [ "$ccost" = "0" ] || [ "$ccost" = "null" ]; then
-    result="$(jq '.note = "no traces for session '"$SID"'"' <<<"$result")"
+    result="$(jq --arg sid "$SID" '.note = "no traces for session " + $sid' <<<"$result")"
   else
     result="$(jq '.note = "conductor-only: no member (subagent) traces for this session"' <<<"$result")"
   fi

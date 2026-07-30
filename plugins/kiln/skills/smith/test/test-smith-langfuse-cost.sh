@@ -52,4 +52,16 @@ outn="$(bash "$SCRIPT")"; en=$?
 assert_eq "no session id exit 0" "0" "$en"
 assert_eq "no session id → note set" "true" "$(jq -r '(.note|length)>0' <<<"$outn")"
 
+# --- regression: a session id with a double-quote must NOT break the JSON contract ---
+# The empty-data path interpolates the session id into the note; the id is passed via
+# jq --arg (not spliced into the program text), so a `"` stays data and the output
+# remains valid JSON. Pre-fix this closed the jq string literal early and crashed.
+qsid='sess-"injection'
+outq="$(SMITH_LANGFUSE_RESPONSE="$empty" bash "$SCRIPT" "$qsid")"; eq=$?
+assert_eq "quoted session id exit 0" "0" "$eq"
+assert_eq "quoted session id → valid JSON out" "true" \
+  "$(jq -e . >/dev/null 2>&1 <<<"$outq" && echo true || echo false)"
+assert_eq "quoted session id → note carries the id verbatim" "true" \
+  "$(jq -r --arg s "$qsid" '.note | contains($s)' <<<"$outq")"
+
 exit $fail
