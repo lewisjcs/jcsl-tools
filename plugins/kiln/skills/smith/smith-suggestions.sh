@@ -95,10 +95,32 @@ cmd_set_status() { # $1=file $2=id $3=field $4=value
   ' "$f" > "$tmp" && mv "$tmp" "$f"
 }
 
+# Append a proposed record IFF (target,change) is new across the file's dir.
+cmd_emit_record() { # $1=file $2=id $3=target $4=change $5=class $6=signal $7=principle $8=cost_evidence
+  local f="$1" id="$2" target="$3" change="$4" class="$5" signal="$6" principle="$7" cost="$8"
+  local dir; dir="$(dirname "$f")"
+  if cmd_is_duplicate "$dir" "$target" "$change" >/dev/null 2>&1; then
+    echo "emit-record: duplicate (target,change) — not written" >&2; return 1
+  fi
+  { [ -s "$f" ] && printf '\n'
+    printf '## %s\n' "$id"
+    printf -- '- status: proposed\n'
+    printf -- '- signal: %s\n' "$signal"
+    printf -- '- target: %s\n' "$target"
+    printf -- '- change: %s\n' "$change"
+    printf -- '- class: %s\n' "$class"
+    printf -- '- principle: %s\n' "$principle"
+    printf -- '- cost_evidence: %s\n' "$cost"
+    printf -- '- eval_verdict:\n'
+    printf -- '- pr:\n'
+  } >> "$f"
+}
+
 case "${1:-}" in
   get-field) shift; cmd_get_field "$@" ;;
   list-dismissed) shift; cmd_list_dismissed "$@" ;;
   is-duplicate) shift; cmd_is_duplicate "$@" ;;
   set-status) shift; cmd_set_status "$@" ;;
-  *) echo "usage: smith-suggestions.sh {get-field <file> <id> <field>|list-dismissed <dir>|is-duplicate <dir> <target> <change>|set-status <file> <id> <field> <value>}" >&2; exit 2 ;;
+  emit-record) shift; cmd_emit_record "$@" ;;
+  *) echo "usage: smith-suggestions.sh {get-field <file> <id> <field>|list-dismissed <dir>|is-duplicate <dir> <target> <change>|set-status <file> <id> <field> <value>|emit-record <file> <id> <target> <change> <class> <signal> <principle> <cost_evidence>}" >&2; exit 2 ;;
 esac

@@ -79,4 +79,24 @@ assert_eq "verdict filled" "RECOMMENDED (01,03 SAME)" "$(bash "$SCRIPT" get-fiel
 assert_eq "other field intact" "gates.md" "$(bash "$SCRIPT" get-field "$f4" 2026-07-30-01 target)"
 bash "$SCRIPT" set-status "$f4" 2026-07-30-99 status drafted; assert_eq "missing id fails loud" "2" "$?"
 
-exit $fail
+# --- Task 5: emit-record appends a proposed record, respects dedup ---
+d5="$(mktemp -d)"; f5="$d5/2026-07-30.md"
+bash "$SCRIPT" emit-record "$f5" 2026-07-30-01 "gates.md" "strip LOW TASK-GATE line" \
+  "routing-output" 'the "LOW TASK-GATE" line fired 0 effect (runs: r1, r2)' \
+  "code-quality-standards: no dead ceremony" "n/a"
+assert_eq "record written proposed" "proposed" "$(bash "$SCRIPT" get-field "$f5" 2026-07-30-01 status)"
+assert_eq "record target" "gates.md" "$(bash "$SCRIPT" get-field "$f5" 2026-07-30-01 target)"
+assert_eq "eval_verdict starts empty" "" "$(bash "$SCRIPT" get-field "$f5" 2026-07-30-01 eval_verdict)"
+# second emit of same (target,change) is a no-op dup
+bash "$SCRIPT" emit-record "$f5" 2026-07-30-02 "gates.md" "strip LOW TASK-GATE line" \
+  "routing-output" "dup" "dup" "n/a"; assert_eq "dup emit exits 1" "1" "$?"
+assert_eq "dup not appended" "" "$(bash "$SCRIPT" get-field "$f5" 2026-07-30-02 status)"
+
+# --- Task 5 extra: emit-record dedup is cross-FILE within the same dir ---
+d6="$(mktemp -d)"; f6a="$d6/2026-07-30.md"; f6b="$d6/2026-07-31.md"
+bash "$SCRIPT" emit-record "$f6a" 2026-07-30-01 "X" "Y" "routing-output" "sig" "principle" "n/a"
+bash "$SCRIPT" emit-record "$f6b" 2026-07-31-01 "X" "Y" "routing-output" "sig2" "principle2" "n/a"
+assert_eq "cross-file dup emit exits 1" "1" "$?"
+assert_eq "cross-file dup not appended to second file" "" "$(bash "$SCRIPT" get-field "$f6b" 2026-07-31-01 status)"
+
+echo; if [ "$fail" = 0 ]; then echo "ALL PASS"; else echo "SOME FAILED"; exit 1; fi
