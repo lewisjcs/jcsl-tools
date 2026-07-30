@@ -9,6 +9,8 @@ description: Use when about to hand work to a subagent, write a dispatch prompt,
 
 Skip when the task requires synthesis, judgment, or cross-cutting decisions — keep those on the main thread. Don't delegate an under-specified goal; specify it first.
 
+This skill is the **cost/context-economy lens** on delegation — tier-cost math, the dispatch-quality gate, and the structured return contract. For *executing an implementation plan's* independent tasks, use `superpowers:subagent-driven-development` instead; reach for this one when the question is whether delegation *saves context/cost* and how to specify the dispatch so quality holds.
+
 ## Overview
 
 When and how to push bounded work off the main thread to a cheaper subagent, and how to correct one that drifts. This serves the `context-economy` doctrine: delegation keeps the main thread lean — the subagent's noisy work runs in its own fresh context — while a cheaper tier does the bounded do-ing.
