@@ -1,6 +1,6 @@
 ---
 name: smith
-description: The Smith — reads recent Kiln runs and briefs you on how they went (accuracy, friction, speed, cost) with advisory suggestions for improving the tool. Use for "how have my Kiln runs been going", "kiln retro", "smith briefing", "review my last N kiln runs", or a morning tool-health check. Read-only — proposes, never edits.
+description: The Smith — reads recent Kiln runs and briefs you on how they went (accuracy, friction, speed, cost) with advisory suggestions for improving the tool. Use for "how have my Kiln runs been going", "kiln retro", "smith briefing", "review my last N kiln runs", or a morning tool-health check. Also "emit suggestions", "save suggestions to record", "validate proposal", or "implement suggestion". Read-only — proposes, never edits.
 ---
 
 # The Smith — Kiln Run Retrospective (read-only)
