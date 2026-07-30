@@ -60,6 +60,10 @@ export CONTEXT_NUDGE_MIN_USER_TURNS=5   # set to 0 to disable the floor
 
 The turn-count gate defaults are calibrated against a 185-session fleet corpus. The hook fires at most once per session (fire-once marker), parses the transcript JSONL (deduped on `message.id`), and appends an auditable line to `~/.claude/hooks/state/context-nudge.log`. Any missing input exits 0 silently (fail-closed).
 
+### `/context-economy-retro` skill
+
+The retro also reads real per-session cost from the local Langfuse substrate (`substrate/langfuse-observability/`, consumed via `ce-langfuse-cost.sh`) when it is running — reporting measured total session cost and delegation (subagent) cost alongside the optimistic transcript-based ROI. Fail-open: substrate down → the lens is simply absent.
+
 ## Behavioral fixtures
 
 Five operator-in-loop verification scenarios live in `fixtures/`. Each has a `prompt.md` and an `expected.md` with checkbox pass criteria.
