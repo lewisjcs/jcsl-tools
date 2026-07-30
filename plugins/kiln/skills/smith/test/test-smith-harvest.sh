@@ -262,4 +262,54 @@ assert_eq "non-array members rejected → empty" "0" "$(jq -r '.cost_by_member.m
 assert_eq "non-array members rejected → note says unavailable" "true" \
   "$(jq -r '.cost_by_member.note | test("unavailable")' "$outbad")"
 
+# --- Fix: REVIEW-lane verdicts (task-findingN-<slug>-verdict.md) parse without
+# crashing the write. The review-feedback flow names verdicts by finding id, not
+# a numeric task index, so `n` is a non-numeric label — it must be emitted as a
+# JSON string, never fed to --argjson (which demands numeric JSON and crashed). ---
+outrev="$(mktemp)"
+SMITH_CCUSAGE="bash $FIX/fake-ccusage.sh" bash "$SCRIPT" --run-dir "$FIX/review-lane-run/kiln" --out "$outrev"
+rev_exit=$?
+assert_eq "review-lane: exit 0" "0" "$rev_exit"
+assert_eq "review-lane: valid JSON" "true" "$(jq -e . "$outrev" >/dev/null 2>&1 && echo true || echo false)"
+assert_eq "review-lane: two tasks parsed" "2" "$(jq -r '.tasks | length' "$outrev")"
+assert_eq "review-lane: finding ids preserved as labels" "finding1 finding2" \
+  "$(jq -r '[.tasks[].n] | sort | join(" ")' "$outrev")"
+assert_eq "review-lane: verdict fields still parse" "pass" "$(jq -r '.tasks[0].spec' "$outrev")"
+
+# --- Fix: driver fail-open is PER-RUN. If one run in the batch fails to harvest,
+# the driver must keep going and still write the healthy runs' retro.json — the
+# fail-open contract SKILL.md Step 1 documents. Regression guard for the case
+# where the failing run sorts FIRST (most-recent mtime), which previously aborted
+# the whole batch under `set -e` and wrote zero digests. The forced failure here
+# is parser-independent (a read-only run dir the retro.json write cannot land in)
+# so it exercises the driver's isolation, not the parser's robustness. ---
+wsp="$(mktemp -d)"
+mkdir -p "$wsp/projects/active/healthy/kiln" "$wsp/projects/active/poison/kiln"
+# healthy run: normal task-N verdict
+printf 'sess-h\n' > "$wsp/projects/active/healthy/kiln/.completed"
+: > "$wsp/projects/active/healthy/kiln/progress.md"
+cat > "$wsp/projects/active/healthy/kiln/task-1-ok-verdict.md" <<'EOF'
+spec: ✅
+quality: approved
+criteria_met: 1
+criteria_total: 1
+critical_findings: 0
+EOF
+# poison run: qualifies as a build (has .completed) so the driver attempts it,
+# but its dir is made read-only AFTER setup so the retro.json write fails with a
+# genuine, parser-independent error the driver must isolate.
+printf 'sess-p\n' > "$wsp/projects/active/poison/kiln/.completed"
+: > "$wsp/projects/active/poison/kiln/progress.md"
+# poison sorts FIRST (most-recent mtime) so it is processed before healthy
+touch -t 202607131700 "$wsp/projects/active/healthy/kiln/progress.md"
+touch -t 202607131702 "$wsp/projects/active/poison/kiln/progress.md"
+chmod 555 "$wsp/projects/active/poison/kiln"  # deny the retro.json write
+
+poison_out="$(SMITH_CCUSAGE="bash $FIX/fake-ccusage.sh" bash "$SCRIPT" --workspace "$wsp" --last 10 2>/dev/null || true)"
+assert_eq "fail-open: healthy run still harvested despite poison-first" "true" \
+  "$([ -f "$wsp/projects/active/healthy/kiln/retro.json" ] && jq -e . "$wsp/projects/active/healthy/kiln/retro.json" >/dev/null 2>&1 && echo true || echo false)"
+assert_eq "fail-open: healthy retro.json path printed" "true" \
+  "$(printf '%s\n' "$poison_out" | grep -qF 'healthy/kiln/retro.json' && echo true || echo false)"
+chmod 755 "$wsp/projects/active/poison/kiln" 2>/dev/null || true  # restore so cleanup can remove it
+
 exit $fail

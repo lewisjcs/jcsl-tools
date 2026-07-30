@@ -62,8 +62,19 @@ if [ -n "$WORKSPACE" ]; then
        && { [ ! -f "$rd/tasklist.md" ] || [ ! -f "$rd/plan.md" ]; }; then
       continue
     fi
-    "$0" --run-dir "$rd" --out "$rd/retro.json"
-    echo "$rd/retro.json"
+    # Per-run fail-open (SKILL.md Step 1): isolate a single run's harvest
+    # failure so it never aborts the batch. Without this guard the sub-invocation
+    # runs under `set -e` and one bad run (e.g. an unreadable dir, or a shape the
+    # parser once choked on) took the whole batch down — and if that run sorted
+    # first, ZERO digests were written, silently contradicting the documented
+    # "proceed with whatever was written" contract. Skip the failed run, warn on
+    # stderr, and keep going; only successfully-written digests get their path
+    # printed to stdout (the list the caller reads).
+    if "$0" --run-dir "$rd" --out "$rd/retro.json"; then
+      echo "$rd/retro.json"
+    else
+      echo "smith-harvest: skipped $rd (harvest failed, exit $?)" >&2
+    fi
   done <<EOF
 $ledgers
 EOF
@@ -111,7 +122,12 @@ parse_verdict() { # $1 = verdict file, $2 = task number
   # ✅ → pass; anything else present → fail; absent → unknown
   case "$spec" in *✅*) spec="pass" ;; "" ) spec="unknown" ;; *) spec="fail" ;; esac
   [ -n "$quality" ] || quality="unknown"
-  jq -n --argjson n "$n" \
+  # `n` is a task LABEL (a numeric index for build runs, a finding id like
+  # "finding1" for review-lane runs) — always emitted as a JSON string via
+  # --arg. It is display-only (no downstream arithmetic), so a string is
+  # correct and a non-numeric label never crashes the write, whereas --argjson
+  # would demand numeric JSON and abort on "finding1".
+  jq -n --arg n "$n" \
         --arg spec "$spec" --arg quality "$quality" \
         --arg cmet "${cmet:-0}" --arg ctot "${ctot:-0}" --arg crit "${crit:-0}" \
         '{n:$n, spec:$spec, quality:$quality,
@@ -119,15 +135,24 @@ parse_verdict() { # $1 = verdict file, $2 = task number
           critical_findings:($crit|tonumber)}'
 }
 
-# Task number extraction covers both verdict filename conventions:
-#   legacy:  verdict-3.md               -> 3
-#   current: task-3-<slug>-verdict.md   -> 3
+# Task label extraction covers every verdict filename convention:
+#   legacy build:   verdict-3.md                      -> 3
+#   current build:  task-3-<slug>-verdict.md          -> 3
+#   review-lane:    task-finding1-<slug>-verdict.md   -> finding1
+# The token after `task-` is a LABEL, not necessarily numeric — the
+# review-feedback flow names verdicts by finding id. Capture the first
+# `-`-delimited segment as-is; downstream `n` is emitted as a JSON string
+# (see parse_verdict) so a non-numeric label is a valid, first-class value.
 verdict_task_number() { # $1 = basename
   local b="$1"
   if [[ "$b" =~ ^verdict-([0-9]+) ]]; then
     echo "${BASH_REMATCH[1]}"
+  elif [[ "$b" =~ ^task-([^-]+)- ]]; then
+    echo "${BASH_REMATCH[1]}"
   else
-    echo "$b" | sed -E 's/^task-([0-9]+)-.*/\1/'
+    # No recognizable label token — emit empty so parse_verdict records a
+    # blank `n` rather than a whole filename masquerading as a task id.
+    echo ""
   fi
 }
 
