@@ -35,6 +35,17 @@ assert_eq "conductor-only delegation 0" "0" "$(jq -r '.delegation_cost_usd' <<<"
 assert_eq "conductor-only members []" "0" "$(jq -r '.members|length' <<<"$oc")"
 assert_eq "conductor-only note set" "true" "$(jq -r '(.note|length)>0' <<<"$oc")"
 
+# zero-trace session (substrate up, no traces yet) → must look like substrate-down:
+# all numerics null (NOT $0), note says "no traces", exit 0. This is the honesty-
+# contract fix: session_cost_usd=0 would make retro-harvest count a phantom $0.
+notraces="$TMP/notraces.json"; printf '{"data":[],"meta":{}}' > "$notraces"
+ont="$(CE_LANGFUSE_RESPONSE="$notraces" bash "$SCRIPT" s)"; ent=$?
+assert_eq "no-traces exit 0" "0" "$ent"
+assert_eq "no-traces session cost null" "null" "$(jq -r '.session_cost_usd' <<<"$ont")"
+assert_eq "no-traces conductor cost null" "null" "$(jq -r '.conductor_cost_usd' <<<"$ont")"
+assert_eq "no-traces delegation cost null" "null" "$(jq -r '.delegation_cost_usd' <<<"$ont")"
+assert_eq "no-traces note mentions no traces" "true" "$(jq -r '(.note|test("no traces"))' <<<"$ont")"
+
 # fail-open: malformed JSON → nulls, note, exit 0
 bad="$TMP/bad.json"; printf 'not json{' > "$bad"
 ob="$(CE_LANGFUSE_RESPONSE="$bad" bash "$SCRIPT" s)"; eb=$?
@@ -57,7 +68,6 @@ assert_eq "non-localhost exit 0" "0" "$ez"
 assert_eq "non-localhost refused note" "true" "$(jq -r '(.note|test("localhost"))' <<<"$oz")"
 
 # session id with double-quote must not break JSON contract (passed via jq --arg)
-oq="$(CE_LANGFUSE_RESPONSE="$TMP/none.json" bash "$SCRIPT" 'sess-"inj')"; eqc=$?
 printf '{"data":[]}' > "$TMP/none.json"
 oq="$(CE_LANGFUSE_RESPONSE="$TMP/none.json" bash "$SCRIPT" 'sess-"inj')"
 assert_eq "quoted session id → valid JSON" "true" "$(jq -e . >/dev/null 2>&1 <<<"$oq" && echo true || echo false)"

@@ -65,10 +65,21 @@ if [ -z "$result" ] || ! jq -e . >/dev/null 2>&1 <<<"$result"; then
   emit_empty "reducer produced no valid output"
 fi
 
-# Honest note on the common conductor-only case (still valid data, exit 0).
+# Honest note on the no-data / conductor-only cases (still exit 0).
+# A zero-trace session (substrate up, no traces yet) must look like substrate-down
+# to callers — all numerics null — so retro-harvest never counts a phantom $0 into
+# lenses_available or the cost corpus. A genuine conductor-only session always has
+# conductor cost > 0, so that case keeps its numerics and still fires the lens.
 mcount="$(jq -r '.members | length' <<<"$result")"
 if [ "$mcount" -eq 0 ]; then
-  result="$(jq --arg sid "$SID" '.note = "conductor-only (no subagent traces) for session " + $sid' <<<"$result")"
+  ccost="$(jq -r '.conductor_cost_usd' <<<"$result")"
+  if [ "$ccost" = "0" ] || [ "$ccost" = "null" ]; then
+    result="$(jq --arg sid "$SID" \
+      '.session_cost_usd=null | .conductor_cost_usd=null | .delegation_cost_usd=null | .note=("no traces for session " + $sid)' \
+      <<<"$result")"
+  else
+    result="$(jq --arg sid "$SID" '.note = "conductor-only (no subagent traces) for session " + $sid' <<<"$result")"
+  fi
 fi
 
 printf '%s\n' "$result"
