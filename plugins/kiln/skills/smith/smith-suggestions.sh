@@ -74,9 +74,31 @@ EOF
   return 1
 }
 
+# Rewrite `- <field>: ...` within the `## <id>` section to the new value, in place.
+# An empty field value (e.g. `- eval_verdict:`) is a VALID target — get-field
+# returns "" for both a present-but-empty field and a genuinely absent one, so
+# presence is checked separately via an awk probe that prints "Y" the moment
+# it sees the `- <field>:` line inside the matching `## <id>` section. Only
+# treat the id/field as absent if BOTH the value and the presence probe are empty.
+cmd_set_status() { # $1=file $2=id $3=field $4=value
+  local f="$1" id="$2" field="$3" value="$4" tmp
+  [ -w "$f" ] || { echo "set-status: cannot write $f" >&2; return 2; }
+  [ -n "$(cmd_get_field "$f" "$id" "$field")$(awk -v id="## $id" -v key="- $field:" '
+      $0==id{inb=1;next} inb&&/^## /{inb=0} inb&&index($0,key)==1{print "Y";exit}' "$f")" ] \
+    || { echo "set-status: no such id/field: $id/$field in $f" >&2; return 2; }
+  tmp="$(mktemp)"
+  awk -v id="## $id" -v key="- $field:" -v val="$value" '
+    $0 == id { inb=1; print; next }
+    inb && /^## / { inb=0 }
+    inb && index($0, key) == 1 { print key " " val; next }
+    { print }
+  ' "$f" > "$tmp" && mv "$tmp" "$f"
+}
+
 case "${1:-}" in
   get-field) shift; cmd_get_field "$@" ;;
   list-dismissed) shift; cmd_list_dismissed "$@" ;;
   is-duplicate) shift; cmd_is_duplicate "$@" ;;
-  *) echo "usage: smith-suggestions.sh {get-field <file> <id> <field>|list-dismissed <dir>|is-duplicate <dir> <target> <change>}" >&2; exit 2 ;;
+  set-status) shift; cmd_set_status "$@" ;;
+  *) echo "usage: smith-suggestions.sh {get-field <file> <id> <field>|list-dismissed <dir>|is-duplicate <dir> <target> <change>|set-status <file> <id> <field> <value>}" >&2; exit 2 ;;
 esac

@@ -62,4 +62,21 @@ bash "$SCRIPT" is-duplicate "$d2" "gates.md" "strip LOW TASK-GATE line"; assert_
 bash "$SCRIPT" is-duplicate "$d2" "lanes.md" "reword DESIGN entry"; assert_eq "dismissed dup blocked" "0" "$?"
 bash "$SCRIPT" is-duplicate "$d2" "SKILL.md" "add Verb 5"; assert_eq "new is not dup" "1" "$?"
 
+# --- Task 4: set-status rewrites a field in place ---
+f4="$(mktemp)"
+cat > "$f4" <<'EOF'
+## 2026-07-30-01
+- status: proposed
+- target: gates.md
+- change: strip LOW TASK-GATE line
+- eval_verdict:
+- pr:
+EOF
+bash "$SCRIPT" set-status "$f4" 2026-07-30-01 status validated-recommended
+assert_eq "status transitioned" "validated-recommended" "$(bash "$SCRIPT" get-field "$f4" 2026-07-30-01 status)"
+bash "$SCRIPT" set-status "$f4" 2026-07-30-01 eval_verdict "RECOMMENDED (01,03 SAME)"
+assert_eq "verdict filled" "RECOMMENDED (01,03 SAME)" "$(bash "$SCRIPT" get-field "$f4" 2026-07-30-01 eval_verdict)"
+assert_eq "other field intact" "gates.md" "$(bash "$SCRIPT" get-field "$f4" 2026-07-30-01 target)"
+bash "$SCRIPT" set-status "$f4" 2026-07-30-99 status drafted; assert_eq "missing id fails loud" "2" "$?"
+
 exit $fail
