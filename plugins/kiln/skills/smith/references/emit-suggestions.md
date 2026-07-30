@@ -1,7 +1,9 @@
 # `/smith --emit-suggestions` — durable suggestion emission (on-demand; read + local write only)
 
 Loaded by `SKILL.md` when Josh runs `/smith --emit-suggestions`. This mode HARVESTS and WRITES a
-durable suggestions file — it does NOT run the eval gate, draft a PR, or make any outward write. It
+durable suggestions file — it does NOT run the adjudicating eval gate (the differential-replay
+judgment; the read-only `classify` label subcommand it uses to record a class is not that gate),
+draft a PR, or make any outward write. It
 is the read-only briefing (Steps 1–3 of SKILL.md) plus a filtered local file write. The gate and PR
 draft happen only later, attended, via `implement <id>` (below).
 
@@ -43,7 +45,7 @@ draft happen only later, attended, via `implement <id>` (below).
      `feedback_pair_prose_heuristic_with_invariant_test`, `reference_anthropic_harness_design`, or the
      mission ranking (accuracy-primary, cost-co-equal). A candidate that cannot cite a specific,
      real anchor is a preference, not an improvement — suppress it.
-   - **Eval-provability:** the change must name a `target ∈ {SKILL.md, gates.md, lanes.md,
+   - **Eval-legibility:** the change must name a `target ∈ {SKILL.md, gates.md, lanes.md,
      scenarios.md, a named fire prompt}` and you must run
      `bash ${CLAUDE_PLUGIN_ROOT}/skills/smith/smith-eval-gate.sh classify <predicted-diff-file>` to
      record its class, where `<predicted-diff-file>` is a unified diff of the edit you would make. The
@@ -80,7 +82,7 @@ draft happen only later, attended, via `implement <id>` (below).
      is cost-motivated; otherwise the literal `n/a`. `cost_by_member` is best-effort and fail-open —
      an empty `members` array with a `note` is normal for runs predating member-trace wiring; when it
      is empty you have no per-member figure, so a cost-motivated candidate must fall back to `n/a` and
-     lean on its other two legs. **Carry the n≥3 caveat** (`feedback_single_trial_model_comparison`):
+     lean on its other two legs. **Carry the single-trial caveat** (`feedback_single_trial_model_comparison`):
      single-run cost is directional, not a point value — never justify a suggestion on one run's cost
      delta alone; a cost signal needs the same ≥2-run repetition the empirical leg demands.
 
@@ -99,7 +101,7 @@ never batch multiple ids on one approval (`feedback_outward_facing_edit_consent_
 1. **Load the record.** `smith-suggestions.sh get-field <file> <id> <target|change|class>`. The
    record is the contract — do NOT re-harvest or re-derive the signal.
 
-2. **Construct the intended diff** against a fresh worktree off `origin/main` of the source repo
+2. **Construct the intended diff as a file** against a fresh worktree off `origin/main` of the source repo
    (`feedback_always_use_worktrees`). This is the candidate edit `change` describes on `target`.
 
 3. **Anti-gaming pre-check (hard gate, FIRST).** `smith-eval-gate.sh anti-gaming <diff>`. Exit 3 →
@@ -133,5 +135,7 @@ never batch multiple ids on one approval (`feedback_outward_facing_edit_consent_
 
 ## Guardrails (state they hold)
 - Emit is a FILTER, not a brainstormer — no record without the full evidence triangle.
-- This mode makes NO outward write and NEVER runs the gate — it is read + local file write only.
+- This mode makes NO outward write and NEVER runs the adjudicating gate — the `classify` subcommand
+  it calls only records a read-only class label; it does not adjudicate. It is read + local file
+  write only.
 - Dismissed suggestions stay suppressed (`list-dismissed` feeds both your pre-check and `emit-record`'s dedup).
