@@ -23,4 +23,27 @@ assert_eq "get target of 02" "plugins/kiln/skills/fire/lanes.md" "$(bash "$SCRIP
 assert_eq "missing field is empty" "" "$(bash "$SCRIPT" get-field "$f" 2026-07-30-01 pr)"
 assert_eq "missing id is empty" "" "$(bash "$SCRIPT" get-field "$f" 2026-07-30-99 status)"
 
+# --- Task 2: list-dismissed scans all files in a dir ---
+d="$(mktemp -d)"
+cat > "$d/2026-07-30.md" <<'EOF'
+## 2026-07-30-01
+- status: proposed
+- target: gates.md
+- change: strip LOW TASK-GATE line
+EOF
+cat > "$d/2026-07-31.md" <<'EOF'
+## 2026-07-31-01
+- status: dismissed
+- target: lanes.md
+- change: reword DESIGN entry
+## 2026-07-31-02
+- status: drafted
+- target: SKILL.md
+- change: add Verb 5
+EOF
+got="$(bash "$SCRIPT" list-dismissed "$d")"
+assert_eq "one dismissed record" "1" "$(printf '%s\n' "$got" | grep -c .)"
+assert_eq "dismissed target+change" "$(printf 'lanes.md\treword DESIGN entry')" "$got"
+assert_eq "empty dir → empty" "" "$(bash "$SCRIPT" list-dismissed "$(mktemp -d)")"
+
 exit $fail

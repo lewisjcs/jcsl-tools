@@ -19,7 +19,27 @@ cmd_get_field() { # $1=file $2=id $3=field
   ' "$f"
 }
 
+# Emit "<target>\t<change>" for every status:dismissed record under <dir>/*.md.
+cmd_list_dismissed() { # $1=dir
+  local dir="$1" files f id
+  [ -d "$dir" ] || return 0
+  files="$(ls "$dir"/*.md 2>/dev/null || true)"
+  while IFS= read -r f; do
+    [ -n "$f" ] || continue
+    # ids in this file: strip "## " from header lines
+    grep -E '^## ' "$f" | sed 's/^## //' | while IFS= read -r id; do
+      [ -n "$id" ] || continue
+      if [ "$(cmd_get_field "$f" "$id" status)" = "dismissed" ]; then
+        printf '%s\t%s\n' "$(cmd_get_field "$f" "$id" target)" "$(cmd_get_field "$f" "$id" change)"
+      fi
+    done
+  done <<EOF
+$files
+EOF
+}
+
 case "${1:-}" in
   get-field) shift; cmd_get_field "$@" ;;
-  *) echo "usage: smith-suggestions.sh {get-field <file> <id> <field>}" >&2; exit 2 ;;
+  list-dismissed) shift; cmd_list_dismissed "$@" ;;
+  *) echo "usage: smith-suggestions.sh {get-field <file> <id> <field>|list-dismissed <dir>}" >&2; exit 2 ;;
 esac
