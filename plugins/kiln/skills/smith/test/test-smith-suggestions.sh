@@ -46,4 +46,20 @@ assert_eq "one dismissed record" "1" "$(printf '%s\n' "$got" | grep -c .)"
 assert_eq "dismissed target+change" "$(printf 'lanes.md\treword DESIGN entry')" "$got"
 assert_eq "empty dir → empty" "" "$(bash "$SCRIPT" list-dismissed "$(mktemp -d)")"
 
+# --- Task 3: is-duplicate blocks re-emit of an existing (target,change) ---
+d2="$(mktemp -d)"
+cat > "$d2/2026-07-30.md" <<'EOF'
+## 2026-07-30-01
+- status: drafted
+- target: gates.md
+- change: strip LOW TASK-GATE line
+## 2026-07-30-02
+- status: dismissed
+- target: lanes.md
+- change: reword DESIGN entry
+EOF
+bash "$SCRIPT" is-duplicate "$d2" "gates.md" "strip LOW TASK-GATE line"; assert_eq "drafted dup blocked" "0" "$?"
+bash "$SCRIPT" is-duplicate "$d2" "lanes.md" "reword DESIGN entry"; assert_eq "dismissed dup blocked" "0" "$?"
+bash "$SCRIPT" is-duplicate "$d2" "SKILL.md" "add Verb 5"; assert_eq "new is not dup" "1" "$?"
+
 exit $fail

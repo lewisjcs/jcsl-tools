@@ -38,8 +38,45 @@ $files
 EOF
 }
 
+# Exit 0 (duplicate — do NOT re-emit) if any record in <dir>/*.md has the same
+# (target, change), in ANY status. Dismissed records are included on purpose: a
+# dismissed suggestion is suppressed, not resurfaced. Exit 1 if genuinely new.
+#
+# Implementation note: the natural `while read id; do ... done` inner loop runs
+# in a subshell under bash 3.2 (piped from `grep | sed`), so an `exit`/`return`
+# inside it cannot propagate a verdict to this function directly. Instead, the
+# inner loop appends a hit line to a mktemp file (same pattern cmd_majority
+# uses in smith-eval-gate.sh); we check that file's non-emptiness after the
+# loop exits, which reliably crosses the subshell boundary via the filesystem.
+cmd_is_duplicate() { # $1=dir $2=target $3=change
+  local dir="$1" target="$2" change="$3" files f id hit
+  [ -d "$dir" ] || return 1
+  hit="$(mktemp)"
+  files="$(ls "$dir"/*.md 2>/dev/null || true)"
+  while IFS= read -r f; do
+    [ -n "$f" ] || continue
+    grep -E '^## ' "$f" | sed 's/^## //' | while IFS= read -r id; do
+      [ -n "$id" ] || continue
+      if [ "$(cmd_get_field "$f" "$id" target)" = "$target" ] \
+         && [ "$(cmd_get_field "$f" "$id" change)" = "$change" ]; then
+        echo "duplicate of $id (status: $(cmd_get_field "$f" "$id" status)) in $f" >> "$hit"
+      fi
+    done
+  done <<EOF
+$files
+EOF
+  if [ -s "$hit" ]; then
+    cat "$hit" >&2
+    rm -f "$hit"
+    return 0
+  fi
+  rm -f "$hit"
+  return 1
+}
+
 case "${1:-}" in
   get-field) shift; cmd_get_field "$@" ;;
   list-dismissed) shift; cmd_list_dismissed "$@" ;;
-  *) echo "usage: smith-suggestions.sh {get-field <file> <id> <field>|list-dismissed <dir>}" >&2; exit 2 ;;
+  is-duplicate) shift; cmd_is_duplicate "$@" ;;
+  *) echo "usage: smith-suggestions.sh {get-field <file> <id> <field>|list-dismissed <dir>|is-duplicate <dir> <target> <change>}" >&2; exit 2 ;;
 esac
