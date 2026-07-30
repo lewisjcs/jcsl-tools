@@ -91,9 +91,45 @@ draft happen only later, attended, via `implement <id>` (below).
    raw source). If you cannot point to the actual runs or the actual principle, the candidate fails
    the triangle and is suppressed.
 
-## `implement <id>` — gate-then-draft (the first outward write; see references/eval-gate.md)
+## `implement <id>` — gate-then-draft (attended; the first and only outward write)
 
-See the `implement <id>` section appended in Task 7.
+Runs when Josh says `implement <id>` (or `/smith implement <id>`). Per-suggestion consent only —
+never batch multiple ids on one approval (`feedback_outward_facing_edit_consent_scope`).
+
+1. **Load the record.** `smith-suggestions.sh get-field <file> <id> <target|change|class>`. The
+   record is the contract — do NOT re-harvest or re-derive the signal.
+
+2. **Construct the intended diff** against a fresh worktree off `origin/main` of the source repo
+   (`feedback_always_use_worktrees`). This is the candidate edit `change` describes on `target`.
+
+3. **Anti-gaming pre-check (hard gate, FIRST).** `smith-eval-gate.sh anti-gaming <diff>`. Exit 3 →
+   STOP, refuse, never draft. Report REJECTED (anti-gaming).
+
+4. **Gate.** Follow `references/eval-gate.md` exactly (Step -1 classify & route → per-class controls →
+   two-part label). Write the verdict: `smith-suggestions.sh set-status <file> <id> eval_verdict
+   "<verdict line>"`.
+
+5. **Branch on verdict:**
+   - **RECOMMENDED** → `set-status <file> <id> status validated-recommended`, proceed to draft.
+   - **OBSERVATION-ONLY / gate-blind** → `set-status <file> <id> status validated-observation`; report
+     the failing control BY NAME; do NOT draft. Josh hand-fixes those. STOP.
+   - By construction (`eval-gate.md` Step -1) a `guard-relaxation` class is forced OBSERVATION-ONLY —
+     it can never reach step 6.
+
+6. **Draft the PR (only on RECOMMENDED):**
+   - Apply the diff on the worktree branch `smith/<id>`.
+   - Use the `/create-pr` skill — never hand-roll (CLAUDE.md). Conventional-Commit title.
+   - PR body carries: the evidence triangle (signal + run-ids, principle, cost_evidence), the full
+     eval report, AND a one-line rollback note: `Rollback: revert commit <sha> on branch smith/<id>;
+     touches only <target>, no migration, no release.`
+   - Open as a GitHub DRAFT PR (not ready-for-review) — the machine-drafted signal.
+   - `set-status <file> <id> pr <url>` and `set-status <file> <id> status drafted`.
+
+7. **Josh reviews and merges.** The loop NEVER merges. The merge is the human gate.
+
+### The four stacked guards (state they hold)
+1. Evidence triangle at emit time (§4). 2. Anti-gaming refuses fixture edits (step 3).
+3. Gate must return RECOMMENDED (step 5). 4. PR opens as draft for explicit human merge (step 6).
 
 ## Guardrails (state they hold)
 - Emit is a FILTER, not a brainstormer — no record without the full evidence triangle.
