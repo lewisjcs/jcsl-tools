@@ -7,6 +7,12 @@ draft a PR, or make any outward write. It
 is the read-only briefing (Steps 1–3 of SKILL.md) plus a filtered local file write. The gate and PR
 draft happen only later, attended, via `implement <id>` (below).
 
+> **Invoked unattended (Plan B).** When a launchd cadence runs this mode headless,
+> the skip-when-nothing-new rule (Step 2) is what keeps the daily run cheap — it
+> writes a one-line `nothing new since <date>` and exits when no run is newer than
+> the last suggestions file. A headless run still honors the partial-harvest
+> fail-open: it emits with whatever `retro.json` files exist and never blocks.
+
 ## Procedure
 
 1. **Harvest** exactly as the briefing does: run
