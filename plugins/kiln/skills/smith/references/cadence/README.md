@@ -7,6 +7,7 @@ attended, via `/smith implement <id>`.
 
 ## Install
     bash install-cadence.sh --workspace /path/to/os-workspace [--hour 7 --minute 30]
+`--hour`/`--minute` default to 7 and 30 (07:30 local) if omitted.
 Renders `~/Library/LaunchAgents/com.jcsl.smith-cadence.plist` and loads it.
 
 ## Verify (without waiting for the schedule)
