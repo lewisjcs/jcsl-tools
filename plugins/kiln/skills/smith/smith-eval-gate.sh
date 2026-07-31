@@ -207,6 +207,36 @@ cmd_cache_key() { # $1=scenario $2=K $3.. = prose files
 }
 cmd_cache_path() { printf '%s/%s.canon\n' "$1" "$2"; }
 
+cmd_reproduces() { # $1 = predicted diff file, $2 = repo dir
+  local df="$1" rd="$2"
+  [ -r "$df" ] || { echo "reproduces: cannot read diff file: $df" >&2; return 2; }
+  git -C "$rd" rev-parse --git-dir >/dev/null 2>&1 || { echo "reproduces: not a git repo: $rd" >&2; return 2; }
+  # Zero-hunk guard FIRST: a predicted diff with no `@@` hunk is a complete no-op —
+  # the change is already fully present. `git apply` on an empty patch exits 128
+  # (fatal), not 0, so this case must be caught before the git probe and mapped to
+  # already-applied (return 1), the purest staleness.
+  if ! grep -q '^@@ ' "$df"; then
+    echo "reproduces: empty/zero-hunk diff — change already present (already-applied)" >&2
+    return 1
+  fi
+  # already-applied: the edit reverse-applies cleanly against current source.
+  if git -C "$rd" apply --reverse --check "$df" >/dev/null 2>&1; then
+    return 1
+  fi
+  # still-open: the edit forward-applies cleanly (deficiency present, fix not yet in tree).
+  if git -C "$rd" apply --check "$df" >/dev/null 2>&1; then
+    return 0
+  fi
+  # Neither direction applies. Disambiguate git's exit code: 1 = patch does not apply
+  # (genuine context drift → write + flag, return 6); 128 = fatal/malformed input
+  # (fail-loud, return 2). Re-run forward --check to capture the distinguishing code.
+  git -C "$rd" apply --check "$df" >/dev/null 2>&1
+  case "$?" in
+    1) echo "reproduces: context drift — cannot confirm freshness (freshness-unverified)" >&2; return 6 ;;
+    *) echo "reproduces: malformed diff (git exit 128)" >&2; return 2 ;;
+  esac
+}
+
 case "${1:-}" in
   diff)        shift; cmd_diff "$@" ;;
   anti-gaming) shift; cmd_anti_gaming "$@" ;;
@@ -218,5 +248,6 @@ case "${1:-}" in
   diff-pair)   shift; cmd_diff_pair "$@" ;;
   cache-key)   shift; cmd_cache_key "$@" ;;
   cache-path)  shift; cmd_cache_path "$@" ;;
-  *) echo "usage: smith-eval-gate.sh {diff <marker> <expected>|anti-gaming <diff>|guard-relax <diff>|classify <diff>|tally <results> <thresholds>|canon <marker>|majority <marker>...|diff-pair <baseline> <proposal>|cache-key <scenario> <K> <prose-file>...|cache-path <cache-dir> <key>}" >&2; exit 2 ;;
+  reproduces)  shift; cmd_reproduces "$@" ;;
+  *) echo "usage: smith-eval-gate.sh {diff <marker> <expected>|anti-gaming <diff>|guard-relax <diff>|classify <diff>|tally <results> <thresholds>|canon <marker>|majority <marker>...|diff-pair <baseline> <proposal>|cache-key <scenario> <K> <prose-file>...|cache-path <cache-dir> <key>|reproduces <diff> <repo-dir>}" >&2; exit 2 ;;
 esac

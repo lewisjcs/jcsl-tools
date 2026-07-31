@@ -215,4 +215,78 @@ assert_eq "classify missing file: unsure" "true" "$(printf '%s' "$out" | grep -q
 assert_eq "classify missing file: no guard-relaxation" "false" "$(printf '%s' "$out" | grep -q 'guard-relaxation' && echo true || echo false)"
 assert_exit "classify missing file: exit 0 (always advisory)" "0" "$rc"
 
+# --- reproduces: staleness gate against a real git tree ---
+# Build a throwaway repo: f.txt has line1/line2; a diff that ADDS line3 is the
+# "predicted edit". Tree states drive the four verdicts.
+RTMP="$(mktemp -d)"
+(
+  cd "$RTMP"
+  git init -q .
+  git -c user.email=t@t -c user.name=t commit -q --allow-empty -m init
+  printf 'line1\nline2\n' > f.txt
+  git add f.txt && git -c user.email=t@t -c user.name=t commit -q -m add
+  printf 'line1\nline2\nline3\n' > f.txt
+  git diff > "$FIX/repro-add-line3.patch"   # the predicted diff (adds line3)
+  git checkout -q -- f.txt                    # tree state: line3 ABSENT (still-open)
+)
+: > "$FIX/repro-empty.patch"                                  # empty diff
+printf -- '--- a/f.txt\n+++ b/f.txt\n@@ -1,2 +1,2 @@\nnot a valid hunk body\n' > "$FIX/repro-malformed.patch"  # has a hunk header but a corrupt body -> git apply exits 128
+
+# still-open: line3 absent -> forward applies, reverse does not -> exit 0
+bash "$SCRIPT" reproduces "$FIX/repro-add-line3.patch" "$RTMP" >/dev/null 2>&1; rc=$?
+assert_exit "reproduces still-open: exit 0 (write)" "0" "$rc"
+
+# already-applied: put line3 in the tree -> reverse applies -> exit 1
+( cd "$RTMP"; printf 'line1\nline2\nline3\n' > f.txt; git add f.txt; git -c user.email=t@t -c user.name=t commit -q -m applied )
+bash "$SCRIPT" reproduces "$FIX/repro-add-line3.patch" "$RTMP" >/dev/null 2>&1; rc=$?
+assert_exit "reproduces already-applied: exit 1 (suppress)" "1" "$rc"
+
+# context-drift: replace file contents so neither direction applies -> exit 6
+( cd "$RTMP"; printf 'totally\ndifferent\n' > f.txt; git add f.txt; git -c user.email=t@t -c user.name=t commit -q -m drift )
+bash "$SCRIPT" reproduces "$FIX/repro-add-line3.patch" "$RTMP" >/dev/null 2>&1; rc=$?
+assert_exit "reproduces context-drift: exit 6 (write+flag)" "6" "$rc"
+
+# empty/zero-hunk diff: complete no-op -> already-applied -> exit 1 (guarded before git probe)
+bash "$SCRIPT" reproduces "$FIX/repro-empty.patch" "$RTMP" >/dev/null 2>&1; rc=$?
+assert_exit "reproduces empty diff: exit 1 (zero-hunk = already-applied)" "1" "$rc"
+
+# malformed diff (git exits 128) -> fail-loud, distinct from drift's exit 6
+bash "$SCRIPT" reproduces "$FIX/repro-malformed.patch" "$RTMP" >/dev/null 2>&1; rc=$?
+assert_exit "reproduces malformed: exit 2 (fail-loud, not 6)" "2" "$rc"
+
+# not a git repo -> exit 2
+bash "$SCRIPT" reproduces "$FIX/repro-add-line3.patch" /tmp >/dev/null 2>&1; rc=$?
+assert_exit "reproduces non-repo dir: exit 2" "2" "$rc"
+
+# unreadable diff file -> exit 2
+bash "$SCRIPT" reproduces "$FIX/does-not-exist-nonexistent.patch" "$RTMP" >/dev/null 2>&1; rc=$?
+assert_exit "reproduces missing diff: exit 2" "2" "$rc"
+
+# AIS-214 regression: a diff adding a `Skill` grant to the Curator agent, against a
+# tree that ALREADY has it, must suppress (exit 1) — the observed false positive.
+RCUR="$(mktemp -d)"
+(
+  cd "$RCUR"
+  git init -q .
+  mkdir -p plugins/kiln/agents/curator
+  printf 'tools: Read, Bash, Grep, Glob, Skill\n' > plugins/kiln/agents/curator/curator.md
+  git add -A && git -c user.email=t@t -c user.name=t commit -q -m curator-has-skill
+)
+# predicted diff proposes ADDING Skill to a tools line that lacks it
+cat > "$FIX/repro-ais214.patch" <<'PATCH'
+--- a/plugins/kiln/agents/curator/curator.md
++++ b/plugins/kiln/agents/curator/curator.md
+@@ -1 +1 @@
+-tools: Read, Bash, Grep, Glob
++tools: Read, Bash, Grep, Glob, Skill
+PATCH
+# tree already has "...Glob, Skill", so the ADD reverse-applies cleanly -> suppress.
+# (Reverse of the add = remove Skill; the tree's line is "...Glob, Skill" so reverse
+#  applies.) Verify the verdict is suppress:
+bash "$SCRIPT" reproduces "$FIX/repro-ais214.patch" "$RCUR" >/dev/null 2>&1; rc=$?
+assert_exit "reproduces AIS-214 regression: exit 1 (already-fixed suppressed)" "1" "$rc"
+
+rm -rf "$RTMP" "$RCUR" "$FIX/repro-add-line3.patch" "$FIX/repro-empty.patch" \
+       "$FIX/repro-malformed.patch" "$FIX/repro-ais214.patch"
+
 exit $fail
