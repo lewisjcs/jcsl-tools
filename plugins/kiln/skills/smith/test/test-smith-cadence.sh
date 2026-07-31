@@ -84,4 +84,14 @@ else
   echo "FAIL: fail-loud ERROR line missing from log"; fail=1
 fi
 
+# --- Bug fix: resolve_ccusage default must include the `session --json`
+# subcommand+flag, not just the binary — the harvester consumes this value
+# as a full command (smith-harvest.sh:171 default is `ccusage session --json`),
+# and a bare `npx ccusage@latest` prints a human table, not JSON. ---
+resolved="$( ( SMITH_CADENCE_LIB=1; unset SMITH_CCUSAGE; . "$WRAPPER"; resolve_ccusage ) )"
+case "$resolved" in
+  *"session --json") echo "ok: resolve_ccusage default ends with session --json" ;;
+  *) echo "FAIL: resolve_ccusage default missing session --json subcommand — got [$resolved]"; fail=1 ;;
+esac
+
 [ "$fail" = 0 ] && echo "ALL PASS" || { echo "FAILURES"; exit 1; }

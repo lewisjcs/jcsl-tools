@@ -15,7 +15,10 @@ langfuse_live() {
 
 resolve_ccusage() {
   # Bare `ccusage` is not on launchd's minimal PATH (reference_smith_ccusage_path_gap).
-  echo "${SMITH_CCUSAGE:-npx ccusage@latest}"
+  # The harvester's own default is `ccusage session --json` (smith-harvest.sh:171) —
+  # the value here must include that subcommand+flag, not just the binary, or the
+  # harvester runs a bare invocation that prints a human table instead of JSON.
+  echo "${SMITH_CCUSAGE:-npx ccusage@latest session --json}"
 }
 
 [ "${SMITH_CADENCE_LIB:-}" = "1" ] && return 0
