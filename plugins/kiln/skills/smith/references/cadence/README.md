@@ -28,7 +28,8 @@ to `/loop` or manual invocation needs no code change: run `smith-cadence.sh
 ## Headless-fragility notes
 - Bedrock: the plist carries `CLAUDE_CODE_USE_BEDROCK=1`, `AWS_PROFILE=bedrock`,
   `AWS_REGION=us-east-1`. If your profile differs, edit the template + reinstall.
-- ccusage PATH gap: the wrapper defaults `SMITH_CCUSAGE=npx ccusage@latest`.
+- ccusage PATH gap: the wrapper defaults `SMITH_CCUSAGE=npx ccusage@latest session --json`
+  (the full command the harvester expects, `npx`-prefixed for launchd's minimal PATH).
 - Langfuse liveness: the wrapper probes `localhost:3000/api/public/health`; on
   failure it sets `SMITH_LANGFUSE_DOWN=1` and the cost lens falls open to
   ccusage-only, stamped in the log — never silently degraded.
