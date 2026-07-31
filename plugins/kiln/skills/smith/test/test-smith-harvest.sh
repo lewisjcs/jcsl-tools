@@ -83,6 +83,22 @@ assert_eq "malformed cost: exit 0" "0" "$badcost_exit"
 assert_eq "malformed cost: cost_usd null" "null" "$(jq -r '.cost_usd' "$out5")"
 assert_eq "malformed cost: note set" "true" "$(jq -r '(.cost_note|length)>0' "$out5")"
 
+# --- Bug fix: non-JSON ccusage output (human table, e.g. from a misconfigured
+# SMITH_CCUSAGE missing `session --json`) must not crash the whole harvest.
+# The cost-join's `raw="$($CCUSAGE ... || true)"` was already fail-open, but the
+# downstream `c="$(jq ... | head -1)"` was NOT — under `set -euo pipefail`, jq's
+# nonzero exit on non-JSON input trips `set -e` on the assignment and kills the
+# entire per-run harvest with jq's exit code instead of degrading to null cost. ---
+chmod +x "$FIX/fake-ccusage-nonjson.sh"
+outnj="$(mktemp)"
+SMITH_CCUSAGE="bash $FIX/fake-ccusage-nonjson.sh" bash "$SCRIPT" --run-dir "$FIX/clean-run/kiln" --out "$outnj"
+nonjson_exit=$?
+assert_eq "non-JSON ccusage: harvest exits 0" "0" "$nonjson_exit"
+assert_eq "non-JSON ccusage: retro.json is valid JSON" "true" \
+  "$(jq -e . "$outnj" >/dev/null 2>&1 && echo true || echo false)"
+assert_eq "non-JSON ccusage: cost_usd null" "null" "$(jq -r '.cost_usd' "$outnj")"
+assert_eq "non-JSON ccusage: cost_note set" "true" "$(jq -r '(.cost_note|length)>0' "$outnj")"
+
 # --- Task 4 (carry-forward from Task 1 review): mixed verdict-naming
 # conventions in one run dir must not double-count tasks ---
 outmix="$(mktemp)"
