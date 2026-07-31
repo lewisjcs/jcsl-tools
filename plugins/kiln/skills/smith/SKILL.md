@@ -106,9 +106,17 @@ procedure: load the record, anti-gaming pre-check, run the eval gate (`reference
 draft a GitHub DRAFT PR ONLY if the verdict is RECOMMENDED. Per-suggestion consent only — never batch.
 The loop never merges; Josh's merge is the gate.
 
+## Mode: cadence (Plan B — unattended trigger, opt-in)
+
+An optional macOS launchd job fires `/smith --emit-suggestions` on a daily
+schedule so the suggestions file is ready to review each morning. It is a
+reversible trigger, not new behavior: the cadence run does only the read-only
+briefing + filtered local write (no gate, no PR). Install/verify/rollback:
+`references/cadence/README.md`. Not installed by default.
+
 ## What The Smith does NOT do
 - Does not edit Kiln source, gates, or prompts — it proposes and validates; Josh approves the PR.
 - Does not autonomously adopt a proposal — a Recommended label plus Josh's approval ships it.
 - Does not touch a fixture or scenario (anti-gaming — the gate rejects such proposals).
 - In `--validate`, the conductor-role replays are dry (no source writes, no PRs, no live-workspace mutation).
-- Does not run `--emit-suggestions` on a cadence by itself (that trigger is Plan B); a human runs it, and the first outward write (`implement <id>`) always waits for Josh's explicit per-suggestion pick.
+- Runs `--emit-suggestions` unattended only via the OPT-IN launchd cadence (see `references/cadence/README.md`), which does a read-only harvest + local file write and nothing else; the first outward write (`implement <id>`) always waits for Josh's explicit per-suggestion pick.
