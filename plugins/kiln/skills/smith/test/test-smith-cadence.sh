@@ -39,4 +39,25 @@ grep -q "<integer>7</integer>" "$out_plist" && echo "ok: hour substituted" || { 
 # --- rendered plist is valid ---
 plutil -lint "$out_plist" >/dev/null 2>&1 && echo "ok: rendered plist lints" || { echo "FAIL: plutil lint"; fail=1; }
 
+# --- Task 5: main fails OPEN — a nonzero `claude -p` must not crash the launchd job ---
+# The safety-critical property of the whole cadence: a broken morning writes nothing
+# and the wrapper still returns 0, so launchd never crash-loops (design §6(e)).
+# Stub `claude` (PATH-prepended) to exit nonzero; assert the wrapper exits 0 anyway.
+stub_dir="$(mktemp -d)"
+cat > "$stub_dir/claude" <<'STUB'
+#!/usr/bin/env bash
+echo "stubbed claude: simulated failure" >&2
+exit 7
+STUB
+chmod +x "$stub_dir/claude"
+ws_dir="$(mktemp -d)"
+( PATH="$stub_dir:$PATH"; SMITH_LANGFUSE_DOWN=1; bash "$WRAPPER" --workspace "$ws_dir" --last 3 >/dev/null 2>&1 )
+rc=$?
+assert_eq "fail-open: nonzero claude still exits 0" "0" "$rc"
+# The failed run must leave a log (audit trail) but never a partial suggestions file.
+ls "$ws_dir/projects/active/kiln-smith/smith-suggestions/.cadence-logs/"*.log >/dev/null 2>&1 \
+  && echo "ok: fail-open run still wrote its log" || { echo "FAIL: no cadence log written"; fail=1; }
+sug_files="$(find "$ws_dir/projects/active/kiln-smith/smith-suggestions" -maxdepth 1 -name '*.md' 2>/dev/null | wc -l | tr -d ' ')"
+assert_eq "fail-open: no partial suggestions .md written" "0" "$sug_files"
+
 [ "$fail" = 0 ] && echo "ALL PASS" || { echo "FAILURES"; exit 1; }
