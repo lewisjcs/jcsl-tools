@@ -48,11 +48,26 @@ LOG="$LOG_DIR/$STAMP.log"
     export SMITH_LANGFUSE_DOWN=1
     echo "langfuse: DOWN — cost lens falls open to ccusage-only this run"
   fi
-  # The read-only briefing + filtered local write. No gate, no PR (Plan B invariant).
-  claude -p "/smith --emit-suggestions --last $LAST" --add-dir "$WS" 2>&1
-  rc=$?
-  echo "=== claude -p exit: $rc ==="
+  # Plugin + settings discovery keys off cwd, not --add-dir (reference_kiln_hooks_workspace_anchor).
+  # Without this cd, launchd's cwd (often /) leaves the kiln plugin out of scope and
+  # `/smith` resolves to "Unknown command" while `claude -p` still exits 0 (silent failure).
+  if cd "$WS" 2>/dev/null; then
+    # The read-only briefing + filtered local write. No gate, no PR (Plan B invariant).
+    out="$(claude -p "/smith --emit-suggestions --last $LAST" --add-dir "$WS" 2>&1)"
+    rc=$?
+    printf '%s\n' "$out"
+    echo "=== claude -p exit: $rc ==="
+    if printf '%s\n' "$out" | grep -qi "unknown command"; then
+      echo "ERROR: /smith did not run (plugin not loaded in this cwd?) — failing loud"
+      exit 1
+    fi
+  else
+    echo "ERROR: cannot cd to workspace $WS — skipping claude run"
+    exit 1
+  fi
 } >>"$LOG" 2>&1
 
-# Fail-open: a nonzero claude run must not crash the launchd job into a loop.
+# Fail-open: a genuine nonzero claude RUN (the command executed but errored) must not
+# crash the launchd job into a loop. A command that never ran at all (caught above) has
+# already exited 1 from inside the block, so this exit 0 only covers the fail-open case.
 exit 0

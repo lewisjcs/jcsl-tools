@@ -60,4 +60,28 @@ ls "$ws_dir/projects/active/kiln-smith/smith-suggestions/.cadence-logs/"*.log >/
 sug_files="$(find "$ws_dir/projects/active/kiln-smith/smith-suggestions" -maxdepth 1 -name '*.md' 2>/dev/null | wc -l | tr -d ' ')"
 assert_eq "fail-open: no partial suggestions .md written" "0" "$sug_files"
 
+# --- Fix round 1: main fails LOUD when /smith never ran (plugin not loaded in cwd) ---
+# Distinguishes "claude ran /smith and it errored" (stays fail-open, above) from
+# "claude never resolved /smith at all" (a configuration failure — must surface, not retry
+# silently forever under launchd). Stub `claude` to print "Unknown command: /smith" and
+# exit 0 (mirrors the real silent-failure signature), then assert the wrapper exits nonzero
+# and the log records the ERROR line.
+stub_dir2="$(mktemp -d)"
+cat > "$stub_dir2/claude" <<'STUB'
+#!/usr/bin/env bash
+echo "Unknown command: /smith"
+exit 0
+STUB
+chmod +x "$stub_dir2/claude"
+ws_dir2="$(mktemp -d)"
+( PATH="$stub_dir2:$PATH"; SMITH_LANGFUSE_DOWN=1; bash "$WRAPPER" --workspace "$ws_dir2" --last 3 >/dev/null 2>&1 )
+rc=$?
+assert_eq "fail-loud: unresolved /smith exits nonzero" "1" "$rc"
+log_file2="$(find "$ws_dir2/projects/active/kiln-smith/smith-suggestions/.cadence-logs/" -maxdepth 1 -name '*.log' 2>/dev/null | head -n1)"
+if [ -n "$log_file2" ] && grep -q "ERROR: /smith did not run" "$log_file2"; then
+  echo "ok: fail-loud run logs the ERROR line"
+else
+  echo "FAIL: fail-loud ERROR line missing from log"; fail=1
+fi
+
 [ "$fail" = 0 ] && echo "ALL PASS" || { echo "FAILURES"; exit 1; }
