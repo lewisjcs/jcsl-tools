@@ -6,15 +6,39 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TEMPLATE="$HERE/com.jcsl.smith-cadence.plist.template"
 LABEL="com.jcsl.smith-cadence"
 
+escape_sed_repl() { # escapes backslash, & and | for safe use as sed `s|...|repl|` replacement text
+  printf '%s' "$1" | sed -e 's/\\/\\\\/g' -e 's/&/\\&/g' -e 's/|/\\|/g'
+}
+
 render_plist() { # $1 = target path; reads R_* from env
   local target="$1"
-  sed -e "s|__WRAPPER__|${R_WRAPPER}|g" \
-      -e "s|__WORKSPACE__|${R_WORKSPACE}|g" \
-      -e "s|__LOG_DIR__|${R_LOG_DIR}|g" \
-      -e "s|__HOUR__|${R_HOUR}|g" \
-      -e "s|__MINUTE__|${R_MINUTE}|g" \
-      -e "s|__PATH__|${R_PATH}|g" \
+  local e_wrapper e_workspace e_log_dir e_hour e_minute e_path
+  e_wrapper="$(escape_sed_repl "$R_WRAPPER")"
+  e_workspace="$(escape_sed_repl "$R_WORKSPACE")"
+  e_log_dir="$(escape_sed_repl "$R_LOG_DIR")"
+  e_hour="$(escape_sed_repl "$R_HOUR")"
+  e_minute="$(escape_sed_repl "$R_MINUTE")"
+  e_path="$(escape_sed_repl "$R_PATH")"
+  sed -e "s|__WRAPPER__|${e_wrapper}|g" \
+      -e "s|__WORKSPACE__|${e_workspace}|g" \
+      -e "s|__LOG_DIR__|${e_log_dir}|g" \
+      -e "s|__HOUR__|${e_hour}|g" \
+      -e "s|__MINUTE__|${e_minute}|g" \
+      -e "s|__PATH__|${e_path}|g" \
       "$TEMPLATE" > "$target"
+}
+
+validate_range() { # $1=flag name $2=value $3=min $4=max; fails LOUD before render/load
+  case "$2" in
+    ''|*[!0-9]*)
+      echo "install-cadence: --$1 must be an integer (got: '$2')" >&2
+      exit 2
+      ;;
+  esac
+  if [ "$2" -lt "$3" ] || [ "$2" -gt "$4" ]; then
+    echo "install-cadence: --$1 must be between $3 and $4 (got: $2)" >&2
+    exit 2
+  fi
 }
 
 [ "${SMITH_CADENCE_LIB:-}" = "1" ] && return 0
@@ -30,6 +54,8 @@ while [ $# -gt 0 ]; do
   esac
 done
 [ -n "$WS" ] && [ -d "$WS" ] || { echo "install-cadence: --workspace <dir> required (existing)" >&2; exit 2; }
+validate_range "hour" "$HOUR" 0 23
+validate_range "minute" "$MINUTE" 0 59
 
 LA_DIR="$HOME/Library/LaunchAgents"
 PLIST="$LA_DIR/$LABEL.plist"

@@ -39,6 +39,49 @@ grep -q "<integer>7</integer>" "$out_plist" && echo "ok: hour substituted" || { 
 # --- rendered plist is valid ---
 plutil -lint "$out_plist" >/dev/null 2>&1 && echo "ok: rendered plist lints" || { echo "FAIL: plutil lint"; fail=1; }
 
+# --- F3: install-cadence rejects out-of-range / non-integer --hour and --minute
+# BEFORE rendering or loading any plist (fail LOUD, not a half-installed job) ---
+ws_range="$(mktemp -d)"
+
+home_hour25="$(mktemp -d)"
+out="$(HOME="$home_hour25" bash "$INSTALLER" --workspace "$ws_range" --hour 25 2>&1)"; rc=$?
+if [ "$rc" != "0" ] && ! [ -e "$home_hour25/Library/LaunchAgents/com.jcsl.smith-cadence.plist" ]; then
+  echo "ok: --hour 25 rejected, nothing loaded"
+else
+  echo "FAIL: --hour 25 not rejected (rc=$rc)"; fail=1
+fi
+echo "$out" | grep -qi "hour" && echo "ok: --hour 25 error names the flag" || { echo "FAIL: --hour 25 error message missing"; fail=1; }
+
+home_min99="$(mktemp -d)"
+out="$(HOME="$home_min99" bash "$INSTALLER" --workspace "$ws_range" --minute 99 2>&1)"; rc=$?
+if [ "$rc" != "0" ] && ! [ -e "$home_min99/Library/LaunchAgents/com.jcsl.smith-cadence.plist" ]; then
+  echo "ok: --minute 99 rejected, nothing loaded"
+else
+  echo "FAIL: --minute 99 not rejected (rc=$rc)"; fail=1
+fi
+echo "$out" | grep -qi "minute" && echo "ok: --minute 99 error names the flag" || { echo "FAIL: --minute 99 error message missing"; fail=1; }
+
+home_hournum="$(mktemp -d)"
+out="$(HOME="$home_hournum" bash "$INSTALLER" --workspace "$ws_range" --hour abc 2>&1)"; rc=$?
+if [ "$rc" != "0" ] && ! [ -e "$home_hournum/Library/LaunchAgents/com.jcsl.smith-cadence.plist" ]; then
+  echo "ok: non-numeric --hour rejected, nothing loaded"
+else
+  echo "FAIL: non-numeric --hour not rejected (rc=$rc)"; fail=1
+fi
+echo "$out" | grep -qi "integer" && echo "ok: non-numeric --hour error is clear" || { echo "FAIL: non-numeric --hour error message missing"; fail=1; }
+
+# --- F5: render_plist escapes sed metacharacters — a --workspace path
+# containing `&` renders literally instead of expanding to the sed match ---
+amp_plist="$tmp_home/rendered-amp.plist"
+(
+  SMITH_CADENCE_LIB=1 . "$INSTALLER"
+  R_WRAPPER="/x/smith-cadence.sh" R_WORKSPACE="/ws & extra" R_LOG_DIR="/ws/logs" \
+  R_HOUR="7" R_MINUTE="30" R_PATH="/usr/bin:/bin" \
+  render_plist "$amp_plist"
+)
+grep -qF "/ws & extra" "$amp_plist" && echo "ok: workspace with & renders literally" || { echo "FAIL: workspace with & corrupted render"; fail=1; }
+grep -qF "__WORKSPACE__" "$amp_plist" && { echo "FAIL: placeholder survived amp render"; fail=1; } || echo "ok: no placeholder survives amp render"
+
 # --- Task 5: main fails OPEN — a nonzero `claude -p` must not crash the launchd job ---
 # The safety-critical property of the whole cadence: a broken morning writes nothing
 # and the wrapper still returns 0, so launchd never crash-loops (design §6(e)).
