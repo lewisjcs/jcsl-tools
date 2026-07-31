@@ -37,7 +37,7 @@ LOG_DIR="$WS/projects/active/kiln-smith/smith-suggestions/.cadence-logs"
 mkdir -p "$LA_DIR" "$LOG_DIR"
 
 R_WRAPPER="$HERE/smith-cadence.sh" R_WORKSPACE="$WS" R_LOG_DIR="$LOG_DIR" \
-R_HOUR="$HOUR" R_MINUTE="$MINUTE" R_PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin" \
+R_HOUR="$HOUR" R_MINUTE="$MINUTE" R_PATH="$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin" \
 render_plist "$PLIST"
 
 plutil -lint "$PLIST"   # fail loud on malformed plist

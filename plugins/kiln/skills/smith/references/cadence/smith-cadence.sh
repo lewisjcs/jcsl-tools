@@ -35,6 +35,12 @@ while [ $# -gt 0 ]; do
 done
 [ -n "$WS" ] || { echo "smith-cadence: --workspace <dir> is required" >&2; exit 2; }
 [ -d "$WS" ] || { echo "smith-cadence: workspace not a dir: $WS" >&2; exit 2; }
+
+# Harden our own PATH for non-launchd callers (/loop, cron, or a bare shell
+# invocation) whose PATH may lack the native-installer bin dir. Idempotent-ish:
+# a duplicate entry here is harmless.
+export PATH="$HOME/.local/bin:$PATH"
+
 [ -n "$LOG_DIR" ] || LOG_DIR="$WS/projects/active/kiln-smith/smith-suggestions/.cadence-logs"
 mkdir -p "$LOG_DIR"
 STAMP="$(date +%Y-%m-%d)"
@@ -62,6 +68,10 @@ LOG="$LOG_DIR/$STAMP.log"
     echo "=== claude -p exit: $rc ==="
     if printf '%s\n' "$out" | grep -qi "unknown command"; then
       echo "ERROR: /smith did not run (plugin not loaded in this cwd?) — failing loud"
+      exit 1
+    fi
+    if [ "$rc" -eq 127 ] || printf '%s\n' "$out" | grep -qi "command not found"; then
+      echo "ERROR: claude binary not found on PATH (exit 127) — failing loud"
       exit 1
     fi
   else

@@ -51,7 +51,10 @@ exit 7
 STUB
 chmod +x "$stub_dir/claude"
 ws_dir="$(mktemp -d)"
-( PATH="$stub_dir:$PATH"; SMITH_LANGFUSE_DOWN=1; bash "$WRAPPER" --workspace "$ws_dir" --last 3 >/dev/null 2>&1 )
+empty_home1="$(mktemp -d)"
+# Change 2 prepends $HOME/.local/bin onto PATH inside the wrapper; point HOME at
+# an empty tmpdir so that prepend can't shadow the stub with a real claude binary.
+( HOME="$empty_home1"; PATH="$stub_dir:$PATH"; SMITH_LANGFUSE_DOWN=1; bash "$WRAPPER" --workspace "$ws_dir" --last 3 >/dev/null 2>&1 )
 rc=$?
 assert_eq "fail-open: nonzero claude still exits 0" "0" "$rc"
 # The failed run must leave a log (audit trail) but never a partial suggestions file.
@@ -74,7 +77,8 @@ exit 0
 STUB
 chmod +x "$stub_dir2/claude"
 ws_dir2="$(mktemp -d)"
-( PATH="$stub_dir2:$PATH"; SMITH_LANGFUSE_DOWN=1; bash "$WRAPPER" --workspace "$ws_dir2" --last 3 >/dev/null 2>&1 )
+empty_home2="$(mktemp -d)"
+( HOME="$empty_home2"; PATH="$stub_dir2:$PATH"; SMITH_LANGFUSE_DOWN=1; bash "$WRAPPER" --workspace "$ws_dir2" --last 3 >/dev/null 2>&1 )
 rc=$?
 assert_eq "fail-loud: unresolved /smith exits nonzero" "1" "$rc"
 log_file2="$(find "$ws_dir2/projects/active/kiln-smith/smith-suggestions/.cadence-logs/" -maxdepth 1 -name '*.log' 2>/dev/null | head -n1)"
@@ -82,6 +86,32 @@ if [ -n "$log_file2" ] && grep -q "ERROR: /smith did not run" "$log_file2"; then
   echo "ok: fail-loud run logs the ERROR line"
 else
   echo "FAIL: fail-loud ERROR line missing from log"; fail=1
+fi
+
+# --- Fix 2 (headless-PATH defect): main fails LOUD when `claude` binary is
+# missing from PATH (exit 127 / "command not found"). Distinguishes this
+# configuration failure from the genuine-runtime-error fail-open case above.
+# Change 2 prepends $HOME/.local/bin to PATH inside the wrapper, so a test
+# that relies on claude being ABSENT must also neutralize that: point HOME at
+# an empty tmpdir (so $HOME/.local/bin is empty) and use a minimal PATH that
+# carries no `claude` stub.
+stub_dir3="$(mktemp -d)"
+cat > "$stub_dir3/claude" <<'STUB'
+#!/usr/bin/env bash
+echo "bash: claude: command not found" >&2
+exit 127
+STUB
+chmod +x "$stub_dir3/claude"
+empty_home="$(mktemp -d)"
+ws_dir3="$(mktemp -d)"
+( HOME="$empty_home"; PATH="$stub_dir3:/usr/bin:/bin"; SMITH_LANGFUSE_DOWN=1; bash "$WRAPPER" --workspace "$ws_dir3" --last 3 >/dev/null 2>&1 )
+rc=$?
+assert_eq "fail-loud: missing claude binary exits nonzero" "1" "$rc"
+log_file3="$(find "$ws_dir3/projects/active/kiln-smith/smith-suggestions/.cadence-logs/" -maxdepth 1 -name '*.log' 2>/dev/null | head -n1)"
+if [ -n "$log_file3" ] && grep -q "ERROR: claude binary not found" "$log_file3"; then
+  echo "ok: fail-loud missing-claude run logs the ERROR line"
+else
+  echo "FAIL: fail-loud missing-claude ERROR line missing from log"; fail=1
 fi
 
 # --- Bug fix: resolve_ccusage default must include the `session --json`
