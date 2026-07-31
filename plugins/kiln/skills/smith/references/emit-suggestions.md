@@ -40,6 +40,11 @@ draft happen only later, attended, via `implement <id>` (below).
      whether it actually indicates friction before counting it, never from array length alone). A
      one-off is not a signal — a pattern seen in exactly one run fails this leg and the candidate is
      suppressed.
+     A repeated past pattern is necessary but **not sufficient**: the signal must describe a
+     deficiency present in **current** source, not one a later commit already fixed. This is not a
+     judgment call — it is proven mechanically at the freshness gate (new step 5.5) before the record
+     is written (`feedback_pair_prose_heuristic_with_invariant_test`: a prose heuristic is co-required
+     with a runtime invariant, never trusted alone).
    - **Principle anchor:** name the specific principle/memory/research finding that makes the change
      right by our standards — e.g. `code-quality-standards`, a named `feedback_*` memory such as
      `feedback_pair_prose_heuristic_with_invariant_test`, `reference_anthropic_harness_design`, or the
@@ -59,6 +64,23 @@ draft happen only later, attended, via `implement <id>` (below).
 5. **Suppression is the teeth:** a candidate that cannot complete all three legs is NOT written to
    the file. You MAY mention it in the returned briefing text as a low-confidence observation, but it
    never becomes a `proposed` record. Better an empty suggestions file than a noisy one.
+
+5.5. **Freshness gate (the mechanical staleness invariant).** After a candidate clears all three
+   triangle legs and before `emit-record`, prove its fix has NOT already landed. Construct the
+   predicted diff you already built for the eval-legibility leg (step 4) as a file, and run against a
+   fresh `origin/main` checkout of the source repo (the same worktree discipline `implement` uses):
+   `bash ${CLAUDE_PLUGIN_ROOT}/skills/smith/smith-eval-gate.sh reproduces <predicted-diff> <checkout-dir>`.
+   Branch on the exit code:
+   - **exit 1 (already-applied)** — the fix is already in current source. The signal is STALE:
+     **suppress** it (do not write; you MAY note it in the briefing text as an already-resolved
+     observation). This is the AIS-214 / AIS-208 case the gate exists to catch.
+   - **exit 0 (still-open)** — freshness confirmed; proceed to `emit-record` (step 6) normally.
+   - **exit 6 (context-drift)** — the target file changed enough that freshness cannot be confirmed
+     either way. **Write the record, but append `[freshness-unverified]` to the `<change>` line**
+     (the same honest-uncertainty idiom as `[gate-blind: <class>]`) so the reader knows the gate
+     could not confirm current-source state.
+   - **exit 2 (malformed / not a repo)** — fail-loud: the predicted diff is not a valid unified diff
+     or the checkout is wrong. Fix the diff/checkout and re-run; never write a record on exit 2.
 
 6. **Write each surviving candidate** with
    `bash ${CLAUDE_PLUGIN_ROOT}/skills/smith/smith-suggestions.sh emit-record <file> <id> <target>
@@ -152,3 +174,6 @@ never batch multiple ids on one approval (`feedback_outward_facing_edit_consent_
   it calls only records a read-only class label; it does not adjudicate. It is read + local file
   write only.
 - Dismissed suggestions stay suppressed (`list-dismissed` feeds both your pre-check and `emit-record`'s dedup).
+- Emit suppresses a signal whose fix already landed (freshness gate, step 5.5) — a repeated *past*
+  pattern is not a *present* deficiency. Indeterminate (drift) writes with `[freshness-unverified]`;
+  it never silently drops a real signal (accuracy-primary).
