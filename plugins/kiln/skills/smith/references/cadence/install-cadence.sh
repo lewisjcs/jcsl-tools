@@ -29,8 +29,15 @@ render_plist() { # $1 = target path; reads R_* from env
 }
 
 validate_range() { # $1=flag name $2=value $3=min $4=max; fails LOUD before render/load
+  # $3/$4 are always 0-59 in this script (hour 0-23, minute 0-59), so any valid
+  # in-range value is at most 2 digits. Bound the accepted form to 1-2 digits
+  # BEFORE the numeric comparison below — otherwise an arbitrarily long
+  # all-digit string (e.g. one past LLONG_MAX) makes `[ ... -lt/-gt ... ]`
+  # error out on both sides of the `||`, which bash then reads as false,
+  # letting the bad value silently pass validate_range.
   case "$2" in
-    ''|*[!0-9]*)
+    [0-9]|[0-9][0-9]) : ;;
+    *)
       echo "install-cadence: --$1 must be an integer (got: '$2')" >&2
       exit 2
       ;;

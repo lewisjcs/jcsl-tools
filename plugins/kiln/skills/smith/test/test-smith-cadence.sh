@@ -70,6 +70,27 @@ else
 fi
 echo "$out" | grep -qi "integer" && echo "ok: non-numeric --hour error is clear" || { echo "FAIL: non-numeric --hour error message missing"; fail=1; }
 
+# --- F3 boundary: a value one past LLONG_MAX is all-digits but not a real
+# in-range hour/minute — `[ "$2" -lt/-gt ... ]` errors out on a number this
+# large, and since the two tests are `||`-chained, bash reads the erroring
+# comparison as false, so a naive digit-only regex would let this slip
+# through validate_range and render+load. Must still be rejected. ---
+home_hourbig="$(mktemp -d)"
+out="$(HOME="$home_hourbig" bash "$INSTALLER" --workspace "$ws_range" --hour 9223372036854775808 2>&1)"; rc=$?
+if [ "$rc" != "0" ] && ! [ -e "$home_hourbig/Library/LaunchAgents/com.jcsl.smith-cadence.plist" ]; then
+  echo "ok: --hour beyond int64 rejected, nothing loaded"
+else
+  echo "FAIL: --hour beyond int64 not rejected (rc=$rc)"; fail=1
+fi
+
+home_minbig="$(mktemp -d)"
+out="$(HOME="$home_minbig" bash "$INSTALLER" --workspace "$ws_range" --minute 9223372036854775808 2>&1)"; rc=$?
+if [ "$rc" != "0" ] && ! [ -e "$home_minbig/Library/LaunchAgents/com.jcsl.smith-cadence.plist" ]; then
+  echo "ok: --minute beyond int64 rejected, nothing loaded"
+else
+  echo "FAIL: --minute beyond int64 not rejected (rc=$rc)"; fail=1
+fi
+
 # --- F5: render_plist escapes sed metacharacters — a --workspace path
 # containing `&` renders literally instead of expanding to the sed match ---
 amp_plist="$tmp_home/rendered-amp.plist"
@@ -81,6 +102,31 @@ amp_plist="$tmp_home/rendered-amp.plist"
 )
 grep -qF "/ws & extra" "$amp_plist" && echo "ok: workspace with & renders literally" || { echo "FAIL: workspace with & corrupted render"; fail=1; }
 grep -qF "__WORKSPACE__" "$amp_plist" && { echo "FAIL: placeholder survived amp render"; fail=1; } || echo "ok: no placeholder survives amp render"
+
+# --- F5: render_plist escapes a trailing backslash in a --workspace path
+# (an unescaped trailing backslash would otherwise be read by sed as an
+# escape into the next replacement's text) ---
+bs_plist="$tmp_home/rendered-bs.plist"
+(
+  SMITH_CADENCE_LIB=1 . "$INSTALLER"
+  R_WRAPPER="/x/smith-cadence.sh" R_WORKSPACE="/ws/extra\\" R_LOG_DIR="/ws/logs" \
+  R_HOUR="7" R_MINUTE="30" R_PATH="/usr/bin:/bin" \
+  render_plist "$bs_plist"
+)
+grep -qF '/ws/extra\' "$bs_plist" && echo "ok: workspace with trailing backslash renders literally" || { echo "FAIL: workspace with backslash corrupted render"; fail=1; }
+grep -qF "__WORKSPACE__" "$bs_plist" && { echo "FAIL: placeholder survived backslash render"; fail=1; } || echo "ok: no placeholder survives backslash render"
+
+# --- F5: render_plist escapes a literal `|` in a --workspace path (the sed
+# delimiter itself — unescaped, it would split the replacement text) ---
+pipe_plist="$tmp_home/rendered-pipe.plist"
+(
+  SMITH_CADENCE_LIB=1 . "$INSTALLER"
+  R_WRAPPER="/x/smith-cadence.sh" R_WORKSPACE="/ws|extra" R_LOG_DIR="/ws/logs" \
+  R_HOUR="7" R_MINUTE="30" R_PATH="/usr/bin:/bin" \
+  render_plist "$pipe_plist"
+)
+grep -qF "/ws|extra" "$pipe_plist" && echo "ok: workspace with | renders literally" || { echo "FAIL: workspace with | corrupted render"; fail=1; }
+grep -qF "__WORKSPACE__" "$pipe_plist" && { echo "FAIL: placeholder survived pipe render"; fail=1; } || echo "ok: no placeholder survives pipe render"
 
 # --- Task 5: main fails OPEN — a nonzero `claude -p` must not crash the launchd job ---
 # The safety-critical property of the whole cadence: a broken morning writes nothing
