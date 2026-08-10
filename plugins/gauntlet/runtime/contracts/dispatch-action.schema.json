@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "jcsl:dispatch-action@1",
+  "type": "object",
+  "required": [
+    "actionId", "kind", "attempt", "roleId", "roleSourceHash", "artifactSha256",
+    "profileId", "profileVersion", "modelRequirement", "outputContractId", "promptBody"
+  ],
+  "properties": {
+    "actionId": {"type": "string", "minLength": 1},
+    "kind": {"enum": ["dispatch-finder", "dispatch-validator"]},
+    "attempt": {"type": "integer", "minimum": 1},
+    "roleId": {"type": "string", "pattern": "^[a-z][a-z0-9-]*(?::[a-z][a-z0-9-]*)+$"},
+    "roleSourceHash": {"type": "string", "format": "sha256"},
+    "artifactSha256": {"type": "string", "format": "sha256"},
+    "profileId": {"type": "string", "pattern": "^[a-z][a-z0-9-]*(?::[a-z][a-z0-9-]*)+$"},
+    "profileVersion": {"type": "string", "pattern": "^[0-9]+[.][0-9]+[.][0-9]+$"},
+    "modelRequirement": {"type": "string", "pattern": "^[a-z][a-z0-9-]*$"},
+    "outputContractId": {"type": "string", "pattern": "^[a-z][a-z0-9-]*(?::[a-z][a-z0-9-]*)+(?:@[1-9][0-9]*)?$"},
+    "promptBody": {"type": "string", "minLength": 1}
+  },
+  "additionalProperties": false
+}

@@ -22,7 +22,7 @@
       "name": "gauntlet",
       "source": "./plugins/gauntlet",
       "displayName": "Gauntlet",
-      "description": "Multi-skill AI review harness — orchestrates adversarial, security, directive, doc, plan, and skill-audit review lanes. Invoke with /gauntlet.",
+      "description": "Multi-skill AI review harness — orchestrates adversarial, security, directive, doc, plan, and skill-audit review lanes. Invoke with /gauntlet. Includes the gauntlet2-adversarial-review v2 pilot lane (explicit invocation only).",
       "author": {
         "name": "Josh C.S. Lewis"
       },

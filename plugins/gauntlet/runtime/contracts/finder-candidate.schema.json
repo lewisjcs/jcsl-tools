@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "jcsl:finder-candidate@1",
+  "type": "object",
+  "required": ["lens", "location", "claim", "evidence", "severity"],
+  "properties": {
+    "lens": {"enum": ["Hidden Assumptions", "Failure Scenarios", "Blast Radius"]},
+    "location": {"type": "string", "minLength": 1},
+    "claim": {"type": "string", "minLength": 1},
+    "evidence": {"type": "string", "minLength": 1},
+    "severity": {"enum": ["High", "Medium", "Low"]}
+  },
+  "additionalProperties": false
+}

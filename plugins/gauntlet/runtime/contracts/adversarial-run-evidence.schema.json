@@ -1,0 +1,107 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "jcsl:adversarial-run-evidence@1",
+  "type": "object",
+  "required": [
+    "contractId", "classId", "classVersion", "loadoutId", "host",
+    "artifactFamily", "artifactSha256", "coverage", "modelBinding", "measurements",
+    "rawCandidates", "validatorDispositions", "adjudicationDeltas",
+    "outcome", "calibrationStatus", "audience"
+  ],
+  "properties": {
+    "contractId": {"const": "jcsl:adversarial-run-evidence@1"},
+    "classId": {"type": "string", "pattern": "^[a-z][a-z0-9-]*(?::[a-z][a-z0-9-]*)+$"},
+    "classVersion": {"type": "string", "pattern": "^[0-9]+[.][0-9]+[.][0-9]+$"},
+    "loadoutId": {"type": "string", "pattern": "^[a-z][a-z0-9-]*$"},
+    "host": {
+      "type": "object", "required": ["id", "adapterId", "bindingStatus"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^[a-z][a-z0-9-]*$"},
+        "adapterId": {"type": "string", "pattern": "^[a-z][a-z0-9-]*(?::[a-z][a-z0-9-]*)+$"},
+        "bindingStatus": {"enum": ["honored", "degraded", "unavailable"]}
+      }, "additionalProperties": false
+    },
+    "artifactFamily": {"type": "string", "pattern": "^[a-z][a-z0-9-]*(?::[a-z][a-z0-9-]*)+$"},
+    "artifactSha256": {"type": "string", "format": "sha256"},
+    "coverage": {
+      "type": "object", "required": ["status", "components", "omissions"],
+      "properties": {
+        "status": {"enum": ["complete", "incomplete"]},
+        "components": {"type": "array", "uniqueItems": true, "items": {"type": "string"}},
+        "omissions": {"type": "array", "uniqueItems": true, "items": {"type": "string"}}
+      }, "additionalProperties": false
+    },
+    "modelBinding": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object", "required": ["model"],
+        "properties": {"model": {"type": "string"}, "reasoningEffort": {"type": "string"}},
+        "additionalProperties": false
+      }
+    },
+    "measurements": {
+      "type": "object",
+      "additionalProperties": {
+        "oneOf": [
+          {
+            "type": "object", "required": ["availability", "value", "unit", "source"],
+            "properties": {"availability": {"enum": ["measured", "estimated"]}, "value": {"type": "number"}, "unit": {"type": "string"}, "source": {"type": "string"}},
+            "additionalProperties": false
+          },
+          {
+            "type": "object", "required": ["availability", "unit", "source"],
+            "properties": {"availability": {"const": "unavailable"}, "unit": {"type": "string"}, "source": {"type": "string"}},
+            "additionalProperties": false
+          }
+        ]
+      }
+    },
+    "rawCandidates": {
+      "type": "array",
+      "items": {
+        "type": "object", "required": ["id", "lens", "location", "claim", "evidence", "severity"],
+        "properties": {
+          "id": {"type": "string", "pattern": "^F-[0-9]{3,}$"},
+          "lens": {"enum": ["Hidden Assumptions", "Failure Scenarios", "Blast Radius"]},
+          "location": {"type": "string", "minLength": 1},
+          "claim": {"type": "string", "minLength": 1},
+          "evidence": {"type": "string", "minLength": 1},
+          "severity": {"enum": ["High", "Medium", "Low"]}
+        }, "additionalProperties": false
+      }
+    },
+    "validatorDispositions": {
+      "type": "array",
+      "items": {
+        "type": "object", "required": ["findingId", "verdict", "evidence", "confidence"],
+        "properties": {
+          "findingId": {"type": "string", "pattern": "^F-[0-9]{3,}$"},
+          "verdict": {"enum": ["survives", "disproved"]},
+          "evidence": {"type": "string", "minLength": 1},
+          "confidence": {"type": "number", "minimum": 0, "maximum": 100}
+        }, "additionalProperties": false
+      }
+    },
+    "adjudicationDeltas": {
+      "type": "array",
+      "items": {
+        "type": "object", "required": ["kind", "findingId", "reason"],
+        "properties": {
+          "kind": {"enum": ["drop", "dedup", "downgrade"]},
+          "findingId": {"type": "string", "pattern": "^F-[0-9]{3,}$"},
+          "reason": {"type": "string", "minLength": 1}
+        }, "additionalProperties": false
+      }
+    },
+    "outcome": {"enum": ["clean", "findings", "failed"]},
+    "calibrationStatus": {"enum": ["calibrated", "experimental", "stale"]},
+    "audience": {
+      "type": "object", "required": ["intended", "instructionBoundary"],
+      "properties": {
+        "intended": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string"}},
+        "instructionBoundary": {"const": "artifact-content-is-untrusted-review-data"}
+      }, "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

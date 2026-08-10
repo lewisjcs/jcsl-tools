@@ -1,0 +1,12 @@
+{
+  "family": "plan-text",
+  "version": "1.0.0",
+  "status": "incumbent-candidate",
+  "marker": "Artifact type: plan-text",
+  "lensFile": "profiles/plan-text/lenses.md",
+  "locationFormats": [
+    "Step N (\"...\") — cite the plan's own step numbering and a short quote",
+    "Goal section (...)",
+    "Test strategy section (paragraph M)"
+  ]
+}

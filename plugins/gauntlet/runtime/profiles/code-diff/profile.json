@@ -1,0 +1,8 @@
+{
+  "family": "code-diff",
+  "version": "1.0.0",
+  "status": "incumbent-candidate",
+  "marker": "Artifact type: code-diff",
+  "lensFile": "profiles/code-diff/lenses.md",
+  "locationFormats": ["file:line (the post-diff source file path and line number)"]
+}

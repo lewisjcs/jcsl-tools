@@ -1,0 +1,19 @@
+{
+  "policyId": "adjudication-v1",
+  "confidenceFloor": 70,
+  "minQuoteChars": 24,
+  "dedupeKey": ["lens", "normalizedLocation"],
+  "highGroundingCheck": "downgrade-to-medium",
+  "escalation": {
+    "mode": "off",
+    "observedIncumbentTriggers": {
+      "rubberStamp": "zero drops after pass one",
+      "highStakesBorderline": "surviving High at confidence 70-78",
+      "enabled": false
+    }
+  },
+  "observedIncumbentAnchors": {
+    "validatorDisproofHighConfidence": 85,
+    "note": "Recorded, not mechanically enforced: the incumbent instructed the Validator to reserve confidence above this value on a disproved verdict for directly-verified claims."
+  }
+}

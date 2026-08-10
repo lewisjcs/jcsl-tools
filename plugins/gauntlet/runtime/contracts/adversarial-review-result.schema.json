@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "jcsl:adversarial-review-result@1",
+  "type": "object",
+  "required": ["contractId", "classId", "classVersion", "loadoutId", "host", "input", "executionStatus", "calibrationStatus", "coverage", "outcome", "rawCandidateCount", "validatorDispositions", "findings", "failures", "measurements"],
+  "properties": {
+    "contractId": {"type": "string", "const": "jcsl:adversarial-review-result@1", "pattern": "^[a-z][a-z0-9-]*(?::[a-z][a-z0-9-]*)+(?:@[1-9][0-9]*)?$"},
+    "classId": {"type": "string", "pattern": "^[a-z][a-z0-9-]*(?::[a-z][a-z0-9-]*)+$"},
+    "classVersion": {"type": "string", "pattern": "^[0-9]+[.][0-9]+[.][0-9]+$"},
+    "loadoutId": {"type": "string", "pattern": "^[a-z][a-z0-9-]*$"},
+    "host": {
+      "type": "object", "required": ["id", "adapterId", "bindingStatus"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^[a-z][a-z0-9-]*$"},
+        "adapterId": {"type": "string", "pattern": "^[a-z][a-z0-9-]*(?::[a-z][a-z0-9-]*)+$"},
+        "bindingStatus": {"enum": ["honored", "degraded", "unavailable"]}
+      }, "additionalProperties": false
+    },
+    "input": {
+      "type": "object", "required": ["contractId", "artifactSha256"],
+      "properties": {"contractId": {"const": "jcsl:reviewable-artifact@1"}, "artifactSha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}},
+      "additionalProperties": false
+    },
+    "executionStatus": {"enum": ["complete", "incomplete", "failed"]},
+    "calibrationStatus": {"enum": ["calibrated", "experimental", "stale"]},
+    "coverage": {
+      "type": "object", "required": ["status", "components", "omissions"],
+      "properties": {
+        "status": {"enum": ["complete", "incomplete"]},
+        "components": {"type": "array", "uniqueItems": true, "items": {"type": "string"}},
+        "omissions": {"type": "array", "uniqueItems": true, "items": {"type": "string"}}
+      }, "additionalProperties": false
+    },
+    "outcome": {"enum": ["clean", "findings", "failed"]},
+    "rawCandidateCount": {"type": "integer", "minimum": 0},
+    "validatorDispositions": {
+      "type": "array",
+      "items": {
+        "type": "object", "required": ["findingId", "verdict", "confidence"],
+        "properties": {"findingId": {"type": "string"}, "verdict": {"enum": ["survives", "disproved"]}, "confidence": {"type": "number", "minimum": 0, "maximum": 100}},
+        "additionalProperties": false
+      }
+    },
+    "findings": {
+      "type": "array", "minItems": 0,
+      "items": {
+        "type": "object",
+        "required": ["id", "lens", "location", "claim", "evidence", "severity", "category", "confidence", "recommendation", "disposition"],
+        "properties": {
+          "id": {"type": "string"}, "lens": {"type": "string"}, "location": {"type": "string"},
+          "claim": {"type": "string"}, "evidence": {"type": "string"},
+          "severity": {"enum": ["High", "Medium", "Low"]}, "category": {"type": "string"},
+          "confidence": {"type": "number", "minimum": 0, "maximum": 100},
+          "recommendation": {"type": "string"}, "disposition": {"enum": ["survives"]}
+        }, "additionalProperties": false
+      }
+    },
+    "failures": {"type": "array", "items": {"type": "object"}},
+    "measurements": {
+      "type": "object",
+      "additionalProperties": {
+        "oneOf": [
+          {
+            "type": "object", "required": ["availability", "value", "unit", "source"],
+            "properties": {"availability": {"enum": ["measured", "estimated"]}, "value": {"type": "number"}, "unit": {"type": "string"}, "source": {"type": "string"}},
+            "additionalProperties": false
+          },
+          {
+            "type": "object", "required": ["availability", "unit", "source"],
+            "properties": {"availability": {"const": "unavailable"}, "unit": {"type": "string"}, "source": {"type": "string"}},
+            "additionalProperties": false
+          }
+        ]
+      }
+    }
+  },
+  "if": {"type": "object", "properties": {"outcome": {"const": "clean"}}},
+  "then": {
+    "type": "object",
+    "properties": {
+      "executionStatus": {"const": "complete"},
+      "calibrationStatus": {"const": "calibrated"},
+      "coverage": {"type": "object", "properties": {"status": {"const": "complete"}}},
+      "host": {"type": "object", "properties": {"bindingStatus": {"const": "honored"}}}
+    }
+  },
+  "additionalProperties": false
+}

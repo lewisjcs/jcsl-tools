@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "jcsl:validator-verdict@1",
+  "type": "object",
+  "required": ["findingId", "verdict", "evidence", "confidence"],
+  "properties": {
+    "findingId": {"type": "string", "pattern": "^F-[0-9]{3,}$"},
+    "verdict": {"enum": ["survives", "disproved"]},
+    "evidence": {"type": "string", "minLength": 1},
+    "confidence": {"type": "number", "minimum": 0, "maximum": 100}
+  },
+  "additionalProperties": false
+}

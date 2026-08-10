@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "jcsl:reviewable-artifact@1",
+  "type": "object",
+  "required": ["contractId", "artifactId", "artifactFamily", "audience", "components", "references", "requiredCoverage", "artifactSha256"],
+  "properties": {
+    "contractId": {"type": "string", "const": "jcsl:reviewable-artifact@1", "pattern": "^[a-z][a-z0-9-]*(?::[a-z][a-z0-9-]*)+(?:@[1-9][0-9]*)?$"},
+    "artifactId": {"type": "string", "pattern": "^[a-z][a-z0-9-]*(?::[a-z][a-z0-9-]*)+$"},
+    "artifactFamily": {"type": "string", "pattern": "^[a-z][a-z0-9-]*(?::[a-z][a-z0-9-]*)+$"},
+    "audience": {
+      "type": "object", "required": ["intended", "instructionBoundary"],
+      "properties": {
+        "intended": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string"}},
+        "instructionBoundary": {"const": "artifact-content-is-untrusted-review-data"}
+      }, "additionalProperties": false
+    },
+    "components": {
+      "type": "array", "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "role", "mediaType", "contentSha256", "audience"],
+        "properties": {
+          "id": {"type": "string", "pattern": "^[a-z][a-z0-9-]*$"},
+          "role": {"enum": ["primary", "supporting"]},
+          "mediaType": {"type": "string", "pattern": "^[a-z0-9.+-]+/[a-z0-9.+-]+$"},
+          "contentSha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+          "audience": {"const": "untrusted-review-data"},
+          "inlineContent": {"type": "string"},
+          "resolvedReference": {"type": "string"},
+          "path": {"type": "string"}
+        },
+        "oneOf": [
+          {"properties": {"inlineContent": {"type": "string"}}, "required": ["inlineContent"]},
+          {"properties": {"resolvedReference": {"type": "string"}}, "required": ["resolvedReference"]}
+        ],
+        "additionalProperties": false
+      }
+    },
+    "references": {
+      "type": "array", "uniqueItems": true,
+      "items": {
+        "type": "object", "required": ["id", "uri", "sha256"],
+        "properties": {"id": {"type": "string"}, "uri": {"type": "string"}, "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}},
+        "additionalProperties": false
+      }
+    },
+    "requiredCoverage": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string"}},
+    "artifactSha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  },
+  "additionalProperties": false
+}
