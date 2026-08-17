@@ -5,6 +5,12 @@ heading slugs (RC-4) that `core/knowledge/` `see:` markers may cite. This
 file is the index rule (d) checks against (RC-1) — it is not itself an
 indexed entry, so it does not list itself below.
 
+## Table of contents
+
+- [Files indexed](#files-indexed)
+- [Sweep outcomes (in sweep order)](#sweep-outcomes-in-sweep-order)
+- [Heading slugs by file (RC-4)](#heading-slugs-by-file-rc-4)
+
 ## Files indexed
 
 - [readme-scope.md](./readme-scope.md)
@@ -49,11 +55,35 @@ indexed entry, so it does not list itself below.
    `context-file-effectiveness.md` § AGENTS.md and context files: a
    null result on task success).
 
-4. **Fresh external web search (last resort)** — yielded: nothing. No
-   gap remained after sources 1–3, so per the sweep order's "only for a
-   gap sources 1–3 leave open" scoping rule no query was attempted —
-   this is a distinct outcome from a search that ran and returned no
-   results.
+4. **Fresh external web search — REQUIRED per a scope amendment recorded
+   in the run ledger (conducted by a dedicated research agent, not this
+   Crafter, per user directive; superseded the original "last resort
+   only" scoping)** — yielded: 17 integrated entries across 13 queries
+   (`kiln/external-sweep.md` § Query ledger), plus 1 corroborating
+   addition folded into the existing "Skill and reference file size
+   budgets" entry in `authoring-conventions.md` rather than duplicated
+   (RC-14/RC-13 discipline: a corroborating source is not a new claim).
+   New entries landed in `readme-scope.md` (6: README content taxonomy,
+   README-popularity correlation, README-update staleness, LLM
+   drift-blindness, outdated code-element references, the AGENTS.md
+   vendor-spec division of labor), `context-file-effectiveness.md` (6:
+   the two-agent correctness-null ablation, the context-file content
+   composition study, configuration smells, the probe-and-refine
+   counterweight, the rule-update compliance study, the AGENTS.md
+   efficiency result), and `authoring-conventions.md` (5: the
+   file-structure-adherence null, citation-grounded generation, the
+   long-handbook compliance ceiling, single-vs-multi-agent README
+   generation, and the CodeWiki-vs-DeepWiki machine baseline). The sweep
+   file records 4 gap topics honestly rather than filling them with a
+   weaker source: no head-to-head generated-vs-human-authored README
+   study with human judges (Topic 6); no published error rate for
+   claims in generated repository documentation specifically, distinct
+   from scientific-citation hallucination (Topic 4); no causal
+   README-content-to-onboarding-outcome study, only descriptive/
+   correlational evidence, and one unresolved, uncited 717-repository
+   snippet (Topic 2); and the classic Wen et al. ICPC 2019 code-comment
+   co-evolution baseline, found relevant but paywalled on every
+   accessible copy and therefore not recorded (Topic 3).
 
 ## Heading slugs by file (RC-4)
 
@@ -63,6 +93,12 @@ indexed entry, so it does not list itself below.
 - `#concrete-instructions-succeed-generic-overviews-do-not`
 - `#the-agentsmd-inclusion-litmus-test`
 - `#bloat-and-misplaced-content-are-hard-failure-classes-not-style-choices`
+- `#readme-content-skews-to-what-and-how-purpose-and-status-are-commonly-absent`
+- `#readme-structural-features-correlate-with-project-popularity`
+- `#readme-updates-almost-never-accompany-code-changes-and-some-should`
+- `#llm-staleness-judges-are-blind-to-the-drift-direction-that-matters-most`
+- `#outdated-code-element-references-are-near-universal-in-repository-docs`
+- `#vendor-spec-agentsmd-is-a-readme-for-agents-not-a-readme-replacement`
 
 ### context-file-effectiveness.md
 
@@ -72,6 +108,12 @@ indexed entry, so it does not list itself below.
 - `#instruction-count-degrades-performance-monotonically`
 - `#long-context-buries-mid-context-information`
 - `#doc-patterns-cites-cartographers-files-cartographer-cites-nothing-back`
+- `#context-files-do-not-move-correctness-in-a-two-agent-controlled-ablation`
+- `#context-files-are-configuration-like-artifacts-skewed-to-functional-content`
+- `#configuration-smells-are-widespread-in-agentsmdclaudemd-files`
+- `#iteratively-tuned-repository-guidance-raises-task-resolve-rate`
+- `#updating-rule-files-measurably-improves-artifact-compliance`
+- `#agentsmd-presence-reduces-agent-runtime-and-output-tokens`
 
 ### authoring-conventions.md
 
@@ -86,3 +128,8 @@ indexed entry, so it does not list itself below.
 - `#meaning-preserving-rephrasing-swings-accuracy`
 - `#prompt-level-evaluation-and-conflicting-instructions`
 - `#madr-and-the-community-agentsmd-spec`
+- `#file-structure-variables-show-no-detectable-adherence-effect-compliance-decays-within-a-session`
+- `#citation-grounded-generation-reaches-high-accuracy-on-code-comprehension-single-author-self-reported`
+- `#long-standing-instruction-documents-are-followed-poorly-over-extended-horizons`
+- `#single-agent-readme-generation-matches-multi-agent-quality-at-a-fraction-of-the-cost`
+- `#repository-doc-generation-is-benchmarked-against-other-generators-not-humans`

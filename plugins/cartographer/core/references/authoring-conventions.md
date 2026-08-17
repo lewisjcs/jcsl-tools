@@ -17,6 +17,11 @@ READMEs). Loaded on demand from `core/knowledge/` `see:` markers (RC-4).
 - [Meaning-preserving rephrasing swings accuracy](#meaning-preserving-rephrasing-swings-accuracy)
 - [Prompt-level evaluation and conflicting instructions](#prompt-level-evaluation-and-conflicting-instructions)
 - [MADR and the community agents.md spec](#madr-and-the-community-agentsmd-spec)
+- [File-structure variables show no detectable adherence effect; compliance decays within a session](#file-structure-variables-show-no-detectable-adherence-effect-compliance-decays-within-a-session)
+- [Citation-grounded generation reaches high accuracy on code comprehension (single-author, self-reported)](#citation-grounded-generation-reaches-high-accuracy-on-code-comprehension-single-author-self-reported)
+- [Long standing-instruction documents are followed poorly over extended horizons](#long-standing-instruction-documents-are-followed-poorly-over-extended-horizons)
+- [Single-agent README generation matches multi-agent quality at a fraction of the cost](#single-agent-readme-generation-matches-multi-agent-quality-at-a-fraction-of-the-cost)
+- [Repository-doc generation is benchmarked against other generators, not humans](#repository-doc-generation-is-benchmarked-against-other-generators-not-humans)
 
 ## Active voice and specificity in directive sections
 
@@ -58,7 +63,22 @@ SKILL.md; a reference file over 100 lines needs a table of contents.
 `name` at 64 characters. This is the direct source of this file's own
 table-of-contents requirement above.
 
-Locator: `plugins/gauntlet/skills/skill-authoring-principles/SKILL.md#verification-checklist`
+Corroborated directly at the primary vendor source: Anthropic, "Skill
+authoring best practices" ([Claude Platform Docs](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices)):
+"Keep SKILL.md body under 500 lines for optimal performance" / "Split
+content into separate files when approaching this limit" / "Keep
+references one level deep from SKILL.md. All reference files should
+link directly from SKILL.md to ensure Claude reads complete files when
+needed" / "For reference files longer than 100 lines, include a table of
+contents at the top." **Caveat:** this guidance is prescriptive, not
+shown to move outcomes — it is in direct tension with arXiv:2605.10039
+below, which found no detectable adherence effect from file size after
+multiple-testing correction.
+
+Locator: `plugins/gauntlet/skills/skill-authoring-principles/SKILL.md#verification-checklist`;
+Anthropic skill-authoring best practices, transcribed via
+`kiln/external-sweep.md` (Query 9 / Findings § "Vendor spec: concrete
+size and reference-depth limits for agent knowledge files").
 Status: transcribed-from plugins/gauntlet/skills/skill-authoring-principles/SKILL.md
 
 ## Verification loops beat vague reminders
@@ -180,3 +200,97 @@ community spec's).
 Locator: `plugins/gauntlet/skills/doc-patterns/doc-types.md#4-adr-architecture-decision-record`
 and `#6-agentsmd-and-claudemd-by-extension`.
 Status: transcribed-from plugins/gauntlet/skills/doc-patterns/doc-types.md
+
+## File-structure variables show no detectable adherence effect; compliance decays within a session
+
+McMillan, "Instruction Adherence in Coding Agent Configuration Files: A
+Factorial Study of Four File-Structure Variables"
+([arXiv:2605.10039](https://arxiv.org/abs/2605.10039)): a factorial
+study across 1,650 Claude Code CLI sessions (16,050 function-level
+observations) on two TypeScript codebases and three frontier models
+found no detectable adherence effect from file size, instruction
+position, file architecture, or contradictions in adjacent files after
+multiple-testing correction (size and conflict nulls supported by
+affirmative-null Bayes factors, BF10 0.05–0.10); the largest measured
+effect was within-session — each additional generated function was
+associated with ~5.6% lower odds of compliance (OR = 0.944),
+non-monotonic rather than constant. This is in direct tension with the
+vendor size guidance above: the numeric limits are prescriptive, not
+shown to move adherence in this study.
+
+Locator: arXiv:2605.10039, transcribed via `kiln/external-sweep.md`
+(Query 1 / Findings § "File-structure variables show no detectable
+effect on instruction adherence; compliance decays within a session").
+Status: transcribed-from kiln/external-sweep.md
+
+## Citation-grounded generation reaches high accuracy on code comprehension (single-author, self-reported)
+
+Arafat, "Citation-Grounded Code Comprehension: Preventing LLM
+Hallucination Through Hybrid Retrieval and Graph-Augmented Context"
+([arXiv:2512.12117](https://arxiv.org/abs/2512.12117)): across 30 Python
+repositories and 180 developer queries, a hybrid retrieval plus
+graph-expansion architecture reported 92% citation accuracy with zero
+hallucinations; cross-file evidence discovery was identified as the
+largest contributor to citation completeness, largely overlooked by
+systems relying on pure textual similarity. **Caveat, as recorded by the
+sweep that transcribed it:** single-author preprint, self-reported "zero
+hallucinations," no independent replication.
+
+Locator: arXiv:2512.12117, transcribed via `kiln/external-sweep.md`
+(Query 6 / Findings § "Citation-grounded retrieval reaches 92% citation
+accuracy on code comprehension").
+Status: transcribed-from kiln/external-sweep.md
+
+## Long standing-instruction documents are followed poorly over extended horizons
+
+Panavas, Minus, Monton, Ray, Garre, Mehta, and Chen, "HANDBOOK.md: A
+Benchmark for Long-Context Agentic Instruction Following"
+([arXiv:2607.25398](https://arxiv.org/abs/2607.25398)): on 65 agentic
+tasks governed by 20–124-page expert-written procedure documents with
+824 deterministic rubric criteria, the strongest evaluated model passed
+36.2% of trials under strict grading and most frontier models stayed
+below 25%; failure patterns included letting a plausible but
+unauthorized request override standing policy, acting against a required
+check's own result, losing rule details over long horizons, and
+reporting compliance not actually achieved. Hard-ceiling evidence
+against exhaustive, long knowledge files: short, high-salience context
+outperforms a handbook, and self-reported compliance is not a usable
+gate signal.
+
+Locator: arXiv:2607.25398, transcribed via `kiln/external-sweep.md`
+(Query 8 / Findings § "Long standing-instruction documents are followed
+poorly over extended tool-use horizons").
+Status: transcribed-from kiln/external-sweep.md
+
+## Single-agent README generation matches multi-agent quality at a fraction of the cost
+
+Saleh, Tesfay, Nguyen, Di Rocco, Zeshan, and Di Ruscio, "The Illusion of
+Agentic Complexity in README.md Generation: Evaluating Single-Agent vs.
+Multi-Agent RAG Systems" ([arXiv:2606.30524](https://arxiv.org/abs/2606.30524)):
+a single-agent README-generation pipeline matched multi-agent lexical
+quality while cutting token consumption by 86% and running twice as
+fast; the multi-agent system won on structural consistency (98%),
+resolving formatting issues seen in single-agent output; incorporating a
+lightweight developer-guided plan produced the highest overall quality
+of any configuration tested, with autonomous planning identified as the
+primary single-agent bottleneck.
+
+Locator: arXiv:2606.30524, transcribed via `kiln/external-sweep.md`
+(Query 7 / Findings § "Single-agent README generation matches
+multi-agent quality at a fraction of the cost").
+Status: transcribed-from kiln/external-sweep.md
+
+## Repository-doc generation is benchmarked against other generators, not humans
+
+Nguyen Hoang, Le-Anh, Le, and Bui, "CodeWiki: Evaluating AI's Ability to
+Generate Holistic Documentation for Large-Scale Codebases"
+([arXiv:2510.24428](https://arxiv.org/abs/2510.24428)): CodeWiki reports
+a 68.79% quality score against the closed-source DeepWiki baseline's
+64.06% on an LLM-judged rubric benchmark across seven languages — a
+machine-vs-machine comparison, with no human-authored-documentation
+baseline in the reported numbers, and both scores below 70%.
+
+Locator: arXiv:2510.24428, transcribed via `kiln/external-sweep.md`
+(Query 7 / Findings § "Repository-level documentation generation
+benchmarked against a closed-source baseline, not humans").
+Status: transcribed-from kiln/external-sweep.md

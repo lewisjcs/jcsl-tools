@@ -4,6 +4,19 @@ Full-tier evidence for what a generated README section must earn its place
 with before Cartographer drafts it. Loaded on demand from `core/knowledge/`
 `see:` markers (RC-4); never loaded by default.
 
+## Table of contents
+
+- [Repository-context files: null result on task success, positive cost](#repository-context-files-null-result-on-task-success-positive-cost)
+- [Concrete instructions succeed; generic overviews do not](#concrete-instructions-succeed-generic-overviews-do-not)
+- [The AGENTS.md inclusion litmus test](#the-agentsmd-inclusion-litmus-test)
+- [Bloat and misplaced content are hard failure classes, not style choices](#bloat-and-misplaced-content-are-hard-failure-classes-not-style-choices)
+- [README content skews to "What" and "How"; purpose and status are commonly absent](#readme-content-skews-to-what-and-how-purpose-and-status-are-commonly-absent)
+- [README structural features correlate with project popularity](#readme-structural-features-correlate-with-project-popularity)
+- [README updates almost never accompany code changes, and some should](#readme-updates-almost-never-accompany-code-changes-and-some-should)
+- [LLM staleness judges are blind to the drift direction that matters most](#llm-staleness-judges-are-blind-to-the-drift-direction-that-matters-most)
+- [Outdated code-element references are near-universal in repository docs](#outdated-code-element-references-are-near-universal-in-repository-docs)
+- [Vendor spec: AGENTS.md is a README for agents, not a README replacement](#vendor-spec-agentsmd-is-a-readme-for-agents-not-a-readme-replacement)
+
 ## Repository-context files: null result on task success, positive cost
 
 Gloaguen, Mündler, Müller, Raychev, and Vechev, "Evaluating AGENTS.md: Are
@@ -67,3 +80,101 @@ for a generated README section's own necessity test.
 
 Locator: `plugins/gauntlet/skills/doc-patterns/doc-types.md#6-agentsmd-and-claudemd-by-extension`
 Status: transcribed-from plugins/gauntlet/skills/doc-patterns/doc-types.md
+
+## README content skews to "What" and "How"; purpose and status are commonly absent
+
+Prana, Treude, Thung, Atapattu, and Lo, "Categorizing the Content of
+GitHub README Files" ([arXiv:1802.06997](https://arxiv.org/abs/1802.06997)
+/ Empirical Software Engineering 2019): manual annotation of 4,226 README
+sections from 393 randomly sampled GitHub repositories found "What" and
+"How" content very common, while many READMEs lack information regarding
+purpose and status; an eight-category multi-label classifier reached F1
+0.746, and a majority of 20 surveyed practitioners perceived automated
+section labeling as easing information discovery.
+
+Locator: arXiv:1802.06997, transcribed via `kiln/external-sweep.md`
+(Query 3 / Findings § "README content skews to 'What' and 'How'; purpose
+and status are commonly absent").
+Status: transcribed-from kiln/external-sweep.md
+
+## README structural features correlate with project popularity
+
+Venigalla and Chimalakonda, "An Empirical Study On Correlation between
+Readme Content and Project Popularity"
+([arXiv:2206.10772](https://arxiv.org/abs/2206.10772)): across 1,950
+READMEs spanning ten languages, popular projects' READMEs were well
+organized with lists and images and linked to external sources;
+contribution guidelines and references were associated with higher
+popularity. Correlational, not causal — popularity, not onboarding
+success, is the measured outcome.
+
+Locator: arXiv:2206.10772, transcribed via `kiln/external-sweep.md`
+(Query 2 / Findings § "README structural features correlate with project
+popularity").
+Status: transcribed-from kiln/external-sweep.md
+
+## README updates almost never accompany code changes, and some should
+
+Gao, Lin, Treude, Gay, and Zahedi, "Does My README File Need To Be
+Updated? Exploring LLM-Based README Maintenance"
+([arXiv:2603.00489](https://arxiv.org/abs/2603.00489)): across 27,772
+PRs from 714 repositories, only 0.8% of PRs modified the README, and
+21.5% of recommendations on PRs that did not update the README were
+judged valid updates overlooked during development; the best-performing
+agentic detector reached 98.7% specificity but only 28.7% user-facing
+accuracy.
+
+Locator: arXiv:2603.00489, transcribed via `kiln/external-sweep.md`
+(Query 2 / Findings § "README updates are rare in PRs and a fifth of
+'no-update' PRs actually warranted one").
+Status: transcribed-from kiln/external-sweep.md
+
+## LLM staleness judges are blind to the drift direction that matters most
+
+Ulfat, Sabit, and Hossain, "Measuring LLM Trust Allocation Across
+Conflicting Software Artifacts"
+([arXiv:2604.03447](https://arxiv.org/abs/2604.03447)): across 22,339
+responses from seven LLMs on 456 Java method bundles, models detected
+documentation faults at 67–94%, but detection fell by 21–43 percentage
+points when only the implementation changed and the documentation stayed
+intact; model confidence provided little separation between correct and
+incorrect judgments for six of seven models. A Cartographer drift check
+therefore needs deterministic anchors (symbol/path existence), not model
+self-judgment.
+
+Locator: arXiv:2604.03447, transcribed via `kiln/external-sweep.md`
+(Query 4 / Findings § "LLMs detect documentation faults but are blind to
+implementation-only drift").
+Status: transcribed-from kiln/external-sweep.md
+
+## Outdated code-element references are near-universal in repository docs
+
+Tan, Wagner, and Treude, "Detecting Outdated Code Element References in
+Software Repository Documentation"
+([arXiv:2212.01479](https://arxiv.org/abs/2212.01479)): analysis of over
+3,000 GitHub projects found that most projects contain at least one
+code-element reference that survived in documentation after every source
+instance was deleted, at some point in their history.
+
+Locator: arXiv:2212.01479, transcribed via `kiln/external-sweep.md`
+(Query 13 / Findings § "Outdated code element references are
+near-universal in repository documentation").
+Status: transcribed-from kiln/external-sweep.md
+
+## Vendor spec: AGENTS.md is a README for agents, not a README replacement
+
+The AGENTS.md open specification positions the file as complementary to
+the human README: "a README for agents: a dedicated, predictable place
+to provide the context and instructions to help AI coding agents work on
+your project," carrying "the extra, sometimes detailed context coding
+agents need: build steps, tests, and conventions that might clutter a
+README or aren't relevant to human contributors." The spec imposes no
+required fields or schema ("AGENTS.md is just standard Markdown. Use any
+headings you like"). The spec also claims usage by "over 60k open-source
+projects" — a self-reported GitHub code-search count, not an audited
+number.
+
+Locator: [agents.md](https://agents.md/), transcribed via
+`kiln/external-sweep.md` (Query 9 / Findings § "Vendor spec: AGENTS.md is
+positioned as a README for agents, with adoption scale").
+Status: transcribed-from kiln/external-sweep.md
