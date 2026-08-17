@@ -1,0 +1,1 @@
+This is a notes file, not a .md file, so it should not be checked by rule (d).
