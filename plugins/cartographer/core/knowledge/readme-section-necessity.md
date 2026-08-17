@@ -30,7 +30,7 @@ name is conventional" alone. <!-- see: references/readme-scope.md#repository-con
 
 Content discoverable elsewhere — script enumerations, build commands
 already in a manifest, file-structure listings, setup steps already in
-CONTRIBUTING — must never appear in a drafted section. <!-- see: references/readme-scope.md#bloat-and-misplaced-content-are-hard-failure-classes-not-style-choices -->
+CONTRIBUTING — must never appear in a drafted section. <!-- see: references/readme-scope.md#the-agentsmd-inclusion-litmus-test -->
 
 ## Verification check
 
