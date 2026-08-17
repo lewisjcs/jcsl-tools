@@ -47,13 +47,10 @@ authorized.
 
 ## Architecture
 
-This plugin splits into a profile-independent core (`plugins/cartographer/core/`)
-and a `profiles/` tree for system-specific adapters — Contentful's is a
-Slice 1 placeholder, see `plugins/cartographer/profiles/contentful/README.md`.
-`plugins/cartographer/core/README.md` states and mechanically enforces
-the boundary between them; a profile may add evidence sources and narrow
-a core rule, but it may never weaken a core guarantee. See the repo's own
-[ARCHITECTURE.md](ARCHITECTURE.md) for how this plugin fits alongside the
+This plugin splits into a profile-independent core and a profile-specific
+adapter tree, with the boundary between them mechanically enforced. See
+[ARCHITECTURE.md](ARCHITECTURE.md)'s Cartographer subsection for the full
+split, the enforcement mechanism, and how this plugin fits alongside the
 marketplace's other plugins.
 
 ## Contributing

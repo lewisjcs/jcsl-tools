@@ -64,13 +64,13 @@ file each stage writes; do not restate `core/pipeline.md`'s content
 elsewhere in this run — read it when a stage's exact failure branch
 matters.
 
-| # | Stage | Working file | Concrete check before advancing |
-|---|---|---|---|
-| 1 | Evidence collection | `.cartographer/evidence.md` | Every collected fact records the file and location it was read from. If the repository could not be read, stop here and report the read failure — do not advance with a partial record that does not say which inputs were unreadable. |
-| 2 | Claim ledger | `.cartographer/claim-ledger.md` | Every claim from stage 1 has exactly one row, classified by `core/claim-model.md`'s ordered procedure. A claim with no evidence reference is `unresolved-gap` here, not later. |
-| 3 | Draft | (held in-memory / conversation until stage 5) | Every drafted sentence traces to an `included` ledger row. A generic-overview-shaped section (`repository at a glance`, `architecture overview`) is included only with a recorded necessity justification — `core/knowledge/readme-section-necessity.md` states the litmus test. With no justification, omit the section and log it as skipped. |
-| 4 | Local validation | `.cartographer/validation-report.md` | Run the checker (below) and confirm its exit code. `LOW_VALUE` findings are advisory; `GAP` findings are not. |
-| 5 | Report or authorized patch | `.cartographer/report.md` | The report states the initial state and the final state of every finding — never the end state alone. If a patch is authorized, it contains only repository-bound content (below). |
+| # | Stage | Working file | Concrete check before advancing | Full failure branch |
+|---|---|---|---|---|
+| 1 | Evidence collection | `.cartographer/evidence.md` | Confirm every collected fact cites a file and location; if any input was unreadable, stop and report before advancing. | `core/pipeline.md` § Stage 1 |
+| 2 | Claim ledger | `.cartographer/claim-ledger.md` | Confirm every stage-1 fact has exactly one classified ledger row before drafting begins. | `core/pipeline.md` § Stage 2 |
+| 3 | Draft | (held in-memory / conversation until stage 5) | Confirm every drafted sentence cites an `included` row, and every generic-overview-shaped section carries a recorded necessity justification. | `core/pipeline.md` § Stage 3, `core/knowledge/readme-section-necessity.md` |
+| 4 | Local validation | `.cartographer/validation-report.md` | Run the checker (below) and record its exit code before advancing. | `core/pipeline.md` § Stage 4, `core/local-validation.md` |
+| 5 | Report or authorized patch | `.cartographer/report.md` | Confirm the report states both the initial and final state of every finding before closing the run. | `core/pipeline.md` § Stage 5 |
 
 ## Stage 4 in detail — invoking the checker
 
