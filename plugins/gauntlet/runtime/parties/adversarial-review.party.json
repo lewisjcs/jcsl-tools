@@ -1,0 +1,15 @@
+{
+  "kind": "party",
+  "schemaVersion": "1.0-kernel",
+  "id": "jcsl:gauntlet:adversarial-review-party",
+  "version": "1.0.0",
+  "audience": "personal",
+  "mission": "Adversarially review one artifact and return an evidence-backed, adjudicated result.",
+  "eligibleClassIds": ["jcsl:gauntlet:adversarial-review"],
+  "requiredRoles": ["adversarial-review"],
+  "contract": {
+    "inputContractId": "jcsl:reviewable-artifact@1",
+    "outputContractId": "jcsl:adversarial-review-result@1"
+  },
+  "handoffs": []
+}

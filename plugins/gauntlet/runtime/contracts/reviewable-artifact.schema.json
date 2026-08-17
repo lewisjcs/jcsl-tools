@@ -45,7 +45,11 @@
       }
     },
     "requiredCoverage": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string"}},
-    "artifactSha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+    "artifactSha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "reviewedCommit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "repoRoot": {"type": "string", "minLength": 1},
+    "allowedReadPaths": {"type": "array", "items": {"type": "string", "minLength": 1}},
+    "bindingCaveats": {"type": "array", "items": {"type": "string", "minLength": 1}}
   },
   "additionalProperties": false
 }

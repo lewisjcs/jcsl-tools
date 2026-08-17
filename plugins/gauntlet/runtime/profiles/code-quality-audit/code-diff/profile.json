@@ -1,0 +1,8 @@
+{
+  "family": "code-diff",
+  "version": "1.0.0",
+  "status": "experimental",
+  "marker": "Artifact type: code-diff",
+  "lensFile": "profiles/code-quality-audit/code-diff/lenses.md",
+  "locationFormats": ["file:line (post-diff path for changed files; repo-relative reviewed-tree path for cross-boundary findings)"]
+}

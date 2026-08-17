@@ -4,7 +4,7 @@
   "type": "object",
   "required": ["lens", "location", "claim", "evidence", "severity"],
   "properties": {
-    "lens": {"enum": ["Hidden Assumptions", "Failure Scenarios", "Blast Radius"]},
+    "lens": {"enum": ["Hidden Assumptions", "Failure Scenarios", "Blast Radius", "Missed Integration"]},
     "location": {"type": "string", "minLength": 1},
     "claim": {"type": "string", "minLength": 1},
     "evidence": {"type": "string", "minLength": 1},

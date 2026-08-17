@@ -1,0 +1,7 @@
+{
+  "jcsl:gauntlet:adversarial-finder": { "model": "gpt-5.6-terra", "reasoningEffort": "medium" },
+  "jcsl:gauntlet:adversarial-validator": { "model": "gpt-5.6-terra", "reasoningEffort": "medium" },
+  "jcsl:gauntlet:code-quality-auditor": { "model": "gpt-5.6-terra", "reasoningEffort": "medium" },
+  "runtimeInvocation": "node \"${CODEX_HOME:-$HOME/.codex}/runtime/bin/cli.mjs\"",
+  "status": "pilot"
+}

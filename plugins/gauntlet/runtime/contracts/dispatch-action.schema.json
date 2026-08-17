@@ -8,7 +8,7 @@
   ],
   "properties": {
     "actionId": {"type": "string", "minLength": 1},
-    "kind": {"enum": ["dispatch-finder", "dispatch-validator"]},
+    "kind": {"enum": ["dispatch-finder", "dispatch-validator", "dispatch-auditor"]},
     "attempt": {"type": "integer", "minimum": 1},
     "roleId": {"type": "string", "pattern": "^[a-z][a-z0-9-]*(?::[a-z][a-z0-9-]*)+$"},
     "roleSourceHash": {"type": "string", "format": "sha256"},

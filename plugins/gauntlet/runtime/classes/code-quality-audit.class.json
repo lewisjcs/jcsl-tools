@@ -1,0 +1,597 @@
+{
+  "kind": "class",
+  "schemaVersion": "1.0-kernel",
+  "id": "jcsl:gauntlet:code-quality-audit",
+  "version": "2.0.0",
+  "audience": "personal",
+  "identity": {
+    "name": "Code Quality Audit",
+    "tagline": "A single auditor role reviews a code artifact against a written rulebook under a deterministic runtime.",
+    "promise": "Audit a code artifact for standards compliance, staleness, gaps, and test integrity, reporting rule-anchored findings with warnings-and-gaps character.",
+    "constraints": [
+      "The auditor runs in a fresh, isolated dispatch and receives the artifact by reference into the run directory, never embedded in the prompt.",
+      "A deterministic runtime, never a host, decides stage order, retries, and when the run is terminal.",
+      "The Class is deliberately single-role: findings are rule citations verifiable by inspection, so no adversarial validator stage exists."
+    ],
+    "taboos": [
+      "Does not report a finding without a rulebook anchor.",
+      "Does not force findings into another Class's survivor schema — warnings and gaps keep their character.",
+      "Does not skip a layer silently or infer a result before the runtime reports terminal."
+    ]
+  },
+  "functionRole": "code-quality-audit",
+  "members": {
+    "skills": [
+      "hosts/claude-code/skills/gauntlet2-code-quality-audit/SKILL.md",
+      "hosts/codex/skills/gauntlet2-code-quality-audit/SKILL.md"
+    ],
+    "agents": [
+      "hosts/claude-code/agents/gauntlet2-code-quality-auditor.md",
+      "hosts/codex/roles/gauntlet2-code-quality-auditor.md"
+    ],
+    "references": [
+      "canon/code-quality-auditor-persona.md",
+      "canon/code-quality-audit-protocol.md",
+      "canon/grounding-contract.md",
+      "profiles/code-quality-audit/code-diff/profile.json",
+      "profiles/code-quality-audit/code-diff/lenses.md",
+      "references/code-quality-standards.md"
+    ]
+  },
+  "availableFeats": [],
+  "boundaries": {
+    "tools": {
+      "allow": [
+        "Read",
+        "Grep",
+        "Glob",
+        "Bash"
+      ]
+    },
+    "paths": {
+      "read": [
+        "**"
+      ],
+      "write": []
+    },
+    "data": {
+      "allow": [
+        "personal",
+        "company",
+        "public"
+      ]
+    },
+    "enforcement": {
+      "tools": "required",
+      "paths": "required",
+      "data": "required"
+    }
+  },
+  "contract": {
+    "input": {
+      "id": "jcsl:reviewable-artifact@1",
+      "schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$id": "jcsl:reviewable-artifact@1",
+        "type": "object",
+        "required": [
+          "contractId",
+          "artifactId",
+          "artifactFamily",
+          "audience",
+          "components",
+          "references",
+          "requiredCoverage",
+          "artifactSha256"
+        ],
+        "properties": {
+          "contractId": {
+            "type": "string",
+            "const": "jcsl:reviewable-artifact@1",
+            "pattern": "^[a-z][a-z0-9-]*(?::[a-z][a-z0-9-]*)+(?:@[1-9][0-9]*)?$"
+          },
+          "artifactId": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]*(?::[a-z][a-z0-9-]*)+$"
+          },
+          "artifactFamily": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]*(?::[a-z][a-z0-9-]*)+$"
+          },
+          "audience": {
+            "type": "object",
+            "required": [
+              "intended",
+              "instructionBoundary"
+            ],
+            "properties": {
+              "intended": {
+                "type": "array",
+                "minItems": 1,
+                "uniqueItems": true,
+                "items": {
+                  "type": "string"
+                }
+              },
+              "instructionBoundary": {
+                "const": "artifact-content-is-untrusted-review-data"
+              }
+            },
+            "additionalProperties": false
+          },
+          "components": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "role",
+                "mediaType",
+                "contentSha256",
+                "audience"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "pattern": "^[a-z][a-z0-9-]*$"
+                },
+                "role": {
+                  "enum": [
+                    "primary",
+                    "supporting"
+                  ]
+                },
+                "mediaType": {
+                  "type": "string",
+                  "pattern": "^[a-z0-9.+-]+/[a-z0-9.+-]+$"
+                },
+                "contentSha256": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$"
+                },
+                "audience": {
+                  "const": "untrusted-review-data"
+                },
+                "inlineContent": {
+                  "type": "string"
+                },
+                "resolvedReference": {
+                  "type": "string"
+                },
+                "path": {
+                  "type": "string"
+                }
+              },
+              "oneOf": [
+                {
+                  "properties": {
+                    "inlineContent": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "inlineContent"
+                  ]
+                },
+                {
+                  "properties": {
+                    "resolvedReference": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "resolvedReference"
+                  ]
+                }
+              ],
+              "additionalProperties": false
+            }
+          },
+          "references": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "uri",
+                "sha256"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "uri": {
+                  "type": "string"
+                },
+                "sha256": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "requiredCoverage": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "type": "string"
+            }
+          },
+          "artifactSha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "reviewedCommit": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{40}$"
+          },
+          "repoRoot": {
+            "type": "string",
+            "minLength": 1
+          },
+          "allowedReadPaths": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "bindingCaveats": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "output": {
+      "id": "jcsl:code-quality-audit-result@1",
+      "schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$id": "jcsl:code-quality-audit-result@1",
+        "type": "object",
+        "required": [
+          "contractId",
+          "classId",
+          "classVersion",
+          "loadoutId",
+          "host",
+          "input",
+          "executionStatus",
+          "calibrationStatus",
+          "coverage",
+          "outcome",
+          "rawFindingCount",
+          "findings",
+          "failures",
+          "measurements"
+        ],
+        "properties": {
+          "contractId": {
+            "type": "string",
+            "const": "jcsl:code-quality-audit-result@1",
+            "pattern": "^[a-z][a-z0-9-]*(?::[a-z][a-z0-9-]*)+(?:@[1-9][0-9]*)?$"
+          },
+          "classId": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]*(?::[a-z][a-z0-9-]*)+$"
+          },
+          "classVersion": {
+            "type": "string",
+            "pattern": "^[0-9]+[.][0-9]+[.][0-9]+$"
+          },
+          "loadoutId": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]*$"
+          },
+          "host": {
+            "type": "object",
+            "required": [
+              "id",
+              "adapterId",
+              "bindingStatus"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9-]*$"
+              },
+              "adapterId": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9-]*(?::[a-z][a-z0-9-]*)+$"
+              },
+              "bindingStatus": {
+                "enum": [
+                  "honored",
+                  "degraded",
+                  "unavailable"
+                ]
+              }
+            },
+            "additionalProperties": false
+          },
+          "input": {
+            "type": "object",
+            "required": [
+              "contractId",
+              "artifactSha256"
+            ],
+            "properties": {
+              "contractId": {
+                "const": "jcsl:reviewable-artifact@1"
+              },
+              "artifactSha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              }
+            },
+            "additionalProperties": false
+          },
+          "executionStatus": {
+            "enum": [
+              "complete",
+              "incomplete",
+              "failed"
+            ]
+          },
+          "calibrationStatus": {
+            "enum": [
+              "calibrated",
+              "experimental",
+              "stale"
+            ]
+          },
+          "coverage": {
+            "type": "object",
+            "required": [
+              "status",
+              "components",
+              "omissions"
+            ],
+            "properties": {
+              "status": {
+                "enum": [
+                  "complete",
+                  "incomplete"
+                ]
+              },
+              "components": {
+                "type": "array",
+                "uniqueItems": true,
+                "items": {
+                  "type": "string"
+                }
+              },
+              "omissions": {
+                "type": "array",
+                "uniqueItems": true,
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "additionalProperties": false
+          },
+          "outcome": {
+            "enum": [
+              "clean",
+              "findings",
+              "failed"
+            ]
+          },
+          "rawFindingCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "findings": {
+            "type": "array",
+            "minItems": 0,
+            "items": {
+              "$ref": "#/$defs/finding"
+            }
+          },
+          "failures": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "measurements": {
+            "type": "object",
+            "additionalProperties": {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "required": [
+                    "availability",
+                    "value",
+                    "unit",
+                    "source"
+                  ],
+                  "properties": {
+                    "availability": {
+                      "enum": [
+                        "measured",
+                        "estimated"
+                      ]
+                    },
+                    "value": {
+                      "type": "number"
+                    },
+                    "unit": {
+                      "type": "string"
+                    },
+                    "source": {
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "required": [
+                    "availability",
+                    "unit",
+                    "source"
+                  ],
+                  "properties": {
+                    "availability": {
+                      "const": "unavailable"
+                    },
+                    "unit": {
+                      "type": "string"
+                    },
+                    "source": {
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ]
+            }
+          }
+        },
+        "$defs": {
+          "finding": {
+            "type": "object",
+            "required": [
+              "id",
+              "layer",
+              "rule",
+              "location",
+              "claim",
+              "evidence",
+              "level",
+              "recommendation"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^A-[0-9]{3}$"
+              },
+              "layer": {
+                "enum": [
+                  "compliance",
+                  "staleness",
+                  "gaps",
+                  "test-integrity"
+                ]
+              },
+              "rule": {
+                "type": "string",
+                "minLength": 1
+              },
+              "location": {
+                "type": "string",
+                "minLength": 1
+              },
+              "claim": {
+                "type": "string",
+                "minLength": 1
+              },
+              "evidence": {
+                "type": "string",
+                "minLength": 1
+              },
+              "level": {
+                "enum": [
+                  "violation",
+                  "warning",
+                  "gap"
+                ]
+              },
+              "recommendation": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "if": {
+          "type": "object",
+          "properties": {
+            "outcome": {
+              "const": "clean"
+            }
+          }
+        },
+        "then": {
+          "type": "object",
+          "properties": {
+            "executionStatus": {
+              "const": "complete"
+            },
+            "calibrationStatus": {
+              "const": "calibrated"
+            },
+            "coverage": {
+              "type": "object",
+              "properties": {
+                "status": {
+                  "const": "complete"
+                }
+              }
+            },
+            "host": {
+              "type": "object",
+              "properties": {
+                "bindingStatus": {
+                  "const": "honored"
+                }
+              }
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "entrypoints": {
+    "claude-code": {
+      "kind": "skill",
+      "path": "hosts/claude-code/skills/gauntlet2-code-quality-audit/SKILL.md",
+      "projection": {
+        "canonicalSources": [
+          "canon/code-quality-auditor-persona.md",
+          "canon/grounding-contract.md",
+          "canon/code-quality-audit-protocol.md",
+          "profiles/code-quality-audit/code-diff/profile.json",
+          "profiles/code-quality-audit/code-diff/lenses.md",
+          "references/code-quality-standards.md",
+          "bindings/claude-code.json"
+        ],
+        "sourceHash": "15e7c731bd553d3abb2b2853e711737270d180af1ec4aa456806a2b10052dfc9"
+      }
+    },
+    "codex": {
+      "kind": "skill",
+      "path": "hosts/codex/skills/gauntlet2-code-quality-audit/SKILL.md",
+      "projection": {
+        "canonicalSources": [
+          "canon/code-quality-auditor-persona.md",
+          "canon/grounding-contract.md",
+          "canon/code-quality-audit-protocol.md",
+          "profiles/code-quality-audit/code-diff/profile.json",
+          "profiles/code-quality-audit/code-diff/lenses.md",
+          "references/code-quality-standards.md",
+          "bindings/codex.json"
+        ],
+        "sourceHash": "12751477a8f7dce0704cc6a1df7e0637e2e287afaab3b71cc9d5272ceb6f6be8"
+      }
+    }
+  },
+  "modelRequirements": [
+    "independent-judgment"
+  ],
+  "capabilities": {
+    "isolated-dispatch": "required"
+  }
+}

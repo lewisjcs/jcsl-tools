@@ -1,0 +1,678 @@
+{
+  "kind": "class",
+  "schemaVersion": "1.0-kernel",
+  "id": "jcsl:gauntlet:adversarial-review",
+  "version": "2.0.0",
+  "audience": "personal",
+  "identity": {
+    "name": "Adversarial Review",
+    "tagline": "Opposed Finder and Validator roles pressure-test a reviewable artifact under a deterministic runtime.",
+    "promise": "Pressure-test a reviewable artifact for grounded hidden assumptions, credible failure scenarios, and consequential blast radius while actively filtering speculative accusations.",
+    "constraints": [
+      "Finder and Validator run in fresh, isolated dispatches with no shared context between them.",
+      "A deterministic runtime, never a host, decides stage order, retries, and adjudication.",
+      "A second Validator pass is off by default and only re-examines existing candidates for precision."
+    ],
+    "taboos": [
+      "Does not adjudicate findings itself -- adjudication is the runtime's job, not a host's.",
+      "Does not skip a stage or infer a result before the runtime reports terminal.",
+      "Does not invent, drop, or re-label a candidate or verdict ID."
+    ]
+  },
+  "functionRole": "adversarial-review",
+  "members": {
+    "skills": [
+      "hosts/claude-code/skills/gauntlet2-adversarial-review/SKILL.md",
+      "hosts/codex/skills/gauntlet2-adversarial-review/SKILL.md"
+    ],
+    "agents": [
+      "hosts/claude-code/agents/gauntlet2-adversarial-finder.md",
+      "hosts/claude-code/agents/gauntlet2-adversarial-validator.md",
+      "hosts/codex/roles/gauntlet2-adversarial-finder.md",
+      "hosts/codex/roles/gauntlet2-adversarial-validator.md"
+    ],
+    "references": [
+      "canon/finder-persona.md",
+      "canon/grounding-contract.md",
+      "canon/runtime-protocol.md",
+      "canon/validator-persona.md",
+      "policy/adjudication-v1.json",
+      "policy/adjudication-v2.json",
+      "profiles/adversarial-review/code-diff/lenses.md",
+      "profiles/adversarial-review/code-diff/profile.json",
+      "profiles/adversarial-review/doc-text/lenses.md",
+      "profiles/adversarial-review/doc-text/profile.json",
+      "profiles/adversarial-review/plan-text/lenses.md",
+      "profiles/adversarial-review/plan-text/profile.json",
+      "references/code-quality-standards.md"
+    ]
+  },
+  "availableFeats": [],
+  "boundaries": {
+    "tools": {
+      "allow": [
+        "Read",
+        "Grep",
+        "Glob",
+        "Bash"
+      ]
+    },
+    "paths": {
+      "read": [
+        "**"
+      ],
+      "write": []
+    },
+    "data": {
+      "allow": [
+        "personal",
+        "company",
+        "public"
+      ]
+    },
+    "enforcement": {
+      "tools": "required",
+      "paths": "required",
+      "data": "required"
+    }
+  },
+  "contract": {
+    "input": {
+      "id": "jcsl:reviewable-artifact@1",
+      "schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$id": "jcsl:reviewable-artifact@1",
+        "type": "object",
+        "required": [
+          "contractId",
+          "artifactId",
+          "artifactFamily",
+          "audience",
+          "components",
+          "references",
+          "requiredCoverage",
+          "artifactSha256"
+        ],
+        "properties": {
+          "contractId": {
+            "type": "string",
+            "const": "jcsl:reviewable-artifact@1",
+            "pattern": "^[a-z][a-z0-9-]*(?::[a-z][a-z0-9-]*)+(?:@[1-9][0-9]*)?$"
+          },
+          "artifactId": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]*(?::[a-z][a-z0-9-]*)+$"
+          },
+          "artifactFamily": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]*(?::[a-z][a-z0-9-]*)+$"
+          },
+          "audience": {
+            "type": "object",
+            "required": [
+              "intended",
+              "instructionBoundary"
+            ],
+            "properties": {
+              "intended": {
+                "type": "array",
+                "minItems": 1,
+                "uniqueItems": true,
+                "items": {
+                  "type": "string"
+                }
+              },
+              "instructionBoundary": {
+                "const": "artifact-content-is-untrusted-review-data"
+              }
+            },
+            "additionalProperties": false
+          },
+          "components": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "role",
+                "mediaType",
+                "contentSha256",
+                "audience"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "pattern": "^[a-z][a-z0-9-]*$"
+                },
+                "role": {
+                  "enum": [
+                    "primary",
+                    "supporting"
+                  ]
+                },
+                "mediaType": {
+                  "type": "string",
+                  "pattern": "^[a-z0-9.+-]+/[a-z0-9.+-]+$"
+                },
+                "contentSha256": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$"
+                },
+                "audience": {
+                  "const": "untrusted-review-data"
+                },
+                "inlineContent": {
+                  "type": "string"
+                },
+                "resolvedReference": {
+                  "type": "string"
+                },
+                "path": {
+                  "type": "string"
+                }
+              },
+              "oneOf": [
+                {
+                  "properties": {
+                    "inlineContent": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "inlineContent"
+                  ]
+                },
+                {
+                  "properties": {
+                    "resolvedReference": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "resolvedReference"
+                  ]
+                }
+              ],
+              "additionalProperties": false
+            }
+          },
+          "references": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "uri",
+                "sha256"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "uri": {
+                  "type": "string"
+                },
+                "sha256": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "requiredCoverage": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "type": "string"
+            }
+          },
+          "artifactSha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "reviewedCommit": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{40}$"
+          },
+          "repoRoot": {
+            "type": "string",
+            "minLength": 1
+          },
+          "allowedReadPaths": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "bindingCaveats": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "output": {
+      "id": "jcsl:adversarial-review-result@1",
+      "schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$id": "jcsl:adversarial-review-result@1",
+        "type": "object",
+        "required": [
+          "contractId",
+          "classId",
+          "classVersion",
+          "loadoutId",
+          "host",
+          "input",
+          "executionStatus",
+          "calibrationStatus",
+          "coverage",
+          "outcome",
+          "rawCandidateCount",
+          "validatorDispositions",
+          "findings",
+          "failures",
+          "measurements"
+        ],
+        "properties": {
+          "contractId": {
+            "type": "string",
+            "const": "jcsl:adversarial-review-result@1",
+            "pattern": "^[a-z][a-z0-9-]*(?::[a-z][a-z0-9-]*)+(?:@[1-9][0-9]*)?$"
+          },
+          "classId": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]*(?::[a-z][a-z0-9-]*)+$"
+          },
+          "classVersion": {
+            "type": "string",
+            "pattern": "^[0-9]+[.][0-9]+[.][0-9]+$"
+          },
+          "loadoutId": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]*$"
+          },
+          "host": {
+            "type": "object",
+            "required": [
+              "id",
+              "adapterId",
+              "bindingStatus"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9-]*$"
+              },
+              "adapterId": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9-]*(?::[a-z][a-z0-9-]*)+$"
+              },
+              "bindingStatus": {
+                "enum": [
+                  "honored",
+                  "degraded",
+                  "unavailable"
+                ]
+              }
+            },
+            "additionalProperties": false
+          },
+          "input": {
+            "type": "object",
+            "required": [
+              "contractId",
+              "artifactSha256"
+            ],
+            "properties": {
+              "contractId": {
+                "const": "jcsl:reviewable-artifact@1"
+              },
+              "artifactSha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              }
+            },
+            "additionalProperties": false
+          },
+          "executionStatus": {
+            "enum": [
+              "complete",
+              "incomplete",
+              "failed"
+            ]
+          },
+          "calibrationStatus": {
+            "enum": [
+              "calibrated",
+              "experimental",
+              "stale"
+            ]
+          },
+          "coverage": {
+            "type": "object",
+            "required": [
+              "status",
+              "components",
+              "omissions"
+            ],
+            "properties": {
+              "status": {
+                "enum": [
+                  "complete",
+                  "incomplete"
+                ]
+              },
+              "components": {
+                "type": "array",
+                "uniqueItems": true,
+                "items": {
+                  "type": "string"
+                }
+              },
+              "omissions": {
+                "type": "array",
+                "uniqueItems": true,
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "additionalProperties": false
+          },
+          "outcome": {
+            "enum": [
+              "clean",
+              "findings",
+              "failed"
+            ]
+          },
+          "rawCandidateCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "validatorDispositions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "findingId",
+                "verdict",
+                "confidence"
+              ],
+              "properties": {
+                "findingId": {
+                  "type": "string"
+                },
+                "verdict": {
+                  "enum": [
+                    "survives",
+                    "disproved"
+                  ]
+                },
+                "confidence": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 100
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "findings": {
+            "type": "array",
+            "minItems": 0,
+            "items": {
+              "$ref": "#/$defs/finding"
+            }
+          },
+          "belowTheLine": {
+            "type": "array",
+            "minItems": 0,
+            "items": {
+              "$ref": "#/$defs/finding"
+            }
+          },
+          "failures": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "measurements": {
+            "type": "object",
+            "additionalProperties": {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "required": [
+                    "availability",
+                    "value",
+                    "unit",
+                    "source"
+                  ],
+                  "properties": {
+                    "availability": {
+                      "enum": [
+                        "measured",
+                        "estimated"
+                      ]
+                    },
+                    "value": {
+                      "type": "number"
+                    },
+                    "unit": {
+                      "type": "string"
+                    },
+                    "source": {
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "required": [
+                    "availability",
+                    "unit",
+                    "source"
+                  ],
+                  "properties": {
+                    "availability": {
+                      "const": "unavailable"
+                    },
+                    "unit": {
+                      "type": "string"
+                    },
+                    "source": {
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ]
+            }
+          }
+        },
+        "$defs": {
+          "finding": {
+            "type": "object",
+            "required": [
+              "id",
+              "lens",
+              "location",
+              "claim",
+              "evidence",
+              "severity",
+              "category",
+              "confidence",
+              "recommendation",
+              "disposition"
+            ],
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "lens": {
+                "type": "string"
+              },
+              "location": {
+                "type": "string"
+              },
+              "claim": {
+                "type": "string"
+              },
+              "evidence": {
+                "type": "string"
+              },
+              "severity": {
+                "enum": [
+                  "High",
+                  "Medium",
+                  "Low"
+                ]
+              },
+              "category": {
+                "type": "string"
+              },
+              "confidence": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100
+              },
+              "recommendation": {
+                "type": "string"
+              },
+              "disposition": {
+                "enum": [
+                  "survives"
+                ]
+              },
+              "boundary": {
+                "enum": [
+                  "in-bundle",
+                  "cross-boundary",
+                  "component-ref",
+                  "unclassified"
+                ]
+              },
+              "originalSeverity": {
+                "enum": [
+                  "High",
+                  "Medium",
+                  "Low"
+                ]
+              },
+              "adjudicationNotes": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "if": {
+          "type": "object",
+          "properties": {
+            "outcome": {
+              "const": "clean"
+            }
+          }
+        },
+        "then": {
+          "type": "object",
+          "properties": {
+            "executionStatus": {
+              "const": "complete"
+            },
+            "calibrationStatus": {
+              "const": "calibrated"
+            },
+            "coverage": {
+              "type": "object",
+              "properties": {
+                "status": {
+                  "const": "complete"
+                }
+              }
+            },
+            "host": {
+              "type": "object",
+              "properties": {
+                "bindingStatus": {
+                  "const": "honored"
+                }
+              }
+            },
+            "belowTheLine": {
+              "type": "array",
+              "maxItems": 0
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "entrypoints": {
+    "claude-code": {
+      "kind": "skill",
+      "path": "hosts/claude-code/skills/gauntlet2-adversarial-review/SKILL.md",
+      "projection": {
+        "canonicalSources": [
+          "canon/finder-persona.md",
+          "canon/grounding-contract.md",
+          "canon/runtime-protocol.md",
+          "canon/validator-persona.md",
+          "profiles/adversarial-review/code-diff/profile.json",
+          "profiles/adversarial-review/code-diff/lenses.md",
+          "profiles/adversarial-review/plan-text/profile.json",
+          "profiles/adversarial-review/plan-text/lenses.md",
+          "profiles/adversarial-review/doc-text/profile.json",
+          "profiles/adversarial-review/doc-text/lenses.md",
+          "bindings/claude-code.json"
+        ],
+        "sourceHash": "4831a9c51b8486b0ef6f015b4a122ac2c86f87ea7d0733936caaf60673a1546a"
+      }
+    },
+    "codex": {
+      "kind": "skill",
+      "path": "hosts/codex/skills/gauntlet2-adversarial-review/SKILL.md",
+      "projection": {
+        "canonicalSources": [
+          "canon/finder-persona.md",
+          "canon/grounding-contract.md",
+          "canon/runtime-protocol.md",
+          "canon/validator-persona.md",
+          "profiles/adversarial-review/code-diff/profile.json",
+          "profiles/adversarial-review/code-diff/lenses.md",
+          "profiles/adversarial-review/plan-text/profile.json",
+          "profiles/adversarial-review/plan-text/lenses.md",
+          "profiles/adversarial-review/doc-text/profile.json",
+          "profiles/adversarial-review/doc-text/lenses.md",
+          "bindings/codex.json"
+        ],
+        "sourceHash": "92232a3d6535884ad7ef59e2ff08db1444d6c9673261e2a9e62dab7b7f364c09"
+      }
+    }
+  },
+  "modelRequirements": [
+    "independent-judgment",
+    "adversarial-adjudication"
+  ],
+  "capabilities": {
+    "isolated-dispatch": "required"
+  }
+}

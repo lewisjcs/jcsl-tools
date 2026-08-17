@@ -3,6 +3,6 @@
   "version": "1.0.0",
   "status": "incumbent-candidate",
   "marker": "Artifact type: doc-text",
-  "lensFile": "profiles/doc-text/lenses.md",
+  "lensFile": "profiles/adversarial-review/doc-text/lenses.md",
   "locationFormats": ["<Section> section, paragraph N — match the doc's actual heading text, case-sensitive"]
 }
