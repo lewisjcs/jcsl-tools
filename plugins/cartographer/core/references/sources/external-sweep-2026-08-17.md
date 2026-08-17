@@ -170,7 +170,11 @@ quotes are verbatim from the fetched page.
 
 ## Independent verification addendum (2026-08-17)
 
-Five dataset details appeared in Findings' Claim fields without a covering sentence in their Quote fields. A second, independent review pass re-opened each abstract (live arXiv pages) and verified them verbatim. Supplementary quotes, each from its paper's abstract:
+Five dataset details appeared in Findings' Claim fields without a covering sentence in their Quote fields. A second, independent review pass re-opened each abstract (live arXiv pages) and verified them verbatim.
+
+- **Opened:** yes (each abstract re-fetched from its live arXiv page during the verification pass)
+
+Supplementary quotes, each from its paper's abstract:
 
 - arXiv:2603.00489 — "Our evaluation on 27,772 PRs across 714 popular repositories demonstrates high precision and utility."
 - arXiv:2604.03447 — "TRACE constructs paired clean and perturbed versions of real-world Java method bundles by injecting known faults into the documentation, implementation, or both while holding the remaining artifacts fixed." (language: Java; count "456 method bundles" also verified in-abstract)

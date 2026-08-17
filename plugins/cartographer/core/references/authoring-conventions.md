@@ -27,9 +27,10 @@ READMEs). Loaded on demand from `core/knowledge/` `see:` markers (RC-4).
 
 Nygard, "Documenting Architecture Decisions"
 ([source](https://www.cognitect.com/blog/2011/11/15/documenting-architecture-decisions)),
-2011: the ADR Decision section is a hard rule for active voice — "We
-will…", never "It was decided that…" `voice-and-structure.md`'s own
-prose states the specificity principle it attributes to Larson,
+2011: `voice-and-structure.md` states Nygard's canonical form for the
+ADR Decision section as active voice — "We will…", never "It was
+decided that…" `voice-and-structure.md`'s own prose states the
+specificity principle it attributes to Larson,
 "Writing Engineering Strategy"
 ([source](https://staffeng.com/guides/engineering-strategy/)) — specific
 statements create alignment, generic statements create the illusion of
@@ -82,7 +83,7 @@ multiple-testing correction.
 
 Locator: `plugins/gauntlet/skills/skill-authoring-principles/SKILL.md#verification-checklist`;
 Anthropic skill-authoring best practices, transcribed via
-`core/references/sources/external-sweep-2026-08-17.md` (Query 9 /
+`plugins/cartographer/core/references/sources/external-sweep-2026-08-17.md` (Query 9 /
 Findings § "Vendor spec: concrete size and reference-depth limits for
 agent knowledge files").
 Status: transcribed-from plugins/gauntlet/skills/skill-authoring-principles/SKILL.md
@@ -224,10 +225,10 @@ vendor size guidance above: the numeric limits are prescriptive, not
 shown to move adherence in this study.
 
 Locator: arXiv:2605.10039, transcribed via
-`core/references/sources/external-sweep-2026-08-17.md` (Query 1 /
+`plugins/cartographer/core/references/sources/external-sweep-2026-08-17.md` (Query 1 /
 Findings § "File-structure variables show no detectable effect on
 instruction adherence; compliance decays within a session").
-Status: transcribed-from core/references/sources/external-sweep-2026-08-17.md
+Status: transcribed-from plugins/cartographer/core/references/sources/external-sweep-2026-08-17.md
 
 ## Citation-grounded generation reaches high accuracy on code comprehension (single-author, self-reported)
 
@@ -243,10 +244,10 @@ sweep that transcribed it:** single-author preprint, self-reported "zero
 hallucinations," no independent replication.
 
 Locator: arXiv:2512.12117, transcribed via
-`core/references/sources/external-sweep-2026-08-17.md` (Query 6 /
+`plugins/cartographer/core/references/sources/external-sweep-2026-08-17.md` (Query 6 /
 Findings § "Citation-grounded retrieval reaches 92% citation accuracy on
 code comprehension").
-Status: transcribed-from core/references/sources/external-sweep-2026-08-17.md
+Status: transcribed-from plugins/cartographer/core/references/sources/external-sweep-2026-08-17.md
 
 ## Long standing-instruction documents are followed poorly over extended horizons
 
@@ -271,10 +272,10 @@ the study does show directly: self-reported compliance is not a usable
 gate signal.
 
 Locator: arXiv:2607.25398, transcribed via
-`core/references/sources/external-sweep-2026-08-17.md` (Query 8 /
+`plugins/cartographer/core/references/sources/external-sweep-2026-08-17.md` (Query 8 /
 Findings § "Long standing-instruction documents are followed poorly over
 extended tool-use horizons").
-Status: transcribed-from core/references/sources/external-sweep-2026-08-17.md
+Status: transcribed-from plugins/cartographer/core/references/sources/external-sweep-2026-08-17.md
 
 ## Single-agent README generation matches multi-agent quality at a fraction of the cost
 
@@ -290,10 +291,10 @@ of any configuration tested, with autonomous planning identified as the
 primary single-agent bottleneck.
 
 Locator: arXiv:2606.30524, transcribed via
-`core/references/sources/external-sweep-2026-08-17.md` (Query 7 /
+`plugins/cartographer/core/references/sources/external-sweep-2026-08-17.md` (Query 7 /
 Findings § "Single-agent README generation matches multi-agent quality
 at a fraction of the cost").
-Status: transcribed-from core/references/sources/external-sweep-2026-08-17.md
+Status: transcribed-from plugins/cartographer/core/references/sources/external-sweep-2026-08-17.md
 
 ## Repository-doc generation is benchmarked against other generators, not humans
 
@@ -311,8 +312,8 @@ framework for automated repository-level documentation across seven
 programming languages."
 
 Locator: arXiv:2510.24428, transcribed via
-`core/references/sources/external-sweep-2026-08-17.md` (Query 7 /
+`plugins/cartographer/core/references/sources/external-sweep-2026-08-17.md` (Query 7 /
 Findings § "Repository-level documentation generation benchmarked
 against a closed-source baseline, not humans"; Independent verification
 addendum).
-Status: transcribed-from core/references/sources/external-sweep-2026-08-17.md
+Status: transcribed-from plugins/cartographer/core/references/sources/external-sweep-2026-08-17.md

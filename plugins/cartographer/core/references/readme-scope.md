@@ -30,9 +30,9 @@ reason a generated README section must justify its own existence rather
 than being included because the section name is conventional.
 
 Locator: arXiv:2602.11988, transcribed via
-`core/references/sources/design-research-basis-2026-08-17.md` § "Research
+`plugins/cartographer/core/references/sources/design-research-basis-2026-08-17.md` § "Research
 basis: not every README section is worth its cost by default".
-Status: transcribed-from core/references/sources/design-research-basis-2026-08-17.md
+Status: transcribed-from plugins/cartographer/core/references/sources/design-research-basis-2026-08-17.md
 
 ## Concrete instructions succeed; generic overviews do not
 
@@ -48,9 +48,9 @@ AI agents): the former carries the paper's unhelpful-but-costly profile,
 the latter its effective profile.
 
 Locator: arXiv:2602.11988, transcribed via
-`core/references/sources/design-research-basis-2026-08-17.md` § "Research
+`plugins/cartographer/core/references/sources/design-research-basis-2026-08-17.md` § "Research
 basis: not every README section is worth its cost by default".
-Status: transcribed-from core/references/sources/design-research-basis-2026-08-17.md
+Status: transcribed-from plugins/cartographer/core/references/sources/design-research-basis-2026-08-17.md
 
 ## The AGENTS.md inclusion litmus test
 
@@ -105,19 +105,13 @@ sections from 393 randomly sampled GitHub repositories found "What" and
 "How" content very common, while many READMEs lack information regarding
 purpose and status; an eight-category multi-label classifier reached F1
 0.746, and a majority of 20 surveyed practitioners perceived automated
-section labeling as easing information discovery. The "20 surveyed
-practitioners" figure is Claim-field-only in the sweep's Findings entry;
-it is verified by the sweep's Independent verification addendum, which
-quotes the paper's abstract directly: "we used the automatically
-determined classes to label sections in GitHub README files using badges
-and showed files with and without these badges to twenty software
-professionals."
+section labeling as easing information discovery.
 
 Locator: arXiv:1802.06997, transcribed via
-`core/references/sources/external-sweep-2026-08-17.md` (Query 3 /
+`plugins/cartographer/core/references/sources/external-sweep-2026-08-17.md` (Query 3 /
 Findings § "README content skews to 'What' and 'How'; purpose and status
 are commonly absent"; Independent verification addendum).
-Status: transcribed-from core/references/sources/external-sweep-2026-08-17.md
+Status: transcribed-from plugins/cartographer/core/references/sources/external-sweep-2026-08-17.md
 
 ## README structural features correlate with project popularity
 
@@ -131,10 +125,10 @@ popularity. Correlational, not causal — popularity, not onboarding
 success, is the measured outcome.
 
 Locator: arXiv:2206.10772, transcribed via
-`core/references/sources/external-sweep-2026-08-17.md` (Query 2 /
+`plugins/cartographer/core/references/sources/external-sweep-2026-08-17.md` (Query 2 /
 Findings § "README structural features correlate with project
 popularity").
-Status: transcribed-from core/references/sources/external-sweep-2026-08-17.md
+Status: transcribed-from plugins/cartographer/core/references/sources/external-sweep-2026-08-17.md
 
 ## README updates almost never accompany code changes, and some should
 
@@ -145,17 +139,13 @@ PRs from 714 repositories, only 0.8% of PRs modified the README, and
 21.5% of recommendations on PRs that did not update the README were
 judged valid updates overlooked during development; the best-performing
 agentic detector reached 98.7% specificity but only 28.7% user-facing
-accuracy. The "27,772 PRs from 714 repositories" figure is Claim-field-only
-in the sweep's Findings entry; it is verified by the sweep's Independent
-verification addendum, which quotes the paper's abstract directly: "Our
-evaluation on 27,772 PRs across 714 popular repositories demonstrates
-high precision and utility."
+accuracy.
 
 Locator: arXiv:2603.00489, transcribed via
-`core/references/sources/external-sweep-2026-08-17.md` (Query 2 /
+`plugins/cartographer/core/references/sources/external-sweep-2026-08-17.md` (Query 2 /
 Findings § "README updates are rare in PRs and a fifth of 'no-update' PRs
 actually warranted one"; Independent verification addendum).
-Status: transcribed-from core/references/sources/external-sweep-2026-08-17.md
+Status: transcribed-from plugins/cartographer/core/references/sources/external-sweep-2026-08-17.md
 
 ## LLM staleness judges are blind to the drift direction that matters most
 
@@ -168,18 +158,13 @@ points when only the implementation changed and the documentation stayed
 intact; model confidence provided little separation between correct and
 incorrect judgments for six of seven models. A Cartographer drift check
 therefore needs deterministic anchors (symbol/path existence), not model
-self-judgment. The "Java" language detail is Claim-field-only in the
-sweep's Findings entry; it is verified by the sweep's Independent
-verification addendum, which quotes the paper's abstract directly:
-"TRACE constructs paired clean and perturbed versions of real-world Java
-method bundles by injecting known faults into the documentation,
-implementation, or both while holding the remaining artifacts fixed."
+self-judgment.
 
 Locator: arXiv:2604.03447, transcribed via
-`core/references/sources/external-sweep-2026-08-17.md` (Query 4 /
+`plugins/cartographer/core/references/sources/external-sweep-2026-08-17.md` (Query 4 /
 Findings § "LLMs detect documentation faults but are blind to
 implementation-only drift"; Independent verification addendum).
-Status: transcribed-from core/references/sources/external-sweep-2026-08-17.md
+Status: transcribed-from plugins/cartographer/core/references/sources/external-sweep-2026-08-17.md
 
 ## Outdated code-element references are near-universal in repository docs
 
@@ -188,18 +173,13 @@ Software Repository Documentation"
 ([arXiv:2212.01479](https://arxiv.org/abs/2212.01479)): analysis of over
 3,000 GitHub projects found that most projects contain at least one
 code-element reference that survived in documentation after every source
-instance was deleted, at some point in their history. That operational
-definition of "outdated" is Claim-field-only in the sweep's Findings
-entry; it is verified by the sweep's Independent verification addendum,
-which quotes the paper directly: outdated reference defined as "code
-element references that survive in the documentation after all source
-code instances have been deleted".
+instance was deleted, at some point in their history.
 
 Locator: arXiv:2212.01479, transcribed via
-`core/references/sources/external-sweep-2026-08-17.md` (Query 13 /
+`plugins/cartographer/core/references/sources/external-sweep-2026-08-17.md` (Query 13 /
 Findings § "Outdated code element references are near-universal in
 repository documentation"; Independent verification addendum).
-Status: transcribed-from core/references/sources/external-sweep-2026-08-17.md
+Status: transcribed-from plugins/cartographer/core/references/sources/external-sweep-2026-08-17.md
 
 ## Vendor spec: AGENTS.md is a README for agents, not a README replacement
 
@@ -215,7 +195,7 @@ projects" — a self-reported GitHub code-search count, not an audited
 number.
 
 Locator: [agents.md](https://agents.md/) (as of 2026-08-17), transcribed
-via `core/references/sources/external-sweep-2026-08-17.md` (Query 9 /
+via `plugins/cartographer/core/references/sources/external-sweep-2026-08-17.md` (Query 9 /
 Findings § "Vendor spec: AGENTS.md is positioned as a README for agents,
 with adoption scale").
-Status: transcribed-from core/references/sources/external-sweep-2026-08-17.md
+Status: transcribed-from plugins/cartographer/core/references/sources/external-sweep-2026-08-17.md

@@ -70,8 +70,8 @@ deliberately **not** listed as an indexed file above and never trips rule
 
 4. **Fresh external web search — REQUIRED per a scope amendment recorded
    in the release's build-time research record (conducted by a dedicated
-   research agent, not this Crafter, per user directive; superseded the
-   original "last resort only" scoping)** — yielded: 17 integrated
+   research agent per user directive; superseded the original "last
+   resort only" scoping)** — yielded: 17 integrated
    entries across 13 queries (captured at
    `sources/external-sweep-2026-08-17.md` § Query ledger), plus 1
    corroborating
