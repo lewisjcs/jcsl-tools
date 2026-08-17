@@ -32,10 +32,10 @@ assert_exit() {
 }
 
 # ──────────────────────────────────────────────────────────────────────────────
-# GROUNDING TESTS
+# GROUNDING TESTS — Negative fixtures
 # ──────────────────────────────────────────────────────────────────────────────
 
-echo "Grounding Checks:"
+echo "Grounding Checks — Negative Fixtures (should fail):"
 
 # Test 1: compliant fixture (should pass)
 bash "$GROUNDING_CHECK" "$FIXTURES_DIR/grounding/compliant/core" > /dev/null 2>&1
@@ -81,6 +81,187 @@ assert_exit "grounding: fenced-exemplars (RC-25 regression)" "0" "$?"
 bash "$GROUNDING_CHECK" "$FIXTURES_DIR/grounding/fenced-marker-only/core" > /dev/null 2>&1
 assert_exit "grounding: fenced-marker-only" "1" "$?"
 
+# Test 12: capitalized-verb fixture (should fail - rule a, case-insensitive)
+bash "$GROUNDING_CHECK" "$FIXTURES_DIR/grounding/capitalized-verb/core" > /dev/null 2>&1
+assert_exit "grounding: capitalized-verb (rule a, case-insensitive)" "1" "$?"
+
+# Test 13: numeric-threshold fixture (should fail - rule a, within 20 chars)
+bash "$GROUNDING_CHECK" "$FIXTURES_DIR/grounding/numeric-threshold/core" > /dev/null 2>&1
+assert_exit "grounding: numeric-threshold (rule a, within 20 chars)" "1" "$?"
+
+# ──────────────────────────────────────────────────────────────────────────────
+# GROUNDING TESTS — Negative fixtures with defects removed (pass-once-fixed)
+# ──────────────────────────────────────────────────────────────────────────────
+
+echo ""
+echo "Grounding Checks — Negative Fixtures Fixed (should pass):"
+
+# Create a temporary work directory
+TMP_WORK="$(mktemp -d)"
+trap 'rm -rf "$TMP_WORK"' EXIT
+
+# Test: missing-marker fixed
+mkdir -p "$TMP_WORK/missing-marker-fixed/core/knowledge" "$TMP_WORK/missing-marker-fixed/core/references"
+cp "$FIXTURES_DIR/grounding/missing-marker/core/knowledge/test.md" "$TMP_WORK/missing-marker-fixed/core/knowledge/"
+# Add marker to fix the defect
+sed -i '' 's|has no marker\.|has a marker. <!-- see: references/readme-scope.md#test -->|' "$TMP_WORK/missing-marker-fixed/core/knowledge/test.md"
+# Create reference
+echo "# Readme" > "$TMP_WORK/missing-marker-fixed/core/references/readme-scope.md"
+echo "## Test" >> "$TMP_WORK/missing-marker-fixed/core/references/readme-scope.md"
+echo "# Reference Index" > "$TMP_WORK/missing-marker-fixed/core/references/README.md"
+echo "## Files indexed" >> "$TMP_WORK/missing-marker-fixed/core/references/README.md"
+echo "- [readme-scope.md](./readme-scope.md)" >> "$TMP_WORK/missing-marker-fixed/core/references/README.md"
+echo "## Heading slugs by file" >> "$TMP_WORK/missing-marker-fixed/core/references/README.md"
+echo "### readme-scope.md" >> "$TMP_WORK/missing-marker-fixed/core/references/README.md"
+echo "- \`#test\`" >> "$TMP_WORK/missing-marker-fixed/core/references/README.md"
+bash "$GROUNDING_CHECK" "$TMP_WORK/missing-marker-fixed/core" > /dev/null 2>&1
+assert_exit "grounding: missing-marker-fixed" "0" "$?"
+
+# Test: inline-citation fixed
+rm -rf "$TMP_WORK/inline-citation-fixed"
+mkdir -p "$TMP_WORK/inline-citation-fixed/core/knowledge" "$TMP_WORK/inline-citation-fixed/core/references"
+cat > "$TMP_WORK/inline-citation-fixed/core/knowledge/test.md" <<'EOF'
+# Inline Citation Example
+
+## Full Citation Inline
+
+Here is content that is now properly grounded. <!-- see: references/inline-citation.md#full-citation-inline -->
+EOF
+echo "# Inline Citation" > "$TMP_WORK/inline-citation-fixed/core/references/inline-citation.md"
+echo "## Full Citation Inline" >> "$TMP_WORK/inline-citation-fixed/core/references/inline-citation.md"
+echo "> Blockquote line 1" >> "$TMP_WORK/inline-citation-fixed/core/references/inline-citation.md"
+echo "> Blockquote line 2" >> "$TMP_WORK/inline-citation-fixed/core/references/inline-citation.md"
+cat > "$TMP_WORK/inline-citation-fixed/core/references/README.md" <<'EOF'
+# Reference Index
+## Files indexed
+- [inline-citation.md](./inline-citation.md)
+## Heading slugs by file
+### inline-citation.md
+- `#full-citation-inline`
+EOF
+bash "$GROUNDING_CHECK" "$TMP_WORK/inline-citation-fixed/core" > /dev/null 2>&1
+assert_exit "grounding: inline-citation-fixed" "0" "$?"
+
+# Test: unresolvable-target fixed
+rm -rf "$TMP_WORK/unresolvable-target-fixed"
+mkdir -p "$TMP_WORK/unresolvable-target-fixed/core/knowledge" "$TMP_WORK/unresolvable-target-fixed/core/references"
+cat > "$TMP_WORK/unresolvable-target-fixed/core/knowledge/test.md" <<'EOF'
+# Unresolvable Target
+
+## Test Section
+
+This must be grounded. <!-- see: references/existing.md#anchor -->
+EOF
+echo "# Existing" > "$TMP_WORK/unresolvable-target-fixed/core/references/existing.md"
+echo "## Anchor" >> "$TMP_WORK/unresolvable-target-fixed/core/references/existing.md"
+cat > "$TMP_WORK/unresolvable-target-fixed/core/references/README.md" <<'EOF'
+# Reference Index
+## Files indexed
+- [existing.md](./existing.md)
+## Heading slugs by file
+### existing.md
+- `#anchor`
+EOF
+bash "$GROUNDING_CHECK" "$TMP_WORK/unresolvable-target-fixed/core" > /dev/null 2>&1
+assert_exit "grounding: unresolvable-target-fixed" "0" "$?"
+
+# Test: unresolvable-anchor fixed
+rm -rf "$TMP_WORK/unresolvable-anchor-fixed"
+mkdir -p "$TMP_WORK/unresolvable-anchor-fixed/core/knowledge" "$TMP_WORK/unresolvable-anchor-fixed/core/references"
+cat > "$TMP_WORK/unresolvable-anchor-fixed/core/knowledge/test.md" <<'EOF'
+# Unresolvable Anchor
+
+## Test Section
+
+This must be grounded. <!-- see: references/readme-scope.md#concrete-instructions-succeed-generic-overviews-do-not -->
+EOF
+cp "$FIXTURES_DIR/grounding/unresolvable-anchor/core/references/readme-scope.md" "$TMP_WORK/unresolvable-anchor-fixed/core/references/"
+cp "$FIXTURES_DIR/grounding/unresolvable-anchor/core/references/README.md" "$TMP_WORK/unresolvable-anchor-fixed/core/references/"
+bash "$GROUNDING_CHECK" "$TMP_WORK/unresolvable-anchor-fixed/core" > /dev/null 2>&1
+assert_exit "grounding: unresolvable-anchor-fixed" "0" "$?"
+
+# Test: unindexed-reference fixed
+rm -rf "$TMP_WORK/unindexed-reference-fixed"
+mkdir -p "$TMP_WORK/unindexed-reference-fixed/core/knowledge" "$TMP_WORK/unindexed-reference-fixed/core/references"
+cat > "$TMP_WORK/unindexed-reference-fixed/core/references/README.md" <<'EOF'
+# Reference Index
+## Files indexed
+- [indexed-entry.md](./indexed-entry.md)
+- [unindexed-entry.md](./unindexed-entry.md)
+## Heading slugs by file
+### indexed-entry.md
+- `#sample-heading`
+### unindexed-entry.md
+- `#test`
+EOF
+cp "$FIXTURES_DIR/grounding/unindexed-reference/core/references/indexed-entry.md" "$TMP_WORK/unindexed-reference-fixed/core/references/"
+cp "$FIXTURES_DIR/grounding/unindexed-reference/core/references/unindexed-entry.md" "$TMP_WORK/unindexed-reference-fixed/core/references/"
+bash "$GROUNDING_CHECK" "$TMP_WORK/unindexed-reference-fixed/core" > /dev/null 2>&1
+assert_exit "grounding: unindexed-reference-fixed" "0" "$?"
+
+# Test: fenced-marker-only fixed
+rm -rf "$TMP_WORK/fenced-marker-only-fixed"
+mkdir -p "$TMP_WORK/fenced-marker-only-fixed/core/knowledge" "$TMP_WORK/fenced-marker-only-fixed/core/references"
+cat > "$TMP_WORK/fenced-marker-only-fixed/core/knowledge/test.md" <<'EOF'
+# Fenced Marker Only
+
+## Claim With Marker
+
+This must be grounded according to the spec. <!-- see: references/example.md#anchor -->
+
+\`\`\`markdown
+<!-- see: references/example.md#anchor -->
+\`\`\`
+EOF
+echo "# Example" > "$TMP_WORK/fenced-marker-only-fixed/core/references/example.md"
+echo "## Anchor" >> "$TMP_WORK/fenced-marker-only-fixed/core/references/example.md"
+cat > "$TMP_WORK/fenced-marker-only-fixed/core/references/README.md" <<'EOF'
+# Reference Index
+## Files indexed
+- [example.md](./example.md)
+## Heading slugs by file
+### example.md
+- `#anchor`
+EOF
+bash "$GROUNDING_CHECK" "$TMP_WORK/fenced-marker-only-fixed/core" > /dev/null 2>&1
+assert_exit "grounding: fenced-marker-only-fixed" "0" "$?"
+
+# Test: capitalized-verb fixed
+rm -rf "$TMP_WORK/capitalized-verb-fixed"
+mkdir -p "$TMP_WORK/capitalized-verb-fixed/core/knowledge" "$TMP_WORK/capitalized-verb-fixed/core/references"
+cat > "$TMP_WORK/capitalized-verb-fixed/core/knowledge/test.md" <<'EOF'
+# Capitalized Verb
+
+## Claim With Capitalized Verb
+
+Must follow this rule. <!-- rationale: architectural decision -->
+EOF
+cat > "$TMP_WORK/capitalized-verb-fixed/core/references/README.md" <<'EOF'
+# Reference Index
+## Files indexed
+## Heading slugs by file
+EOF
+bash "$GROUNDING_CHECK" "$TMP_WORK/capitalized-verb-fixed/core" > /dev/null 2>&1
+assert_exit "grounding: capitalized-verb-fixed" "0" "$?"
+
+# Test: numeric-threshold fixed
+rm -rf "$TMP_WORK/numeric-threshold-fixed"
+mkdir -p "$TMP_WORK/numeric-threshold-fixed/core/knowledge" "$TMP_WORK/numeric-threshold-fixed/core/references"
+cat > "$TMP_WORK/numeric-threshold-fixed/core/knowledge/test.md" <<'EOF'
+# Numeric Threshold
+
+## Claim With Numeric Threshold
+
+A 300-character line limit should be enforced. <!-- rationale: performance constraint -->
+EOF
+cat > "$TMP_WORK/numeric-threshold-fixed/core/references/README.md" <<'EOF'
+# Reference Index
+## Files indexed
+## Heading slugs by file
+EOF
+bash "$GROUNDING_CHECK" "$TMP_WORK/numeric-threshold-fixed/core" > /dev/null 2>&1
+assert_exit "grounding: numeric-threshold-fixed" "0" "$?"
+
 # ──────────────────────────────────────────────────────────────────────────────
 # BOUNDARY TESTS
 # ──────────────────────────────────────────────────────────────────────────────
@@ -100,6 +281,13 @@ assert_exit "boundary: unexempted" "1" "$?"
 bash "$BOUNDARY_CHECK" "$FIXTURES_DIR/boundary/fenced" > /dev/null 2>&1
 assert_exit "boundary: fenced" "1" "$?"
 
+# Test 4: boundary unexempted fixed (should pass when token is added)
+mkdir -p "$TMP_WORK/boundary-fixed"
+cp -r "$FIXTURES_DIR/boundary/unexempted/core" "$TMP_WORK/boundary-fixed/"
+sed -i '' 's|profiles/|profiles/ <!-- boundary-exempt: prose -->|' "$TMP_WORK/boundary-fixed/core/test.md"
+bash "$BOUNDARY_CHECK" "$TMP_WORK/boundary-fixed" > /dev/null 2>&1
+assert_exit "boundary: unexempted-fixed" "0" "$?"
+
 # ──────────────────────────────────────────────────────────────────────────────
 # PROVENANCE TESTS (ancestry-based, RC-24)
 # ──────────────────────────────────────────────────────────────────────────────
@@ -109,7 +297,6 @@ echo "Provenance Checks (ancestry-based):"
 
 # Create a temporary git repository for provenance testing
 TMP_REPO="$(mktemp -d)"
-trap 'rm -rf "$TMP_REPO"' EXIT
 
 cd "$TMP_REPO"
 git init -q
@@ -173,10 +360,64 @@ git commit -q -m "Add reference"
 bash "$PROVENANCE_CHECK" "$TMP_REPO/core" > /dev/null 2>&1
 assert_exit "provenance: knowledge first, then reference (should fail)" "1" "$?"
 
+# Test 4: untracked reference file (should fail with distinct message)
+rm -rf "$TMP_REPO/.git" "$TMP_REPO/core"
+cd "$TMP_REPO"
+git init -q
+git config user.email "test@example.com"
+git config user.name "Test"
+
+mkdir -p core/references core/knowledge
+# Reference is untracked (not committed)
+echo "# Reference" > core/references/readme-scope.md
+echo "## Anchor" >> core/references/readme-scope.md
+
+echo "# Knowledge" > core/knowledge/test.md
+echo "## Claim" >> core/knowledge/test.md
+echo "This must be grounded. <!-- see: references/readme-scope.md#anchor -->" >> core/knowledge/test.md
+git add core/knowledge/test.md
+git commit -q -m "Add knowledge"
+
+bash "$PROVENANCE_CHECK" "$TMP_REPO/core" > /dev/null 2>&1
+assert_exit "provenance: untracked reference (should fail)" "1" "$?"
+
+# Test 5: untracked knowledge file (should fail with distinct message)
+rm -rf "$TMP_REPO/.git" "$TMP_REPO/core"
+cd "$TMP_REPO"
+git init -q
+git config user.email "test@example.com"
+git config user.name "Test"
+
+mkdir -p core/references core/knowledge
+echo "# Reference" > core/references/readme-scope.md
+echo "## Anchor" >> core/references/readme-scope.md
+git add core/references/readme-scope.md
+git commit -q -m "Add reference"
+
+# Knowledge is untracked (not committed)
+echo "# Knowledge" > core/knowledge/test.md
+echo "## Claim" >> core/knowledge/test.md
+echo "This must be grounded. <!-- see: references/readme-scope.md#anchor -->" >> core/knowledge/test.md
+
+bash "$PROVENANCE_CHECK" "$TMP_REPO/core" > /dev/null 2>&1
+assert_exit "provenance: untracked knowledge (should fail)" "1" "$?"
+
+# ──────────────────────────────────────────────────────────────────────────────
+# ARGUMENT PRECEDENCE TEST (explicit argument wins over CLAUDE_PLUGIN_ROOT)
+# ──────────────────────────────────────────────────────────────────────────────
+
+echo ""
+echo "Argument Precedence (explicit argument should win):"
+
+# Test with explicit fixture argument while CLAUDE_PLUGIN_ROOT points elsewhere
+CLAUDE_PLUGIN_ROOT="/nonexistent" bash "$GROUNDING_CHECK" "$FIXTURES_DIR/grounding/compliant/core" > /dev/null 2>&1
+assert_exit "precedence: explicit path wins over CLAUDE_PLUGIN_ROOT" "0" "$?"
+
 # ──────────────────────────────────────────────────────────────────────────────
 # SUMMARY
 # ──────────────────────────────────────────────────────────────────────────────
 
+cd "$SCRIPT_DIR"
 echo ""
 echo "PASS=$PASS FAIL=$FAIL"
 [ "$FAIL" -eq 0 ]

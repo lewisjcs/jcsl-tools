@@ -6,15 +6,15 @@
 
 set -u
 
-# Derive CORE_DIR from argument or default
-CORE_DIR="${1:-}"
-if [ -z "$CORE_DIR" ]; then
+# Derive CORE_DIR from argument or default; explicit argument wins over env
+if [ -n "${1:-}" ]; then
+  CORE_DIR="$1"
+else
   CORE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../core" && pwd)"
-fi
-
-# Override with CLAUDE_PLUGIN_ROOT if set
-if [ -n "${CLAUDE_PLUGIN_ROOT:-}" ]; then
-  CORE_DIR="$CLAUDE_PLUGIN_ROOT/core"
+  # Only use CLAUDE_PLUGIN_ROOT as override if no explicit argument was given
+  if [ -n "${CLAUDE_PLUGIN_ROOT:-}" ]; then
+    CORE_DIR="$CLAUDE_PLUGIN_ROOT/core"
+  fi
 fi
 
 KNOWLEDGE_DIR="$CORE_DIR/knowledge"

@@ -6,15 +6,15 @@
 
 set -u
 
-# Derive CORE_DIR from argument or default
-CORE_DIR="${1:-}"
-if [ -z "$CORE_DIR" ]; then
+# Derive CORE_DIR from argument or default; explicit argument wins over env
+if [ -n "${1:-}" ]; then
+  CORE_DIR="$1"
+else
   CORE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../core" && pwd)"
-fi
-
-# Override with CLAUDE_PLUGIN_ROOT if set
-if [ -n "${CLAUDE_PLUGIN_ROOT:-}" ]; then
-  CORE_DIR="$CLAUDE_PLUGIN_ROOT/core"
+  # Only use CLAUDE_PLUGIN_ROOT as override if no explicit argument was given
+  if [ -n "${CLAUDE_PLUGIN_ROOT:-}" ]; then
+    CORE_DIR="$CLAUDE_PLUGIN_ROOT/core"
+  fi
 fi
 
 KNOWLEDGE_DIR="$CORE_DIR/knowledge"
@@ -95,9 +95,10 @@ extract_slugs() {
 
 check_rule_a() {
   local file="$1"
+  shopt -s nocasematch  # Enable case-insensitive matching per RC-2
 
   # Check fence integrity first
-  check_fence_integrity "$file" || return 1
+  check_fence_integrity "$file" || { shopt -u nocasematch; return 1; }
 
   local in_section=0
   local section_start_line=0
@@ -145,15 +146,17 @@ check_rule_a() {
 
     # Check for claim-shaped lines (only outside fences)
     if [ $fence_state -eq 0 ]; then
-      # Check for normative verbs
+      # Check for normative verbs (case-insensitive per RC-2)
       if [[ $line =~ (must|shall|should|never|always|prefer|require|do\ not) ]]; then
         # Skip if line is itself a marker
         if ! [[ $line =~ \<\!--.*--\> ]]; then
           has_claim=1
         fi
       fi
-      # Check for numeric thresholds
-      if [[ $line =~ [0-9]+[[:space:]]{0,20}(lines|chars|characters|tokens|%|sections) ]]; then
+      # Check for numeric thresholds: digit sequence within 20 chars of unit word
+      # RC-2: "a digit sequence within 20 characters of lines|chars|characters|tokens|%|sections"
+      if [[ $line =~ [0-9]+.{0,20}(lines|chars|characters|tokens|%|sections) ]] || \
+         [[ $line =~ (lines|chars|characters|tokens|%|sections).{0,20}[0-9]+ ]]; then
         if ! [[ $line =~ \<\!--.*--\> ]]; then
           has_claim=1
         fi
@@ -167,6 +170,7 @@ check_rule_a() {
     FAIL=$((FAIL + 1))
   fi
 
+  shopt -u nocasematch
   return 0
 }
 
@@ -332,7 +336,7 @@ check_rule_c() {
         done < <(extract_slugs "$resolved_path")
 
         if [ $found -eq 0 ]; then
-          printf 'ERROR|rule-c|%s:%d|unverified|%s%s\n' "$file" "$line_num" "$target_path" "$anchor"
+          printf 'ERROR|rule-c|%s:%d|unverified|%s%s\n' "$file" "$line_num" "$target_path" "#$anchor"
           FAIL=$((FAIL + 1))
         fi
       else
