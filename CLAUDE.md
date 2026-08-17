@@ -2,7 +2,7 @@
 
 Josh C.S. Lewis's personal Claude Code plugin marketplace — implementation workflow Parties and review/research skills. Owned and maintained by Josh alone.
 
-Read [AGENTS.md](./AGENTS.md) for the full agent guardrail set and invariants, [ARCHITECTURE.md](./ARCHITECTURE.md) for how the marketplace and its four plugins fit together, and [CONTRIBUTING.md](./CONTRIBUTING.md) for setup and verification.
+Read [AGENTS.md](./AGENTS.md) for the full agent guardrail set and invariants, [ARCHITECTURE.md](./ARCHITECTURE.md) for how the marketplace and its five plugins fit together, and [CONTRIBUTING.md](./CONTRIBUTING.md) for setup and verification.
 
 ## Commands
 
@@ -26,7 +26,7 @@ There is no install/build/lint/test command at the repo level — see [CONTRIBUT
 See [ARCHITECTURE.md](./ARCHITECTURE.md) for full details.
 
 Key patterns to respect:
-- This repo IS the marketplace manifest source — `.claude-plugin/marketplace.json` lists all four plugins by `source` path. A new plugin needs an entry here too, not just its own directory.
+- This repo IS the marketplace manifest source — `.claude-plugin/marketplace.json` lists all five plugins by `source` path. A new plugin needs an entry here too, not just its own directory.
 - Every hook script reference uses `${CLAUDE_PLUGIN_ROOT}` — never a hardcoded or relative path.
 - Kiln's conductor is intentionally thin: a `PreToolUse` hook denies its file-editing tools mid-run. Don't propose "simplifying" Kiln by having the conductor edit source directly — that guarantee is load-bearing.
 
