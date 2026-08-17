@@ -1,0 +1,8 @@
+{
+  "family": "code-diff",
+  "version": "1.0.0",
+  "status": "incumbent-candidate",
+  "marker": "Artifact type: code-diff",
+  "lensFile": "profiles/adversarial-review/code-diff/lenses.md",
+  "locationFormats": ["file:line (post-diff path for changed files; repo-relative reviewed-tree path for cross-boundary findings)"]
+}

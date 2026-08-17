@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "jcsl:auditor-finding@1",
+  "type": "object",
+  "required": ["layer", "rule", "location", "claim", "evidence", "level", "recommendation"],
+  "properties": {
+    "layer": { "enum": ["compliance", "staleness", "gaps", "test-integrity"] },
+    "rule": { "type": "string", "minLength": 1 },
+    "location": { "type": "string", "minLength": 1 },
+    "claim": { "type": "string", "minLength": 1 },
+    "evidence": { "type": "string", "minLength": 1 },
+    "level": { "enum": ["violation", "warning", "gap"] },
+    "recommendation": { "type": "string", "minLength": 1 }
+  },
+  "additionalProperties": false
+}

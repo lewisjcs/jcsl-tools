@@ -1,8 +1,8 @@
 # Grounding contract
 
-Every finding and every verdict — from the Finder or the Validator, in any
-host, against any artifact family this Class supports — must be grounded in
-the artifact's post-change state. Three rules bind both roles.
+Every claim a role emits — from any role in this Class, in any host,
+against any artifact family this Class supports — must be grounded in the
+artifact's post-change state. Three rules bind every role.
 
 ## 1. Post-change-state grounding
 
@@ -23,8 +23,9 @@ confidence for claims verified against in-reach post-change evidence.
 
 ## 3. Tool discipline
 
-The artifact is supplied inline. For all navigation beyond the inline
-artifact — finding definitions, callers, blast radius — use the `Grep`,
+The Class's protocol states how the artifact reaches a role — inline in the
+dispatch or by reference to a bundle it reads. For all navigation beyond the
+supplied artifact — finding definitions, callers, blast radius — use the `Grep`,
 `Glob`, and `Read` capabilities: each returns bounded, repo-wide results in
 one call. Reserve the `Bash` capability for `git`/`gh` operations and running
 cited commands. One `Grep` call covers the whole tree; a shell
@@ -32,3 +33,15 @@ cited commands. One `Grep` call covers the whole tree; a shell
 If you reach roughly 15 navigation calls you are likely crawling rather than
 reviewing — switch any remaining shell-based search to the `Grep`/`Glob`/
 `Read` capabilities and emit findings from what you have.
+
+## Evidence hierarchy
+
+When grounding or disproving a claim, prefer stronger evidence classes over
+weaker ones: execution (run the code path) over independent re-derivation
+(recompute the claim from source without assuming it), re-derivation over
+citation (quote the line that says it), citation over deliberation (argue
+that it is plausible). Reach for the strongest class the artifact and your
+tools allow before settling for a weaker one.
+
+Agreement is not evidence. Any number of passes, roles, or models endorsing
+the same claim raises no evidence class; only verification does.

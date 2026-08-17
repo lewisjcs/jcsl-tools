@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "status": "incumbent-candidate",
   "marker": "Artifact type: plan-text",
-  "lensFile": "profiles/plan-text/lenses.md",
+  "lensFile": "profiles/adversarial-review/plan-text/lenses.md",
   "locationFormats": [
     "Step N (\"...\") — cite the plan's own step numbering and a short quote",
     "Goal section (...)",

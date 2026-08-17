@@ -1,0 +1,43 @@
+{
+  "policyId": "adjudication-v2",
+  "minQuoteChars": 24,
+  "dedupeKey": ["lens", "normalizedLocation"],
+  "highGroundingCheck": "downgrade-to-medium",
+  "severityGates": {
+    "High": {
+      "keepAtOrAbove": 79,
+      "midBandFrom": 62,
+      "midBandAction": "demote-to-medium",
+      "belowMidBandAction": "below-the-line"
+    },
+    "Medium": {
+      "keepAtOrAbove": 79,
+      "midBandFrom": 62,
+      "midBandAction": "below-the-line",
+      "belowMidBandAction": "drop"
+    },
+    "Low": {
+      "keepAtOrAbove": 70,
+      "belowMidBandAction": "drop"
+    }
+  },
+  "neverDropOriginalSeverity": ["High"],
+  "thresholdProvenance": {
+    "source": "incumbent-prompt-instruction",
+    "measured": false,
+    "resampleNoisePoints": 8,
+    "note": "The 79 and 62 boundaries are inherited from incumbent prompt-instruction language (its escalation trigger named surviving Highs at confidence 70-78), not derived from any calibration measurement. Self-reported confidence resampled 8 points apart on byte-identical input, so a candidate at 78 versus 79 is inside the noise band. These gates buy demote-instead-of-drop and severity-asymmetric handling, not sharper discrimination. Revisit once harvested dispositions supply real ground truth."
+  },
+  "escalation": {
+    "mode": "off",
+    "observedIncumbentTriggers": {
+      "rubberStamp": "zero drops after pass one",
+      "highStakesBorderline": "surviving High at confidence 70-78",
+      "enabled": false
+    }
+  },
+  "observedIncumbentAnchors": {
+    "validatorDisproofHighConfidence": 85,
+    "note": "Recorded, not mechanically enforced: the incumbent instructed the Validator to reserve confidence above this value on a disproved verdict for directly-verified claims."
+  }
+}

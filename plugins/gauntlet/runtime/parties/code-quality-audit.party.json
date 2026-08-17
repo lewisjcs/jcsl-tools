@@ -1,0 +1,15 @@
+{
+  "kind": "party",
+  "schemaVersion": "1.0-kernel",
+  "id": "jcsl:gauntlet:code-quality-audit-party",
+  "version": "1.0.0",
+  "audience": "personal",
+  "mission": "Audit one code artifact against the standards rulebook and return a typed, rule-anchored result.",
+  "eligibleClassIds": ["jcsl:gauntlet:code-quality-audit"],
+  "requiredRoles": ["code-quality-audit"],
+  "contract": {
+    "inputContractId": "jcsl:reviewable-artifact@1",
+    "outputContractId": "jcsl:code-quality-audit-result@1"
+  },
+  "handoffs": []
+}

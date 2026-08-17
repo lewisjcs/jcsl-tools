@@ -25,20 +25,28 @@ change.
 - **Failure Scenarios** — concurrency, partial failure, timeout, retry
   storms, data-shape variance.
 - **Blast Radius** — downstream consumers, shared state, rollback safety.
+- **Missed Integration** — capability the diff reimplements that already
+  exists in the reviewed tree, the wrong internal service or module
+  imported for the job, an established abstraction bypassed. Location: the
+  `+` lines that should have used the alternative. Evidence: the existing
+  alternative cited at its own `path:line` in the reviewed tree.
 
 ### Location format
 
-`file:line` — the post-diff source file path and line number. Cite the `+`
-side of the hunk, or the surviving `+` lines when a hunk both removes and
-adds.
+`file:line` — a repo-relative path in the reviewed tree, plus a line number.
 
-Get the file path from the component's own header, never by guessing or
-inferring one from content: each component you are shown is introduced by a
-`--- component: <id> (role: ..., mediaType: ..., path: <path>) ---` line.
-When that header states a `path`, use it verbatim as the file in `file:line`.
-Only when a component's header carries no `path` — a rare case, since a real
-code-diff bundle names its file — fall back to `(<component id>):line`
-instead of inventing a path.
+- Findings in changed files: the post-diff source file path and line. Cite
+  the `+` side of the hunk, or the surviving `+` lines when a hunk both
+  removes and adds. Get the path from the component's own header — each
+  component is introduced by a
+  `--- component: <id> (role: ..., mediaType: ..., path: <path>) ---` line;
+  when the header states a `path`, use it verbatim.
+- Cross-boundary findings (evidence in files the diff does not change): the
+  file's repo-relative path in the reviewed tree, exactly as you read it.
+  Cite only files you actually opened; never infer or invent a path.
+- Only when a component's header carries no `path` — a rare case, since a
+  real code-diff bundle names its file — fall back to
+  `(<component id>):line` instead of inventing a path.
 
 ## Validator disproof strategies
 
@@ -48,6 +56,11 @@ instead of inventing a path.
    under real traffic patterns?
 4. Read source files beyond the diff to verify, per the grounding contract's
    tool-discipline rule.
+5. For a Missed Integration finding: does the cited alternative exist at
+   the cited location in the reviewed tree, is it reachable from the
+   changed code, and does it actually cover the claimed capability? If any
+   of the three fails, the finding is disproved. Prefer empirical checks
+   (run or trace the code) over re-reading when the tree and tools allow.
 
 ### Grounding-quality adjudication
 
