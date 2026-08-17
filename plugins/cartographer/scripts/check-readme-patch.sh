@@ -10,6 +10,19 @@
 # Run: bash check-readme-patch.sh <README_FILE> [REPO_ROOT]
 # REPO_ROOT default: git -C <dir of README_FILE> rev-parse --show-toplevel,
 # falling back to that directory if git is unavailable or it is not a repo.
+#
+# RC-11 — low-value detection signals (Task 6 rule (c)), stated verbatim
+# here and in core/local-validation.md. A drafted section is flagged
+# LOW_VALUE when it contains none of these four proxies for
+# spec-draft.md's "command, path, constraint, or routing rule":
+#
+#   | Spec term    | Machine-detectable proxy                                                                                |
+#   |--------------|----------------------------------------------------------------------------------------------------------|
+#   | command      | a fenced block labeled bash/sh/shell/console                                                             |
+#   | path         | an inline code span containing /, or a markdown link to a repo-relative path                             |
+#   | constraint   | a normative verb (must|shall|never|always|required|do not) or a digit sequence within 20 chars of        |
+#   |              | lines|chars|tokens|%                                                                                      |
+#   | routing rule | use when|invoke|route|→|-> on a line that also names a path, skill, or slash command                      |
 
 set -u
 
