@@ -29,9 +29,10 @@ success while raising inference cost by more than 20% on average; the
 null result held across models, agents, and both LLM-generated and
 developer-committed files.
 
-Locator: arXiv:2602.11988, transcribed via `kiln/design.md` § "Research
-basis".
-Status: transcribed-from kiln/design.md
+Locator: arXiv:2602.11988, transcribed via
+`core/references/sources/design-research-basis-2026-08-17.md` § "Research
+basis: not every README section is worth its cost by default".
+Status: transcribed-from core/references/sources/design-research-basis-2026-08-17.md
 
 ## Focused skills outperform comprehensive docs
 
@@ -110,10 +111,11 @@ never converted a near-miss to a pass on either agent. This directly
 constrains what Cartographer can claim: generated context is not shown
 to be a correctness lever.
 
-Locator: arXiv:2607.27250, transcribed via `kiln/external-sweep.md`
-(Query 1 / Findings § "Context files do not move correctness in a
-two-agent controlled ablation").
-Status: transcribed-from kiln/external-sweep.md
+Locator: arXiv:2607.27250, transcribed via
+`core/references/sources/external-sweep-2026-08-17.md` (Query 1 /
+Findings § "Context files do not move correctness in a two-agent
+controlled ablation").
+Status: transcribed-from core/references/sources/external-sweep-2026-08-17.md
 
 ## Context files are configuration-like artifacts skewed to functional content
 
@@ -126,10 +128,11 @@ architecture (68.1%), while non-functional requirements — security
 characterizes these files as evolving "like configuration code through
 frequent, small additions" rather than static documentation.
 
-Locator: arXiv:2511.12884, transcribed via `kiln/external-sweep.md`
-(Query 1 / Findings § "Context files are configuration-like artifacts
-skewed to functional content").
-Status: transcribed-from kiln/external-sweep.md
+Locator: arXiv:2511.12884, transcribed via
+`core/references/sources/external-sweep-2026-08-17.md` (Query 1 /
+Findings § "Context files are configuration-like artifacts skewed to
+functional content").
+Status: transcribed-from core/references/sources/external-sweep-2026-08-17.md
 
 ## Configuration smells are widespread in AGENTS.md/CLAUDE.md files
 
@@ -142,10 +145,11 @@ Context Bloat, Skill Leakage, and Conflicting Instructions frequently
 co-occurred. A ready-made, named anti-pattern set with published base
 rates for a Cartographer quality check.
 
-Locator: arXiv:2606.15828, transcribed via `kiln/external-sweep.md`
-(Query 1 / Findings § "Configuration smells are widespread in
-AGENTS.md/CLAUDE.md files").
-Status: transcribed-from kiln/external-sweep.md
+Locator: arXiv:2606.15828, transcribed via
+`core/references/sources/external-sweep-2026-08-17.md` (Query 1 /
+Findings § "Configuration smells are widespread in AGENTS.md/CLAUDE.md
+files").
+Status: transcribed-from core/references/sources/external-sweep-2026-08-17.md
 
 ## Iteratively tuned repository guidance raises task-resolve rate
 
@@ -160,10 +164,11 @@ to the null-result cluster above: guidance quality produced by an
 iterative probe loop, not a single generation pass, does move task
 success.
 
-Locator: arXiv:2606.20512, transcribed via `kiln/external-sweep.md`
-(Query 1 / Findings § "Iteratively tuned repository guidance raises
-SWE-bench Verified resolve rate").
-Status: transcribed-from kiln/external-sweep.md
+Locator: arXiv:2606.20512, transcribed via
+`core/references/sources/external-sweep-2026-08-17.md` (Query 1 /
+Findings § "Iteratively tuned repository guidance raises SWE-bench
+Verified resolve rate").
+Status: transcribed-from core/references/sources/external-sweep-2026-08-17.md
 
 ## Updating rule files measurably improves artifact compliance
 
@@ -177,10 +182,11 @@ new negative constraints. The study also found a mismatch: developers
 rate architectural constraints as highly important, but rule files
 primarily consist of low-level workflow and formatting constraints.
 
-Locator: arXiv:2606.12231, transcribed via `kiln/external-sweep.md`
-(Query 1 / Findings § "Updating rule files measurably improves artifact
+Locator: arXiv:2606.12231, transcribed via
+`core/references/sources/external-sweep-2026-08-17.md` (Query 1 /
+Findings § "Updating rule files measurably improves artifact
 compliance").
-Status: transcribed-from kiln/external-sweep.md
+Status: transcribed-from core/references/sources/external-sweep-2026-08-17.md
 
 ## AGENTS.md presence reduces agent runtime and output tokens
 
@@ -193,7 +199,8 @@ token consumption, with comparable task completion behavior. Pairs with
 the arXiv:2607.27250 null result above: the defensible claim is
 efficiency (cost, latency), not correctness.
 
-Locator: arXiv:2601.20404, transcribed via `kiln/external-sweep.md`
-(Query 10 / Findings § "AGENTS.md presence reduces agent runtime and
-output tokens").
-Status: transcribed-from kiln/external-sweep.md
+Locator: arXiv:2601.20404, transcribed via
+`core/references/sources/external-sweep-2026-08-17.md` (Query 10 /
+Findings § "AGENTS.md presence reduces agent runtime and output
+tokens").
+Status: transcribed-from core/references/sources/external-sweep-2026-08-17.md

@@ -28,14 +28,19 @@ READMEs). Loaded on demand from `core/knowledge/` `see:` markers (RC-4).
 Nygard, "Documenting Architecture Decisions"
 ([source](https://www.cognitect.com/blog/2011/11/15/documenting-architecture-decisions)),
 2011: the ADR Decision section is a hard rule for active voice — "We
-will…", never "It was decided that…" Larson, "Writing Engineering
-Strategy" ([source](https://staffeng.com/guides/engineering-strategy/)):
-"Specific statements create alignment; generic statements create the
-illusion of alignment." Applied together in `voice-and-structure.md`:
-directive sections state decisions without hedges (`might`, `could`,
-`consider`, `optionally` are directive killers), and a milestone or rule
-without an owner, date, or concrete criteria is a specificity failure
-even when it is active-voice and non-hedged.
+will…", never "It was decided that…" `voice-and-structure.md`'s own
+prose states the specificity principle it attributes to Larson,
+"Writing Engineering Strategy"
+([source](https://staffeng.com/guides/engineering-strategy/)) — specific
+statements create alignment, generic statements create the illusion of
+alignment — as a paraphrase, not a direct quotation from Larson: the
+source lists Larson under its Sources section and states the principle
+in its own words rather than quoting him verbatim. Applied together in
+`voice-and-structure.md`: directive sections state decisions without
+hedges (`might`, `could`, `consider`, `optionally` are directive
+killers), and a milestone or rule without an owner, date, or concrete
+criteria is a specificity failure even when it is active-voice and
+non-hedged.
 
 Locator: `plugins/gauntlet/skills/doc-patterns/voice-and-structure.md#active-voice-for-directives`
 and `#larsons-specificity-principle`.
@@ -77,8 +82,9 @@ multiple-testing correction.
 
 Locator: `plugins/gauntlet/skills/skill-authoring-principles/SKILL.md#verification-checklist`;
 Anthropic skill-authoring best practices, transcribed via
-`kiln/external-sweep.md` (Query 9 / Findings § "Vendor spec: concrete
-size and reference-depth limits for agent knowledge files").
+`core/references/sources/external-sweep-2026-08-17.md` (Query 9 /
+Findings § "Vendor spec: concrete size and reference-depth limits for
+agent knowledge files").
 Status: transcribed-from plugins/gauntlet/skills/skill-authoring-principles/SKILL.md
 
 ## Verification loops beat vague reminders
@@ -161,10 +167,9 @@ Two studies, cited together in `directive-review/lenses.md` as
 "Evidence: proxy" (no study isolates soft-vs-firm directive register
 specifically): FormatSpread (ICLR 2024) found meaning-preserving
 rephrasings of the same prompt swing accuracy by up to 76 points;
-IFEval++ found reliable@10 (the fraction of instructions reliably
-satisfied across 10 resamples) drops 18–62%. Together they support
-treating a hedge word on a load-bearing directive as a defect distinct
-from missing content.
+IFEval++ found reliable@10 drops 18–62%. Together they support treating
+a hedge word on a load-bearing directive as a defect distinct from
+missing content.
 
 Locator: `plugins/gauntlet/skills/directive-review/lenses.md#lens-4-ambiguity-literal-readability`
 Status: transcribed-from plugins/gauntlet/skills/directive-review/lenses.md
@@ -218,10 +223,11 @@ non-monotonic rather than constant. This is in direct tension with the
 vendor size guidance above: the numeric limits are prescriptive, not
 shown to move adherence in this study.
 
-Locator: arXiv:2605.10039, transcribed via `kiln/external-sweep.md`
-(Query 1 / Findings § "File-structure variables show no detectable
-effect on instruction adherence; compliance decays within a session").
-Status: transcribed-from kiln/external-sweep.md
+Locator: arXiv:2605.10039, transcribed via
+`core/references/sources/external-sweep-2026-08-17.md` (Query 1 /
+Findings § "File-structure variables show no detectable effect on
+instruction adherence; compliance decays within a session").
+Status: transcribed-from core/references/sources/external-sweep-2026-08-17.md
 
 ## Citation-grounded generation reaches high accuracy on code comprehension (single-author, self-reported)
 
@@ -236,10 +242,11 @@ systems relying on pure textual similarity. **Caveat, as recorded by the
 sweep that transcribed it:** single-author preprint, self-reported "zero
 hallucinations," no independent replication.
 
-Locator: arXiv:2512.12117, transcribed via `kiln/external-sweep.md`
-(Query 6 / Findings § "Citation-grounded retrieval reaches 92% citation
-accuracy on code comprehension").
-Status: transcribed-from kiln/external-sweep.md
+Locator: arXiv:2512.12117, transcribed via
+`core/references/sources/external-sweep-2026-08-17.md` (Query 6 /
+Findings § "Citation-grounded retrieval reaches 92% citation accuracy on
+code comprehension").
+Status: transcribed-from core/references/sources/external-sweep-2026-08-17.md
 
 ## Long standing-instruction documents are followed poorly over extended horizons
 
@@ -253,14 +260,21 @@ below 25%; failure patterns included letting a plausible but
 unauthorized request override standing policy, acting against a required
 check's own result, losing rule details over long horizons, and
 reporting compliance not actually achieved. Hard-ceiling evidence
-against exhaustive, long knowledge files: short, high-salience context
-outperforms a handbook, and self-reported compliance is not a usable
+against exhaustive, long knowledge files. **Derived consequence, not a
+study finding:** the benchmark has no short-context arm, so "short,
+high-salience context outperforms a handbook" is not something the study
+measured — it is an inference from the failure modes (agents losing rule
+details over long horizons, overriding standing policy, reporting
+compliance not achieved), the same status the LLM-staleness entry above
+gives its own "therefore needs deterministic anchors" consequence. What
+the study does show directly: self-reported compliance is not a usable
 gate signal.
 
-Locator: arXiv:2607.25398, transcribed via `kiln/external-sweep.md`
-(Query 8 / Findings § "Long standing-instruction documents are followed
-poorly over extended tool-use horizons").
-Status: transcribed-from kiln/external-sweep.md
+Locator: arXiv:2607.25398, transcribed via
+`core/references/sources/external-sweep-2026-08-17.md` (Query 8 /
+Findings § "Long standing-instruction documents are followed poorly over
+extended tool-use horizons").
+Status: transcribed-from core/references/sources/external-sweep-2026-08-17.md
 
 ## Single-agent README generation matches multi-agent quality at a fraction of the cost
 
@@ -275,10 +289,11 @@ lightweight developer-guided plan produced the highest overall quality
 of any configuration tested, with autonomous planning identified as the
 primary single-agent bottleneck.
 
-Locator: arXiv:2606.30524, transcribed via `kiln/external-sweep.md`
-(Query 7 / Findings § "Single-agent README generation matches
-multi-agent quality at a fraction of the cost").
-Status: transcribed-from kiln/external-sweep.md
+Locator: arXiv:2606.30524, transcribed via
+`core/references/sources/external-sweep-2026-08-17.md` (Query 7 /
+Findings § "Single-agent README generation matches multi-agent quality
+at a fraction of the cost").
+Status: transcribed-from core/references/sources/external-sweep-2026-08-17.md
 
 ## Repository-doc generation is benchmarked against other generators, not humans
 
@@ -288,9 +303,16 @@ Generate Holistic Documentation for Large-Scale Codebases"
 a 68.79% quality score against the closed-source DeepWiki baseline's
 64.06% on an LLM-judged rubric benchmark across seven languages — a
 machine-vs-machine comparison, with no human-authored-documentation
-baseline in the reported numbers, and both scores below 70%.
+baseline in the reported numbers, and both scores below 70%. The "across
+seven languages" detail is Claim-field-only in the sweep's Findings
+entry; it is verified by the sweep's Conductor verification addendum,
+which quotes the paper's abstract directly: "CodeWiki, a unified
+framework for automated repository-level documentation across seven
+programming languages."
 
-Locator: arXiv:2510.24428, transcribed via `kiln/external-sweep.md`
-(Query 7 / Findings § "Repository-level documentation generation
-benchmarked against a closed-source baseline, not humans").
-Status: transcribed-from kiln/external-sweep.md
+Locator: arXiv:2510.24428, transcribed via
+`core/references/sources/external-sweep-2026-08-17.md` (Query 7 /
+Findings § "Repository-level documentation generation benchmarked
+against a closed-source baseline, not humans"; Conductor verification
+addendum).
+Status: transcribed-from core/references/sources/external-sweep-2026-08-17.md

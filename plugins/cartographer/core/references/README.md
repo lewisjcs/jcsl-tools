@@ -17,6 +17,16 @@ indexed entry, so it does not list itself below.
 - [context-file-effectiveness.md](./context-file-effectiveness.md)
 - [authoring-conventions.md](./authoring-conventions.md)
 
+A `sources/` subdirectory also exists under `core/references/`, holding
+verbatim captures of run-folder research material (`kiln/design.md` §
+"Research basis" and `kiln/external-sweep.md`) that the entries above cite
+by `Status: transcribed-from` — captured here because the run folder does
+not ship with the released plugin. `sources/` sits at depth 2 under
+`core/references/`, outside RC-1's rule-(d) glob (`find "$CORE_DIR/references"
+-maxdepth 1 -type f -name '*.md' ! -name 'README.md'`), so it is
+deliberately **not** listed as an indexed file above and never trips rule
+(d).
+
 ## Sweep outcomes (in sweep order)
 
 1a. **Known internal sources —
