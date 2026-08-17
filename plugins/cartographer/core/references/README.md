@@ -18,10 +18,11 @@ indexed entry, so it does not list itself below.
 - [authoring-conventions.md](./authoring-conventions.md)
 
 A `sources/` subdirectory also exists under `core/references/`, holding
-verbatim captures of run-folder research material (`kiln/design.md` §
-"Research basis" and `kiln/external-sweep.md`) that the entries above cite
-by `Status: transcribed-from` — captured here because the run folder does
-not ship with the released plugin. `sources/` sits at depth 2 under
+verbatim captures of the release's build-time research record (not
+shipped in source form; captured verbatim here as
+`sources/design-research-basis-2026-08-17.md` and
+`sources/external-sweep-2026-08-17.md`) that the entries above cite by
+`Status: transcribed-from`. `sources/` sits at depth 2 under
 `core/references/`, outside RC-1's rule-(d) glob (`find "$CORE_DIR/references"
 -maxdepth 1 -type f -name '*.md' ! -name 'README.md'`), so it is
 deliberately **not** listed as an indexed file above and never trips rule
@@ -58,18 +59,22 @@ deliberately **not** listed as an indexed file above and never trips rule
 2. **Glean search over Slack and PR-review history** — unavailable:
    Glean not accessible to this agent.
 
-3. **Reuse: arXiv:2602.11988, already written up in `kiln/design.md` §
-   "Research basis"** — yielded: 3 entries (`readme-scope.md` §§
+3. **Reuse: arXiv:2602.11988, already written up in the release design
+   document § "Research basis" (captured at
+   `sources/design-research-basis-2026-08-17.md`)** — yielded: 3 entries
+   (`readme-scope.md` §§
    Repository-context files: null result on task success, positive
    cost, Concrete instructions succeed; generic overviews do not;
    `context-file-effectiveness.md` § AGENTS.md and context files: a
    null result on task success).
 
 4. **Fresh external web search — REQUIRED per a scope amendment recorded
-   in the run ledger (conducted by a dedicated research agent, not this
-   Crafter, per user directive; superseded the original "last resort
-   only" scoping)** — yielded: 17 integrated entries across 13 queries
-   (`kiln/external-sweep.md` § Query ledger), plus 1 corroborating
+   in the release's build-time research record (conducted by a dedicated
+   research agent, not this Crafter, per user directive; superseded the
+   original "last resort only" scoping)** — yielded: 17 integrated
+   entries across 13 queries (captured at
+   `sources/external-sweep-2026-08-17.md` § Query ledger), plus 1
+   corroborating
    addition folded into the existing "Skill and reference file size
    budgets" entry in `authoring-conventions.md` rather than duplicated
    (RC-14/RC-13 discipline: a corroborating source is not a new claim).

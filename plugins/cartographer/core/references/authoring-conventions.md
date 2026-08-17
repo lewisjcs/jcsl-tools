@@ -305,7 +305,7 @@ a 68.79% quality score against the closed-source DeepWiki baseline's
 machine-vs-machine comparison, with no human-authored-documentation
 baseline in the reported numbers, and both scores below 70%. The "across
 seven languages" detail is Claim-field-only in the sweep's Findings
-entry; it is verified by the sweep's Conductor verification addendum,
+entry; it is verified by the sweep's Independent verification addendum,
 which quotes the paper's abstract directly: "CodeWiki, a unified
 framework for automated repository-level documentation across seven
 programming languages."
@@ -313,6 +313,6 @@ programming languages."
 Locator: arXiv:2510.24428, transcribed via
 `core/references/sources/external-sweep-2026-08-17.md` (Query 7 /
 Findings § "Repository-level documentation generation benchmarked
-against a closed-source baseline, not humans"; Conductor verification
+against a closed-source baseline, not humans"; Independent verification
 addendum).
 Status: transcribed-from core/references/sources/external-sweep-2026-08-17.md

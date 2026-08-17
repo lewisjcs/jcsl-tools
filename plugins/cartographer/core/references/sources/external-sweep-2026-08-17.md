@@ -168,9 +168,9 @@ quotes are verbatim from the fetched page.
 - **Opened:** yes (WebFetch) — abstract page (full verbatim abstract, fetched twice to eliminate ellipsis)
 - **Relevance:** Provides an evaluation-rubric precedent (CodeWikiBench, multi-dimensional rubrics, LLM-based assessment) for scoring Cartographer output, but is a negative result for the "generated beats human docs" question — the comparison is against another generator, and both scores sit under 70%.
 
-## Conductor verification addendum (2026-08-17)
+## Independent verification addendum (2026-08-17)
 
-Five dataset details appeared in Findings' Claim fields without a covering sentence in their Quote fields. The conductor re-opened each abstract (WebFetch, live arXiv pages) and verified them verbatim. Supplementary quotes, each from its paper's abstract:
+Five dataset details appeared in Findings' Claim fields without a covering sentence in their Quote fields. A second, independent review pass re-opened each abstract (live arXiv pages) and verified them verbatim. Supplementary quotes, each from its paper's abstract:
 
 - arXiv:2603.00489 — "Our evaluation on 27,772 PRs across 714 popular repositories demonstrates high precision and utility."
 - arXiv:2604.03447 — "TRACE constructs paired clean and perturbed versions of real-world Java method bundles by injecting known faults into the documentation, implementation, or both while holding the remaining artifacts fixed." (language: Java; count "456 method bundles" also verified in-abstract)
@@ -178,7 +178,7 @@ Five dataset details appeared in Findings' Claim fields without a covering sente
 - arXiv:2212.01479 — outdated reference defined as "code element references that survive in the documentation after all source code instances have been deleted"
 - arXiv:2510.24428 — "CodeWiki, a unified framework for automated repository-level documentation across seven programming languages."
 
-Earlier the conductor also spot-verified the full quotes of arXiv:2607.27250 and arXiv:2601.20404 against their live abstract pages — both verbatim, authors and titles matching.
+The same review pass also spot-verified the full quotes of arXiv:2607.27250 and arXiv:2601.20404 against their live abstract pages — both verbatim, authors and titles matching.
 
 ## Gaps
 

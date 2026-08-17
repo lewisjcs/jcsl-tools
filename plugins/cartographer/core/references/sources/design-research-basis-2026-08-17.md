@@ -1,6 +1,9 @@
-# Capture: `kiln/design.md` § "Research basis"
+# Capture: release design document § "Research basis"
 
-Captured 2026-08-17. Verbatim copy of the source document's "Research basis: not every README section is worth its cost by default" section, preserved here because the Slice 1 run folder (`kiln/`) does not ship with the released plugin and `core/references/` entries citing it need a repo-relative path that actually resolves in the shipped tree.
+Captured 2026-08-17. Verbatim capture of the release design document's
+"Research basis: not every README section is worth its cost by default"
+section, preserved so entry citations resolve to a repo-relative path in
+the shipped tree.
 
 ### Research basis: not every README section is worth its cost by default
 
