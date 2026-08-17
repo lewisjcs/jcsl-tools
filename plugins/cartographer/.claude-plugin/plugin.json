@@ -1,0 +1,9 @@
+{
+  "name": "cartographer",
+  "version": "0.1.0",
+  "description": "Repository cartographer — analyzes a repo's structure and evidence to draft a grounded, claim-classified README enrichment, flagging unsupported claims and stale content.",
+  "author": { "name": "Josh C.S. Lewis" },
+  "repository": "https://github.com/lewisjcs/jcsl-tools",
+  "license": "MIT",
+  "keywords": ["readme", "documentation", "repo-mapping", "grounding", "evidence"]
+}
