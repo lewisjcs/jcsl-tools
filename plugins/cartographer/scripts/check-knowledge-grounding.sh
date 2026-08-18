@@ -26,23 +26,6 @@ FAIL=0
 # UTILITIES
 # ──────────────────────────────────────────────────────────────────────────────
 
-# Check if a line is inside a fenced code block.
-# Returns 0 if the line is inside a fence, 1 if outside.
-is_in_fence() {
-  local line_num="$1"
-  local fence_state=0
-  local i
-  # Parse line by line up to line_num to track fence state
-  # This assumes $FILE is set in the caller context
-  for ((i = 1; i <= line_num; i++)); do
-    local line="$(sed -n "${i}p" "$FILE")"
-    if [[ $line =~ ^[[:space:]]*\`{3,}|^[[:space:]]*~{3,} ]]; then
-      fence_state=$((1 - fence_state))
-    fi
-  done
-  return $fence_state
-}
-
 # Detect unterminated fences in a file
 check_fence_integrity() {
   local file="$1"
@@ -276,28 +259,7 @@ check_rule_c() {
   local line_num=0
   local fence_state=0
 
-  # First pass: extract reference slug set
-  local refs_file="$REFERENCES_DIR/README.md"
-  local -A slug_map
-
-  if [ -f "$refs_file" ]; then
-    local in_slugs_section=0
-    while IFS= read -r line; do
-      if [[ $line =~ ^###[[:space:]]+(.+)$ ]]; then
-        in_slugs_section=1
-        local ref_file="${BASH_REMATCH[1]}"
-        # Extract slugs from this reference file
-        local ref_path="$REFERENCES_DIR/$ref_file"
-        if [ -f "$ref_path" ]; then
-          while IFS= read -r slug; do
-            slug_map["$ref_file${slug}"]="1"
-          done < <(extract_slugs "$ref_path")
-        fi
-      fi
-    done < "$refs_file"
-  fi
-
-  # Second pass: check see: markers
+  # Check see: markers; anchors verify against the cited file's own headings
   while IFS= read -r line; do
     line_num=$((line_num + 1))
 
