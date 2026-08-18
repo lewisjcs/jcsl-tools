@@ -71,12 +71,18 @@ for both files, then apply exactly one row of this table:
 |---|---|---|
 | absent | absent | Create `progress.md` with `mode: full` as its first line and five `[ ]` stage lines beneath it. Run in full mode. |
 | absent | present | Select the mode by `core/refresh.md` § Selecting the mode — apply in order, once per run, at Step 0. Create `progress.md` with the resulting `mode:` line first — `mode: full` or `mode: targeted <source-revision>` — and five `[ ]` stage lines beneath it. |
-| present | absent | Resume the run at the first `[ ]` stage. Read the mode from `progress.md`'s `mode:` line; do not re-derive it. |
+| present | absent | Read the mode from `progress.md`'s `mode:` line; do not re-derive it. `mode: full` → resume the run at the first `[ ]` stage in full mode. `mode: targeted <source-revision>` → the recorded mode is unexecutable, because the fingerprint it would carry forward from is gone, so restart at stage 1 in **full mode** and rewrite the checklist with `mode: full` as its first line — the same safe-failure move as a checklist carrying no `mode:` line. |
 | present | present | Resume the run at the first `[ ]` stage. Read the mode from `progress.md`'s `mode:` line; do not re-derive it. An interrupted run's mode is a fact about that run, not about the current state of `last-run.md`. |
 
 A resumed run may be in targeted mode — that is what recording the mode
 buys. Do not treat resumption as full mode, and do not re-run a stage
 already marked `[x]`.
+
+The `<source-revision>` written on a `mode: targeted` line is there for
+the operator: it makes an interrupted targeted run's fingerprint base
+visible without opening the run state. It is **not** consulted on resume
+and is compared against nothing — the `mode:` line is authoritative for
+which mode a resumed run is in.
 
 One non-firing branch, stated so it is not improvised: `progress.md`
 exists but carries no `mode:` line — a checklist written before this
@@ -159,7 +165,7 @@ Every classified section lands in exactly one report bucket:
 | Bucket | The report lists a section here when |
 |---|---|
 | confirmed current | It was assessed this run, its freshness is `current`, and collected evidence positively supported at least one of its claims. |
-| not assessed | It was carried forward — state its `last-assessed-revision` alongside it — or it was assessed this run and the collected evidence neither supported nor contradicted any claim. |
+| not assessed | Carried forward under `core/refresh.md`'s selection rule 7 — state its `last-assessed-revision` alongside it — **or** assessed this run with freshness `current` where collected evidence neither supported nor contradicted any claim. |
 | drifted | Its freshness is `stale` or `obsolete`. Such a section is always freshly assessed, never carried forward. |
 
 Concrete check before reporting: every section this run classified appears
@@ -298,10 +304,21 @@ the report:
    complete.
 6. `.cartographer/last-run.md` exists, its `source-revision` equals
    `git -C <REPO_ROOT> rev-parse HEAD`, and it carries one row per
-   section this run classified.
-7. A run that fell back to full mode for any reason other than an absent
-   `.cartographer/last-run.md` reported exactly one of `core/refresh.md`'s
-   eight `targeted mode unavailable: …` strings, verbatim.
+   section this run classified — or the run stopped at a named stage and
+   reported why.
+7. A run that selected its mode **this run** — the `absent | present`
+   cell of Step 0's table, the only cell that runs `core/refresh.md`'s
+   selection procedure — and landed in full mode for any reason other
+   than an absent `.cartographer/last-run.md` reported exactly one of
+   `core/refresh.md`'s eight `targeted mode unavailable: …` strings,
+   verbatim. This item does not apply to a run that resumed from an
+   existing `progress.md`: such a run read its mode from the `mode:`
+   line and selected no mode this run, so it has no selection reason to
+   report. Neither does it apply to a restart forced into full mode by a
+   missing `mode:` line or by an unexecutable recorded `mode: targeted`
+   — those are Step 0 branches, not selection outcomes. Do not fabricate
+   a string for any of them, and do not treat the missing string as a
+   failure.
 8. Every section this run classified appears in exactly one of the three
    report buckets — confirmed current, not assessed, drifted — and every
    carried-forward entry states its `last-assessed-revision`.
