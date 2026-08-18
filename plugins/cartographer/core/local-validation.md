@@ -188,9 +188,9 @@ branches for classification (`orphan-start`, `orphan-end`) and a
 malformed-marker-line condition — a `cartographer:managed:start`/`:end`
 HTML comment carrying zero or two id tokens instead of exactly one,
 which matches neither well-formed marker pattern. It scans outside
-fenced code blocks only, reusing the same fence-toggle idiom gates
-(a)-(c) already use, so a marker shown inside a fenced example is not
-treated as a live marker.
+fenced code blocks only, reusing the same fence-toggle idiom gate (a)
+(`check_links`) already uses, so a marker shown inside a fenced
+example is not treated as a live marker.
 
 **`derivation` is not mechanically enforced.** `readme-ownership.md`'s
 derivation rule ("the kebab-case slug of the section's heading text")
@@ -258,8 +258,9 @@ Before a checker change is trusted, confirm every one of these:
    exits 0 (this file lives under `core/` and is subject to RC-7 like
    every other file there; it names no profile directory path, so no
    exemption token is needed).
-5. The marker-grammar gate enforces exactly the four `<id>` rules named
-   in `readme-ownership.md`'s acceptance criterion (format, uniqueness,
-   matching, nesting) plus the two orphan conditions and the
-   malformed-marker-line branch — never `derivation`, which stays a
+5. The marker-grammar gate mechanically enforces exactly four of the
+   five `<id>` rules `readme-ownership.md` § Managed-section markers
+   defines (format, uniqueness, matching, nesting) plus the two orphan
+   conditions and the malformed-marker-line branch — never
+   `derivation`, the deliberately-unenforced fifth rule, which stays a
    human-reviewer check per the gap note above.

@@ -234,7 +234,7 @@ scan_markers() {
         "$README_FILE" "$ln" "$id" "$first_line"
       GAPS=$((GAPS + 1))
       already_dup=0
-      for d in "${dup_ids[@]}"; do
+      for d in "${dup_ids[@]+"${dup_ids[@]}"}"; do
         [ "$d" = "$id" ] && already_dup=1 && break
       done
       [ "$already_dup" -eq 0 ] && dup_ids+=("$id")
@@ -264,18 +264,18 @@ scan_markers() {
   # start triggered nesting, since that start line is its own range's
   # lower bound).
   local c rest start_ln end_ln pid excluded b n
-  for c in "${candidates[@]}"; do
+  for c in "${candidates[@]+"${candidates[@]}"}"; do
     start_ln="${c%%:*}"
     rest="${c#*:}"
     end_ln="${rest%%:*}"
     pid="${rest#*:}"
 
     excluded=0
-    for d in "${dup_ids[@]}"; do
+    for d in "${dup_ids[@]+"${dup_ids[@]}"}"; do
       [ "$d" = "$pid" ] && excluded=1 && break
     done
     if [ "$excluded" -eq 0 ]; then
-      for b in "${bad_format_lines[@]}"; do
+      for b in "${bad_format_lines[@]+"${bad_format_lines[@]}"}"; do
         if [ "$b" = "$start_ln" ] || [ "$b" = "$end_ln" ]; then
           excluded=1
           break
@@ -283,7 +283,7 @@ scan_markers() {
       done
     fi
     if [ "$excluded" -eq 0 ]; then
-      for n in "${nesting_lines[@]}"; do
+      for n in "${nesting_lines[@]+"${nesting_lines[@]}"}"; do
         if [ "$n" -ge "$start_ln" ] && [ "$n" -le "$end_ln" ]; then
           excluded=1
           break
