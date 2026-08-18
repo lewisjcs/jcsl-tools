@@ -183,10 +183,12 @@ scan_markers() {
         top_idx=$(( ${#stack_ids[@]} - 1 ))
         id0="${stack_ids[$top_idx]}"
         line0="${stack_lines[$top_idx]}"
-        unset 'stack_ids[top_idx]'
-        unset 'stack_lines[top_idx]'
-        stack_ids=("${stack_ids[@]}")
-        stack_lines=("${stack_lines[@]}")
+        # Pop is always the top element (LIFO nesting stack), so a
+        # truncating slice is equivalent to unset+recompact and never
+        # expands a possibly-empty array bare (stack_ids is non-empty
+        # here, per the count check above).
+        stack_ids=("${stack_ids[@]:0:top_idx}")
+        stack_lines=("${stack_lines[@]:0:top_idx}")
         if [ "$id" != "$id0" ]; then
           printf 'GAP|marker|%s:%d|%s|marker pair violates the matching rule: end id does not match the start id at line %d\n' \
             "$README_FILE" "$line_num" "$id" "$line0"
