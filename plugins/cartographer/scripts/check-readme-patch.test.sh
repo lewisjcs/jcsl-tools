@@ -352,6 +352,17 @@ assert_exit "dangling link fixed: exit 0" "0" "$rc"
 assert_contains "dangling link fixed: OK|link record" "OK|link|" "$out"
 assert_not_contains "dangling link fixed: no GAP record" "GAP|link|" "$out"
 
+# anchor links: the `#`-prefixed branch is a separate code path from the
+# REPO_ROOT-relative one above and had no assertions at all — assert_line
+# pins its sixth field on both the OK and GAP printfs.
+out="$(bash "$CHECK" "$FIXTURES_DIR/anchor-link/README.candidate.md" "$FIXTURES_DIR/anchor-link" 2>&1)"
+rc=$?
+assert_exit "anchor link: exit 1" "1" "$rc"
+assert_line "anchor link: OK|link record for resolving anchor" \
+  "OK|link|$FIXTURES_DIR/anchor-link/README.candidate.md:5|#setup-guide|anchor resolves within README|out-of-patch" "$out"
+assert_line "anchor link: GAP|link record for missing anchor" \
+  "GAP|link|$FIXTURES_DIR/anchor-link/README.candidate.md:7|#does-not-exist|anchor does not resolve within README|out-of-patch" "$out"
+
 # ──────────────────────────────────────────────────────────────────────────────
 # GATE (b): documented command verification (RC-10)
 # ──────────────────────────────────────────────────────────────────────────────
@@ -368,8 +379,10 @@ assert_contains "clause 1: package.json cited" "package.json" "$out"
 out="$(bash "$CHECK" "$FIXTURES_DIR/npm-builtin/README.candidate.md" "$FIXTURES_DIR/npm-builtin" 2>&1)"
 rc=$?
 assert_exit "clause 2 (npm-builtin): exit 0" "0" "$rc"
-assert_contains "clause 2: OK|command record for npm install" "OK|command|$FIXTURES_DIR/npm-builtin/README.candidate.md:6|npm install|npm-builtin" "$out"
-assert_contains "clause 2: OK|command record for npm audit" "OK|command|$FIXTURES_DIR/npm-builtin/README.candidate.md:7|npm audit|npm-builtin" "$out"
+assert_line "clause 2: OK|command record for npm install" \
+  "OK|command|$FIXTURES_DIR/npm-builtin/README.candidate.md:6|npm install|npm-builtin|out-of-patch" "$out"
+assert_line "clause 2: OK|command record for npm audit" \
+  "OK|command|$FIXTURES_DIR/npm-builtin/README.candidate.md:7|npm audit|npm-builtin|out-of-patch" "$out"
 
 out="$(bash "$CHECK" "$FIXTURES_DIR/npm-builtin-precedence/README.candidate.md" "$FIXTURES_DIR/npm-builtin-precedence" 2>&1)"
 rc=$?
@@ -380,13 +393,14 @@ assert_not_contains "clause 2: not .github/workflows verbatim match" "verified v
 out="$(bash "$CHECK" "$FIXTURES_DIR/command-ci-workflow/README.candidate.md" "$FIXTURES_DIR/command-ci-workflow" 2>&1)"
 rc=$?
 assert_exit "clause 3 (.github/workflows verbatim): exit 0" "0" "$rc"
-assert_contains "clause 3: OK|command record" "OK|command|" "$out"
-assert_contains "clause 3: workflows cited" ".github/workflows" "$out"
+assert_line "clause 3: OK|command record" \
+  "OK|command|$FIXTURES_DIR/command-ci-workflow/README.candidate.md:6|lint-check --strict|verified via .github/workflows verbatim match|out-of-patch" "$out"
 
 out="$(bash "$CHECK" "$FIXTURES_DIR/command-inrepo-path/README.candidate.md" "$FIXTURES_DIR/command-inrepo-path" 2>&1)"
 rc=$?
 assert_exit "clause 4 (in-repo path): exit 0" "0" "$rc"
-assert_contains "clause 4: OK|command record" "OK|command|" "$out"
+assert_line "clause 4: OK|command record" \
+  "OK|command|$FIXTURES_DIR/command-inrepo-path/README.candidate.md:6|bash scripts/helper.sh|verified via in-repo path scripts/helper.sh|out-of-patch" "$out"
 assert_not_contains "clause 4: not tagged external-tool" "external-tool" "$out"
 
 out="$(bash "$CHECK" "$FIXTURES_DIR/manifest-less/README.external-tool.candidate.md" "$FIXTURES_DIR/manifest-less" 2>&1)"

@@ -365,8 +365,9 @@ Before a checker change is trusted, confirm every one of these:
    `section-value` and `marker` record carries five and no scope tag.
    Assert this whole-line — a substring assertion cannot see a field
    appended to or dropped from the end of a record.
-6. The scope tag is computed from the well-formed-pair set below and
-   from nothing else. A pair that popped cleanly with matching ids but
+6. The scope tag is computed from the well-formed-pair set defined in
+   § The well-formed-pair set above and from nothing else. A pair that
+   popped cleanly with matching ids but
    was withheld for a `format`, `uniqueness`, or `nesting` violation must
    leave its enclosed findings `out-of-patch`; a suite with no fixture of
    that shape cannot tell a correct tag from one computed against the
