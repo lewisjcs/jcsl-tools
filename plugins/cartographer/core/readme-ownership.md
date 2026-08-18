@@ -68,10 +68,11 @@ Apply in order, once per section:
 Non-firing branch, stated explicitly: branch 3 also catches the section
 whose claims collected evidence neither supports nor contradicts. Such a
 section is `current` **and is recorded as unassessed**, and the run
-reports it as unassessed rather than as verified. Slice 1 guarantees only
-that distinction in the record; the reporting semantics that separate
-"not assessed" from "no drift" for a caller are Slice 2 scope and are not
-implemented here.
+reports it as unassessed rather than as verified. `core/refresh.md`
+defines the run's reporting semantics on top of that distinction: this
+branch-3 record is the one that lands in its **not assessed** bucket by
+evidence being collected and silent, distinct from a carried-forward
+section that lands in the same bucket by never being assessed at all.
 
 ## Action matrix
 
@@ -149,19 +150,18 @@ its last line:
 | matching | The `start` id and the `end` id are byte-identical. |
 | nesting | A managed block never contains another `cartographer:managed:start`. |
 
-**No Slice 1 check enforces this grammar.** The checks that ship in
-Slice 1 cover knowledge-file grounding, grounding provenance, the
-core/profile boundary, and drafted-README link, command, and
-section-value validation; none of them reads a managed-section marker.
-Mechanical enforcement of the grammar is Slice 2 scope. This deferral is
-stated here so the gap is visible rather than assumed closed.
+**Four of the five `<id>` rules are mechanically enforced.** The format,
+uniqueness, matching, and nesting rules are enforced by
+`core/local-validation.md`'s gate (d), `RULE` `marker`. `derivation` is
+not mechanically checked, and that residual gap is stated here so it
+stays visible rather than assumed closed.
 
-Until Slice 2 enforces it, the grammar still has a consequence, because
+The grammar has a consequence independent of the gate, because
 classification reads it: a marker pair that violates any rule above is
 not well-formed, so ownership branch 1 does not fire and the section
-classifies as `unknown`. An unenforced grammar therefore costs a section
-its managed status rather than passing silently — a malformed block is
-preserved and reported, never patched.
+classifies as `unknown`. The gate reports the violation, and
+classification still costs the section its managed status — a malformed
+block is preserved and reported, never patched.
 
 Note that the managed-section family and the evidentiary marker family
 (`see:` and `rationale:`, defined in

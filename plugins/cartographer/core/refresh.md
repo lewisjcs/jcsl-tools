@@ -76,7 +76,7 @@ classified section. Apply in order, once per section:
 
 1. The section is `cartographer-managed` → its marker `<id>`, verbatim.
 2. Otherwise → the kebab slug of its heading text, computed exactly as
-   `make_slug()` in `scripts/check-readme-patch.sh:73-79` computes it:
+   `make_slug()` in `scripts/check-readme-patch.sh:90-96` computes it:
    delete every character that is not alphanumeric, space, or hyphen;
    lowercase; replace each space with `-`.
 3. When two sections yield the same key, the first in document order

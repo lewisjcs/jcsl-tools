@@ -30,6 +30,15 @@ Collect from the repository under analysis only: tracked files, its
 manifests, its CI configuration, and its history. Every collected fact is
 recorded with the location it was read from, because a fact whose
 location was not recorded cannot become a claim reference in stage 2.
+When a claim is established by the absence of a file set, stage 1 records
+the pathspec it evaluated, because a pathspec that was not recorded
+cannot become a watched path in the run state.
+
+In targeted mode, stage 1 runs only for the sections
+`core/refresh.md`'s per-section procedure selects for assessment; a
+carried-forward section's evidence is reused from the run state rather
+than re-collected. `core/refresh.md` is the sole definition site for mode
+selection and for the run-state format this stage's recording feeds.
 
 Failure branch: if the repository cannot be read, the run stops at stage
 1 and reports the read failure. It does not proceed with a partial
@@ -118,10 +127,16 @@ after-state as if nothing had failed.
 | The claim ledger from stage 2 | working-only |
 | The validation report from stage 4 | working-only |
 | The run report from stage 5 | working-only |
+| The run state from stage 5 (`.cartographer/last-run.md`) | working-only |
 | Any scratch, intermediate, or log file the run writes | working-only |
 
-Repository-bound artifacts are the only content a patch may contain. In
-Slice 1 there is exactly one: the README patch itself.
+Repository-bound artifacts are the only content a patch may contain.
+Exactly one artifact class is repository-bound: the README patch itself.
+
+The run state is working-only: it lives under `.cartographer/`, a
+directory added to the target repository's `.git/info/exclude` rather
+than to its tracked `.gitignore`, so it stays local-only ignore state
+and is never committed to the repository.
 
 Working-only artifacts never enter a patch. They are the run's own
 records; a reader of the repository never receives them, and a reviewer

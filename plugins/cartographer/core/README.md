@@ -12,12 +12,10 @@ boundary is checked, not just asserted.
 | [claim-model.md](./claim-model.md) | The three evidence classes, the `unresolved-gap` disposition, the claim ledger, and the omit-and-report rule. Sole definition site for those terms. |
 | [readme-ownership.md](./readme-ownership.md) | The ownership × freshness classification, the twelve-cell action matrix, and the managed-section marker grammar. Sole definition site for the ownership and freshness values. |
 | [pipeline.md](./pipeline.md) | The five-stage sequence, the report contract, the repository-bound vs working-only artifact split, and the core/profile independence guarantee. |
+| [local-validation.md](./local-validation.md) | The link, command, and low-value-section gates plus the managed-section marker-grammar gate; the report format, the scope tag, and the exit-code rule. Sole definition site for those terms. `pipeline.md` stage 4 states the hand-off it owns. |
+| [refresh.md](./refresh.md) | The run-state file format, the per-section fingerprint schema, the mode-selection rule (full mode vs targeted mode), and the three-bucket run report (confirmed current / not assessed / drifted). Sole definition site for those terms. |
 | [knowledge/](./knowledge/) | Terse, always-loaded authoring guidance the core draws on while drafting. Every claim-bearing section carries one short marker. |
 | [references/](./references/) | The fuller cited research behind `knowledge/`, loaded on demand only — never at drafting time. |
-
-The local-validation contract (`local-validation.md`) is added by this
-slice's local-validation task; `pipeline.md` stage 4 states the hand-off
-it owns.
 
 ## The core never depends on a profile
 
