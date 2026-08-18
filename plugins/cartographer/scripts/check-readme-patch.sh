@@ -53,7 +53,7 @@ fi
 GAPS=0
 LOW_VALUE=0
 
-# RC-10 clause 4 — declared in core/local-validation.md as the visible,
+# RC-10 clause 5 — declared in core/local-validation.md as the visible,
 # auditable list; this is the single source the script reads.
 ALLOWLIST="claude git jq bash python3 shasum sha256sum"
 

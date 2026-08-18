@@ -13,7 +13,7 @@ codes, the external-tool allowlist, and the low-value proxy list. It uses
 
 ## External-tool allowlist
 
-Declared here, at the top, because RC-10 clause 4 depends on this list
+Declared here, at the top, because RC-10 clause 5 depends on this list
 being visible and auditable rather than a pattern buried in the script.
 A documented command whose `argv[0]` is on this list is verified without
 needing a `package.json` script or a CI match:
@@ -135,7 +135,7 @@ this order — the first clause that matches decides the report message:
 5. its `argv[0]` is on the external-tool allowlist above. These record
    `OK|command|…|external-tool` and are not gaps.
 
-A command matching none of the four is
+A command matching none of the five is
 `GAP|command|<file>:<line>|<command>|…`.
 
 Checking in this fixed order means a command like `bash
