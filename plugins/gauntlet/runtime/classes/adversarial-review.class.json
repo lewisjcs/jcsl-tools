@@ -644,7 +644,7 @@
           "profiles/adversarial-review/doc-text/lenses.md",
           "bindings/claude-code.json"
         ],
-        "sourceHash": "4831a9c51b8486b0ef6f015b4a122ac2c86f87ea7d0733936caaf60673a1546a"
+        "sourceHash": "4713801b2e3868adb33e207592d32f3a7517325fce49b8cc68b461c6dc4814b1"
       }
     },
     "codex": {
@@ -664,7 +664,7 @@
           "profiles/adversarial-review/doc-text/lenses.md",
           "bindings/codex.json"
         ],
-        "sourceHash": "92232a3d6535884ad7ef59e2ff08db1444d6c9673261e2a9e62dab7b7f364c09"
+        "sourceHash": "61cc3743f72c32e486ea96acd9b96ac11b7088fede5bf901189784f5a311ee1c"
       }
     }
   },

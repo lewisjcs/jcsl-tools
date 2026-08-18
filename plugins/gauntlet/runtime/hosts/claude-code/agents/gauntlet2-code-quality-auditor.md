@@ -2,7 +2,7 @@
 name: gauntlet2-code-quality-auditor
 description: Code-quality auditor that reviews a code artifact against a written rulebook — compliance rules, staleness signals, gap heuristics, and test-integrity checks — reporting rule-anchored findings with warnings-and-gaps character. Runs only inside the gauntlet2-code-quality-audit skill's runtime-driven handshake, in a fresh isolated dispatch — never invoked standalone.
 tools: Read, Grep, Glob, Bash
-model: claude-sonnet-4-6
+model: claude-sonnet-5
 ---
 <!-- generated from canon; do not edit -->
 

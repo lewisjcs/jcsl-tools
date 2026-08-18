@@ -1,6 +1,6 @@
 {
   "name": "gauntlet",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "Multi-skill AI review harness — orchestrates adversarial, security, directive, doc, plan, and skill-audit review lanes; includes the v2 pilot lanes gauntlet2-adversarial-review and gauntlet2-code-quality-audit (explicit invocation only)",
   "author": { "name": "Josh C.S. Lewis" },
   "repository": "https://github.com/lewisjcs/jcsl-tools",

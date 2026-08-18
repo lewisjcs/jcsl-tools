@@ -1,7 +1,7 @@
 {
-  "jcsl:gauntlet:adversarial-finder": "claude-sonnet-4-6",
-  "jcsl:gauntlet:adversarial-validator": "claude-sonnet-4-6",
-  "jcsl:gauntlet:code-quality-auditor": "claude-sonnet-4-6",
+  "jcsl:gauntlet:adversarial-finder": "claude-sonnet-5",
+  "jcsl:gauntlet:adversarial-validator": "claude-sonnet-5",
+  "jcsl:gauntlet:code-quality-auditor": "claude-sonnet-5",
   "runtimeInvocation": "node \"${CLAUDE_PLUGIN_ROOT}/runtime/bin/cli.mjs\"",
   "status": "incumbent-parity-start"
 }
