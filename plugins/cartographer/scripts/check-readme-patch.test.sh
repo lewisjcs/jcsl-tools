@@ -62,6 +62,220 @@ TMP_WORK="$(mktemp -d)"
 trap 'rm -rf "$TMP_WORK"' EXIT
 
 # ──────────────────────────────────────────────────────────────────────────────
+# GATE (d): managed-section marker grammar — runs first in MAIN, so its
+# tests run first here too. One negative fixture per enforced rule
+# (format, uniqueness, matching, nesting) plus the two orphan cases and
+# the malformed-marker-line branch, each with a pass-once-fixed
+# counterpart.
+# ──────────────────────────────────────────────────────────────────────────────
+
+echo "Managed-section marker grammar (gate d):"
+
+MARKER_FIXTURES="$FIXTURES_DIR/marker-grammar"
+
+# format — bad-format/: start/end id Setup_Guide. Also proves the
+# fence-toggle idiom is shared: the fixture repeats the same malformed
+# ids inside a fenced ```markdown``` example, which must NOT double the
+# record count.
+out="$(bash "$CHECK" "$MARKER_FIXTURES/bad-format/README.candidate.md" "$MARKER_FIXTURES/bad-format" 2>&1)"
+rc=$?
+assert_exit "marker format: exit 1" "1" "$rc"
+assert_contains "marker format: start record" \
+  "GAP|marker|$MARKER_FIXTURES/bad-format/README.candidate.md:5|Setup_Guide|marker id violates the format rule: must match ^[a-z0-9]+(-[a-z0-9]+)*\$ and be at most 64 characters" "$out"
+assert_contains "marker format: end record" \
+  "GAP|marker|$MARKER_FIXTURES/bad-format/README.candidate.md:7|Setup_Guide|marker id violates the format rule: must match ^[a-z0-9]+(-[a-z0-9]+)*\$ and be at most 64 characters" "$out"
+format_gap_count="$(grep -c '^GAP|marker|.*violates the format rule' <<<"$out")"
+if [ "$format_gap_count" = "2" ]; then
+  printf '  ok   — marker format: exactly 2 records (fenced example ignored)\n'
+  PASS=$((PASS + 1))
+else
+  printf '  FAIL — marker format: expected 2 format records (fenced example must be ignored), got %s\n' "$format_gap_count"
+  FAIL=$((FAIL + 1))
+fi
+
+mkdir -p "$TMP_WORK/marker-bad-format-fixed"
+cat > "$TMP_WORK/marker-bad-format-fixed/README.candidate.md" <<'EOF'
+# Example
+
+## Setup Guide
+
+<!-- cartographer:managed:start setup-guide -->
+Body content describing setup, managed by Cartographer.
+<!-- cartographer:managed:end setup-guide -->
+EOF
+out="$(bash "$CHECK" "$TMP_WORK/marker-bad-format-fixed/README.candidate.md" "$TMP_WORK/marker-bad-format-fixed" 2>&1)"
+rc=$?
+assert_exit "marker format fixed: exit 0" "0" "$rc"
+assert_not_contains "marker format fixed: no GAP|marker record" "GAP|marker|" "$out"
+
+# uniqueness — duplicate-id/: two start markers with id quick-start
+out="$(bash "$CHECK" "$MARKER_FIXTURES/duplicate-id/README.candidate.md" "$MARKER_FIXTURES/duplicate-id" 2>&1)"
+rc=$?
+assert_exit "marker uniqueness: exit 1" "1" "$rc"
+assert_contains "marker uniqueness: record" \
+  "GAP|marker|$MARKER_FIXTURES/duplicate-id/README.candidate.md:11|quick-start|marker id violates the uniqueness rule: id already used by a start marker at line 5" "$out"
+
+mkdir -p "$TMP_WORK/marker-duplicate-id-fixed"
+cat > "$TMP_WORK/marker-duplicate-id-fixed/README.candidate.md" <<'EOF'
+# Example
+
+## Quick start
+
+<!-- cartographer:managed:start quick-start -->
+Body one.
+<!-- cartographer:managed:end quick-start -->
+
+## Also quick start
+
+<!-- cartographer:managed:start also-quick-start -->
+Body two.
+<!-- cartographer:managed:end also-quick-start -->
+EOF
+out="$(bash "$CHECK" "$TMP_WORK/marker-duplicate-id-fixed/README.candidate.md" "$TMP_WORK/marker-duplicate-id-fixed" 2>&1)"
+rc=$?
+assert_exit "marker uniqueness fixed: exit 0" "0" "$rc"
+assert_not_contains "marker uniqueness fixed: no GAP|marker record" "GAP|marker|" "$out"
+
+# matching — mismatched-id/: start quick-start, end quickstart
+out="$(bash "$CHECK" "$MARKER_FIXTURES/mismatched-id/README.candidate.md" "$MARKER_FIXTURES/mismatched-id" 2>&1)"
+rc=$?
+assert_exit "marker matching: exit 1" "1" "$rc"
+assert_contains "marker matching: record" \
+  "GAP|marker|$MARKER_FIXTURES/mismatched-id/README.candidate.md:7|quickstart|marker pair violates the matching rule: end id does not match the start id at line 5" "$out"
+
+mkdir -p "$TMP_WORK/marker-mismatched-id-fixed"
+cat > "$TMP_WORK/marker-mismatched-id-fixed/README.candidate.md" <<'EOF'
+# Example
+
+## Quick start
+
+<!-- cartographer:managed:start quick-start -->
+Body content.
+<!-- cartographer:managed:end quick-start -->
+EOF
+out="$(bash "$CHECK" "$TMP_WORK/marker-mismatched-id-fixed/README.candidate.md" "$TMP_WORK/marker-mismatched-id-fixed" 2>&1)"
+rc=$?
+assert_exit "marker matching fixed: exit 0" "0" "$rc"
+assert_not_contains "marker matching fixed: no GAP|marker record" "GAP|marker|" "$out"
+
+# nesting — nested-marker/: a start inside an open block
+out="$(bash "$CHECK" "$MARKER_FIXTURES/nested-marker/README.candidate.md" "$MARKER_FIXTURES/nested-marker" 2>&1)"
+rc=$?
+assert_exit "marker nesting: exit 1" "1" "$rc"
+assert_contains "marker nesting: record" \
+  "GAP|marker|$MARKER_FIXTURES/nested-marker/README.candidate.md:7|inner|marker violates the nesting rule: a managed block opened at line 5 is still open" "$out"
+
+mkdir -p "$TMP_WORK/marker-nested-marker-fixed"
+cat > "$TMP_WORK/marker-nested-marker-fixed/README.candidate.md" <<'EOF'
+# Example
+
+## Outer
+
+<!-- cartographer:managed:start outer -->
+Body.
+<!-- cartographer:managed:end outer -->
+
+## Inner
+
+<!-- cartographer:managed:start inner -->
+Nested body, now sequential instead of nested.
+<!-- cartographer:managed:end inner -->
+EOF
+out="$(bash "$CHECK" "$TMP_WORK/marker-nested-marker-fixed/README.candidate.md" "$TMP_WORK/marker-nested-marker-fixed" 2>&1)"
+rc=$?
+assert_exit "marker nesting fixed: exit 0" "0" "$rc"
+assert_not_contains "marker nesting fixed: no GAP|marker record" "GAP|marker|" "$out"
+
+# orphan-start — orphan-start/: start with no end
+out="$(bash "$CHECK" "$MARKER_FIXTURES/orphan-start/README.candidate.md" "$MARKER_FIXTURES/orphan-start" 2>&1)"
+rc=$?
+assert_exit "marker orphan-start: exit 1" "1" "$rc"
+assert_contains "marker orphan-start: record" \
+  "GAP|marker|$MARKER_FIXTURES/orphan-start/README.candidate.md:5|quick-start|start marker has no matching end marker" "$out"
+
+mkdir -p "$TMP_WORK/marker-orphan-start-fixed"
+cat > "$TMP_WORK/marker-orphan-start-fixed/README.candidate.md" <<'EOF'
+# Example
+
+## Quick start
+
+<!-- cartographer:managed:start quick-start -->
+Body with a closing marker now.
+<!-- cartographer:managed:end quick-start -->
+EOF
+out="$(bash "$CHECK" "$TMP_WORK/marker-orphan-start-fixed/README.candidate.md" "$TMP_WORK/marker-orphan-start-fixed" 2>&1)"
+rc=$?
+assert_exit "marker orphan-start fixed: exit 0" "0" "$rc"
+assert_not_contains "marker orphan-start fixed: no GAP|marker record" "GAP|marker|" "$out"
+
+# orphan-end — orphan-end/: end with no start
+out="$(bash "$CHECK" "$MARKER_FIXTURES/orphan-end/README.candidate.md" "$MARKER_FIXTURES/orphan-end" 2>&1)"
+rc=$?
+assert_exit "marker orphan-end: exit 1" "1" "$rc"
+assert_contains "marker orphan-end: record" \
+  "GAP|marker|$MARKER_FIXTURES/orphan-end/README.candidate.md:6|quick-start|end marker has no matching start marker" "$out"
+
+mkdir -p "$TMP_WORK/marker-orphan-end-fixed"
+cat > "$TMP_WORK/marker-orphan-end-fixed/README.candidate.md" <<'EOF'
+# Example
+
+## Quick start
+
+<!-- cartographer:managed:start quick-start -->
+Body with an opening marker now.
+<!-- cartographer:managed:end quick-start -->
+EOF
+out="$(bash "$CHECK" "$TMP_WORK/marker-orphan-end-fixed/README.candidate.md" "$TMP_WORK/marker-orphan-end-fixed" 2>&1)"
+rc=$?
+assert_exit "marker orphan-end fixed: exit 0" "0" "$rc"
+assert_not_contains "marker orphan-end fixed: no GAP|marker record" "GAP|marker|" "$out"
+
+# malformed marker line — malformed-marker/: one start with no id token,
+# one start with two id tokens, each followed by a well-formed end. This
+# pins the stack decision (a malformed marker line never pushes): exactly
+# four records — a format record at each malformed start, and an
+# orphan-end record at each well-formed end left unpaired.
+out="$(bash "$CHECK" "$MARKER_FIXTURES/malformed-marker/README.candidate.md" "$MARKER_FIXTURES/malformed-marker" 2>&1)"
+rc=$?
+assert_exit "marker malformed-line: exit 1" "1" "$rc"
+assert_contains "marker malformed-line: format record (no id token)" \
+  "GAP|marker|$MARKER_FIXTURES/malformed-marker/README.candidate.md:3|-|marker line violates the format rule: expected exactly one id token between the marker keyword and -->" "$out"
+assert_contains "marker malformed-line: orphan-end for unpaired first end" \
+  "GAP|marker|$MARKER_FIXTURES/malformed-marker/README.candidate.md:5|quick-start|end marker has no matching start marker" "$out"
+assert_contains "marker malformed-line: format record (two id tokens)" \
+  "GAP|marker|$MARKER_FIXTURES/malformed-marker/README.candidate.md:9|-|marker line violates the format rule: expected exactly one id token between the marker keyword and -->" "$out"
+assert_contains "marker malformed-line: orphan-end for unpaired second end" \
+  "GAP|marker|$MARKER_FIXTURES/malformed-marker/README.candidate.md:11|setup|end marker has no matching start marker" "$out"
+assert_contains "marker malformed-line: SUMMARY gaps=4" "SUMMARY|gaps=4" "$out"
+marker_gap_count="$(grep -c '^GAP|marker|' <<<"$out")"
+if [ "$marker_gap_count" = "4" ]; then
+  printf '  ok   — marker malformed-line: exactly 4 GAP|marker records\n'
+  PASS=$((PASS + 1))
+else
+  printf '  FAIL — marker malformed-line: expected 4 GAP|marker records, got %s\n' "$marker_gap_count"
+  FAIL=$((FAIL + 1))
+fi
+
+mkdir -p "$TMP_WORK/marker-malformed-fixed"
+cat > "$TMP_WORK/marker-malformed-fixed/README.candidate.md" <<'EOF'
+## Quick start
+
+<!-- cartographer:managed:start quick-start -->
+Body line one.
+<!-- cartographer:managed:end quick-start -->
+
+## Setup
+
+<!-- cartographer:managed:start setup -->
+Body line two.
+<!-- cartographer:managed:end setup -->
+EOF
+out="$(bash "$CHECK" "$TMP_WORK/marker-malformed-fixed/README.candidate.md" "$TMP_WORK/marker-malformed-fixed" 2>&1)"
+rc=$?
+assert_exit "marker malformed-line fixed: exit 0" "0" "$rc"
+assert_not_contains "marker malformed-line fixed: no GAP|marker record" "GAP|marker|" "$out"
+
+# ──────────────────────────────────────────────────────────────────────────────
 # GATE (a): internal link resolution
 # ──────────────────────────────────────────────────────────────────────────────
 

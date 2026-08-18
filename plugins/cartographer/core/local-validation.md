@@ -2,9 +2,11 @@
 
 TL;DR: `check-readme-patch.sh` runs the three `spec-draft.md` § Local
 validation gates against a drafted README patch — link resolution,
-command existence, and low-value section flagging — and reports every
-finding as one stdout record in RC-8's fixed format. It is read-only:
-RC-9 makes exclusion the caller's job, not the checker's.
+command existence, and low-value section flagging — plus the
+managed-section marker-grammar gate that mechanically enforces
+`readme-ownership.md`'s `<id>` rules, and reports every finding as one
+stdout record in RC-8's fixed format. It is read-only: RC-9 makes
+exclusion the caller's job, not the checker's.
 
 This file is the sole definition site for the report format, the exit
 codes, the external-tool allowlist, and the low-value proxy list. It uses
@@ -52,8 +54,10 @@ one record per line:
 ```
 
 - `SEVERITY` ∈ `OK` | `GAP` | `LOW_VALUE` | `INFO`
-- `RULE` ∈ `link` | `command` | `section-value`
-- `SUBJECT` = the link target, the command string, or the section heading
+- `RULE` ∈ `link` | `command` | `section-value` | `marker`
+- `SUBJECT` = the link target, the command string, the section heading, or
+  the marker id (`-` for a malformed marker line — see § Managed-section
+  marker grammar below)
 - The final line of every run is `SUMMARY|gaps=<n>|low_value=<n>`, where
   `<n>` counts exactly the `GAP` and `LOW_VALUE` records that run just
   emitted
@@ -173,6 +177,70 @@ above), per `arXiv:2602.11988`'s finding that concrete instructions are
 followed while generic overviews are unhelpful-but-costly — a signal
 worth surfacing, not a reason to block a patch.
 
+## Managed-section marker grammar (gate d)
+
+`scan_markers()` runs **first** in `MAIN`, before gates (a)-(c), and
+mechanically enforces four of the five `<id>` rules
+`readme-ownership.md` § Managed-section markers defines: **format**,
+**uniqueness**, **matching**, and **nesting**. It also detects the two
+orphan conditions `readme-ownership.md:48-52` names as non-firing
+branches for classification (`orphan-start`, `orphan-end`) and a
+malformed-marker-line condition — a `cartographer:managed:start`/`:end`
+HTML comment carrying zero or two id tokens instead of exactly one,
+which matches neither well-formed marker pattern. It scans outside
+fenced code blocks only, reusing the same fence-toggle idiom gates
+(a)-(c) already use, so a marker shown inside a fenced example is not
+treated as a live marker.
+
+**`derivation` is not mechanically enforced.** `readme-ownership.md`'s
+derivation rule ("the kebab-case slug of the section's heading text")
+has no normative slugger this script can check against —
+`make_slug()` is a GitHub *anchor* slugger, not a derivation function,
+and can itself emit ids the `format` rule rejects. Nothing in
+`readme-ownership.md` fixes which heading a start marker binds to,
+either. Both are visible gaps, stated here in the same style
+`readme-ownership.md` used for the whole grammar before this gate
+shipped: `derivation` is checked by a human reviewer, not this script.
+
+Every violation is one `GAP|marker|<file>:<line>|<id>|<message>` record.
+`marker` records carry five fields and take no scope tag (Task 4's tag
+is scoped to `link` and `command` findings only). Each increments
+`GAPS`, so a marker violation participates in the same exit-1
+consequence as gates (a) and (b): the caller may not report the patch
+ready while any `GAP|marker` record is outstanding (RC-9). A malformed
+marker line's `<SUBJECT>` is always `-`, because its raw id-shaped text
+is arbitrary and may itself contain `|`, which this pipe-delimited
+grammar cannot carry.
+
+The exact message strings, byte-for-byte:
+
+| Rule | `<MESSAGE>` |
+|---|---|
+| format | `marker id violates the format rule: must match ^[a-z0-9]+(-[a-z0-9]+)*$ and be at most 64 characters` |
+| format (malformed marker line) | `marker line violates the format rule: expected exactly one id token between the marker keyword and -->` |
+| uniqueness | `marker id violates the uniqueness rule: id already used by a start marker at line <N>` |
+| matching | `marker pair violates the matching rule: end id does not match the start id at line <N>` |
+| nesting | `marker violates the nesting rule: a managed block opened at line <N> is still open` |
+| orphan-start | `start marker has no matching end marker` |
+| orphan-end | `end marker has no matching start marker` |
+
+**Record order.** Marker records print before link, command, and
+section records, because `scan_markers()` runs first in `MAIN`. This is
+now a contractual ordering, not an incidental one — no existing
+assertion in `check-readme-patch.test.sh` is order-sensitive, so this
+change is safe.
+
+**The well-formed-pair set.** `scan_markers()` also publishes, for
+in-process callers of `check-readme-patch.sh` (Task 4's stage-4 scope
+tag reads it), the set of marker pairs that popped cleanly with
+byte-identical ids, emitted no `format` record on either marker, whose
+id emitted no `uniqueness` record, and inside whose `[start_line,
+end_line]` range no `nesting` record fired — the last clause also
+excludes a pair whose own start triggered nesting, since that start
+line is its own range's lower bound. A pair that produced any record is
+not well-formed and is excluded from the set, even if its own `start`/
+`end` pop was otherwise clean.
+
 ## Verification check
 
 Before a checker change is trusted, confirm every one of these:
@@ -190,3 +258,8 @@ Before a checker change is trusted, confirm every one of these:
    exits 0 (this file lives under `core/` and is subject to RC-7 like
    every other file there; it names no profile directory path, so no
    exemption token is needed).
+5. The marker-grammar gate enforces exactly the four `<id>` rules named
+   in `readme-ownership.md`'s acceptance criterion (format, uniqueness,
+   matching, nesting) plus the two orphan conditions and the
+   malformed-marker-line branch — never `derivation`, which stays a
+   human-reviewer check per the gap note above.

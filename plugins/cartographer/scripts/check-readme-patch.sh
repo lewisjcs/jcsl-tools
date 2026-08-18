@@ -1,11 +1,16 @@
 #!/bin/bash
 # Local validation for a drafted README patch — gates (a) link resolution,
-# (b) command existence, (c) low-value section flagging. Contract: RC-6
-# (invocation), RC-8 (report format + exit codes), RC-9 (read-only —
-# reports GAP, never excludes), RC-10 (command verification clauses,
-# including the external-tool allowlist), RC-11 (low-value proxies).
-# Full definitions: core/local-validation.md. This script is read-only —
-# it never rewrites README_FILE and writes no file of its own.
+# (b) command existence, (c) low-value section flagging, (d) managed-
+# section marker-grammar (readme-ownership.md's <id> rules — format,
+# uniqueness, matching, nesting — plus the orphan-start/orphan-end
+# conditions and a malformed-marker-line branch; `derivation` is not
+# mechanically enforced, see core/local-validation.md). Contract: RC-6
+# (invocation), RC-8 (report format + exit codes, including the `marker`
+# RULE), RC-9 (read-only — reports GAP, never excludes), RC-10 (command
+# verification clauses, including the external-tool allowlist), RC-11
+# (low-value proxies). Full definitions: core/local-validation.md. This
+# script is read-only — it never rewrites README_FILE and writes no file
+# of its own.
 #
 # Run: bash check-readme-patch.sh <README_FILE> [REPO_ROOT]
 # REPO_ROOT default: git -C <dir of README_FILE> rev-parse --show-toplevel,
@@ -53,6 +58,16 @@ fi
 GAPS=0
 LOW_VALUE=0
 
+# Published for downstream callers within this process only (Task 4's
+# stage-4 scope tag reads it): well-formed managed-section marker pairs,
+# each element formatted "<start_line>:<end_line>". Populated by
+# scan_markers(). A pair enters this array only when it popped cleanly
+# with byte-identical ids, neither marker emitted a format record, its id
+# emitted no uniqueness record, and no nesting record fired within its
+# line range. See scan_markers() below and core/local-validation.md §
+# Managed-section marker grammar.
+MARKER_WELLFORMED_PAIRS=()
+
 # RC-10 clause 5 — declared in core/local-validation.md as the visible,
 # auditable list; this is the single source the script reads.
 ALLOWLIST="claude git jq bash python3 shasum sha256sum"
@@ -89,6 +104,194 @@ extract_slugs() {
       printf '%s\n' "#$slug"
     fi
   done < "$file"
+}
+
+# ──────────────────────────────────────────────────────────────────────────────
+# GATE (d): managed-section marker grammar (readme-ownership.md's <id>
+# rules — format, uniqueness, matching, nesting — plus orphan-start,
+# orphan-end, and the malformed-marker-line branch). Runs FIRST in MAIN,
+# before gates (a)-(c). `derivation` is not enforced — see
+# core/local-validation.md.
+# ──────────────────────────────────────────────────────────────────────────────
+
+# Anchored recognition: exactly one non-space id token between the
+# marker keyword and `-->`.
+MARKER_START_RE='^[[:space:]]*<!--[[:space:]]*cartographer:managed:start[[:space:]]+([^[:space:]]+)[[:space:]]*-->[[:space:]]*$'
+MARKER_END_RE='^[[:space:]]*<!--[[:space:]]*cartographer:managed:end[[:space:]]+([^[:space:]]+)[[:space:]]*-->[[:space:]]*$'
+# Loose recognition — applied only to lines that matched neither anchored
+# pattern above — catches zero-token and multi-token marker lines.
+MARKER_LOOSE_RE='^[[:space:]]*<!--[[:space:]]*cartographer:managed:(start|end)([[:space:]]+.*)?[[:space:]]*-->[[:space:]]*$'
+MARKER_FORMAT_RE='^[a-z0-9]+(-[a-z0-9]+)*$'
+
+scan_markers() {
+  local fence_state=0
+  local line_num=0
+
+  # Open-start stack (parallel arrays), for pairing/nesting.
+  local stack_ids=()
+  local stack_lines=()
+
+  # Every well-formed start marker's (id, line) — for uniqueness + format.
+  local all_start_ids=()
+  local all_start_lines=()
+  # Every well-formed start-or-end marker's (id, line) — for format only.
+  local all_marker_ids=()
+  local all_marker_lines=()
+  # Lines where a nesting record fired (always a start line).
+  local nesting_lines=()
+  # Candidate pairs that popped cleanly with matching ids: "start:end:id".
+  local candidates=()
+
+  local id top_idx id0 line0
+
+  while IFS= read -r line; do
+    line_num=$((line_num + 1))
+
+    if [[ $line =~ ^[[:space:]]*\`{3,} ]] || [[ $line =~ ^[[:space:]]*~{3,} ]]; then
+      fence_state=$((1 - fence_state))
+      continue
+    fi
+    [ "$fence_state" -ne 0 ] && continue
+
+    if [[ $line =~ $MARKER_START_RE ]]; then
+      id="${BASH_REMATCH[1]}"
+      all_start_ids+=("$id")
+      all_start_lines+=("$line_num")
+      all_marker_ids+=("$id")
+      all_marker_lines+=("$line_num")
+      if [ "${#stack_ids[@]}" -gt 0 ]; then
+        top_idx=$(( ${#stack_ids[@]} - 1 ))
+        printf 'GAP|marker|%s:%d|%s|marker violates the nesting rule: a managed block opened at line %d is still open\n' \
+          "$README_FILE" "$line_num" "$id" "${stack_lines[$top_idx]}"
+        GAPS=$((GAPS + 1))
+        nesting_lines+=("$line_num")
+      fi
+      stack_ids+=("$id")
+      stack_lines+=("$line_num")
+      continue
+    fi
+
+    if [[ $line =~ $MARKER_END_RE ]]; then
+      id="${BASH_REMATCH[1]}"
+      all_marker_ids+=("$id")
+      all_marker_lines+=("$line_num")
+      if [ "${#stack_ids[@]}" -eq 0 ]; then
+        printf 'GAP|marker|%s:%d|%s|end marker has no matching start marker\n' \
+          "$README_FILE" "$line_num" "$id"
+        GAPS=$((GAPS + 1))
+      else
+        top_idx=$(( ${#stack_ids[@]} - 1 ))
+        id0="${stack_ids[$top_idx]}"
+        line0="${stack_lines[$top_idx]}"
+        unset 'stack_ids[top_idx]'
+        unset 'stack_lines[top_idx]'
+        stack_ids=("${stack_ids[@]}")
+        stack_lines=("${stack_lines[@]}")
+        if [ "$id" != "$id0" ]; then
+          printf 'GAP|marker|%s:%d|%s|marker pair violates the matching rule: end id does not match the start id at line %d\n' \
+            "$README_FILE" "$line_num" "$id" "$line0"
+          GAPS=$((GAPS + 1))
+        else
+          candidates+=("$line0:$line_num:$id")
+        fi
+      fi
+      continue
+    fi
+
+    if [[ $line =~ $MARKER_LOOSE_RE ]]; then
+      printf 'GAP|marker|%s:%d|-|marker line violates the format rule: expected exactly one id token between the marker keyword and -->\n' \
+        "$README_FILE" "$line_num"
+      GAPS=$((GAPS + 1))
+      continue
+    fi
+  done < "$README_FILE"
+
+  # EOF — every entry left on the stack is an orphan-start.
+  local i
+  for ((i = 0; i < ${#stack_ids[@]}; i++)); do
+    printf 'GAP|marker|%s:%d|%s|start marker has no matching end marker\n' \
+      "$README_FILE" "${stack_lines[$i]}" "${stack_ids[$i]}"
+    GAPS=$((GAPS + 1))
+  done
+
+  # uniqueness — across every start marker's id, in encounter order.
+  local dup_ids=()
+  local seen_ids=()
+  local seen_lines=()
+  local j ln first_line already_dup d
+  for ((i = 0; i < ${#all_start_ids[@]}; i++)); do
+    id="${all_start_ids[$i]}"
+    ln="${all_start_lines[$i]}"
+    first_line=""
+    for ((j = 0; j < ${#seen_ids[@]}; j++)); do
+      if [ "${seen_ids[$j]}" = "$id" ]; then
+        first_line="${seen_lines[$j]}"
+        break
+      fi
+    done
+    if [ -n "$first_line" ]; then
+      printf 'GAP|marker|%s:%d|%s|marker id violates the uniqueness rule: id already used by a start marker at line %s\n' \
+        "$README_FILE" "$ln" "$id" "$first_line"
+      GAPS=$((GAPS + 1))
+      already_dup=0
+      for d in "${dup_ids[@]}"; do
+        [ "$d" = "$id" ] && already_dup=1 && break
+      done
+      [ "$already_dup" -eq 0 ] && dup_ids+=("$id")
+    else
+      seen_ids+=("$id")
+      seen_lines+=("$ln")
+    fi
+  done
+
+  # format — every well-formed start and end marker line.
+  local bad_format_lines=()
+  for ((i = 0; i < ${#all_marker_ids[@]}; i++)); do
+    id="${all_marker_ids[$i]}"
+    ln="${all_marker_lines[$i]}"
+    if ! [[ $id =~ $MARKER_FORMAT_RE ]] || [ "${#id}" -gt 64 ]; then
+      printf 'GAP|marker|%s:%d|%s|marker id violates the format rule: must match ^[a-z0-9]+(-[a-z0-9]+)*$ and be at most 64 characters\n' \
+        "$README_FILE" "$ln" "$id"
+      GAPS=$((GAPS + 1))
+      bad_format_lines+=("$ln")
+    fi
+  done
+
+  # Publish the well-formed-pair set: a candidate pair qualifies only when
+  # its id was never flagged for uniqueness, neither its start nor its end
+  # line was flagged for format, and no nesting record fell inside its
+  # [start_line, end_line] range (this also excludes a pair whose OWN
+  # start triggered nesting, since that start line is its own range's
+  # lower bound).
+  local c rest start_ln end_ln pid excluded b n
+  for c in "${candidates[@]}"; do
+    start_ln="${c%%:*}"
+    rest="${c#*:}"
+    end_ln="${rest%%:*}"
+    pid="${rest#*:}"
+
+    excluded=0
+    for d in "${dup_ids[@]}"; do
+      [ "$d" = "$pid" ] && excluded=1 && break
+    done
+    if [ "$excluded" -eq 0 ]; then
+      for b in "${bad_format_lines[@]}"; do
+        if [ "$b" = "$start_ln" ] || [ "$b" = "$end_ln" ]; then
+          excluded=1
+          break
+        fi
+      done
+    fi
+    if [ "$excluded" -eq 0 ]; then
+      for n in "${nesting_lines[@]}"; do
+        if [ "$n" -ge "$start_ln" ] && [ "$n" -le "$end_ln" ]; then
+          excluded=1
+          break
+        fi
+      done
+    fi
+    [ "$excluded" -eq 0 ] && MARKER_WELLFORMED_PAIRS+=("$start_ln:$end_ln")
+  done
 }
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -342,6 +545,7 @@ check_sections() {
 # MAIN
 # ──────────────────────────────────────────────────────────────────────────────
 
+scan_markers
 check_links
 check_commands
 check_sections
