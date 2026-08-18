@@ -121,13 +121,18 @@ A documented command is **verified** if any of these holds, checked in
 this order — the first clause that matches decides the report message:
 
 1. its `argv[0]` is `npm`/`pnpm`/`yarn` with `run <name>` and `<name>` is
-   a key under `.scripts` of a `package.json` at `REPO_ROOT`;
-2. the command string appears verbatim in a file under
+   a key under `.scripts` of a `package.json` at `REPO_ROOT` (disjoint
+   from clause 2 — `run` is not in the clause 2 verb set);
+2. its `argv[0]` is `npm`, `pnpm`, or `yarn` and the second token is
+   `install`, `ci`, `audit`, `outdated`, `list`, or `prune` — npm
+   built-in verbs that require no `package.json` script. These record
+   `OK|command|…|npm-builtin` and are not gaps;
+3. the command string appears verbatim in a file under
    `REPO_ROOT/.github/workflows/`;
-3. it invokes a path that exists under `REPO_ROOT` (e.g. `bash
+4. it invokes a path that exists under `REPO_ROOT` (e.g. `bash
    plugins/…/check-x.sh`) — any whitespace-delimited token in the
    command that resolves under `REPO_ROOT` satisfies this clause;
-4. its `argv[0]` is on the external-tool allowlist above. These record
+5. its `argv[0]` is on the external-tool allowlist above. These record
    `OK|command|…|external-tool` and are not gaps.
 
 A command matching none of the four is
@@ -135,10 +140,10 @@ A command matching none of the four is
 
 Checking in this fixed order means a command like `bash
 plugins/cartographer/scripts/check-x.sh` — whose `argv[0]` (`bash`) is
-also on the allowlist — is reported via clause 3 (in-repo path), not
-clause 4, because clause 3 is checked first and is the more specific
+also on the allowlist — is reported via clause 4 (in-repo path), not
+clause 5, because clause 4 is checked first and is the more specific
 finding. The `external-tool` tag is reserved for commands no clause but
-4 resolves — the case the install line needs.
+5 resolves — the case the install line needs.
 
 ## Low-value section flagging (gate c, RC-11)
 

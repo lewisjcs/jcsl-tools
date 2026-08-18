@@ -163,6 +163,7 @@ verify_command() {
   [ -z "$argv0" ] && return
 
   # Clause 1: npm/pnpm/yarn run <name>, <name> a key under package.json .scripts
+  # Disjoint from clause 2: "run" is not in {install,ci,audit,outdated,list,prune}
   if [[ $argv0 == "npm" || $argv0 == "pnpm" || $argv0 == "yarn" ]] \
      && [ "${tokens[1]:-}" = "run" ] && [ -n "${tokens[2]:-}" ]; then
     local script_name="${tokens[2]}"
@@ -173,14 +174,25 @@ verify_command() {
     fi
   fi
 
-  # Clause 2: verbatim match in a file under REPO_ROOT/.github/workflows/
+  # Clause 2: npm/pnpm/yarn with built-in verbs (install, ci, audit, outdated, list, prune)
+  if [[ $argv0 == "npm" || $argv0 == "pnpm" || $argv0 == "yarn" ]]; then
+    local verb="${tokens[1]:-}"
+    case "$verb" in
+      install|ci|audit|outdated|list|prune)
+        printf 'OK|command|%s:%d|%s|npm-builtin\n' "$README_FILE" "$line_num" "$cmd"
+        return
+        ;;
+    esac
+  fi
+
+  # Clause 3: verbatim match in a file under REPO_ROOT/.github/workflows/
   local wf_dir="$REPO_ROOT/.github/workflows"
   if [ -d "$wf_dir" ] && grep -rFl -- "$cmd" "$wf_dir" >/dev/null 2>&1; then
     printf 'OK|command|%s:%d|%s|verified via .github/workflows verbatim match\n' "$README_FILE" "$line_num" "$cmd"
     return
   fi
 
-  # Clause 3: invokes a path that exists under REPO_ROOT
+  # Clause 4: invokes a path that exists under REPO_ROOT
   local tok candidate
   for tok in "${tokens[@]}"; do
     candidate="$tok"
@@ -192,13 +204,13 @@ verify_command() {
     fi
   done
 
-  # Clause 4: external-tool allowlist
+  # Clause 5: external-tool allowlist
   if is_allowlisted "$argv0"; then
     printf 'OK|command|%s:%d|%s|external-tool\n' "$README_FILE" "$line_num" "$cmd"
     return
   fi
 
-  printf 'GAP|command|%s:%d|%s|not verified: no package.json script, no CI match, no in-repo path, not on external-tool allowlist\n' "$README_FILE" "$line_num" "$cmd"
+  printf 'GAP|command|%s:%d|%s|not verified: no package.json script, no npm-builtin verb, no CI match, no in-repo path, not on external-tool allowlist\n' "$README_FILE" "$line_num" "$cmd"
   GAPS=$((GAPS + 1))
 }
 

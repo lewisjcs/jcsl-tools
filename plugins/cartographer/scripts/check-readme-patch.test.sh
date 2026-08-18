@@ -102,22 +102,34 @@ assert_exit "clause 1 (package.json .scripts): exit 0" "0" "$rc"
 assert_contains "clause 1: OK|command record" "OK|command|" "$out"
 assert_contains "clause 1: package.json cited" "package.json" "$out"
 
+out="$(bash "$CHECK" "$FIXTURES_DIR/npm-builtin/README.candidate.md" "$FIXTURES_DIR/npm-builtin" 2>&1)"
+rc=$?
+assert_exit "clause 2 (npm-builtin): exit 0" "0" "$rc"
+assert_contains "clause 2: OK|command record for npm install" "OK|command|$FIXTURES_DIR/npm-builtin/README.candidate.md:6|npm install|npm-builtin" "$out"
+assert_contains "clause 2: OK|command record for npm audit" "OK|command|$FIXTURES_DIR/npm-builtin/README.candidate.md:7|npm audit|npm-builtin" "$out"
+
+out="$(bash "$CHECK" "$FIXTURES_DIR/npm-builtin-precedence/README.candidate.md" "$FIXTURES_DIR/npm-builtin-precedence" 2>&1)"
+rc=$?
+assert_exit "clause 2 (npm-builtin) precedence over CI: exit 0" "0" "$rc"
+assert_contains "clause 2: npm-builtin tag" "npm-builtin" "$out"
+assert_not_contains "clause 2: not .github/workflows verbatim match" "verified via .github/workflows verbatim match" "$out"
+
 out="$(bash "$CHECK" "$FIXTURES_DIR/command-ci-workflow/README.candidate.md" "$FIXTURES_DIR/command-ci-workflow" 2>&1)"
 rc=$?
-assert_exit "clause 2 (.github/workflows verbatim): exit 0" "0" "$rc"
-assert_contains "clause 2: OK|command record" "OK|command|" "$out"
-assert_contains "clause 2: workflows cited" ".github/workflows" "$out"
+assert_exit "clause 3 (.github/workflows verbatim): exit 0" "0" "$rc"
+assert_contains "clause 3: OK|command record" "OK|command|" "$out"
+assert_contains "clause 3: workflows cited" ".github/workflows" "$out"
 
 out="$(bash "$CHECK" "$FIXTURES_DIR/command-inrepo-path/README.candidate.md" "$FIXTURES_DIR/command-inrepo-path" 2>&1)"
 rc=$?
-assert_exit "clause 3 (in-repo path): exit 0" "0" "$rc"
-assert_contains "clause 3: OK|command record" "OK|command|" "$out"
-assert_not_contains "clause 3: not tagged external-tool" "external-tool" "$out"
+assert_exit "clause 4 (in-repo path): exit 0" "0" "$rc"
+assert_contains "clause 4: OK|command record" "OK|command|" "$out"
+assert_not_contains "clause 4: not tagged external-tool" "external-tool" "$out"
 
 out="$(bash "$CHECK" "$FIXTURES_DIR/manifest-less/README.external-tool.candidate.md" "$FIXTURES_DIR/manifest-less" 2>&1)"
 rc=$?
-assert_exit "clause 4 (external-tool, no manifest, no CI): exit 0" "0" "$rc"
-assert_contains "clause 4: exact record" "OK|command|$FIXTURES_DIR/manifest-less/README.external-tool.candidate.md:6|claude plugin install cartographer@jcsl-tools|external-tool" "$out"
+assert_exit "clause 5 (external-tool, no manifest, no CI): exit 0" "0" "$rc"
+assert_contains "clause 5: exact record" "OK|command|$FIXTURES_DIR/manifest-less/README.external-tool.candidate.md:6|claude plugin install cartographer@jcsl-tools|external-tool" "$out"
 
 out="$(bash "$CHECK" "$FIXTURES_DIR/manifest-less/README.npm-build.candidate.md" "$FIXTURES_DIR/manifest-less" 2>&1)"
 rc=$?
