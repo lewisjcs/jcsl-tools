@@ -11,6 +11,11 @@
 # (pass-once-fixed), the same mechanism check-knowledge-grounding.test.sh
 # uses.
 #
+# RC-8's record shape is pinned by assert_line (whole-line) and
+# assert_record_shape (field counts per RULE), never by assert_contains —
+# a substring match stays green through a grammar change and would let a
+# wrong or missing scope field ship untested.
+#
 # Run: bash check-readme-patch.test.sh
 set -u
 
@@ -43,6 +48,50 @@ assert_contains() {
     PASS=$((PASS + 1))
   else
     printf '  FAIL — %s\n    expected record containing: %s\n    got output:\n%s\n' "$name" "$needle" "$haystack"
+    FAIL=$((FAIL + 1))
+  fi
+}
+
+# Whole-line match. assert_contains is a substring match, so it cannot
+# see a field appended to the end of a record — it stays green through a
+# grammar change. Every assertion that pins RC-8's field count uses this
+# one instead.
+assert_line() {
+  local name="$1" needle="$2" haystack="$3"
+  if grep -qxF -- "$needle" <<<"$haystack"; then
+    printf '  ok   — %s (exact record)\n' "$name"
+    PASS=$((PASS + 1))
+  else
+    printf '  FAIL — %s\n    expected exact record line: %s\n    got output:\n%s\n' "$name" "$needle" "$haystack"
+    FAIL=$((FAIL + 1))
+  fi
+}
+
+# RC-8's field-count rule as a structural invariant rather than a text
+# match: `link` and `command` records carry six fields whose sixth is one
+# of the two scope literals, `marker` and `section-value` records carry
+# five and no scope tag, and no other RULE is legal. A record of any other
+# shape is printed and fails the assertion.
+assert_record_shape() {
+  local name="$1" haystack="$2"
+  local bad
+  bad="$(awk -F'|' '
+    /^SUMMARY\|/ { next }
+    $2 == "link" || $2 == "command" {
+      if (NF != 6 || ($6 != "in-patch" && $6 != "out-of-patch")) print
+      next
+    }
+    $2 == "marker" || $2 == "section-value" {
+      if (NF != 5) print
+      next
+    }
+    { print }
+  ' <<<"$haystack")"
+  if [ -z "$bad" ]; then
+    printf '  ok   — %s (every record matches RC-8 field counts)\n' "$name"
+    PASS=$((PASS + 1))
+  else
+    printf '  FAIL — %s\n    records violating RC-8 field counts:\n%s\n' "$name" "$bad"
     FAIL=$((FAIL + 1))
   fi
 }
@@ -343,7 +392,11 @@ assert_not_contains "clause 4: not tagged external-tool" "external-tool" "$out"
 out="$(bash "$CHECK" "$FIXTURES_DIR/manifest-less/README.external-tool.candidate.md" "$FIXTURES_DIR/manifest-less" 2>&1)"
 rc=$?
 assert_exit "clause 5 (external-tool, no manifest, no CI): exit 0" "0" "$rc"
-assert_contains "clause 5: exact record" "OK|command|$FIXTURES_DIR/manifest-less/README.external-tool.candidate.md:6|claude plugin install cartographer@jcsl-tools|external-tool" "$out"
+# assert_line, not assert_contains: this is the suite's pin on RC-8's
+# whole record shape, so it must fail if a field is added or dropped.
+# manifest-less/README.external-tool.candidate.md carries no markers, so
+# its scope is out-of-patch.
+assert_line "clause 5: exact record" "OK|command|$FIXTURES_DIR/manifest-less/README.external-tool.candidate.md:6|claude plugin install cartographer@jcsl-tools|external-tool|out-of-patch" "$out"
 
 out="$(bash "$CHECK" "$FIXTURES_DIR/manifest-less/README.npm-build.candidate.md" "$FIXTURES_DIR/manifest-less" 2>&1)"
 rc=$?
@@ -397,6 +450,155 @@ assert_not_contains "low-value fixed: no LOW_VALUE record" "LOW_VALUE|" "$out"
 assert_contains "low-value fixed: SUMMARY low_value=0" "SUMMARY|gaps=0|low_value=0" "$out"
 
 # ──────────────────────────────────────────────────────────────────────────────
+# Scope attribution — RC-8's sixth field on `link` and `command` records
+#
+# The scope tag is computed from scan_markers()'s well-formed-pair set and
+# nothing else, so these assertions are also the suite's only observation
+# of that set: it is not otherwise stdout-visible. The mixed-scope and
+# malformed-pair fixtures pin its admission boundary from both sides — a
+# clean pair admits, so its enclosed finding is in-patch; a mismatched-id
+# pair does not, so an identically-placed finding is out-of-patch. Every
+# assertion here is whole-line, because a substring match cannot see a
+# wrong or missing sixth field.
+# ──────────────────────────────────────────────────────────────────────────────
+
+echo ""
+echo "Scope attribution (in-patch / out-of-patch):"
+
+SCOPE_FIXTURES="$FIXTURES_DIR/scope-attribution"
+
+# mixed-scope: one dangling link inside a well-formed pair, one outside
+# it, and a verified command inside it (an OK record carries the tag too).
+out="$(bash "$CHECK" "$SCOPE_FIXTURES/README.mixed-scope.candidate.md" "$SCOPE_FIXTURES" 2>&1)"
+rc=$?
+assert_exit "mixed-scope: exit 1" "1" "$rc"
+assert_line "mixed-scope: link inside the pair is in-patch" \
+  "GAP|link|$SCOPE_FIXTURES/README.mixed-scope.candidate.md:6|missing-inside.md|does not resolve under REPO_ROOT|in-patch" "$out"
+assert_line "mixed-scope: link outside the pair is out-of-patch" \
+  "GAP|link|$SCOPE_FIXTURES/README.mixed-scope.candidate.md:15|missing-outside.md|does not resolve under REPO_ROOT|out-of-patch" "$out"
+assert_line "mixed-scope: OK command inside the pair is in-patch" \
+  "OK|command|$SCOPE_FIXTURES/README.mixed-scope.candidate.md:9|claude plugin install cartographer@jcsl-tools|external-tool|in-patch" "$out"
+assert_contains "mixed-scope: SUMMARY gaps=2" "SUMMARY|gaps=2|low_value=0" "$out"
+assert_record_shape "mixed-scope: RC-8 field counts" "$out"
+
+# pass-once-fixed: create both link targets. Both GAPs clear and each OK
+# record carries the same scope tag its GAP carried.
+mkdir -p "$TMP_WORK/scope-mixed-fixed"
+cp "$SCOPE_FIXTURES/README.mixed-scope.candidate.md" "$TMP_WORK/scope-mixed-fixed/"
+echo "# Inside" > "$TMP_WORK/scope-mixed-fixed/missing-inside.md"
+echo "# Outside" > "$TMP_WORK/scope-mixed-fixed/missing-outside.md"
+out="$(bash "$CHECK" "$TMP_WORK/scope-mixed-fixed/README.mixed-scope.candidate.md" "$TMP_WORK/scope-mixed-fixed" 2>&1)"
+rc=$?
+assert_exit "mixed-scope fixed: exit 0" "0" "$rc"
+assert_not_contains "mixed-scope fixed: no GAP|link record" "GAP|link|" "$out"
+assert_line "mixed-scope fixed: OK link inside the pair is still in-patch" \
+  "OK|link|$TMP_WORK/scope-mixed-fixed/README.mixed-scope.candidate.md:6|missing-inside.md|resolves under REPO_ROOT|in-patch" "$out"
+assert_line "mixed-scope fixed: OK link outside the pair is still out-of-patch" \
+  "OK|link|$TMP_WORK/scope-mixed-fixed/README.mixed-scope.candidate.md:15|missing-outside.md|resolves under REPO_ROOT|out-of-patch" "$out"
+
+# malformed-pair: a mismatched-id pair is not a managed section, so a
+# finding enclosed by it is out-of-patch — the admission boundary from the
+# negative side. Task 3's matching record still fires, with five fields.
+out="$(bash "$CHECK" "$SCOPE_FIXTURES/README.malformed-pair.candidate.md" "$SCOPE_FIXTURES" 2>&1)"
+rc=$?
+assert_exit "malformed-pair: exit 1" "1" "$rc"
+assert_line "malformed-pair: enclosed link is out-of-patch" \
+  "GAP|link|$SCOPE_FIXTURES/README.malformed-pair.candidate.md:6|missing-inside.md|does not resolve under REPO_ROOT|out-of-patch" "$out"
+assert_line "malformed-pair: marker record carries five fields, no scope tag" \
+  "GAP|marker|$SCOPE_FIXTURES/README.malformed-pair.candidate.md:7|quickstart|marker pair violates the matching rule: end id does not match the start id at line 5" "$out"
+assert_record_shape "malformed-pair: RC-8 field counts" "$out"
+
+# pass-once-fixed, step 1 — create the link target only, leaving the id
+# mismatch: the link record clears to OK and carries the SAME out-of-patch
+# tag, while the marker record still holds exit 1.
+mkdir -p "$TMP_WORK/scope-malformed-target"
+cp "$SCOPE_FIXTURES/README.malformed-pair.candidate.md" "$TMP_WORK/scope-malformed-target/"
+echo "# Inside" > "$TMP_WORK/scope-malformed-target/missing-inside.md"
+out="$(bash "$CHECK" "$TMP_WORK/scope-malformed-target/README.malformed-pair.candidate.md" "$TMP_WORK/scope-malformed-target" 2>&1)"
+rc=$?
+assert_exit "malformed-pair, link target created: exit STILL 1 (marker record)" "1" "$rc"
+assert_line "malformed-pair, link target created: OK link is still out-of-patch" \
+  "OK|link|$TMP_WORK/scope-malformed-target/README.malformed-pair.candidate.md:6|missing-inside.md|resolves under REPO_ROOT|out-of-patch" "$out"
+assert_contains "malformed-pair, link target created: marker record remains" "GAP|marker|" "$out"
+
+# pass-once-fixed, step 2 — repair the end id too. The pair now enters the
+# well-formed set, and the SAME link on the SAME line flips to in-patch.
+# This is the assertion that would go red if scope were computed from the
+# candidate-pair set instead of the admitted one.
+mkdir -p "$TMP_WORK/scope-malformed-fixed"
+cat > "$TMP_WORK/scope-malformed-fixed/README.malformed-pair.candidate.md" <<'EOF'
+# Example
+
+## Quick start
+
+<!-- cartographer:managed:start quick-start -->
+See [the setup guide](missing-inside.md) for details.
+<!-- cartographer:managed:end quick-start -->
+EOF
+echo "# Inside" > "$TMP_WORK/scope-malformed-fixed/missing-inside.md"
+out="$(bash "$CHECK" "$TMP_WORK/scope-malformed-fixed/README.malformed-pair.candidate.md" "$TMP_WORK/scope-malformed-fixed" 2>&1)"
+rc=$?
+assert_exit "malformed-pair fixed: exit 0" "0" "$rc"
+assert_not_contains "malformed-pair fixed: no GAP|marker record" "GAP|marker|" "$out"
+assert_line "malformed-pair fixed: the pair is now well-formed, so the link is in-patch" \
+  "OK|link|$TMP_WORK/scope-malformed-fixed/README.malformed-pair.candidate.md:6|missing-inside.md|resolves under REPO_ROOT|in-patch" "$out"
+
+# bad-format-pair: the discriminator between the admitted set and the
+# merely-paired one. This pair pops cleanly with byte-identical ids, so a
+# scope computed from "pairs that matched" would call its enclosed link
+# in-patch; the ids violate the format rule, so scan_markers() withholds
+# it and the link is out-of-patch. Nothing else in the suite separates
+# those two readings — a mismatched-id pair never pairs at all.
+out="$(bash "$CHECK" "$SCOPE_FIXTURES/README.bad-format-pair.candidate.md" "$SCOPE_FIXTURES" 2>&1)"
+rc=$?
+assert_exit "bad-format-pair: exit 1" "1" "$rc"
+assert_line "bad-format-pair: enclosed link is out-of-patch (pair excluded on format)" \
+  "GAP|link|$SCOPE_FIXTURES/README.bad-format-pair.candidate.md:6|missing-inside.md|does not resolve under REPO_ROOT|out-of-patch" "$out"
+assert_contains "bad-format-pair: SUMMARY gaps=3" "SUMMARY|gaps=3|low_value=0" "$out"
+assert_record_shape "bad-format-pair: RC-8 field counts" "$out"
+
+# pass-once-fixed: repair both ids and create the link target. The pair is
+# admitted, so the same link on the same line flips to in-patch.
+mkdir -p "$TMP_WORK/scope-bad-format-fixed"
+cat > "$TMP_WORK/scope-bad-format-fixed/README.bad-format-pair.candidate.md" <<'EOF'
+# Example
+
+## Setup Guide
+
+<!-- cartographer:managed:start setup-guide -->
+See [the setup guide](missing-inside.md) for details.
+<!-- cartographer:managed:end setup-guide -->
+EOF
+echo "# Inside" > "$TMP_WORK/scope-bad-format-fixed/missing-inside.md"
+out="$(bash "$CHECK" "$TMP_WORK/scope-bad-format-fixed/README.bad-format-pair.candidate.md" "$TMP_WORK/scope-bad-format-fixed" 2>&1)"
+rc=$?
+assert_exit "bad-format-pair fixed: exit 0" "0" "$rc"
+assert_not_contains "bad-format-pair fixed: no GAP|marker record" "GAP|marker|" "$out"
+assert_line "bad-format-pair fixed: the pair is now admitted, so the link is in-patch" \
+  "OK|link|$TMP_WORK/scope-bad-format-fixed/README.bad-format-pair.candidate.md:6|missing-inside.md|resolves under REPO_ROOT|in-patch" "$out"
+
+# no-markers: with no well-formed pair in the file, every record is
+# out-of-patch. RC-9 is where this case is kept from opening a hole — the
+# checker's tag stays purely positional.
+out="$(bash "$CHECK" "$SCOPE_FIXTURES/README.no-markers.candidate.md" "$SCOPE_FIXTURES" 2>&1)"
+rc=$?
+assert_exit "no-markers: exit 1" "1" "$rc"
+assert_line "no-markers: the only record is out-of-patch" \
+  "GAP|link|$SCOPE_FIXTURES/README.no-markers.candidate.md:5|missing-inside.md|does not resolve under REPO_ROOT|out-of-patch" "$out"
+assert_contains "no-markers: SUMMARY gaps=1" "SUMMARY|gaps=1|low_value=0" "$out"
+assert_record_shape "no-markers: RC-8 field counts" "$out"
+
+# pass-once-fixed: create the link target — same out-of-patch tag.
+mkdir -p "$TMP_WORK/scope-no-markers-fixed"
+cp "$SCOPE_FIXTURES/README.no-markers.candidate.md" "$TMP_WORK/scope-no-markers-fixed/"
+echo "# Inside" > "$TMP_WORK/scope-no-markers-fixed/missing-inside.md"
+out="$(bash "$CHECK" "$TMP_WORK/scope-no-markers-fixed/README.no-markers.candidate.md" "$TMP_WORK/scope-no-markers-fixed" 2>&1)"
+rc=$?
+assert_exit "no-markers fixed: exit 0" "0" "$rc"
+assert_line "no-markers fixed: OK record carries the same out-of-patch tag" \
+  "OK|link|$TMP_WORK/scope-no-markers-fixed/README.no-markers.candidate.md:5|missing-inside.md|resolves under REPO_ROOT|out-of-patch" "$out"
+
+# ──────────────────────────────────────────────────────────────────────────────
 # SUMMARY line — counts match records, across simultaneous findings
 # ──────────────────────────────────────────────────────────────────────────────
 
@@ -423,6 +625,7 @@ else
   FAIL=$((FAIL + 1))
 fi
 assert_contains "mixed fixture: SUMMARY matches record counts" "SUMMARY|gaps=2|low_value=1" "$out"
+assert_record_shape "mixed fixture: RC-8 field counts across rules" "$out"
 
 # SUMMARY is always the final line
 last_line="$(tail -n 1 <<<"$out")"

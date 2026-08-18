@@ -5,11 +5,13 @@ validation gates against a drafted README patch — link resolution,
 command existence, and low-value section flagging — plus the
 managed-section marker-grammar gate that mechanically enforces
 `readme-ownership.md`'s `<id>` rules, and reports every finding as one
-stdout record in RC-8's fixed format. It is read-only: RC-9 makes
+stdout record in RC-8's record format, tagging `link` and `command`
+findings `in-patch` or `out-of-patch`. It is read-only: RC-9 makes
 exclusion the caller's job, not the checker's.
 
-This file is the sole definition site for the report format, the exit
-codes, the external-tool allowlist, and the low-value proxy list. It uses
+This file is the sole definition site for the report format, the scope
+tag, the rule for which records block patch readiness, the exit codes,
+the external-tool allowlist, and the low-value proxy list. It uses
 `core/pipeline.md`'s stage sequence and `core/claim-model.md`'s
 `unresolved-gap` disposition, and defines neither.
 
@@ -50,7 +52,7 @@ fixture's synthetic root.
 one record per line:
 
 ```
-<SEVERITY>|<RULE>|<FILE>:<LINE>|<SUBJECT>|<MESSAGE>
+<SEVERITY>|<RULE>|<FILE>:<LINE>|<SUBJECT>|<MESSAGE>|<SCOPE>
 ```
 
 - `SEVERITY` ∈ `OK` | `GAP` | `LOW_VALUE` | `INFO`
@@ -58,20 +60,75 @@ one record per line:
 - `SUBJECT` = the link target, the command string, the section heading, or
   the marker id (`-` for a malformed marker line — see § Managed-section
   marker grammar below)
+- `SCOPE` ∈ `in-patch` | `out-of-patch`. Those two hyphenated lowercase
+  tokens are the literals; nothing else is legal in the field
 - The final line of every run is `SUMMARY|gaps=<n>|low_value=<n>`, where
   `<n>` counts exactly the `GAP` and `LOW_VALUE` records that run just
   emitted
+
+**The field count varies by `RULE`, and this is the rule.** A record whose
+`RULE` is `link` or `command` carries **six** fields, the sixth being
+`<SCOPE>`. A record whose `RULE` is `section-value` or `marker` carries
+**five** and no scope tag. A consumer reading `$5` still gets `<MESSAGE>`
+on every record, so a positional reader written against the five-field
+form keeps working; only a reader that assumes a fixed field count needs
+to change.
+
+The scope tag is on **every** severity, not only failures — an `OK|link`
+record carries it exactly as a `GAP|link` record does. The criteria the
+tag implements speak of "a `link` or `command` finding", and a tag present
+only on failures would make the report inconsistent with itself.
+
+It is a separate field rather than a suffix inside `<MESSAGE>` for three
+reasons: `<MESSAGE>` is free prose that already contains colons and commas
+(`not verified: no package.json script, no npm-builtin verb, …`), so a
+machine-read enum inside it would force every consumer to parse prose,
+where a sixth field is `cut -d'|' -f6`; RC-9's consumer must branch on
+scope mechanically, and a substring search against prose this same
+contract permits rewording is not a sound branch; and a varying field
+count is a real cost that is better stated as a rule than discovered.
+
+## Scope attribution (the `<SCOPE>` field)
+
+A `link` or `command` finding whose line falls **within** a well-formed
+managed-section marker pair is tagged `in-patch`. One whose line falls
+**outside every** well-formed pair is tagged `out-of-patch`.
+
+"Within" is strictly between: a finding at line `L` is `in-patch` when
+`start_line < L < end_line` for some pair. Neither marker line is itself
+`in-patch` — a marker line delimits the patch region rather than being
+content inside it.
+
+"Well-formed" is `readme-ownership.md`'s term, and it is the **same**
+predicate gate (d) computes: the checker reads the pair set
+`scan_markers()` publishes (§ The well-formed-pair set) and computes no
+second notion of well-formedness. A malformed pair is not a managed
+section (`readme-ownership.md`), so a finding enclosed by one is
+`out-of-patch` — including a pair that popped cleanly with matching ids
+but was withheld for a `format`, `uniqueness`, or `nesting` violation.
+
+The tag is purely positional, and deliberately says nothing about
+blocking. When a candidate contains no well-formed pair at all, every
+`link` and `command` record is `out-of-patch` — there is no marked region
+for anything to be inside. That case is handled by RC-9's blocking rule
+below, not by the tag.
 
 ## Exit codes
 
 | Exit | Meaning |
 |---|---|
 | `0` | no `GAP` records. `LOW_VALUE` records may be present — the flag is advisory per `spec-draft.md` ("flag as low-value", not "reject") and the run completes |
-| `1` | one or more `GAP` records: the caller must exclude those items before reporting the patch ready |
+| `1` | one or more `GAP` records. Exit 1 alone does not block a patch: the caller excludes the subject of every `in-patch` `GAP` record and reports every `out-of-patch` one. See RC-9 for the two cases where exit 1 does block — a candidate with no well-formed marker pair, in which every `GAP` blocks, and a `GAP` record whose `RULE` is `marker`, which always blocks and is resolved by repairing the marker line rather than by removing a subject |
 | `2` | usage or invocation error (missing/unreadable `README_FILE`, unusable `REPO_ROOT`) |
 
 `LOW_VALUE` never changes the exit code. `GAP` always does. There is no
-third path between them.
+third path between them. `GAP|marker` records and `out-of-patch` `GAP`
+records both still force exit 1.
+
+**Exit code and blocking are two different questions.** The exit code
+answers "did this run find a gap"; blocking answers "may the caller
+report this patch ready". Scope is what separates them, and only RC-9
+answers the second.
 
 ## The checker reports; the caller excludes (RC-9)
 
@@ -81,10 +138,55 @@ emits no filtered artifact — its only output is the stdout report above.
 unresolved gap" is the **caller's** obligation:
 
 > The skill shall not report a README patch ready while any `GAP` record
-> exists for it. On exit 1 the skill shall remove the subject of each
-> `GAP` record from the patch and carry that record verbatim into its
-> unresolved-gaps report. A patch reported ready with an outstanding
-> `GAP` record is a contract violation.
+> tagged `in-patch` exists for it, and shall not report one ready while
+> any `GAP` record whose `RULE` is `marker` exists for it. On exit 1 the
+> skill shall remove the subject of each `in-patch` `GAP` record from the
+> patch and carry that record verbatim into its unresolved-gaps report. A
+> `marker` record carries no scope tag and is never resolved by removing
+> its subject: its subject is a marker id and its line is a delimiter of
+> the patch region, not content inside it. The skill shall repair the
+> marker line each `marker` record names when that line is one this run
+> authored or modified in the candidate, and shall otherwise report the
+> patch blocked and carry the record verbatim into its unresolved-gaps
+> report — a marker line carried unchanged from the on-disk README belongs
+> to a section this contract authorizes no write to. A `GAP` record tagged
+> `out-of-patch` is carried into the report as an informational finding
+> and never blocks patch readiness. When the candidate README contains no
+> well-formed managed-section marker pair, every `GAP` record blocks: with
+> no marked patch region, there is no out-of-patch exemption to claim. A
+> patch reported ready in violation of any of these is a contract
+> violation.
+
+**Why a candidate with no well-formed pair blocks on everything.**
+"Out-of-patch" means "outside the region this run owns and is rewriting".
+With no marked region, there is no exemption to claim, so the absolute
+rule stands. This is what keeps the exemption from opening a hole on
+exactly the first run against a repository that has never been
+cartographed.
+
+**Why a `GAP|marker` record always blocks.** The marker grammar is what
+defines the patch region. While any marker in the file is broken, the
+`in-patch` / `out-of-patch` tag on every other record is computed against
+a region this contract cannot vouch for — so blocking is the only reading
+consistent with gate (d) existing at all. This holds regardless of whether
+the candidate contains well-formed pairs elsewhere.
+
+**Which marker records the run may repair, and which it may not.** A
+marker line this run authored or modified in the candidate is the run's
+own output: the run repairs it, and re-running clears that record. A
+marker line carried unchanged from the on-disk README is a pre-existing
+defect the run did not introduce, and the run may **not** rewrite it — a
+malformed marker means `readme-ownership.md`'s branch 1 does not fire, the
+enclosing section classifies `unknown`, and the action matrix authorizes
+no write to it. That record blocks, and the run reports the patch
+**blocked** rather than looping.
+
+**The loop therefore terminates.** Every pass either repairs a
+run-authored marker line or removes an `in-patch` subject. Both sets are
+finite and both strictly shrink. When neither shrinks, the run stops —
+ready if the only remaining records are `out-of-patch` `GAP`s in a
+candidate with at least one well-formed pair, blocked if any pre-existing
+`marker` record remains.
 
 This is `core/pipeline.md` stage 4's hand-off, stated in the concrete
 terms that stage promised: the checker's post-state is "reported as
@@ -203,8 +305,8 @@ either. Both are visible gaps, stated here in the same style
 shipped: `derivation` is checked by a human reviewer, not this script.
 
 Every violation is one `GAP|marker|<file>:<line>|<id>|<message>` record.
-`marker` records carry five fields and take no scope tag (Task 4's tag
-is scoped to `link` and `command` findings only). Each increments
+`marker` records carry five fields and take no scope tag (§ Scope
+attribution is scoped to `link` and `command` findings only). Each increments
 `GAPS`, so a marker violation participates in the same exit-1
 consequence as gates (a) and (b): the caller may not report the patch
 ready while any `GAP|marker` record is outstanding (RC-9). A malformed
@@ -231,8 +333,8 @@ assertion in `check-readme-patch.test.sh` is order-sensitive, so this
 change is safe.
 
 **The well-formed-pair set.** `scan_markers()` also publishes, for
-in-process callers of `check-readme-patch.sh` (Task 4's stage-4 scope
-tag reads it), the set of marker pairs that popped cleanly with
+in-process callers of `check-readme-patch.sh` (§ Scope attribution's tag
+is its one reader), the set of marker pairs that popped cleanly with
 byte-identical ids, emitted no `format` record on either marker, whose
 id emitted no `uniqueness` record, and inside whose `[start_line,
 end_line]` range no `nesting` record fired — the last clause also
@@ -258,7 +360,18 @@ Before a checker change is trusted, confirm every one of these:
    exits 0 (this file lives under `core/` and is subject to RC-7 like
    every other file there; it names no profile directory path, so no
    exemption token is needed).
-5. The marker-grammar gate mechanically enforces exactly four of the
+5. Every `link` and `command` record carries six fields whose sixth is
+   `in-patch` or `out-of-patch`, on every severity, and every
+   `section-value` and `marker` record carries five and no scope tag.
+   Assert this whole-line — a substring assertion cannot see a field
+   appended to or dropped from the end of a record.
+6. The scope tag is computed from the well-formed-pair set below and
+   from nothing else. A pair that popped cleanly with matching ids but
+   was withheld for a `format`, `uniqueness`, or `nesting` violation must
+   leave its enclosed findings `out-of-patch`; a suite with no fixture of
+   that shape cannot tell a correct tag from one computed against the
+   merely-paired set.
+7. The marker-grammar gate mechanically enforces exactly four of the
    five `<id>` rules `readme-ownership.md` § Managed-section markers
    defines (format, uniqueness, matching, nesting) plus the two orphan
    conditions and the malformed-marker-line branch — never

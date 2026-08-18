@@ -6,9 +6,11 @@
 # conditions and a malformed-marker-line branch; `derivation` is not
 # mechanically enforced, see core/local-validation.md). Contract: RC-6
 # (invocation), RC-8 (report format + exit codes, including the `marker`
-# RULE), RC-9 (read-only — reports GAP, never excludes), RC-10 (command
-# verification clauses, including the external-tool allowlist), RC-11
-# (low-value proxies). Full definitions: core/local-validation.md. This
+# RULE and the in-patch/out-of-patch scope field `link` and `command`
+# records carry), RC-9 (read-only — reports GAP, never excludes; scope
+# decides which GAPs block), RC-10 (command verification clauses,
+# including the external-tool allowlist), RC-11 (low-value proxies).
+# Full definitions: core/local-validation.md. This
 # script is read-only — it never rewrites README_FILE and writes no file
 # of its own.
 #
@@ -58,8 +60,8 @@ fi
 GAPS=0
 LOW_VALUE=0
 
-# Published for downstream callers within this process only (Task 4's
-# stage-4 scope tag reads it): well-formed managed-section marker pairs,
+# Published for downstream callers within this process only (record_scope()
+# is the one reader): well-formed managed-section marker pairs,
 # each element formatted "<start_line>:<end_line>". Populated by
 # scan_markers(). A pair enters this array only when it popped cleanly
 # with byte-identical ids, neither marker emitted a format record, its id
@@ -297,6 +299,38 @@ scan_markers() {
 }
 
 # ──────────────────────────────────────────────────────────────────────────────
+# SCOPE ATTRIBUTION — RC-8's sixth field on `link` and `command` records
+# ──────────────────────────────────────────────────────────────────────────────
+
+# Echoes `in-patch` when the given line falls strictly between the start
+# and end lines of some well-formed managed-section marker pair, and
+# `out-of-patch` otherwise. Strictly between: neither marker line is
+# itself in-patch, because a marker line delimits the patch region rather
+# than being content inside it.
+#
+# The pair set is scan_markers()'s published MARKER_WELLFORMED_PAIRS and
+# nothing else — this function never recomputes well-formedness. A second
+# predicate here would be free to drift from gate (d)'s, and the two are
+# required to be the same notion (core/local-validation.md § The
+# well-formed-pair set). The array is legitimately empty for a candidate
+# with no well-formed pair, so its value expansion is guarded for bash
+# 4.0-4.3 under `set -u`; that case yields `out-of-patch` for every
+# record, and RC-9 is where a candidate with no marked region is handled.
+record_scope() {
+  local line_num="$1"
+  local pair start_ln end_ln
+  for pair in "${MARKER_WELLFORMED_PAIRS[@]+"${MARKER_WELLFORMED_PAIRS[@]}"}"; do
+    start_ln="${pair%%:*}"
+    end_ln="${pair##*:}"
+    if [ "$line_num" -gt "$start_ln" ] && [ "$line_num" -lt "$end_ln" ]; then
+      printf 'in-patch'
+      return
+    fi
+  done
+  printf 'out-of-patch'
+}
+
+# ──────────────────────────────────────────────────────────────────────────────
 # GATE (a): internal link resolution
 # ──────────────────────────────────────────────────────────────────────────────
 
@@ -323,6 +357,9 @@ check_links() {
         continue
       fi
 
+      local scope
+      scope="$(record_scope "$line_num")"
+
       if [[ $target == \#* ]]; then
         local anchor="${target#\#}"
         local found=0
@@ -333,9 +370,9 @@ check_links() {
           fi
         done < <(extract_slugs "$README_FILE")
         if [ "$found" -eq 1 ]; then
-          printf 'OK|link|%s:%d|%s|anchor resolves within README\n' "$README_FILE" "$line_num" "$target"
+          printf 'OK|link|%s:%d|%s|anchor resolves within README|%s\n' "$README_FILE" "$line_num" "$target" "$scope"
         else
-          printf 'GAP|link|%s:%d|%s|anchor does not resolve within README\n' "$README_FILE" "$line_num" "$target"
+          printf 'GAP|link|%s:%d|%s|anchor does not resolve within README|%s\n' "$README_FILE" "$line_num" "$target" "$scope"
           GAPS=$((GAPS + 1))
         fi
         continue
@@ -343,9 +380,9 @@ check_links() {
 
       local path_part="${target%%#*}"
       if [ -e "$REPO_ROOT/$path_part" ]; then
-        printf 'OK|link|%s:%d|%s|resolves under REPO_ROOT\n' "$README_FILE" "$line_num" "$target"
+        printf 'OK|link|%s:%d|%s|resolves under REPO_ROOT|%s\n' "$README_FILE" "$line_num" "$target" "$scope"
       else
-        printf 'GAP|link|%s:%d|%s|does not resolve under REPO_ROOT\n' "$README_FILE" "$line_num" "$target"
+        printf 'GAP|link|%s:%d|%s|does not resolve under REPO_ROOT|%s\n' "$README_FILE" "$line_num" "$target" "$scope"
         GAPS=$((GAPS + 1))
       fi
     done < <(grep -oE '\[[^]]*\]\([^)]+\)' <<<"$line")
@@ -367,6 +404,9 @@ verify_command() {
   local argv0="${tokens[0]:-}"
   [ -z "$argv0" ] && return
 
+  local scope
+  scope="$(record_scope "$line_num")"
+
   # Clause 1: npm/pnpm/yarn run <name>, <name> a key under package.json .scripts
   # Disjoint from clause 2: "run" is not in {install,ci,audit,outdated,list,prune}
   if [[ $argv0 == "npm" || $argv0 == "pnpm" || $argv0 == "yarn" ]] \
@@ -374,7 +414,7 @@ verify_command() {
     local script_name="${tokens[2]}"
     local pkg="$REPO_ROOT/package.json"
     if [ -f "$pkg" ] && jq -e --arg n "$script_name" '(.scripts // {}) | has($n)' "$pkg" >/dev/null 2>&1; then
-      printf 'OK|command|%s:%d|%s|verified via package.json .scripts\n' "$README_FILE" "$line_num" "$cmd"
+      printf 'OK|command|%s:%d|%s|verified via package.json .scripts|%s\n' "$README_FILE" "$line_num" "$cmd" "$scope"
       return
     fi
   fi
@@ -384,7 +424,7 @@ verify_command() {
     local verb="${tokens[1]:-}"
     case "$verb" in
       install|ci|audit|outdated|list|prune)
-        printf 'OK|command|%s:%d|%s|npm-builtin\n' "$README_FILE" "$line_num" "$cmd"
+        printf 'OK|command|%s:%d|%s|npm-builtin|%s\n' "$README_FILE" "$line_num" "$cmd" "$scope"
         return
         ;;
     esac
@@ -393,7 +433,7 @@ verify_command() {
   # Clause 3: verbatim match in a file under REPO_ROOT/.github/workflows/
   local wf_dir="$REPO_ROOT/.github/workflows"
   if [ -d "$wf_dir" ] && grep -rFl -- "$cmd" "$wf_dir" >/dev/null 2>&1; then
-    printf 'OK|command|%s:%d|%s|verified via .github/workflows verbatim match\n' "$README_FILE" "$line_num" "$cmd"
+    printf 'OK|command|%s:%d|%s|verified via .github/workflows verbatim match|%s\n' "$README_FILE" "$line_num" "$cmd" "$scope"
     return
   fi
 
@@ -404,18 +444,18 @@ verify_command() {
     candidate="${candidate%\"}"; candidate="${candidate#\"}"
     candidate="${candidate%\'}"; candidate="${candidate#\'}"
     if [ -n "$candidate" ] && [ -e "$REPO_ROOT/$candidate" ]; then
-      printf 'OK|command|%s:%d|%s|verified via in-repo path %s\n' "$README_FILE" "$line_num" "$cmd" "$candidate"
+      printf 'OK|command|%s:%d|%s|verified via in-repo path %s|%s\n' "$README_FILE" "$line_num" "$cmd" "$candidate" "$scope"
       return
     fi
   done
 
   # Clause 5: external-tool allowlist
   if is_allowlisted "$argv0"; then
-    printf 'OK|command|%s:%d|%s|external-tool\n' "$README_FILE" "$line_num" "$cmd"
+    printf 'OK|command|%s:%d|%s|external-tool|%s\n' "$README_FILE" "$line_num" "$cmd" "$scope"
     return
   fi
 
-  printf 'GAP|command|%s:%d|%s|not verified: no package.json script, no npm-builtin verb, no CI match, no in-repo path, not on external-tool allowlist\n' "$README_FILE" "$line_num" "$cmd"
+  printf 'GAP|command|%s:%d|%s|not verified: no package.json script, no npm-builtin verb, no CI match, no in-repo path, not on external-tool allowlist|%s\n' "$README_FILE" "$line_num" "$cmd" "$scope"
   GAPS=$((GAPS + 1))
 }
 
