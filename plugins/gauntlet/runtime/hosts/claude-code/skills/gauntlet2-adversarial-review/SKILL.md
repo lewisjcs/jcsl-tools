@@ -69,11 +69,16 @@ dispatch a runtime action requests and returns what it observed.
    context carrying only the artifact view and profile the action specifies
    — and returns a stage receipt with the raw output.
 3. **Validate the Finder receipt.** The runtime parses and validates the
-   candidate list against its contract, assigns each candidate a
-   deterministic ID (`F-001`, `F-002`, ...), and retries the dispatch once,
-   and only once, on malformed output. If the retried dispatch is also
-   malformed, the runtime records a typed gap for the Finder stage rather
-   than retrying further.
+   candidate list against its contract and assigns each candidate a
+   deterministic ID (`F-001`, `F-002`, ...). An output that wraps the
+   candidate list in surrounding prose is salvaged only when it contains a
+   single unambiguous, non-empty array whose every item passes the output
+   contract; a salvaged acceptance is recorded distinctly in the run record,
+   never silently. Anything else is malformed: the runtime retries the
+   dispatch once, and only once, appending the rejection reason and the
+   compliant output shape to the retried prompt. If the retried dispatch is
+   also malformed, the runtime records a typed gap for the Finder stage
+   rather than retrying further.
 4. **Handle an empty candidate set.** Zero candidates is a valid Finder
    result. When the candidate list is empty, the runtime skips the Validator
    dispatch entirely — there is nothing to adjudicate — and proceeds directly
@@ -86,10 +91,12 @@ dispatch a runtime action requests and returns what it observed.
 6. **Validate the Validator receipt.** The runtime requires exactly one
    verdict per candidate, referenced by `findingId`. A cardinality mismatch,
    a duplicate ID, an invented ID, or an omitted ID is a receipt-validation
-   failure, not a warning. The runtime retries the dispatch once, and only
-   once, on malformed output. If the retried dispatch is also malformed, the
-   runtime records a typed gap for the Validator stage rather than retrying
-   further.
+   failure, not a warning. The same prose-salvage rule as the Finder receipt
+   applies. On malformed output or a cardinality failure the runtime retries
+   the dispatch once, and only once, appending the rejection reason (for a
+   cardinality failure, the exact candidate IDs still owed a verdict) to the
+   retried prompt. If the retried dispatch also fails, the runtime records a
+   typed gap for the Validator stage rather than retrying further.
 7. **Adjudicate.** The runtime joins candidates and verdicts by ID and
    applies the versioned adjudication policy mechanically: drop `disproved`
    results, deduplicate, apply the High-severity grounding check, then gate

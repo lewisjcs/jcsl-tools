@@ -7609,9 +7609,10 @@ var DISPATCH_KIND_CONFIG = {
     buildPrompt: buildAuditorPromptBody
   }
 };
-function buildDispatchAction({ kind, attempt, state }) {
+function buildDispatchAction({ kind, attempt, state, retryContext }) {
   const config = DISPATCH_KIND_CONFIG[kind];
   const role = state.roles[config.roleKey];
+  const promptBody = config.buildPrompt(state);
   return Object.freeze({
     actionId: `${kind}-${attempt}`,
     kind,
@@ -7623,7 +7624,9 @@ function buildDispatchAction({ kind, attempt, state }) {
     profileVersion: state.profile.version,
     modelRequirement: config.modelRequirement,
     outputContractId: config.outputContractId,
-    promptBody: config.buildPrompt(state)
+    promptBody: retryContext === void 0 ? promptBody : `${promptBody}
+
+${retryContext}`
   });
 }
 function candidateId(index) {
@@ -7632,14 +7635,79 @@ function candidateId(index) {
 function auditFindingId(index) {
   return `A-${String(index + 1).padStart(3, "0")}`;
 }
-function parseJsonArray(rawOutput) {
+function tryParseArray(text) {
   let parsed;
   try {
-    parsed = JSON.parse(rawOutput);
+    parsed = JSON.parse(text);
   } catch {
-    return { ok: false };
+    return null;
   }
-  return Array.isArray(parsed) ? { ok: true, value: parsed } : { ok: false };
+  return Array.isArray(parsed) ? parsed : null;
+}
+function salvageArrays(rawOutput) {
+  const texts = [];
+  for (const match of rawOutput.matchAll(/```[a-zA-Z]*\r?\n([\s\S]*?)```/g)) {
+    texts.push(match[1]);
+  }
+  const first = rawOutput.indexOf("[");
+  const last = rawOutput.lastIndexOf("]");
+  if (first !== -1 && last > first) {
+    texts.push(rawOutput.slice(first, last + 1));
+  }
+  const distinct = /* @__PURE__ */ new Map();
+  for (const text of texts) {
+    const parsed = tryParseArray(text.trim());
+    if (parsed !== null) {
+      distinct.set(canonicalJson(parsed), parsed);
+    }
+  }
+  return [...distinct.values()];
+}
+var MAX_CONTRACT_ISSUES_PER_ITEM = 3;
+function contractIssueLines(value, contractId) {
+  const lines = [];
+  value.forEach((item, index) => {
+    if (item === null || typeof item !== "object" || Array.isArray(item)) {
+      lines.push(`item ${index + 1}: not a JSON object`);
+      return;
+    }
+    const { valid, issues } = validateContract(contractId, item);
+    if (!valid) {
+      for (const issue of issues.slice(0, MAX_CONTRACT_ISSUES_PER_ITEM)) {
+        lines.push(`item ${index + 1} ${issue.instancePath || "/"}: ${issue.message}`);
+      }
+    }
+  });
+  return lines;
+}
+function parseReceiptArray(rawOutput, contractId) {
+  const direct = tryParseArray(rawOutput);
+  if (direct !== null) {
+    const details = contractIssueLines(direct, contractId);
+    return details.length === 0 ? { ok: true, value: direct, salvaged: false } : { ok: false, label: "the output parsed as a JSON array but one or more items failed the output contract", details };
+  }
+  const embedded = salvageArrays(rawOutput);
+  if (embedded.length === 1 && embedded[0].length > 0) {
+    const details = contractIssueLines(embedded[0], contractId);
+    if (details.length === 0) {
+      return { ok: true, value: embedded[0], salvaged: true };
+    }
+    return { ok: false, label: "a JSON array embedded in the output failed the output contract", details };
+  }
+  return { ok: false, label: "the output was not parseable as a single JSON array", details: [] };
+}
+var MAX_RETRY_DIAGNOSTIC_LINES = 10;
+var MAX_RETRY_DIAGNOSTIC_LINE_LENGTH = 200;
+function sanitizeDiagnosticLine(line) {
+  return String(line).replace(/\s+/g, " ").trim().slice(0, MAX_RETRY_DIAGNOSTIC_LINE_LENGTH);
+}
+function buildRetryContext({ attempt, label, details, outputContractId }) {
+  return [
+    `--- runtime retry context (attempt ${attempt}) ---`,
+    `The previous attempt's output was rejected by the runtime: ${label}.`,
+    ...details.slice(0, MAX_RETRY_DIAGNOSTIC_LINES).map((line) => `- ${sanitizeDiagnosticLine(line)}`),
+    `Respond with ONLY a JSON array whose items conform to ${outputContractId} \u2014 no prose, no code fences, nothing before or after the array.`
+  ].join("\n");
 }
 function recordFailure(state, { stage, attempt, buildRetryAction, code, messageLabel, outcomeRetry, outcomeGap, reason }) {
   const receiptActionId = state.pendingAction.actionId;
@@ -7670,13 +7738,13 @@ function recordFailure(state, { stage, attempt, buildRetryAction, code, messageL
 }
 function applyFinderReceipt(state, receipt) {
   const attempt = state.pendingAction.attempt;
-  const parsed = parseJsonArray(receipt.rawOutput);
-  const malformed = !parsed.ok || parsed.value.some((item) => !validateContract(FINDER_OUTPUT_CONTRACT_ID, item).valid);
-  if (malformed) {
+  const parsed = parseReceiptArray(receipt.rawOutput, FINDER_OUTPUT_CONTRACT_ID);
+  if (!parsed.ok) {
+    const retryContext = buildRetryContext({ attempt: attempt + 1, label: parsed.label, details: parsed.details, outputContractId: FINDER_OUTPUT_CONTRACT_ID });
     return recordFailure(state, {
       stage: "finder",
       attempt,
-      buildRetryAction: (s) => buildDispatchAction({ kind: "dispatch-finder", attempt: attempt + 1, state: s }),
+      buildRetryAction: (s) => buildDispatchAction({ kind: "dispatch-finder", attempt: attempt + 1, state: s, retryContext }),
       code: "RUNTIME_OUTPUT_MALFORMED",
       messageLabel: "output malformed",
       outcomeRetry: "malformed-retry",
@@ -7685,7 +7753,7 @@ function applyFinderReceipt(state, receipt) {
     });
   }
   const candidates = parsed.value.map((item, index) => ({ id: candidateId(index), ...item }));
-  const ledgerEntry = { actionId: receipt.actionId, kind: "dispatch-finder", attempt, outcome: "accepted" };
+  const ledgerEntry = { actionId: receipt.actionId, kind: "dispatch-finder", attempt, outcome: parsed.salvaged ? "accepted-salvaged" : "accepted" };
   if (candidates.length === 0) {
     const nextState2 = {
       ...state,
@@ -7703,13 +7771,13 @@ function applyFinderReceipt(state, receipt) {
 }
 function applyValidatorReceipt(state, receipt) {
   const attempt = state.pendingAction.attempt;
-  const parsed = parseJsonArray(receipt.rawOutput);
-  const malformed = !parsed.ok || parsed.value.some((item) => !validateContract(VALIDATOR_OUTPUT_CONTRACT_ID, item).valid);
-  if (malformed) {
+  const parsed = parseReceiptArray(receipt.rawOutput, VALIDATOR_OUTPUT_CONTRACT_ID);
+  if (!parsed.ok) {
+    const retryContext = buildRetryContext({ attempt: attempt + 1, label: parsed.label, details: parsed.details, outputContractId: VALIDATOR_OUTPUT_CONTRACT_ID });
     return recordFailure(state, {
       stage: "validator",
       attempt,
-      buildRetryAction: (s) => buildDispatchAction({ kind: "dispatch-validator", attempt: attempt + 1, state: s }),
+      buildRetryAction: (s) => buildDispatchAction({ kind: "dispatch-validator", attempt: attempt + 1, state: s, retryContext }),
       code: "RUNTIME_OUTPUT_MALFORMED",
       messageLabel: "output malformed",
       outcomeRetry: "malformed-retry",
@@ -7725,10 +7793,22 @@ function applyValidatorReceipt(state, receipt) {
   const invented = receivedIds.filter((id) => !expectedIds.includes(id));
   const duplicated = receivedIds.some((id, index) => receivedIds.indexOf(id) !== index);
   if (missing.length > 0 || invented.length > 0 || duplicated) {
+    const details = [];
+    if (missing.length > 0) {
+      details.push(`missing verdicts for: ${missing.join(", ")}`);
+    }
+    if (invented.length > 0) {
+      details.push(`verdicts for ids not in the candidate list: ${invented.join(", ")}`);
+    }
+    if (duplicated) {
+      details.push("duplicate findingId entries present");
+    }
+    details.push(`return exactly one verdict per candidate id: ${expectedIds.join(", ")}`);
+    const retryContext = buildRetryContext({ attempt: attempt + 1, label: "verdict cardinality mismatch", details, outputContractId: VALIDATOR_OUTPUT_CONTRACT_ID });
     return recordFailure(state, {
       stage: "validator",
       attempt,
-      buildRetryAction: (s) => buildDispatchAction({ kind: "dispatch-validator", attempt: attempt + 1, state: s }),
+      buildRetryAction: (s) => buildDispatchAction({ kind: "dispatch-validator", attempt: attempt + 1, state: s, retryContext }),
       code: "RUNTIME_VERDICT_CARDINALITY",
       messageLabel: "verdict cardinality mismatch",
       outcomeRetry: "cardinality-retry",
@@ -7736,7 +7816,7 @@ function applyValidatorReceipt(state, receipt) {
       reason: "verdict-cardinality-mismatch"
     });
   }
-  const ledgerEntry = { actionId: receipt.actionId, kind: "dispatch-validator", attempt, outcome: "accepted" };
+  const ledgerEntry = { actionId: receipt.actionId, kind: "dispatch-validator", attempt, outcome: parsed.salvaged ? "accepted-salvaged" : "accepted" };
   const nextState = {
     ...state,
     status: "adjudicating",
@@ -7748,13 +7828,13 @@ function applyValidatorReceipt(state, receipt) {
 }
 function applyAuditorReceipt(state, receipt) {
   const attempt = state.pendingAction.attempt;
-  const parsed = parseJsonArray(receipt.rawOutput);
-  const malformed = !parsed.ok || parsed.value.some((item) => !validateContract(AUDITOR_OUTPUT_CONTRACT_ID, item).valid);
-  if (malformed) {
+  const parsed = parseReceiptArray(receipt.rawOutput, AUDITOR_OUTPUT_CONTRACT_ID);
+  if (!parsed.ok) {
+    const retryContext = buildRetryContext({ attempt: attempt + 1, label: parsed.label, details: parsed.details, outputContractId: AUDITOR_OUTPUT_CONTRACT_ID });
     return recordFailure(state, {
       stage: "auditor",
       attempt,
-      buildRetryAction: (s) => buildDispatchAction({ kind: "dispatch-auditor", attempt: attempt + 1, state: s }),
+      buildRetryAction: (s) => buildDispatchAction({ kind: "dispatch-auditor", attempt: attempt + 1, state: s, retryContext }),
       code: "RUNTIME_OUTPUT_MALFORMED",
       messageLabel: "output malformed",
       outcomeRetry: "malformed-retry",
@@ -7763,7 +7843,7 @@ function applyAuditorReceipt(state, receipt) {
     });
   }
   const findings = parsed.value.map((item, index) => ({ id: auditFindingId(index), ...item }));
-  const ledgerEntry = { actionId: receipt.actionId, kind: "dispatch-auditor", attempt, outcome: "accepted" };
+  const ledgerEntry = { actionId: receipt.actionId, kind: "dispatch-auditor", attempt, outcome: parsed.salvaged ? "accepted-salvaged" : "accepted" };
   const nextState = {
     ...state,
     status: "audited",
@@ -10142,6 +10222,26 @@ function emitEvents(runDir, entries, targetFile) {
   }
   appendEvents(runDir, entries);
 }
+function appendEventsAfterPrimaryWrite(runDir, entries) {
+  try {
+    appendEvents(runDir, entries);
+  } catch (err) {
+    if (err instanceof CliError && err.code === "CLI_EVENTS_FAILED") {
+      process.stderr.write(`[gauntlet-runtime] WARNING ${err.code}: ${err.message}
+`);
+      return;
+    }
+    throw err;
+  }
+}
+function emitEventsAfterPrimaryWrite(runDir, entries, targetFile) {
+  if (runDir === null) {
+    process.stderr.write(`gauntlet-runtime: events skipped ("${targetFile}" is not in a run directory)
+`);
+    return;
+  }
+  appendEventsAfterPrimaryWrite(runDir, entries);
+}
 function pendingEventFrom(state) {
   const action = nextAction(state);
   if (action.terminal) {
@@ -10250,7 +10350,7 @@ function cmdBundle(flags) {
   const paths = runPaths(storeRoot, run.runId, path7.extname(flags.primary));
   writeFileAtomic(paths.bundle, serialized);
   writeFileAtomic(paths.artifact, content);
-  appendEvents(run.dir, [{
+  appendEventsAfterPrimaryWrite(run.dir, [{
     kind: "bundle-created",
     data: {
       runId: run.runId,
@@ -10328,7 +10428,7 @@ function cmdInit(flags) {
     throw new CliError("CLI_ADMISSION_FAILED", `createRun failed: ${err.message}`);
   }
   writeStateFile(flags.out, { runtimeState: state, hostMetaHistory: [] });
-  emitEvents(runDir, [
+  emitEventsAfterPrimaryWrite(runDir, [
     ...admission.events,
     {
       kind: "run-initialized",
@@ -10400,7 +10500,7 @@ function cmdReceipt(flags) {
   writeStateFile(flags.state, { runtimeState: nextState, hostMetaHistory: history });
   const isAuditRun = classKeyForClassId(nextState.classId) === CODE_QUALITY_CLASS_KEY;
   const ledgerEvents = nextState.ledger.slice(oldLedgerLength).map((entry) => ({
-    kind: entry.outcome === "accepted" ? "receipt-applied" : "stage-failed",
+    kind: entry.outcome === "accepted" || entry.outcome === "accepted-salvaged" ? "receipt-applied" : "stage-failed",
     data: {
       actionId: entry.actionId,
       actionKind: entry.kind,
@@ -10409,7 +10509,7 @@ function cmdReceipt(flags) {
       ...isAuditRun ? { findingCount: nextState.findings.length } : { candidateCount: nextState.candidates.length, verdictCount: nextState.verdicts.length }
     }
   }));
-  emitEvents(runDirForFile(flags.state), [...ledgerEvents, pendingEventFrom(nextState)], flags.state);
+  emitEventsAfterPrimaryWrite(runDirForFile(flags.state), [...ledgerEvents, pendingEventFrom(nextState)], flags.state);
   for (const issue of issues) {
     process.stderr.write(`[gauntlet-runtime] ${issue.code}: ${issue.message}
 `);
@@ -10487,7 +10587,7 @@ function cmdResult(flags) {
   }
   writeFileAtomic(flags.out, JSON.stringify(result, null, 2));
   writeFileAtomic(flags.evidence, JSON.stringify(evidence, null, 2));
-  emitEvents(runDirForFile(flags.out), [
+  emitEventsAfterPrimaryWrite(runDirForFile(flags.out), [
     ...outcomeEvents,
     {
       kind: "result-written",
@@ -10565,7 +10665,7 @@ function cmdTriage(flags) {
       }
     });
     const stamped = appendTriageEntries(storeRoot, flags.run, submitted, Date.now());
-    appendEvents(paths.dir, [{ kind: "triage-appended", data: { count: stamped.length } }]);
+    appendEventsAfterPrimaryWrite(paths.dir, [{ kind: "triage-appended", data: { count: stamped.length } }]);
     process.stdout.write(`${JSON.stringify(batchMode ? stamped : stamped[0])}
 `);
   } catch (err) {
@@ -10657,6 +10757,13 @@ async function followRunEvents(runDir, { intervalMs, write, readResult }) {
     if (events.some((event) => event.kind === "result-written")) {
       write(`
 ${renderFinalFrame({ events, result: readResult() })}
+`);
+      return;
+    }
+    const result = readResult();
+    if (result !== null) {
+      write(`
+${renderFinalFrame({ events, result })}
 `);
       return;
     }

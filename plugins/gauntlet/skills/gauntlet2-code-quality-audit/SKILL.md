@@ -63,8 +63,13 @@ An audit run has one dispatched stage:
 2. The host performs the dispatch in a fresh, isolated context and returns a
    receipt containing exactly what the auditor produced.
 3. The runtime validates each item against the auditor's output contract.
-   Malformed output earns one retry (`dispatch-auditor` attempt 2); a second
-   malformed receipt records a typed gap and the run terminates as `gap`.
+   An output that wraps the finding list in surrounding prose is salvaged
+   only when it contains a single unambiguous, non-empty array whose every
+   item passes the output contract; a salvaged acceptance is recorded
+   distinctly in the run record. Anything else is malformed and earns one
+   retry (`dispatch-auditor` attempt 2) with the rejection reason appended to
+   the retried prompt; a second malformed receipt records a typed gap and the
+   run terminates as `gap`.
 4. A valid receipt assigns finding IDs (`A-001`, `A-002`, …) in output order
    and the run terminates as `audited`.
 
