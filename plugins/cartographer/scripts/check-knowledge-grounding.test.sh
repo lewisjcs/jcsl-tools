@@ -89,6 +89,14 @@ assert_exit "grounding: capitalized-verb (rule a, case-insensitive)" "1" "$?"
 bash "$GROUNDING_CHECK" "$FIXTURES_DIR/grounding/numeric-threshold/core" > /dev/null 2>&1
 assert_exit "grounding: numeric-threshold (rule a, within 20 chars)" "1" "$?"
 
+# Test 14: hyphen-collapse-anchor fixture (should pass - slug collapses hyphen runs)
+bash "$GROUNDING_CHECK" "$FIXTURES_DIR/grounding/hyphen-collapse-anchor/core" > /dev/null 2>&1
+assert_exit "grounding: hyphen-collapse-anchor (rule c slug)" "0" "$?"
+
+# Test 15: fenced-heading fixture (should pass - heading inside fence is not a section start)
+bash "$GROUNDING_CHECK" "$FIXTURES_DIR/grounding/fenced-heading/core" > /dev/null 2>&1
+assert_exit "grounding: fenced-heading (rule a fence state)" "0" "$?"
+
 # ──────────────────────────────────────────────────────────────────────────────
 # GROUNDING TESTS — Negative fixtures with defects removed (pass-once-fixed)
 # ──────────────────────────────────────────────────────────────────────────────

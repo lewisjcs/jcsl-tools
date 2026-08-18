@@ -68,7 +68,7 @@ make_slug() {
   text="${text//[^[:alnum:] -]/}"  # Drop non-alphanumeric/space/hyphen
   text="${text,,}"  # Lowercase
   text="${text// /-}"  # Replace spaces with hyphens
-  text="${text//-+/-g}"  # Collapse multiple hyphens
+  while [[ $text == *--* ]]; do text="${text//--/-}"; done  # Collapse hyphen runs
   printf '%s' "$text"
 }
 
@@ -116,8 +116,9 @@ check_rule_a() {
       fence_state=$((1 - fence_state))
     fi
 
-    # Detect section start (## or ### heading)
-    if [[ $line =~ ^(##[[:space:]]+)([^#].*)$ ]]; then
+    # Detect section start (## heading); a heading-shaped line inside a
+    # fence is snippet content, not a section boundary
+    if [ $fence_state -eq 0 ] && [[ $line =~ ^(##[[:space:]]+)([^#].*)$ ]]; then
       # If we were in a section, check it
       if [ $in_section -eq 1 ] && [ $has_claim -eq 1 ] && [ $has_marker -eq 0 ]; then
         printf 'ERROR|rule-a|%s:%d|%s\n' "$file" "$section_start_line" "$section_heading"
@@ -130,7 +131,6 @@ check_rule_a() {
       in_section=1
       has_claim=0
       has_marker=0
-      fence_state=0
       continue
     fi
 
@@ -199,8 +199,9 @@ check_rule_b() {
       fence_state=$((1 - fence_state))
     fi
 
-    # Detect section start
-    if [[ $line =~ ^(##[[:space:]]+)([^#].*)$ ]]; then
+    # Detect section start; a heading-shaped line inside a fence is
+    # snippet content, not a section boundary
+    if [ $fence_state -eq 0 ] && [[ $line =~ ^(##[[:space:]]+)([^#].*)$ ]]; then
       # Check previous section for rule (b) violation
       if [ $in_section -eq 1 ]; then
         local violation=0
@@ -223,7 +224,6 @@ check_rule_b() {
       blockquote_count=0
       url_count=0
       long_line_count=0
-      fence_state=0
       continue
     fi
 
