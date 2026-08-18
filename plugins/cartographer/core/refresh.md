@@ -40,6 +40,7 @@ interchanged: `source-revision` is the header field and
 | `body-hash` | fingerprint field | The digest of that section's normalized body. Defined below. |
 | assess | section disposition | Run stages 1 through 3 for the section, producing fresh evidence, fresh ledger rows, and a fresh classification. |
 | carry forward | section disposition | Reuse the recorded ownership and freshness without running stages 1 through 3 for the section. |
+| covers | predicate | The relation between one fingerprint row and one path. The only path-matching predicate in this contract; Step 0 and the per-section procedure both use it. Defined below. |
 
 `source-revision` and `last-assessed-revision` are two fields because
 they are two facts. A carried-forward row keeps its older
@@ -124,9 +125,17 @@ to prevent.
 
 Record the full 64-character lowercase hex digest. No truncation, no
 case folding, and no markdown normalization beyond steps 2 through 4;
-the bytes are hashed as they appear in the file. `shasum` is on
-`core/local-validation.md`'s external-tool allowlist, so a README
-documenting this command stays verifiable.
+the bytes are hashed as they appear in the file.
+
+`core/local-validation.md`'s external-tool allowlist does not verify
+this pipeline. That allowlist is tested against `argv[0]` alone, and
+`argv[0]` here is `printf`, which the list does not carry — `shasum`
+appears later in the pipeline and is never examined. A README
+that documents this command verbatim therefore emits
+`GAP|command|<file>:<line>|<cmd>|not verified: …` unless one of RC-10's
+other clauses matches it. That is a reporting fact about documenting the
+command, not a constraint on running it; this contract's hash is
+computed by the run, not read out of a README.
 
 ## The hash is always taken over the README on disk
 
@@ -177,14 +186,45 @@ not instruct the executor.
 ## Only `current` carries forward
 
 A section whose recorded freshness is `stale` or `obsolete` is always
-re-assessed, regardless of path intersection and hash match.
-`core/readme-ownership.md`'s action matrix requires a `stale` or
-`obsolete` section to produce a proposed diff, an in-place body
-replacement, or a proposed removal, each citing the contradicting
+re-assessed, regardless of which paths its row covers and of any
+body-hash match. `core/readme-ownership.md`'s action matrix requires a
+`stale` or `obsolete` section to produce a proposed diff, an in-place
+body replacement, or a proposed removal, each citing the contradicting
 evidence — and the fingerprint records no evidence citation and no
 drafted body. Carrying such a row forward would put a section in the
 drifted bucket with nothing to cite, which the matrix forbids. Only
 `freshness: current` rows are carry-forward candidates.
+
+## A row *covers* a path — one predicate, used at both sites
+
+A fingerprint row **covers** a path when either of these holds:
+
+1. The path is byte-equal to one of the row's `evidence-paths` entries,
+   both compared as `REPO_ROOT`-relative paths with no leading `./`.
+2. The path is listed by
+   `git -C <REPO_ROOT> ls-files -- <watched-pathspec>` for one of the
+   row's `watched-paths` entries.
+
+This is the only path-matching predicate in this contract, and the two
+places that need one both use it: Step 0's uncovered-path valve (step 8)
+and the per-section procedure's rule 5. There is no second, weaker
+relation. A reading that treats one site as byte-equality and the other
+as something looser is a misreading of this section, not a distinction
+this contract draws.
+
+Clause 2 is what closes targeted mode's new-path hole. A file added
+since `source-revision` is byte-equal to no `evidence-paths` entry, so
+under clause 1 alone it would be covered by no row, fire step 8 on every
+addition, and never reach rule 5 — and a row whose watched pathspec
+matches that new file would otherwise carry its section forward with an
+absence-based claim that the new file has already falsified. Under
+clause 2 the watching row covers the new file, the run stays in targeted
+mode, and rule 5 selects that row's section for assessment.
+
+A path that clause 2 matched when the fingerprint was written but no
+longer matches — a watched file deleted since `source-revision` — is
+covered by no row and fires step 8. Full mode is the correct direction
+there: the row that watched it can no longer be evaluated against it.
 
 ## Selecting the mode — apply in order, once per run, at Step 0
 
@@ -209,6 +249,19 @@ drifted bucket with nothing to cite, which the matrix forbids. Only
    `current`, `stale`, `obsolete`; or its `body-hash` cell does not
    match `^[0-9a-f]{64}$`. Both enums are `core/readme-ownership.md`'s;
    this file uses them and defines neither.
+
+   Two or more body rows carry the same `section-key` → **full mode**;
+   report
+   `targeted mode unavailable: .cartographer/last-run.md records section-key <key> in more than one fingerprint row`,
+   where `<key>` is the first `section-key` in table order that appears
+   more than once. A duplicate key is a further way this table is
+   malformed, and it carries its own report string because it is a
+   property of the table rather than of any single row — neither row is
+   individually wrong, and the pair leaves the per-section row lookup
+   with no defined answer. Evaluate the five per-row criteria across
+   every body row first and report the malformed-row string if any of
+   them holds; evaluate the duplicate-key criterion only when no row is
+   individually malformed, so exactly one of the two strings is emitted.
 4. The recorded `readme-path` is not the README this run is analyzing →
    **full mode**; report
    `targeted mode unavailable: run state records readme-path <recorded> but this run analyzes <current>`.
@@ -228,21 +281,31 @@ drifted bucket with nothing to cite, which the matrix forbids. Only
    The `* 4 >` form is the integer expression of the 25% threshold — no
    floating point. **25% is a tunable heuristic, not a contract
    constant.**
-8. **Uncovered-path valve.** When a path in `CHANGED` is covered by no
-   row's `evidence-paths` and no row's `watched-paths` → **full mode**;
-   report
+8. **Uncovered-path valve.** When a path in `CHANGED` other than the
+   `REPO_ROOT`-relative path of the README under analysis is covered by
+   no row → **full mode**; report
    `targeted mode unavailable: <path> is covered by no recorded section`.
-   A path is *covered* when it is byte-equal to an `evidence-paths`
-   entry, or when it is listed by
-   `git -C <REPO_ROOT> ls-files -- <watched-pathspec>`.
+   *Covers* is the predicate defined above, unchanged and not restated
+   here.
+
+   The README under analysis is the one path this valve excludes from
+   its domain, and it is excluded because it is already owned by the
+   per-section body-hash rule (rule 6 below), which detects any change
+   to any of its sections. Without the exclusion, the tool's own
+   patch-then-commit-then-rerun cycle would put the README in `CHANGED`,
+   find it in no section's `evidence-paths`, and fall back to full mode
+   on every run after a committed README edit — making rule 6
+   unreachable for exactly the edits it exists to catch. No other path
+   is excluded.
 9. Otherwise → **targeted mode**.
 
-One malformed row forces full mode for the whole run. The row is not
-discarded, and its section is not merely re-assessed while the other
-rows are trusted: a malformed row means the write side of this file is
-not behaving as this contract specifies, and a table that is provably
-wrong in one row gives no ground for trusting the rows beside it. That
-is the same safe-failure bias steps 5 through 8 carry — every uncertain
+One malformed row — or one duplicated `section-key` — forces full mode
+for the whole run. The offending rows are not discarded, and their
+sections are not merely re-assessed while the remaining rows are
+trusted: either defect means the write side of this file is not
+behaving as this contract specifies, and a table that is provably wrong
+in one place gives no ground for trusting the rows beside it. That is
+the same safe-failure bias steps 5 through 8 carry — every uncertain
 case falls back to full mode.
 
 Step 4 is what makes `readme-path` load-bearing rather than a decorative
@@ -256,11 +319,11 @@ next run against the same README passes this step, and the next run
 against a different one falls back to full mode and rewrites the state
 file for its own README.
 
-The seven report strings in steps 2 through 8 are exhaustive: every path
+The eight report strings in steps 2 through 8 are exhaustive: every path
 by which a run declines targeted mode emits exactly one of them, and no
 other string. Step 1 is the only silent fallback, and it is silent
 because a first run in a working tree is not a degraded run. A case none
-of the seven covers is a contract defect to raise, not a string to
+of the eight covers is a contract defect to raise, not a string to
 invent.
 
 Precedence, stated once: steps 1 through 8 are run-level. If any of them
@@ -268,7 +331,18 @@ fires, the run is in full mode and **no section-level evaluation happens
 at all** — the per-section procedure below is not consulted, and no
 section is carried forward.
 
-## Selecting sections — apply in order, once per section, in targeted mode only
+## Selecting sections — apply in order, once per key, in targeted mode only
+
+The iteration domain is the **union** of the `section-key`s recorded in
+the fingerprint and the `section-key`s of the sections present in the
+current README under analysis, the latter computed by the `section-key`
+rule above. The domain is the union and not the current README's
+sections alone, because rule 1 keys off a fingerprint row that has no
+section left to iterate; an executor that walked only the current
+README's sections would never reach it and would silently drop the
+`sections removed since <source-revision>` report line. Walk the union
+in document order for the keys present in the README, then the
+remaining fingerprint-only keys in table order.
 
 1. The `section-key` is in the fingerprint and the section is absent
    from the current README → the section is not part of this run. List
@@ -280,10 +354,11 @@ section is carried forward.
    its presence does not trigger full mode.
 3. The recorded `freshness` is not `current` → **assess**.
 4. `watched-paths` is `unrecorded` → **assess**.
-5. An `evidence-paths` or `watched-paths` entry intersects `CHANGED` →
-   **assess**.
+5. The row covers a path in `CHANGED` → **assess**. *Covers* is the
+   predicate defined above — the same one step 8 applies, with no
+   weakening here.
 6. The current body-hash differs from the recorded `body-hash` →
-   **assess**, regardless of path intersection.
+   **assess**, regardless of which paths the row covers.
 7. Otherwise → **carry forward**: reuse the recorded ownership and
    freshness, report the section under **not assessed** together with
    its `last-assessed-revision`, and re-emit its row at stage 5 with a
@@ -294,9 +369,29 @@ Non-firing branches, stated so a literal executor cannot improvise: no
 branch of this procedure returns the run to full mode. A removed
 section, a new section, and a section whose recorded row cannot be
 trusted are all handled inside targeted mode, and the run-level steps
-are not re-evaluated once Step 0 has selected the mode. Each section
-reaches exactly one of the seven branches — the first that fires decides
-— so no section is both assessed and carried forward.
+are not re-evaluated once Step 0 has selected the mode. Every key in the
+union reaches exactly one of the seven branches — the first that fires
+decides — so no section is both assessed and carried forward, and no
+fingerprint key goes unvisited.
+
+## What targeted mode does not detect
+
+`CHANGED` is a commit-range diff, `<source-revision>..HEAD`. An
+uncommitted working-tree edit to a tracked evidence or watched file
+appears in no `CHANGED` entry, so it reaches neither step 8 nor rule 5,
+and a section whose evidence drifted only in the working tree carries
+forward. The body-hash closes this for one file and one file only: it is
+taken on disk, so an uncommitted edit to the README under analysis still
+fires rule 6. Every other file's uncommitted state is invisible to this
+contract.
+
+The harm is bounded, not absent, and the bound is the reporting rule:
+such a section is reported under **not assessed** with its
+`last-assessed-revision`, never under **confirmed current**. A run
+therefore never asserts freshness it did not verify — it reports that it
+did not look, and names the revision it last looked at. To assess
+against uncommitted work, commit the work first, or delete
+`.cartographer/last-run.md` to force full mode under step 1.
 
 ## Stage 4 is never skipped per section
 
@@ -342,20 +437,24 @@ report the first that fails:
 
 1. The mode was selected by the ordered Step 0 procedure, and a run in
    full mode for any reason other than an absent
-   `.cartographer/last-run.md` reported exactly one of the seven strings
+   `.cartographer/last-run.md` reported exactly one of the eight strings
    in steps 2 through 8.
 2. No section was carried forward in a run that fell back to full mode.
-3. Every carried-forward section has recorded freshness `current`, a
-   `watched-paths` value other than `unrecorded`, no `evidence-paths` or
-   `watched-paths` entry intersecting `CHANGED`, and a current body-hash
-   equal to its recorded `body-hash`.
-4. Stage 4 ran whole-file on this run, and every record it emitted
+3. A targeted-mode run visited every key in the union of the
+   fingerprint's `section-key`s and the current README's section keys,
+   and every fingerprint key with no section left in the README was
+   listed under `sections removed since <source-revision>`.
+4. Every carried-forward section has recorded freshness `current`, a
+   `watched-paths` value other than `unrecorded`, no `CHANGED` path
+   covered by its row, and a current body-hash equal to its recorded
+   `body-hash`.
+5. Stage 4 ran whole-file on this run, and every record it emitted
    counted toward the exit code.
-5. Every classified section appears in exactly one of the three buckets,
+6. Every classified section appears in exactly one of the three buckets,
    and every carried-forward entry states its `last-assessed-revision`.
-6. The run state written at stage 5 carries a `source-revision` line, a
+7. The run state written at stage 5 carries a `source-revision` line, a
    `readme-path` line naming the README this run analyzed, and one
-   well-formed row per classified section, each `body-hash` a
-   64-character lowercase hex digest.
-7. `bash plugins/cartographer/scripts/check-core-profile-boundary.sh`
+   well-formed row per classified section — no `section-key` appearing
+   twice, each `body-hash` a 64-character lowercase hex digest.
+8. `bash plugins/cartographer/scripts/check-core-profile-boundary.sh`
    exits 0.
