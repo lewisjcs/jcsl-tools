@@ -42,6 +42,18 @@ the repository under analysis, created if it does not already exist.
 Nothing under this directory is repository-bound (see "Repository-bound
 vs. working-only artifacts" below) — never stage it, never commit it.
 
+"Never stage it" must not depend on discipline alone: a later `git add .`
+or `git add -A` in the target repository — by anyone, in any session —
+would silently stage the claim ledger, evidence record, and validation
+report. So, when creating `.cartographer/`, also make git ignore it
+locally: if the target repository has a `.git` directory and
+`.git/info/exclude` does not already contain a `.cartographer/` line,
+append one. `.git/info/exclude` is local-only ignore state — it touches
+no tracked file, so this is not a repository-bound write and needs no
+patch authorization. Do not edit the target's `.gitignore` for this;
+that IS a tracked file, and working-only tooling artifacts are not the
+target repository's concern.
+
 Before starting stage 1, check whether `.cartographer/progress.md`
 already exists.
 
