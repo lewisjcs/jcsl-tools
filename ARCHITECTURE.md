@@ -7,12 +7,13 @@
 ```
 jcsl-tools/
 ├── .claude-plugin/
-│   └── marketplace.json      # marketplace manifest — lists all 4 plugins below
+│   └── marketplace.json      # marketplace manifest — lists all 5 plugins below
 └── plugins/
     ├── kiln/                 # implementation workflow Party
     ├── gauntlet/              # multi-skill review harness
     ├── prospector/            # discovery-first research harness
-    └── context-economy/       # context-spend discipline Party
+    ├── context-economy/       # context-spend discipline Party
+    └── cartographer/          # repository documentation cartographer
 ```
 
 Each plugin directory is independently installable (`claude plugin install <name>@jcsl-tools`) and has its own `.claude-plugin/plugin.json` manifest, versioned independently of the others and of the marketplace manifest itself.
@@ -28,7 +29,7 @@ Two different `.claude-plugin/plugin.json`-shaped files exist at two levels — 
 
 A plugin's version is bumped independently in its own `plugin.json` — the marketplace manifest doesn't carry version numbers at all, only routing (`source`) and display metadata.
 
-## The four plugins
+## The five plugins
 
 ### Kiln — complexity-proportionate implementation Party
 
@@ -88,7 +89,13 @@ Not invoked via a slash command — its `context-economy` skill fires on a `<HAR
 
 `classes/*.class.json` are descriptive manifests (constraints, grounding citations, calibration fixture IDs) per Class — not executable config, just documentation of each Class's design rationale. `fixtures/` holds five operator-in-loop verification scenarios (`CE-01` through `CE-05`) with a `prompt.md`/`expected.md` pass-criteria pair each.
 
-This is the only plugin with its own hook test suite (`*.test.sh` files alongside each hook script) and its own nested `README.md`/`SETUP.md` — a heavier documentation footprint than the other three plugins, reflecting that it ships hooks that run unconditionally on every session rather than only on explicit invocation.
+This is the only plugin with its own hook test suite (`*.test.sh` files alongside each hook script) and its own nested `README.md`/`SETUP.md` — a heavier documentation footprint than the other plugins in this repo, reflecting that it ships hooks that run unconditionally on every session rather than only on explicit invocation.
+
+### Cartographer — repository documentation cartographer
+
+Entry: `cartograph-report` skill (auto-discovered; no slash command)
+
+Cartographer's Slice 1 pipeline reads a repository's own evidence — tracked files, manifests, CI configuration, and history — and turns it into a claim-classified README draft/patch, or a report of what it could not support. `core/` holds the profile-independent claim model, README ownership model, and five-stage pipeline every run executes; `core/README.md` states and mechanically enforces (`scripts/check-core-profile-boundary.sh`) that the core never depends on a profile. `profiles/contentful/` is a Slice 1 placeholder for later system-specific adapters. Local validation (`scripts/check-readme-patch.sh`) checks link resolution, command existence, and low-value section flagging against a drafted README patch before it is reported ready.
 
 ## Cross-plugin conventions
 

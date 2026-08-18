@@ -1,0 +1,5 @@
+{
+  "scripts": {
+    "build": "some-build-tool"
+  }
+}
