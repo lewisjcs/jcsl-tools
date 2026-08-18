@@ -297,11 +297,11 @@ bash "$BOUNDARY_CHECK" "$TMP_WORK/boundary-fixed" > /dev/null 2>&1
 assert_exit "boundary: unexempted-fixed" "0" "$?"
 
 # ──────────────────────────────────────────────────────────────────────────────
-# PROVENANCE TESTS (ancestry-based, RC-24)
+# PROVENANCE TESTS (entry-level blame, RC-24)
 # ──────────────────────────────────────────────────────────────────────────────
 
 echo ""
-echo "Provenance Checks (ancestry-based):"
+echo "Provenance Checks (entry-level blame):"
 
 # Create a temporary git repository for provenance testing
 TMP_REPO="$(mktemp -d)"
@@ -327,7 +327,8 @@ git commit -q -m "Add knowledge"
 bash "$PROVENANCE_CHECK" "$TMP_REPO/core" > /dev/null 2>&1
 assert_exit "provenance: reference first, then knowledge" "0" "$?"
 
-# Test 2: both in same commit (should fail)
+# Test 2: both in same commit (should pass — a squash-merge collapses the
+# branch's reference-first history into one commit; same-commit must stay green)
 rm -rf "$TMP_REPO/.git" "$TMP_REPO/core"
 cd "$TMP_REPO"
 git init -q
@@ -344,7 +345,61 @@ git add core/
 git commit -q -m "Add both"
 
 bash "$PROVENANCE_CHECK" "$TMP_REPO/core" > /dev/null 2>&1
-assert_exit "provenance: same commit (should fail)" "1" "$?"
+assert_exit "provenance: same commit (squash-survivable)" "0" "$?"
+
+# Test 2b: squash-merged branch history (should pass — reference-first ordering
+# on the branch, collapsed to a single commit on main by merge --squash)
+rm -rf "$TMP_REPO/.git" "$TMP_REPO/core"
+cd "$TMP_REPO"
+git init -q -b main
+git config user.email "test@example.com"
+git config user.name "Test"
+
+git commit -q --allow-empty -m "Initial"
+git checkout -q -b feature
+mkdir -p core/references core/knowledge
+echo "# Reference" > core/references/readme-scope.md
+echo "## Anchor" >> core/references/readme-scope.md
+git add core/references/readme-scope.md
+git commit -q -m "Add reference"
+echo "# Knowledge" > core/knowledge/test.md
+echo "## Claim" >> core/knowledge/test.md
+echo "This must be grounded. <!-- see: references/readme-scope.md#anchor -->" >> core/knowledge/test.md
+git add core/knowledge/test.md
+git commit -q -m "Add knowledge"
+git checkout -q main
+git merge --squash -q feature > /dev/null
+git commit -q -m "Squash-merge feature"
+git branch -q -D feature
+
+bash "$PROVENANCE_CHECK" "$TMP_REPO/core" > /dev/null 2>&1
+assert_exit "provenance: squash-merged history" "0" "$?"
+
+# Test 2c: retrofitted reference entry (should fail — the cited anchor was
+# added to an existing reference file after the knowledge that cites it)
+rm -rf "$TMP_REPO/.git" "$TMP_REPO/core"
+cd "$TMP_REPO"
+git init -q
+git config user.email "test@example.com"
+git config user.name "Test"
+
+mkdir -p core/references core/knowledge
+echo "# Reference" > core/references/readme-scope.md
+git add core/references/readme-scope.md
+git commit -q -m "Add reference file without the entry"
+
+echo "# Knowledge" > core/knowledge/test.md
+echo "## Claim" >> core/knowledge/test.md
+echo "This must be grounded. <!-- see: references/readme-scope.md#anchor -->" >> core/knowledge/test.md
+git add core/knowledge/test.md
+git commit -q -m "Add knowledge citing a not-yet-written entry"
+
+echo "## Anchor" >> core/references/readme-scope.md
+git add core/references/readme-scope.md
+git commit -q -m "Backfill the cited entry"
+
+bash "$PROVENANCE_CHECK" "$TMP_REPO/core" > /dev/null 2>&1
+assert_exit "provenance: retrofitted entry (should fail)" "1" "$?"
 
 # Test 3: knowledge committed first, then reference (should fail)
 rm -rf "$TMP_REPO/.git" "$TMP_REPO/core"

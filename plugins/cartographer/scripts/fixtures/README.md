@@ -2,7 +2,7 @@
 
 This directory contains synthetic test inputs for the three cartographer checkers:
 - `check-knowledge-grounding.sh` (rules a, b, c, c′, d)
-- `check-grounding-provenance.sh` (ancestry-based ordering)
+- `check-grounding-provenance.sh` (entry-level blame ordering)
 - `check-core-profile-boundary.sh` (boundary enforcement)
 
 ## Structure
