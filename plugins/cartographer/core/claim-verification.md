@@ -11,8 +11,11 @@ Tier-2 half (RC-29..RC-32), defined further down in this same file.
 
 This file is the sole definition site for the content-class taxonomy
 and its stage-2 assignment procedure, the Tier-1 textual recognition
-rule, and the Tier-1 match predicates. It uses `core/claim-model.md`'s
+rule, the Tier-1 match predicates, the shared Tier-2 isolated-dispatch
+contract, the accuracy dispatch scope, the verification-report record
+grammar, and the Accuracy gate. It uses `core/claim-model.md`'s
 claim ledger and evidence classes, `core/pipeline.md`'s stage sequence,
+`core/refresh.md`'s mode selection,
 and `core/local-validation.md`'s RC-6 invocation, RC-8 record grammar,
 and RC-9 caller-exclusion obligation, and defines none of them. It adds no
 evidence class to `claim-model.md`'s three-class contract: content-class
@@ -192,11 +195,518 @@ drafted sentence occupies that line, names the claim id in the report,
 and what it does when no row occupies that line. This file cites that
 obligation and defines nothing about it.
 
+## The shared Tier-2 isolated-dispatch contract (RC-29)
+
+Tier 2 is one dispatch per gate per run, each to a fresh Task-tool
+subagent. It exists for exactly what Tier 1 structurally cannot decide:
+transcription *fidelity* — RC-28 confirms that a symbol's spelling
+appears in the cited source, and only judgment confirms that the
+sentence written about it is accurate — and the `behavioral`
+content-class, which has no textual proxy at all. Isolation is scoped to
+that residue deliberately. The Tier-1 half of this file decides the
+rest, and a dispatch that re-decided it would add cost without adding
+information.
+
+This section is the contract both gates share. The Accuracy gate fills
+it as RC-30 and RC-31 state; `core/effectiveness-verification.md` RC-35
+fills it for the Effectiveness gate. Both fill the same template, and
+neither rewrites it.
+
+### Isolation: what is enforced, what is asserted
+
+There is no per-dispatch permission mechanism in this plugin, so this
+contract names which half of the isolation property holds by
+construction and which half is an assertion with a detector behind it,
+rather than implying an enforcement it does not have.
+
+- **No stage 1-through-3 session memory: enforced by construction.** A
+  fresh Task-tool subagent receives its dispatch prompt and nothing
+  else. It holds no transcript of this run, so there is nothing to
+  instruct it to forget — the drafting session's reasoning is
+  unreachable because it was never handed over, not because the prompt
+  asked the subagent to set it aside.
+- **The source-access profile is asserted, detected, and not enforced.**
+  Read-only repository access for Accuracy and no source access for
+  Effectiveness are stated in the prompt's permitted-input list, and the
+  detection branch below tests a returned verdict against that list.
+  Nothing prevents a subagent from reading a file the prompt did not
+  permit. In the register `local-validation.md` § `derivation` is not
+  mechanically enforced already uses: the source-access half is checked
+  by reading what a verdict cites, not by a sandbox, and a subagent that
+  reads outside its permitted inputs and cites nothing from what it read
+  is not detected.
+
+### The dispatch prompt template
+
+The prompt is a template, not a requirements list, because the detection
+branch compares a returned verdict against the inputs that dispatch was
+given — which is auditable only when the input enumeration is fixed
+byte-for-byte. The template ships here verbatim. Exactly four slots vary
+between dispatches; the executor fills the slots and changes nothing
+else.
+
+```
+You are verifying drafted README content in isolation. You have no
+record of the session that drafted it, and you may not reconstruct one.
+
+Permitted inputs — the only material you may read or rely on:
+{{ARTIFACT_LIST}}
+
+Anything not on that list is outside this dispatch: do not read it, do
+not ask for it, and do not infer its contents. If the permitted inputs
+do not settle an item, say so through the verdict vocabulary below
+rather than reaching outside them.
+
+Items to verify:
+{{ITEMS}}
+
+Return one record per item, one record per line, and nothing else — no
+preamble, no summary, no commentary between or after the records:
+{{OUTPUT_GRAMMAR}}
+
+Every field is required. Cite only locations you read in the permitted
+inputs.
+{{VIOLATION_NOTE}}
+```
+
+The four substitution slots, and nothing else, vary:
+
+| Slot | Carries |
+|---|---|
+| `{{ARTIFACT_LIST}}` | the enumerated permitted inputs, one per line |
+| `{{ITEMS}}` | the claims to verify (Accuracy, RC-30) or the questions to ask (Effectiveness, RC-35) |
+| `{{OUTPUT_GRAMMAR}}` | the RC-31 record line this dispatch returns, with the field values legal for this gate |
+| `{{VIOLATION_NOTE}}` | empty on the first dispatch; on the single re-dispatch, the sentence naming the detected violation |
+
+**"Inversion" is therefore defined, not interpreted.** An inversion is a
+named substitution of one slot's content, or of one enumerated line of
+`{{ARTIFACT_LIST}}`. RC-35 states the Effectiveness gate's inversions as
+slot values and rewords nothing in the template above. A gate that needs
+the template's own prose changed does not have an inversion; it has a
+second contract, and this file ships one.
+
+### The Accuracy dispatch's permitted inputs and its items
+
+`{{ARTIFACT_LIST}}` for the Accuracy dispatch is exactly these two
+lines:
+
+```
+- The repository under analysis, as it stands on disk, read only. You
+  may read any tracked file in it.
+- The claims listed under Items to verify, each carrying a claim id, the
+  drafted statement, and that statement's content-class.
+```
+
+`{{ITEMS}}` carries, per dispatched claim, exactly three values and no
+others:
+
+1. `claim id` — the returned record's `SUBJECT` is keyed by it.
+2. `statement` — the claim text as drafted; it is the thing being
+   verified.
+3. `content-class` — it selects which verification question the prompt
+   asks.
+
+It carries none of `claim-model.md`'s `class`, `reference`,
+`disposition`, or `subject` fields, and the dispatch receives no other
+working-only artifact: not the evidence record, not the claim ledger,
+not `.cartographer/validation-report.md`, not the run state. **The
+accuracy subagent shall not receive the claim ledger.**
+
+Where that prohibition's line falls, and why, stated outright because
+guessing it wrong is a contract violation rather than a style call:
+
+> The prohibition is on the **evidence** half of the ledger, not on the
+> claim's identity. The isolation property this section holds is that
+> the accuracy subagent must not see the drafting session's own
+> reasoning about *why* it believed a claim — that reasoning is the
+> `reference` and `class` fields, and a verification that reads them is
+> re-reading the drafter's conclusion rather than testing it. It must
+> see *what* was claimed, or it has nothing to verify.
+> Handing over `claim id`, `statement`, and `content-class` therefore
+> does not hand over the ledger; handing over `reference` does, and is
+> the specific violation this rule names.
+
+### Detection branch
+
+A dispatch's returned output is **contaminated** when any of these
+holds:
+
+1. it cites a path, symbol, or line that appears nowhere in that
+   dispatch's `{{ARTIFACT_LIST}}` inputs;
+2. it returns a record that does not parse as the `{{OUTPUT_GRAMMAR}}`
+   that dispatch supplied;
+3. it returns no record at all, or no record for an item it was given;
+4. it returns a record whose `SUBJECT` was not among that dispatch's
+   `{{ITEMS}}`.
+
+Condition 1 is the isolation condition proper. Conditions 2 through 4
+are unusable-output conditions and take the same branch, because a
+dispatch whose output cannot be read against its inputs cannot be shown
+to have honored the profile either.
+
+Consequence and failure branch: discard the contaminated output — never
+accept it, in whole or in part — and re-dispatch **once**, filling
+`{{VIOLATION_NOTE}}` with the sentence naming the detected violation.
+Never re-dispatch more than once. If the re-dispatch is also
+contaminated, the affected gate does not pass and the reason
+`isolation not demonstrated` is carried verbatim, as the reserved
+`EVIDENCE` literal (RC-31) and in that gate's block of
+`.cartographer/report.md`. Concretely, and this is the whole
+representation:
+
+- **Accuracy:** emit one record per dispatched claim,
+  `accuracy|<KIND>|<claim id>|plausible|isolation not demonstrated`.
+  `plausible` carries the gate to `NEEDS WORK` through RC-32's existing
+  predicate — no new verdict value, no reason field, and no vocabulary
+  shared between the gates.
+- **Effectiveness:** emit exactly five records,
+  `effectiveness|question|q<i>|unanswered|isolation not demonstrated`
+  for `i = 1..5`, so the five-question invariant holds, `answered=0/5`,
+  and Effectiveness is `NEEDS WORK` (RC-35).
+
+The reserved literal is legal on `accuracy` + `plausible` records and on
+`effectiveness` + `unanswered` records, and nowhere else (RC-31).
+
+## The accuracy dispatch scope (RC-30)
+
+**Which claims dispatch.** Every `behavioral`-class claim dispatches,
+always, with no cap — Tier 1 has no gate for it (RC-27), so the dispatch
+is the only verification it receives. Tier-1-passed `signature` and
+`self-citation` claims dispatch under a cap of **10**, sampled by the
+selection rule below. `other`-class claims never dispatch.
+
+**Tier-1-passed, defined totally so no claim falls outside the eligible
+set:**
+
+> A `signature` or `self-citation` claim is **Tier-1-passed** when stage
+> 4's validation report contains no `GAP` record whose `RULE` is
+> `signature` or `self-citation` and which joins to that claim's ledger
+> row. A claim that produced no Tier-1 record at all is Tier-1-passed:
+> Tier 1 found nothing against it. Tier-1-passed and Tier-1-failed are
+> complements; there is no third "not tested" state and no exclusion for
+> an untested claim.
+>
+> This is deliberate, not a fallback. Tier 1 is an existence proxy on
+> drafted *text*; a claim it never emitted a record for is precisely a
+> claim it could not test, which makes it the highest-value member of the
+> spot-check sample rather than a claim to skip. A Tier-1-failed claim,
+> meanwhile, was excluded from the candidate by RC-9 before stage 5 runs,
+> so the eligible set and the drafted `signature`/`self-citation` claim
+> set coincide.
+
+The join named in that definition is `local-validation.md` RC-9's caller
+obligation, cited above under § The join to a claim id.
+
+**The selection rule.** Let `N` be the eligible count — the number of
+Tier-1-passed `signature` and `self-citation` claims. If `N` is 10 or
+fewer, all `N` dispatch. If `N` is greater than 10, sort the eligible
+claim ids ascending in byte order, index them zero-based, and dispatch
+exactly the ten at indices `round(i * (N - 1) / 9)` for `i = 0..9`, ties
+rounded up. The ten indices are distinct for every `N > 10`, because the
+step `(N - 1) / 9` exceeds 1. The sample includes the first and the last
+eligible id and spreads the remaining eight evenly between them: it is
+deterministic, reproducible from the ledger alone, and not front-loaded.
+
+**`other`-class claims are verified by neither tier, and the run says
+so.** `other` is by construction the class no shape test matched
+(RC-26), so there is no verification question to ask of it: Tier 1 has
+no gate for it (RC-27), Tier 2 never dispatches it, and RC-31's `KIND`
+field does not admit it. What replaces verification is a stated coverage
+gap, carried in both artifacts — the machine count
+`RESULT|accuracy|…|unverified-other=<m>` (RC-31) and the prose sentence
+the `## Accuracy` block carries verbatim on every run (RC-32). This is a
+named blind spot, not silence: no tier verified these claims, and
+neither artifact implies that one did.
+
+**The three counts, defined once here and reported in both forms.**
+
+| Count | Counts |
+|---|---|
+| `<n>` in `dispatched=<n>` | the claims this run selected for dispatch, across every dispatched content-class. Exactly one accuracy record exists per selected claim on every branch — either the returned verdict or the record RC-29's consequence branch emits in its place — so this count and the accuracy record count agree by construction, whichever branch the dispatch took |
+| `<n>/<N>` in `spot-checked=<n>/<N>` | `<n>` is the `signature` and `self-citation` claims the selection rule dispatched; `<N>` is the eligible count it drew from |
+| `<m>` in `unverified-other=<m>` | the `included` ledger rows whose content-class is `other` |
+
+**Targeted mode scopes the accuracy dispatch and does not scope the
+effectiveness dispatch.** `core/refresh.md` § The accuracy dispatch
+covers the claims this run wrote ledger rows for is the sole definition
+site for that asymmetry and its cost reasoning. Its consequence for this
+section: in targeted mode the eligible set — and therefore all three
+counts above — ranges over freshly drafted claims only. A carried-forward
+section produced no ledger rows this run, so its claims are not
+dispatched, and the verification recorded by the run that last assessed
+that section stands.
+
+## The verification-report record grammar (RC-31)
+
+Stage 5's artifact is `.cartographer/verification-report.md`: a
+working-only artifact, named to match stage 4's
+`.cartographer/validation-report.md`, and never part of a patch
+(`core/pipeline.md` § Repository-bound and working-only artifacts). Its
+content is a machine-checkable record set — one record per line, five
+fields.
+
+```
+<GATE>|<KIND>|<SUBJECT>|<VERDICT>|<EVIDENCE>
+```
+
+- `GATE` is `accuracy` or `effectiveness`.
+- `KIND` is `behavioral`, `signature`, or `self-citation` when `GATE` is
+  `accuracy`; exactly `question` when `GATE` is `effectiveness`. There is
+  no `other` value — `other`-class claims are never dispatched and never
+  produce a record (RC-30).
+- `SUBJECT` is the ledger claim id on an `accuracy` record and one of
+  `q1` through `q5` on an `effectiveness` record. A claim id matches
+  `^[A-Za-z0-9._-]+$` (`core/claim-model.md`'s claim-id row), so it can
+  never break the field count.
+- `VERDICT` is `confirmed`, `plausible`, or `disproved` when `GATE` is
+  `accuracy`; `answered` or `unanswered` when `GATE` is `effectiveness`.
+  The two vocabularies are **disjoint**, and that disjointness is what
+  makes "attribute every result to exactly one gate" mechanically
+  checkable. No value is ever shared between them.
+- `EVIDENCE` is non-empty on every record, and what it carries is fixed
+  by verdict:
+
+| `GATE` | `VERDICT` | `EVIDENCE` carries |
+|---|---|---|
+| accuracy | `confirmed` | the repository location that confirms the claim, as `<path>:<line>` |
+| accuracy | `plausible` | the normalized excerpt (below) of the drafted sentence the verdict could not confirm |
+| accuracy | `disproved` | the repository location that contradicts the claim, as `<path>:<line>` |
+| effectiveness | `answered` | the normalized excerpt of the draft text the answer rests on |
+| effectiveness | `unanswered` | the literal `none` |
+| either | the RC-29 consequence branch | the reserved literal `isolation not demonstrated`, legal on `accuracy` + `plausible` and `effectiveness` + `unanswered` records, nowhere else |
+
+**A `disproved` verdict requires a contradicting location.** Without
+one, the verdict is `plausible`. This is what keeps the `EVIDENCE` table
+total: every `disproved` record has a location to put in the field, by
+construction.
+
+**The normalized excerpt, defined once and applied everywhere `EVIDENCE`
+carries quoted text.** Take the quoted text; replace every newline and
+every `|` with a single space; collapse runs of spaces to one and trim;
+truncate to 120 characters, appending `…` (U+2026) when truncation
+occurred. The field is a normalized excerpt for locating the text, not a
+byte-exact quote, and is labeled that way wherever it is read — a reader
+who expects a quote reads a normalization as a discrepancy. The rule is
+also why this grammar needs no escape syntax, no field-splitting
+exception, and no unquotable branch.
+
+The last three lines of the file, in this order, with these exact field
+counts:
+
+```
+RESULT|accuracy|<PASS or NEEDS WORK>|dispatched=<n>|spot-checked=<n>/<N>|unverified-other=<m>
+RESULT|effectiveness|<PASS or NEEDS WORK>|answered=<n>/5
+OVERALL|<PASS or NEEDS WORK>
+```
+
+Six fields, four fields, two fields. Every value is bare: no
+parentheses, no citations, no prose. The prose forms of these results
+live in `.cartographer/report.md`'s two blocks (RC-32 and RC-35), never
+in a `RESULT` field.
+
+**What this artifact holds, and what it does not.**
+`.cartographer/verification-report.md` holds records and nothing else —
+no marker, no corrected-findings list, no prose. The
+`[NEEDS VERIFICATION]` markers and the corrected-findings list belong to
+the `## Accuracy` block of `.cartographer/report.md` (RC-32).
+
+**What the checker can confirm, and what it cannot.**
+`scripts/check-verification-report.sh` (RC-36) validates this grammar:
+field counts, the two enums per gate, the claim-id predicate, the
+`EVIDENCE` sentinel rules, and each summary line's agreement with the
+records. It confirms that `unverified-other=<m>` is a non-negative
+integer, and it **cannot** confirm `<m>` against the claim ledger, which
+it never reads. That count is asserted by the run and checked by a human
+reviewer, not mechanically enforced by this script.
+
+## The Accuracy gate (RC-32)
+
+**The gate predicate.** Accuracy reports `PASS` when and only when every
+accuracy record in `.cartographer/verification-report.md` carries the
+verdict `confirmed`. One `plausible` record or one `disproved` record
+carries the gate to `NEEDS WORK`: there is no severity threshold, no
+proportion, and no override. A run that produced a draft and dispatched
+no claims from it has no accuracy record, so the predicate holds
+vacuously and Accuracy reports `PASS` — item 7 of the block's required
+contents below is what keeps that `PASS` from being read as a verified
+result. A run that produced **no** draft is not that case; the
+non-firing branch at the end of this section governs it, and it reports
+`NEEDS WORK`.
+
+**The verdict taxonomy.**
+
+| `VERDICT` | The dispatch found |
+|---|---|
+| `confirmed` | a location in the permitted inputs that confirms the statement; that location is the record's `EVIDENCE` |
+| `plausible` | nothing in the permitted inputs that either confirms or contradicts the statement |
+| `disproved` | a location in the permitted inputs that contradicts the statement; that location is the record's `EVIDENCE` |
+
+A `disproved` verdict requires a contradicting location; a verdict
+reached without one is `plausible`, not `disproved` (RC-31). The gate
+never excludes a drafted sentence on an unlocated objection.
+
+**A `plausible` verdict is resolved outside the run.** Stated verbatim,
+because a reader who expects an in-grammar resolution state will look
+for one and not find it:
+
+> A `plausible` verdict is resolved **outside the run**. The operator
+> either corrects the drafted sentence or supplies the missing evidence,
+> then re-runs stage 5; a claim resolved that way does not come back as
+> `plausible` on the fresh run. There is therefore no in-grammar
+> resolution state and none is needed. Within a run, every `plausible`
+> record is by construction unresolved at report time, because report
+> time is the end of this run — so Accuracy does not report PASS while
+> any `plausible` record exists, and the report carries a
+> `[NEEDS VERIFICATION]` marker for each.
+
+Consequence and failure branch: while any accuracy record's verdict is
+`plausible`, Accuracy reports `NEEDS WORK` and the `## Accuracy` block
+carries one `[NEEDS VERIFICATION] <claim id>` entry for that record; a
+run that reports Accuracy `PASS` over a `plausible` record, or omits the
+marker for one, has not applied this rule.
+
+**A `disproved` verdict excludes the claim and re-validates, and the
+re-entry is bounded by construction.** The sequence is the caller's,
+exactly as `local-validation.md` RC-9 already makes exclusion the
+caller's job:
+
+1. Stage 5 dispatches both subagents **once per run** and writes
+   `.cartographer/verification-report.md`.
+2. For every accuracy record whose `VERDICT` is `disproved`, the caller
+   removes that claim's drafted sentence or sentences from the
+   candidate.
+3. If step 2 removed at least one sentence, the caller re-enters stage 4
+   **once**. That re-entry is an ordinary stage-4 run against the
+   reduced candidate: **RC-9 applies unchanged**, including its own
+   internal re-run loop and its termination argument. The caller
+   excludes each `in-patch` `GAP` subject, reports each `out-of-patch`
+   one, repairs or reports each `marker` record, and rewrites
+   `.cartographer/validation-report.md` from that re-entry.
+4. Stage 5 does **not** re-dispatch. The verdicts from step 1 are the
+   run's verdicts; a claim removed at step 2 keeps its `disproved`
+   record, and that record is what the corrected-findings list is built
+   from. Because no second set of verdicts is produced, no second
+   exclusion round can arise: the re-entry is bounded at one **by
+   construction**, not by a counter a reader has to trust.
+5. Patch readiness is recomputed from the re-entry and **may flip in
+   either direction**. The report states readiness before and after the
+   exclusion — `core/pipeline.md` § The report states the initial state
+   and the final state, not a new rule. If the re-entry's RC-9 outcome
+   is blocked, the run reports the patch blocked and proceeds to stage
+   6.
+
+Consequence and failure branch: a `disproved` verdict both excludes the
+claim from the patch and carries it into the `## Accuracy` block's
+corrected-findings list, and a run that excludes the sentence without
+reporting it — or reports it without excluding it — has not applied this
+rule.
+
+**Which rule wins where, stated verbatim so the two files cannot
+drift:** RC-9 governs what happens *inside* a stage-4 run — it is
+untouched by this section, and nothing new about the re-entry is written
+into it. This section governs *how many times stage 5 may send the
+caller back into stage 4*: at most once per run. There is no conflict
+between "exclude and continue" and "block and stop", because they answer
+different questions at different scopes.
+
+**Blocked is an outcome, not a halt.** A run that reports the patch
+blocked still executes stage 6 in full: it writes
+`.cartographer/report.md` and `.cartographer/last-run.md`. "Blocked"
+describes the patch's readiness, never the run's completion.
+`core/pipeline.md`'s "Every run produces a report" is unqualified and
+stays unqualified. This is the shape RC-9 already uses — a run that
+reports the patch blocked over a pre-existing marker line is a complete
+run (`local-validation.md` § Which marker records the run may repair,
+and which it may not).
+
+**The bounded re-entry and the stage-ordering rule are one decision.**
+`core/pipeline.md` § The stage sequence states the ordering rule ("Stage
+N reads only artifacts stages 1 through N-1 wrote") and names this
+single bounded re-entry as its one explicit exception. The two halves
+are read together: neither licenses re-entering a stage this section
+does not name.
+
+**How a `disproved` verdict relates to a claim contradicted by
+evidence.** `core/claim-model.md` § When evidence contradicts fires at
+stage 2, on the drafting session's own collected evidence, and its
+outcome is a ledger disposition: the claim is `unresolved-gap` and never
+reaches the draft. A `disproved` verdict fires at stage 5, on an
+isolated dispatch's independent reading of the repository, against a
+claim that is already drafted, and its outcome is the exclusion and
+re-validation above plus a corrected finding in the report. Neither is a
+trigger for the other: a `disproved` verdict does not rewrite a stage-2
+ledger row, and a stage-2 contradiction produces no stage-5 record,
+because a claim that never reached the draft is never dispatched.
+
+**Required contents of the `## Accuracy` block of
+`.cartographer/report.md`.** A report block is a named section of that
+file; there are exactly two, and `core/pipeline.md` states where they
+sit and that they are co-equal. The `## Accuracy` block carries, on
+every run:
+
+1. the gate's result, `PASS` or `NEEDS WORK`, as the `RESULT|accuracy`
+   line states it;
+2. one `[NEEDS VERIFICATION] <claim id>` entry per accuracy record whose
+   verdict is `plausible`;
+3. one corrected-findings entry per accuracy record whose verdict is
+   `disproved`, naming the claim id and the drafted sentence that was
+   removed;
+4. patch readiness before and after any exclusion, when step 2 of the
+   sequence above removed a sentence;
+5. these two sentences, verbatim:
+
+   ```
+   spot-checked <n> of <N> Tier-1-passed signature and self-citation claims (deterministic stride sample, cap 10 — core/claim-verification.md RC-30).
+   <m> other-class claims were recorded this run and are verified by neither tier.
+   ```
+
+6. the reserved literal `isolation not demonstrated`, carried verbatim
+   as the gate's stated reason whenever it appears in an accuracy
+   record's `EVIDENCE`;
+7. when `dispatched=0`, the sentence `no claims were eligible for Tier-2
+   verification this run`.
+
+Item 5's second sentence is present on every run, including runs where
+`<m>` is 0, and item 7 covers the run that dispatched nothing — together
+they are what keeps a vacuous `PASS` from being printed bare.
+
+Deriving this block from the records at run time is
+`skills/cartograph-report/SKILL.md` § Stage 5 in detail; the required
+contents are fixed here so that derivation is mechanical rather than a
+judgment call.
+
+**Non-firing branch: a run that produced no draft.** Stated verbatim,
+and it takes precedence over the gate predicate's vacuous case:
+
+> Non-firing branch: a run that produced no draft has nothing to verify.
+> Stage 5 dispatches neither subagent and writes no
+> `.cartographer/verification-report.md`. Both report blocks state
+> `stage 5 not run: the run produced no draft` and both report NEEDS
+> WORK — a run with no draft has demonstrated neither accuracy nor
+> effectiveness — so overall PASS is false. The absent artifact is this
+> branch's stated outcome, not a missing artifact under `pipeline.md`'s
+> Verification-check item 1. The Stage-5 checklist line is still marked
+> `[x]`: the stage ran and produced its stated outcome; it was not
+> interrupted.
+
+**Which rule wins where, so the two zero-record cases cannot be read as
+one:** the gate predicate's vacuous `PASS` governs a run that produced a
+draft and dispatched no claims from it — there was something to verify
+and nothing in it was eligible, which is a coverage statement the
+`## Accuracy` block makes in item 7. This non-firing branch governs a
+run that produced no draft at all: stage 5 dispatches neither subagent,
+writes no `.cartographer/verification-report.md`, and there is no gate
+predicate to evaluate, because the file the predicate reads does not
+exist. They answer different questions — nothing eligible to verify
+versus nothing to verify — and where both descriptions could be applied
+to a run, this branch is the one that fires, because a run with no draft
+has demonstrated neither accuracy nor effectiveness.
+
 ## Verification check
 
-Before trusting a content-class assignment or a Tier-1 finding, confirm
-every one of these, and report the first that fails instead of the
-finding:
+Before trusting a content-class assignment, a Tier-1 finding, or a
+Tier-2 verdict, confirm every one of these, and report the first that
+fails instead of the finding:
 
 1. Every `included` ledger row carries exactly one content-class value,
    assigned by the RC-26 procedure above, and no `unresolved-gap` row
@@ -211,3 +721,23 @@ finding:
    matched a dotted identifier's whole form, never a segment.
 5. Every `signature` or `self-citation` message reproduces the table
    above byte-for-byte.
+6. Every dispatch used the RC-29 template with its four slots filled and
+   nothing else altered, and each `{{ITEMS}}` entry carried the claim
+   id, the statement, and the content-class — and no other ledger field.
+7. The claims dispatched are exactly those RC-30 selects: every
+   `behavioral` claim, the selection rule's sample of the Tier-1-passed
+   `signature` and `self-citation` claims, and no `other`-class claim.
+8. Every branch RC-29, RC-30, and RC-32 names produced a legal RC-31
+   record. A branch that emitted a gate, kind, verdict, subject, or
+   reason the five-field grammar cannot carry is a defect in this file,
+   not a case to improvise around.
+9. `.cartographer/verification-report.md`'s last three lines are the
+   three summary lines, in order, carrying six, four, and two fields,
+   with bare values only.
+10. Accuracy reports `PASS` only when every accuracy record is
+    `confirmed`, and the `## Accuracy` block carries every item RC-32
+    lists — including both coverage sentences on a run where nothing
+    failed.
+11. Stage 5 dispatched each subagent once, re-dispatched at most one
+    contaminated dispatch, sent the caller back into stage 4 at most
+    once, and re-dispatched nothing after that re-entry.

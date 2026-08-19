@@ -10,7 +10,7 @@ boundary is checked, not just asserted.
 | File | What it owns |
 |---|---|
 | [claim-model.md](./claim-model.md) | The three evidence classes, the `unresolved-gap` disposition, the claim ledger, and the omit-and-report rule. Sole definition site for those terms. |
-| [claim-verification.md](./claim-verification.md) | The content-class taxonomy and its stage-2 assignment procedure, the Tier-1 textual recognition rule, and the Tier-1 match predicates. Sole definition site for those terms. |
+| [claim-verification.md](./claim-verification.md) | The content-class taxonomy and its stage-2 assignment procedure, the Tier-1 textual recognition rule and match predicates, the shared Tier-2 isolated-dispatch contract and its prompt template, the accuracy dispatch scope, the verification-report record grammar, and the Accuracy gate. Sole definition site for those terms. |
 | [readme-ownership.md](./readme-ownership.md) | The ownership × freshness classification, the twelve-cell action matrix, and the managed-section marker grammar. Sole definition site for the ownership and freshness values. |
 | [pipeline.md](./pipeline.md) | The five-stage sequence, the report contract, the repository-bound vs working-only artifact split, and the core/profile independence guarantee. |
 | [local-validation.md](./local-validation.md) | The link, command, and low-value-section gates plus the managed-section marker-grammar gate; the report format, the scope tag, and the exit-code rule. Sole definition site for those terms. `pipeline.md` stage 4 states the hand-off it owns. |
