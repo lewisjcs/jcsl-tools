@@ -1,6 +1,6 @@
 ---
 name: adversarial-review
-description: Fallback (v1) adversarial-review lane — agent-orchestrated Find, Validate, Adjudicate. Use ONLY when explicitly asked for adversarial-review v1, the v1 lane, or the fallback adversarial lane, or when the default lane's runtime is unavailable (gauntlet2-adversarial-review requires Node >=22). Not a trigger-phrase surface: gauntlet2-adversarial-review is the default adversarial lane.
+description: Use when pressure-testing code changes for hidden assumptions, failure modes, and structural risks that standard review misses. Trigger phrases include "adversarial review", "pressure test this", "how could this break", "what am I missing", "stress test this code", "break this", "find the flaws".
 argument-hint: "[<repo> <pr-number>]"
 ---
 
@@ -15,7 +15,7 @@ Pressure-test code changes for hidden assumptions, failure modes, and structural
 /adversarial-review                       — Local mode (diff against base branch)
 ```
 
-**When NOT to use:** Default adversarial review (use `/gauntlet2-adversarial-review` — this v1 lane is the explicit fallback). Multi-skill review (use `/gauntlet`). Convention/style audit (use `/code-quality-audit`). Security audit (use `/security-gauntlet`).
+**When NOT to use:** Multi-skill review (use `/gauntlet`). Convention/style audit (use `/code-quality-audit`). Security audit (use `/security-gauntlet`).
 
 ## Invocation Context Detection
 
