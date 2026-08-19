@@ -68,6 +68,8 @@ Gauntlet detects an artifact's type (`code-pr`, `code-local`, `plan`, `doc`, `sk
 
 Sibling skills (`code-quality-standards`, `security-principles`, `doc-patterns`, `skill-authoring-principles`) are reference knowledge, not entry points — loaded by the domain skills, not invoked directly.
 
+A decommissioned component moves to `_archive/` (e.g. `_archive/v1-adversarial-review/`) rather than being deleted — `_archive/` sits outside `skills/` and `agents/` plugin discovery, so it ships as inert bytes with zero trigger surface, kept for historical reference only.
+
 ### Prospector — discovery-first research harness
 
 Entry: `/prospector:research`

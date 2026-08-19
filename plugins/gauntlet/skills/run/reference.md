@@ -22,6 +22,8 @@ When `adversarial-review` is dispatched against `plan-text` or `doc-text` (Phase
 | `code-diff` | `Failure Scenarios` | `adversarial-review / Failure Scenarios` (no relabel) |
 | `code-diff` | `Blast Radius` | `adversarial-review / Blast Radius` (no relabel) |
 
+**`directive` artifacts are the one exception to the `doc-text` row above.** `directive` has no native family — run/SKILL.md dispatches it with `family=doc-text` as the closest fit (footer-noted substitution), but a `directive` artifact's Lanes are `directive-review · adversarial · security`, not `doc-review`. Relabeling its adversarial findings to `doc-review / Hidden assumptions - *` per the `doc-text` row would violate the lens-matches-Lanes invariant (a reader cross-referencing the Findings table to the 🧪 Lanes row would see a `doc-review` prefix with no `doc-review` lane in the set). For `directive` specifically, keep the **native, unrelabeled** `adversarial-review / <sub-lens>` labels (same treatment as the `code-diff` rows) despite the `doc-text` family used to dispatch it.
+
 **R4 — Audit-skill lens mappings (skill-audit and code-quality-audit prose → canonical lens values)**
 
 | Audit-skill output | Canonical `lens` value |
@@ -45,13 +47,13 @@ To group by parent lens family, split on ` - ` (space-hyphen-space) ONLY — nev
 
 ## Phase 3 substep 1 — adversarial-review promotion to the 10-field shape
 
-Each `result.json` finding already carries `lens`, `location`, `claim`, `evidence`, `severity`, `category`, `confidence`, `recommendation`, `disposition: "survives"`. Promotion adds only:
+Each `result.json` finding already carries `id`, `lens`, `location`, `claim`, `evidence`, `severity`, `category`, `confidence`, `recommendation`, `disposition: "survives"`. Promotion adds only:
 
 - **`skill`** → `adversarial-review`.
 - **`verdict`** → `survives` (from `disposition`).
 - **`lens`** → apply the mapping table above (9 rows = 3 sub-lenses × 3 dispatch types).
 
-Never re-gate or re-adjudicate these items — the runtime's severity-stratified adjudication already did.
+Never re-gate or re-adjudicate these items — the runtime's severity-stratified adjudication already did. **Carry `id` through unchanged** — it is never dropped or regenerated during promotion or any later Phase 3 substep; the deferred triage batch (run/SKILL.md's "adversarial-review under orchestration") submits `triage-entries.json` keyed on this same value as `findingId`.
 
 Apply the master spec §4.3 skill-audit transformation table for any skill-audit findings.
 
