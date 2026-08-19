@@ -348,7 +348,8 @@ the report:
    the report, every `out-of-patch` `GAP` record is present in the
    report, every `marker` record is either repaired or reported with the
    patch marked blocked, and — when the candidate carries no well-formed
-   marker pair — no `GAP` record remains.
+   marker pair — either no `GAP` record remains or every remaining `GAP`
+   record is reported with the patch marked blocked.
 4. If a patch was produced, it was explicitly authorized (gate 1 above),
    and it contains only repository-bound content (the artifact-split table
    above).
