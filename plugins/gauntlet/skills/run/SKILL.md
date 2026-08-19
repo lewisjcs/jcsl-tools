@@ -297,8 +297,11 @@ Create the Phase 3 sub-tasks with these 7 substeps (a `TaskCreate` call per subs
    lane did not run), not a Finder/Validator claim to verify. The entry: `skill: "adversarial-review"`,
    `lens: "adversarial-review / Lane failure"`, `location: "N/A — lane failure"`,
    `claim: "Adversarial review did not run for this code change (<reason: Node < 22 | execution failure>) —
-   code coverage is materially incomplete."`, `severity: "blocker"`, `confidence: 100`, `recommendation: "Rerun
-   /gauntlet on a Node ≥ 22 host before merging."` Render it FIRST in Required Changes (Phase 4b) and count it
+   code coverage is materially incomplete."`, `severity: "High"`, `confidence: 100`, `recommendation: "Rerun
+   /gauntlet on a Node ≥ 22 host before merging."` The `severity` field follows the same High/Medium/Low
+   vocabulary as every other Phase 3 finding — `blocker`/`concern`/`nit` is a Phase 4 render-time label derived
+   from `critical[]` membership (report-template.md), never an authored Phase 3 value. Render it FIRST in
+   Required Changes (Phase 4b) and count it
    toward `verdict.blockers` in the box score — the header verdict shows `🛑 Required Changes — do not ship
    yet` even when every other lens is clean. For `plan`/`doc`/`skill`/`directive`/`multi` artifacts,
    adversarial-review is a supplementary lens (per the Phase 0 per-type dispatch set), not one of the two
