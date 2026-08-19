@@ -33,11 +33,13 @@ any of them is not complete, no matter what else it produced.
    `core/local-validation.md`). Check: the local-validation stage's exit
    code is `0`, or every remaining `GAP` record is tagged `out-of-patch`
    (sixth field of the record), no remaining record's `RULE` is `marker`,
-   and every `in-patch` record's subject has been removed from the patch
-   and carried verbatim into the report's unresolved-gaps list. **When
-   the candidate README contains no well-formed `cartographer:managed`
-   marker pair, every `GAP` record blocks** — with no marked patch region
-   there is no out-of-patch exemption to claim. **A `marker` record
+   every `in-patch` record's subject has been removed from the patch
+   and carried verbatim into the report's unresolved-gaps list, and the
+   candidate contains at least one well-formed `cartographer:managed`
+   marker pair. **When the candidate README contains no well-formed
+   `cartographer:managed` marker pair, every `GAP` record blocks** —
+   with no marked patch region there is no out-of-patch exemption to
+   claim. **A `marker` record
    always blocks**: repair the marker line it names when this run
    authored or modified that line, and otherwise report the patch
    blocked — a marker line carried unchanged from the on-disk README sits
@@ -222,9 +224,13 @@ anything itself. Excluding is this skill's job, not the checker's:
   the only remaining records are `out-of-patch` `GAP`s and the candidate
   contains at least one well-formed marker pair — the checker still
   exits `1`, and that is a passing state for gate 3, not a failure — and
-  **blocked**, not ready, when any `marker` record remains. If the
-  candidate contains no well-formed marker pair, keep acting until the
-  checker exits `0`.
+  **blocked**, not ready, when any `marker` record remains. The same stop
+  condition applies to a candidate with no well-formed marker pair, and
+  the outcome there is **blocked** whenever any `GAP` record remains at
+  stop — with no marked patch region there is no out-of-patch exemption
+  to claim (RC-9). (A no-pair candidate whose only records were
+  run-authored `marker` lines can still reach exit `0` through repair;
+  that is the exit-`0` branch above, not this one.)
 - Exit `2` → usage or invocation error. Stop and report the invocation
   failure; this is not a finding about the draft.
 
