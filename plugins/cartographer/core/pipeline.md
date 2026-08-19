@@ -137,14 +137,13 @@ do is send the caller back through stage 4 once, against a candidate it
 reduced — the bounded re-entry § The stage sequence names, whose
 sequence `core/claim-verification.md` RC-32 owns.
 
-Non-firing branch: a run that produced no draft has nothing to verify.
-Stage 5 dispatches neither gate and writes no
-`.cartographer/verification-report.md`. Both report blocks state
-`stage 5 not run: the run produced no draft` and both gates report NEEDS
-WORK — a run with no draft has demonstrated neither accuracy nor
-effectiveness — so the run's overall result is not `PASS`. The absent
-artifact is this branch's stated outcome, not a missing artifact under
-the Verification check's item 1.
+Non-firing branch: a run that produced no draft has nothing to verify,
+and stage 5 writes no `.cartographer/verification-report.md` for it.
+`core/claim-verification.md` RC-32 owns that branch and states it in
+full — what stage 5 dispatches, what both report blocks say, both gates'
+results, and the checklist line. This file states only the half the
+ordering rule above needs: the absent artifact is that branch's stated
+outcome, not a missing artifact under the Verification check's item 1.
 
 Failure branch: a gate that cannot demonstrate its result reports NEEDS
 WORK, states its reason in its own block, and the run proceeds to stage
@@ -270,7 +269,9 @@ report the first that fails:
 
 1. Each stage's artifact exists, and stage N cites only artifacts from
    stages 1 through N-1 — the single bounded stage-4 re-entry named in
-   § The stage sequence is the one exception.
+   § The stage sequence is the one re-entry exception, and stage 5's
+   no-draft branch (§ Stage 5) is the one branch on which a stage's
+   artifact is deliberately absent.
 2. The report shows the initial state and the final state of every
    finding.
 3. `.cartographer/report.md` carries both the `## Accuracy` and the

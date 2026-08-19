@@ -8,8 +8,8 @@ description: Use when onboarding to an unfamiliar repository, orienting a new co
 Runs Cartographer's core pipeline against the repository under analysis:
 evidence collection, a claim ledger, a drafted README section or diff,
 local validation, accuracy and effectiveness verification, and a run
-report — or, only when explicitly authorized, a patch. Slice 1 ships the core only; no `profiles/contentful/` behavior
-is in scope here.
+report — or, only when explicitly authorized, a patch. Slice 1 ships the
+core only; no `profiles/contentful/` behavior is in scope here.
 
 ## Before anything else — three blocking gates
 
@@ -245,6 +245,182 @@ anything itself. Excluding is this skill's job, not the checker's:
 - Exit `2` → usage or invocation error. Stop and report the invocation
   failure; this is not a finding about the draft.
 
+## Stage 5 in detail — the two verification dispatches
+
+Runs after stage 4 completed and `.cartographer/validation-report.md`
+exists. Stage 5 dispatches two fresh subagents, writes
+`.cartographer/verification-report.md`, runs the plugin's second checker
+against it, and removes every disproved claim from the candidate. The
+dispatch template, the record grammar, the two gate predicates, and both
+report blocks' required contents are defined in
+`core/claim-verification.md` (RC-29 through RC-32, RC-36) and
+`core/effectiveness-verification.md` (RC-33 through RC-35). This section
+states what to run and in what order; it restates none of their rules —
+read them when a branch's exact condition matters.
+
+**Non-firing branch, checked before anything else: this run produced no
+draft.** Dispatch neither subagent, write no
+`.cartographer/verification-report.md`, and do not invoke the checker
+below. Hold `stage 5 not run: the run produced no draft` for both report
+blocks, with both gates NEEDS WORK, for stage 6 to write
+(`core/claim-verification.md` RC-32 owns this branch and states it
+verbatim). Then mark the stage-5 line `[x]` and advance to stage 6: the
+absent artifact is this branch's stated outcome, not an interrupted
+stage.
+
+Otherwise run these eight steps in order:
+
+1. **Dispatch the accuracy subagent.** Take RC-30's selection first.
+   **If it selects no claim, do not dispatch this subagent.** An empty
+   `{{ITEMS}}` returns nothing, and RC-29's detection branch reads a
+   returned-nothing dispatch as contaminated — so dispatching an empty
+   item set would spend a re-dispatch and then write the contaminated
+   shape over a run whose real outcome is that nothing was eligible.
+   Write zero accuracy records instead and carry `dispatched=0` into
+   step 4: that is the vacuous shape `core/claim-verification.md` RC-32
+   owns, and step 7 carries the coverage sentence RC-32 requires with
+   it. This branch does not touch step 2 — RC-33's five questions are
+   fixed, so the effectiveness dispatch runs on every drafted run.
+   Otherwise build the prompt from RC-29's
+   template, changing nothing outside its four slots. `{{ARTIFACT_LIST}}`
+   is RC-29's two-line accuracy list, verbatim. `{{ITEMS}}` is the claim
+   set RC-30 selects, each claim carrying exactly three values — claim
+   id, the drafted statement, and that statement's content-class — and no
+   other ledger field. `{{OUTPUT_GRAMMAR}}` is RC-31's record line with
+   the field values legal for the accuracy gate. `{{VIOLATION_NOTE}}` is
+   empty on this first dispatch. Dispatch one fresh Task-tool subagent
+   and capture the returned records verbatim.
+2. **Dispatch the effectiveness subagent.** The same template, with
+   RC-35's inversions: `{{ARTIFACT_LIST}}` is RC-35's single line — the
+   drafted candidate alone, with the source denial stated in the line
+   itself — and `{{ITEMS}}` is RC-33's five questions, verbatim and in
+   order, with no ledger-derived value of any kind. `{{OUTPUT_GRAMMAR}}`
+   is RC-35's per-question line; `{{VIOLATION_NOTE}}` is empty. Dispatch
+   one fresh Task-tool subagent, separate from step 1's — never the same
+   one, and never one prompt carrying both gates — and capture the
+   returned records verbatim.
+3. **Check each dispatch for contamination.** Apply RC-29's detection
+   branch to the returned output of each dispatch this run made, against
+   that dispatch's own
+   `{{ARTIFACT_LIST}}` and `{{ITEMS}}`. On a hit, discard that output
+   entirely — accept no part of it, not even the records that parse — and
+   re-dispatch that one gate **once**, with `{{VIOLATION_NOTE}}` carrying
+   the sentence naming the detected violation. On a second hit for the
+   same gate, do not dispatch it again and accept nothing it returned:
+   write that gate's records in RC-29's contaminated shape — one
+   `plausible` accuracy record per dispatched claim, or exactly five
+   `unanswered` effectiveness records — with the reserved literal
+   `isolation not demonstrated` as each record's `EVIDENCE`, exactly as
+   RC-29 states them. Contamination on one gate never re-dispatches the
+   other.
+4. **Write the artifact.** Write `.cartographer/verification-report.md`
+   in this order: every accuracy record, then every effectiveness record,
+   then RC-31's three summary lines as the file's last three lines.
+   Nothing else belongs in this file — no prose, no `[NEEDS VERIFICATION]`
+   marker, no corrected-findings list; those live in the report blocks
+   (RC-31). The three counts on the `RESULT|accuracy` line each have a
+   named source, so none of them is guessed:
+
+   - `dispatched=<n>` is the number of accuracy records in this file.
+   - `spot-checked=<n>/<N>` is RC-30's selection: `<n>` is the
+     `signature` and `self-citation` claims this run dispatched, `<N>`
+     the eligible count they were drawn from.
+   - `unverified-other=<m>` is the number of `included` ledger rows whose
+     content-class is `other`.
+5. **Invoke the checker** against the file just written:
+
+   ```bash
+   bash "${CLAUDE_PLUGIN_ROOT}/scripts/check-verification-report.sh" .cartographer/verification-report.md
+   ```
+
+   Its stdout is `INVALID|<LINE>|<MESSAGE>` records and a closing
+   `SUMMARY|invalid=<n>` line (RC-36). Read it; never write it into
+   `.cartographer/verification-report.md`, whose only content is records
+   and the three summary lines.
+
+   - Exit `0` → the file is a legal emission. Proceed to step 6. A legal
+     file whose `OVERALL` is NEEDS WORK also exits `0`: the gate result
+     and the artifact's validity are two different questions, and a
+     NEEDS WORK result is never a reason to rewrite the file.
+   - Exit `1` → the file this run just wrote is malformed. That is this
+     run's own defect, not a finding about the draft and not a finding
+     about the repository under analysis. Rewrite the file to conform to
+     RC-31 — each `INVALID` record names the line and the violation — and
+     re-invoke the checker **once**. If exit `1` persists, stop
+     rewriting: hold the second invocation's `INVALID` records verbatim
+     as stage-6 input, record that stage 5 failed, set both gates to
+     NEEDS WORK, and continue to stage 6 — which is where they reach
+     `.cartographer/report.md`. Never invoke a third time, and never
+     change a verdict to make the checker quiet.
+   - Exit `2` → usage or invocation error. Stop and report the invocation
+     failure; this is not a finding about the draft — the same
+     disposition stage 4's exit `2` branch uses.
+6. **Remove every disproved claim, and re-enter stage 4 at most once.**
+   For every accuracy record whose verdict is `disproved`, remove that
+   claim's drafted sentence or sentences from the candidate. Then take
+   exactly one of these two branches:
+
+   - No sentence was removed → continue to step 7. Do not re-enter stage
+     4.
+   - At least one sentence was removed → re-enter § Stage 4 in detail —
+     invoking the checker **once**, unchanged, against the reduced
+     candidate. RC-9 governs that run in full, including its own re-run
+     loop and its own stop condition; do not shorten it and do not read
+     its outcome as a stage-5 result. Rewrite
+     `.cartographer/validation-report.md` from that re-entry, then
+     continue to step 7. If the re-entry's RC-9 outcome is blocked,
+     report the patch blocked and continue — blocked describes the
+     patch's readiness, never the run's completion.
+
+   **Do not re-dispatch either subagent after a removal, and do not
+   re-enter stage 4 a second time.** Steps 1 and 2 dispatch once per run,
+   so no second set of verdicts exists and no second removal round can
+   arise (`core/claim-verification.md` RC-32, step 4). The records stay
+   as written: a removed claim keeps its `disproved` record, and that
+   record is what step 7's corrected-findings entry is built from. Do not
+   rewrite `.cartographer/verification-report.md` to reflect the removal.
+7. **Derive the two report blocks from the records.** Deriving them is
+   this stage's work; writing them is not. **Stage 5 writes no part of
+   `.cartographer/report.md`, on any branch above** — it derives this
+   content and holds it, and stage 6 writes the file. What each block
+   must carry is fixed where its gate is defined —
+   `core/claim-verification.md` RC-32 for `## Accuracy`,
+   `core/effectiveness-verification.md` RC-35 for `## Effectiveness` —
+   and `core/pipeline.md` states that the two sit as co-equal sibling
+   sections. Four mappings are mechanical; apply each one exactly:
+
+   - an accuracy record whose verdict is `plausible` → one
+     `[NEEDS VERIFICATION] <claim id>` entry in `## Accuracy`;
+   - an accuracy record whose verdict is `disproved` → one
+     corrected-findings entry in `## Accuracy`, naming the claim id and
+     the drafted sentence step 6 removed;
+   - an effectiveness record whose verdict is `unanswered` → one entry in
+     `## Effectiveness` carrying that question's RC-33 text verbatim,
+     never a paraphrase and never the bare `q<i>` subject;
+   - the reserved literal `isolation not demonstrated` in any record's
+     `EVIDENCE` → carried verbatim into that record's own gate's block as
+     that gate's stated reason.
+
+   Every other required item of either block — each gate's result, the
+   patch-readiness before and after a removal, and `## Accuracy`'s two
+   verbatim coverage sentences and its `dispatched=0` sentence — is
+   listed where the block is defined. Read RC-32 and RC-35 and carry
+   their items across; do not reconstruct either list from memory.
+8. **Mark the checklist.** Mark stage 5's line `[x]` in
+   `.cartographer/progress.md` before advancing to stage 6 — on every
+   branch above, including the no-draft branch. That branch is a
+   completed stage with a stated outcome, not an interrupted one, so it
+   does not compete with Step 0's rule that a stage is not complete until
+   its artifact is written **and** its checklist line is updated: where
+   the artifact's absence is the stage's stated outcome, the checklist
+   line is what records that the stage ran.
+
+Concrete check before advancing to stage 6:
+`.cartographer/verification-report.md` exists and
+`check-verification-report.sh` exited `0` against it — or this run
+produced no draft and both report blocks say so — and stage 4 was
+re-entered at most once.
+
 ## Stage 6 in detail — writing the run state
 
 Every run ends by rewriting `.cartographer/last-run.md` in whole; it is
@@ -362,17 +538,25 @@ the report:
    patch marked blocked, and — when the candidate carries no well-formed
    marker pair — either no `GAP` record remains or every remaining `GAP`
    record is reported with the patch marked blocked.
-4. If a patch was produced, it was explicitly authorized (gate 1 above),
+4. `.cartographer/verification-report.md` exists and
+   `check-verification-report.sh` exited `0` against it — or the run
+   produced no draft and both report blocks state
+   `stage 5 not run: the run produced no draft`. Every `disproved`
+   claim's sentence is absent from the draft/patch and present in the
+   report's corrected findings; every `plausible` claim carries a
+   `[NEEDS VERIFICATION]` marker; every `unanswered` question is listed
+   verbatim; and stage 4 was re-entered at most once.
+5. If a patch was produced, it was explicitly authorized (gate 1 above),
    and it contains only repository-bound content (the artifact-split table
    above).
-5. `.cartographer/report.md` states the initial state and the final state
+6. `.cartographer/report.md` states the initial state and the final state
    of every finding — a report showing only the end state is not
    complete.
-6. `.cartographer/last-run.md` exists, its `source-revision` equals
+7. `.cartographer/last-run.md` exists, its `source-revision` equals
    `git -C <REPO_ROOT> rev-parse HEAD`, and it carries one row per
    section this run classified — or the run stopped at a named stage and
    reported why.
-7. A run that selected its mode **this run** — the `absent | present`
+8. A run that selected its mode **this run** — the `absent | present`
    cell of Step 0's table, the only cell that runs `core/refresh.md`'s
    selection procedure — and landed in full mode for any reason other
    than an absent `.cartographer/last-run.md` reported exactly one of
@@ -385,6 +569,6 @@ the report:
    — those are Step 0 branches, not selection outcomes. Do not fabricate
    a string for any of them, and do not treat the missing string as a
    failure.
-8. Every section this run classified appears in exactly one of the three
+9. Every section this run classified appears in exactly one of the three
    report buckets — confirmed current, not assessed, drifted — and every
    carried-forward entry states its `last-assessed-revision`.
