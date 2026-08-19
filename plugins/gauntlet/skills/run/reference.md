@@ -1,6 +1,6 @@
 # Gauntlet Reference — lens mapping & schema-promotion rules
 
-Load this file **only in Phase 3 substep 1** (Concatenate/promote), when adversarial-review's 5-field findings are being promoted to the canonical 10-field shape and relabeled. The orchestrator does not need this content to run Phases 0–2 or 4.
+Load this file **only in Phase 3 substep 1** (Concatenate/promote), when the adversarial lane's findings are being promoted to the canonical 10-field shape and relabeled. The orchestrator does not need this content to run Phases 0–2 or 4.
 
 Authoritative source: the gauntlet master spec (see jcslOS workspace history) §4.1 / §4.1.1. This file is the operational extract; if the two ever disagree, the master spec wins.
 
@@ -43,15 +43,24 @@ To group by parent lens family, split on ` - ` (space-hyphen-space) ONLY — nev
 
 ---
 
-## Phase 3 substep 1 — 5-field → 10-field promotion
+## Phase 3 substep 1 — adversarial-lane promotion to the 10-field shape
 
-Promote each adversarial-review finding (`lens`, `location`, `claim`, `evidence`, `severity` + Validator's `verdict` + `confidence`) to the canonical 10-field shape:
+**v2 lane (default, `gauntlet2-adversarial-review` result items):** each `result.json` finding already carries `lens`, `location`, `claim`, `evidence`, `severity`, `category`, `confidence`, `recommendation`, `disposition: "survives"`. Promotion adds only:
+
+- **`skill`** → `adversarial-review`.
+- **`verdict`** → `survives` (from `disposition`).
+- **`lens`** → apply the mapping table above (9 rows = 3 sub-lenses × 3 dispatch types).
+
+Never re-gate or re-adjudicate these items — the runtime's severity-stratified adjudication already did.
+
+**v1 fallback lane (5-field items, only when the v2 preflight failed):** promote each finding (`lens`, `location`, `claim`, `evidence`, `severity` + Validator's `verdict` + `confidence`) to the canonical 10-field shape:
 
 - **`skill`** → `adversarial-review`.
 - **`lens`** → apply the mapping table above (9 rows = 3 sub-lenses × 3 dispatch types).
 - **`category`** → single deterministic rule: `plan-text` → `correctness`; `doc-text` → `correctness`; `code-diff` → `correctness`. Adversarial findings always represent correctness concerns (hidden assumptions break intended behavior). The Phase 6 doc-review multi-category mapping does NOT apply here.
 - **`recommendation`** → if the `claim` already carries a `Recommendation:`/`Fix:` suffix, use it; otherwise derive a one-sentence action from the claim (e.g. "Step 3 has a hidden dependency on the cache being warm" → "Add an explicit cache-warm step or guard Step 3 on cache miss").
-- Apply the master spec §4.3 skill-audit transformation table for any skill-audit findings.
+
+Apply the master spec §4.3 skill-audit transformation table for any skill-audit findings.
 
 ---
 
