@@ -1,6 +1,6 @@
 ---
-name: gauntlet2-adversarial-review
-description: Gauntlet v2 pilot — runtime-driven adversarial review (Find, Validate, Adjudicate under a deterministic runtime). Use ONLY when explicitly asked for gauntlet2-adversarial-review, the v2 pilot, or the runtime-driven adversarial review. Not a trigger-phrase surface: the incumbent gauntlet:adversarial-review remains the default lane during the pilot.
+name: adversarial-review
+description: Runtime-driven adversarial review (Find, Validate, Adjudicate under a deterministic runtime). Use when pressure-testing a code change, plan, or doc for hidden assumptions, failure modes, and structural risks that standard review misses. Trigger phrases include "adversarial review", "pressure test this", "how could this break", "what am I missing", "stress test this code", "break this", "find the flaws". Requires Node >= 22.
 ---
 <!-- generated from canon; do not edit -->
 
@@ -18,7 +18,7 @@ Set `RUN_DIR` from the reported `runDir`, and pass every later path under it: `s
 
 The two subcommands take the family in different forms, and mixing them up is a hard refusal: `bundle --family` takes the bare id (`code-diff`), while `init --family` takes the prefixed id the bundle records in `artifactFamily` (`jcsl:artifact-family:code-diff`). Pass the `artifactFamily` value from the `bundle` summary (or read it off `"$RUN_DIR/bundle.json"`) to `init`.
 
-Perform `dispatch-finder` actions with the Agent tool using `subagent_type: gauntlet:gauntlet2-adversarial-finder`, and `dispatch-validator` actions with `subagent_type: gauntlet:gauntlet2-adversarial-validator`. Pass the dispatch prompt from the pending action verbatim; each dispatch is a fresh agent with no shared history. Record the model the agent actually ran on in that receipt's host-meta file.
+Perform `dispatch-finder` actions with the Agent tool using `subagent_type: gauntlet:adversarial-finder`, and `dispatch-validator` actions with `subagent_type: gauntlet:adversarial-validator`. Pass the dispatch prompt from the pending action verbatim; each dispatch is a fresh agent with no shared history. Record the model the agent actually ran on in that receipt's host-meta file.
 
 Class `jcsl:gauntlet:adversarial-review@2.0.0` — adversarial code/plan/doc review. Two opposed roles (`jcsl:gauntlet:adversarial-finder`, `jcsl:gauntlet:adversarial-validator`) run in fresh, isolated dispatches under a deterministic runtime.
 

@@ -298,7 +298,7 @@ Create the Phase 3 sub-tasks with these 7 substeps (a `TaskCreate` call per subs
    (master spec §4.1) — no special case: `skill: "adversarial-review"`,
    `lens: "adversarial-review / Lane failure"`, `category: "correctness"`, `location: "N/A — lane failure"`,
    `claim: "Adversarial review did not run for this code change (<reason: Node < 22 | execution failure>) —
-   code coverage is materially incomplete."`, `evidence: "<the preflight `node --version` output, or the run's
+   code coverage is materially incomplete."`, `evidence: "<the preflight node --version output, or the run's
    executionStatus/stage-gap detail, verbatim from the skill's own report>"`, `verdict: "survives"`,
    `severity: "High"`, `confidence: 100`, `recommendation: "Rerun /gauntlet on a Node ≥ 22 host before
    merging."` The `severity` field follows the same High/Medium/Low

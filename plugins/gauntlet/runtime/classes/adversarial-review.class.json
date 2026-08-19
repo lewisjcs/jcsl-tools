@@ -22,14 +22,14 @@
   "functionRole": "adversarial-review",
   "members": {
     "skills": [
-      "hosts/claude-code/skills/gauntlet2-adversarial-review/SKILL.md",
-      "hosts/codex/skills/gauntlet2-adversarial-review/SKILL.md"
+      "hosts/claude-code/skills/adversarial-review/SKILL.md",
+      "hosts/codex/skills/adversarial-review/SKILL.md"
     ],
     "agents": [
-      "hosts/claude-code/agents/gauntlet2-adversarial-finder.md",
-      "hosts/claude-code/agents/gauntlet2-adversarial-validator.md",
-      "hosts/codex/roles/gauntlet2-adversarial-finder.md",
-      "hosts/codex/roles/gauntlet2-adversarial-validator.md"
+      "hosts/claude-code/agents/adversarial-finder.md",
+      "hosts/claude-code/agents/adversarial-validator.md",
+      "hosts/codex/roles/adversarial-finder.md",
+      "hosts/codex/roles/adversarial-validator.md"
     ],
     "references": [
       "canon/finder-persona.md",
@@ -629,7 +629,7 @@
   "entrypoints": {
     "claude-code": {
       "kind": "skill",
-      "path": "hosts/claude-code/skills/gauntlet2-adversarial-review/SKILL.md",
+      "path": "hosts/claude-code/skills/adversarial-review/SKILL.md",
       "projection": {
         "canonicalSources": [
           "canon/finder-persona.md",
@@ -649,7 +649,7 @@
     },
     "codex": {
       "kind": "skill",
-      "path": "hosts/codex/skills/gauntlet2-adversarial-review/SKILL.md",
+      "path": "hosts/codex/skills/adversarial-review/SKILL.md",
       "projection": {
         "canonicalSources": [
           "canon/finder-persona.md",
