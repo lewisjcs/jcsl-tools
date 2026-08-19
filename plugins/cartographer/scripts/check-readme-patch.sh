@@ -4,13 +4,18 @@
 # section marker-grammar (readme-ownership.md's <id> rules — format,
 # uniqueness, matching, nesting — plus the orphan-start/orphan-end
 # conditions and a malformed-marker-line branch; `derivation` is not
-# mechanically enforced, see core/local-validation.md). Contract: RC-6
-# (invocation), RC-8 (report format + exit codes, including the `marker`
-# RULE and the in-patch/out-of-patch scope field `link` and `command`
-# records carry), RC-9 (read-only — reports GAP, never excludes; scope
-# decides which GAPs block), RC-10 (command verification clauses,
-# including the external-tool allowlist), RC-11 (low-value proxies).
-# Full definitions: core/local-validation.md. This
+# mechanically enforced, see core/local-validation.md), and (e) the Tier-1
+# claim existence proxies for the `signature` and `self-citation` rules.
+# Contract: RC-6 (invocation), RC-8 (report format + exit codes, including
+# the `marker` RULE and the in-patch/out-of-patch scope field `link`,
+# `command`, `signature`, and `self-citation` records carry), RC-9
+# (read-only — reports GAP, never excludes; scope decides which GAPs
+# block), RC-10 (command verification clauses, including the external-tool
+# allowlist), RC-11 (low-value proxies). Full definitions:
+# core/local-validation.md. Gate (e) implements RC-27 (textual
+# recognition) and RC-28 (match predicates, including the literal-
+# interpolation rule), whose full definitions are in
+# core/claim-verification.md. This
 # script is read-only — it never rewrites README_FILE and writes no file
 # of its own.
 #
@@ -584,6 +589,143 @@ check_sections() {
 }
 
 # ──────────────────────────────────────────────────────────────────────────────
+# GATE (e): Tier-1 claim existence proxies — the `signature` and
+# `self-citation` rules. RC-27 fixes how a claim is recognized in the
+# candidate's own text; RC-28 fixes the match predicate each rule applies
+# against its cited target. Full definitions: core/claim-verification.md.
+#
+# Both rules emit six-field records whose sixth field is <SCOPE>, exactly
+# as `link` and `command` records do, and the scope comes from the same
+# record_scope() the other gates use. The checker never reads the claim
+# ledger (RC-6 is unchanged): a claim is recognized from the candidate's
+# text alone, and RC-9's caller performs the join to a claim id.
+# ──────────────────────────────────────────────────────────────────────────────
+
+# RC-27's signature form: an identifier immediately followed by `(`.
+SIGNATURE_SPAN_RE='^[A-Za-z_][A-Za-z0-9_.]*\('
+
+# RC-28's literal-interpolation rule. Every character outside
+# [A-Za-z0-9_] is backslash-escaped before the identifier is interpolated
+# into the whole-word predicate below. This is the whole reason the
+# predicate is a proxy for transcription rather than a word search: RC-27
+# admits dotted identifiers, and an unescaped `.` is a regex wildcard, so
+# `store.open` would match `storeXopen` and the gate would report a
+# transcription the cited source does not contain.
+escape_literal() {
+  local text="$1"
+  local out="" i c
+  for ((i = 0; i < ${#text}; i++)); do
+    c="${text:i:1}"
+    if [[ $c == [A-Za-z0-9_] ]]; then
+      out+="$c"
+    else
+      out+="\\$c"
+    fi
+  done
+  printf '%s' "$out"
+}
+
+check_claims() {
+  local fence_state=0
+  local line_num=0
+
+  while IFS= read -r line; do
+    line_num=$((line_num + 1))
+
+    if [[ $line =~ ^[[:space:]]*\`{3,} ]] || [[ $line =~ ^[[:space:]]*~{3,} ]]; then
+      fence_state=$((1 - fence_state))
+      continue
+    fi
+    [ "$fence_state" -ne 0 ] && continue
+
+    # No inline code span on this line — neither rule can recognize a claim.
+    [[ $line == *'`'* ]] || continue
+
+    # RC-27's two cited-target lookups, resolved once per line: a
+    # `signature` claim's cited source is the FIRST markdown link on the
+    # line whose target resolves to a regular file under REPO_ROOT and
+    # does NOT end in `.md`; a `self-citation` claim's cited document is
+    # the FIRST whose target resolves to a regular file and DOES end in
+    # `.md`. An absolute-URL or anchor-only target is not a path under
+    # REPO_ROOT and qualifies as neither.
+    #
+    # Regular file, not merely existing: both predicates read the target
+    # as a file, so a directory target is non-qualifying rather than a
+    # cited source this gate could report on. Gate (a) resolves it as a
+    # link (`-e` is the right test there — a directory is a navigable
+    # target), and RC-27's no-qualifying-link branch covers the claim: no
+    # record. Reporting `GAP|signature` against a directory would assert
+    # a symbol is absent from a "cited source file" that is not a file.
+    local src_target="" doc_target=""
+    local match target path_part
+    while IFS= read -r match; do
+      [ -z "$match" ] && continue
+      target="$(sed -E 's/^\[[^]]*\]\(([^)]+)\)$/\1/' <<<"$match")"
+      [[ $target =~ ^[a-zA-Z][a-zA-Z0-9+.-]*: ]] && continue
+      [[ $target == \#* ]] && continue
+      path_part="${target%%#*}"
+      [ -f "$REPO_ROOT/$path_part" ] || continue
+      if [[ $path_part == *.md ]]; then
+        [ -z "$doc_target" ] && doc_target="$path_part"
+      else
+        [ -z "$src_target" ] && src_target="$path_part"
+      fi
+    done < <(grep -oE '\[[^]]*\]\([^)]+\)' <<<"$line")
+
+    local scope=""
+    local span text identifier pattern
+    while IFS= read -r span; do
+      [ -z "$span" ] && continue
+      text="${span#\`}"
+      text="${text%\`}"
+      [ -z "$text" ] && continue
+
+      # RC-27 non-firing branch: a code span containing `|` emits no
+      # record on either rule — this pipe-delimited grammar cannot carry
+      # it, the same reason a malformed marker's <SUBJECT> is `-`.
+      [[ $text == *"|"* ]] && continue
+
+      if [[ $text =~ $SIGNATURE_SPAN_RE ]]; then
+        # RC-27 non-firing branch: no qualifying link for this class on
+        # this line means no record, never a record against some other
+        # line's citation.
+        [ -z "$src_target" ] && continue
+        identifier="${text%%(*}"
+        # RC-28's whole-word predicate, with the identifier interpolated
+        # literally and matched whole — no last-segment fallback.
+        pattern="(^|[^A-Za-z0-9_])$(escape_literal "$identifier")([^A-Za-z0-9_]|\$)"
+        [ -z "$scope" ] && scope="$(record_scope "$line_num")"
+        if grep -qE -- "$pattern" "$REPO_ROOT/$src_target" 2>/dev/null; then
+          printf 'OK|signature|%s:%d|%s|cited symbol appears in the cited source file (existence proxy)|%s\n' \
+            "$README_FILE" "$line_num" "$identifier" "$scope"
+        else
+          printf 'GAP|signature|%s:%d|%s|cited symbol does not appear in the cited source file (existence proxy)|%s\n' \
+            "$README_FILE" "$line_num" "$identifier" "$scope"
+          GAPS=$((GAPS + 1))
+        fi
+        continue
+      fi
+
+      # RC-27 non-firing branch: a code span containing `/` is a path, not
+      # a cited term — gate (a)'s and RC-11's territory, not this gate's.
+      [[ $text == */* ]] && continue
+      [ -z "$doc_target" ] && continue
+      [ -z "$scope" ] && scope="$(record_scope "$line_num")"
+      # RC-28: case-insensitive literal substring. -F, so no character of
+      # the cited term is treated as a pattern metacharacter.
+      if grep -qiF -- "$text" "$REPO_ROOT/$doc_target" 2>/dev/null; then
+        printf 'OK|self-citation|%s:%d|%s|cited document contains the cited term (existence proxy)|%s\n' \
+          "$README_FILE" "$line_num" "$text" "$scope"
+      else
+        printf 'GAP|self-citation|%s:%d|%s|cited document does not contain the cited term (existence proxy)|%s\n' \
+          "$README_FILE" "$line_num" "$text" "$scope"
+        GAPS=$((GAPS + 1))
+      fi
+    done < <(grep -oE '`[^`]+`' <<<"$line")
+  done < "$README_FILE"
+}
+
+# ──────────────────────────────────────────────────────────────────────────────
 # MAIN
 # ──────────────────────────────────────────────────────────────────────────────
 
@@ -591,6 +733,7 @@ scan_markers
 check_links
 check_commands
 check_sections
+check_claims
 
 printf 'SUMMARY|gaps=%d|low_value=%d\n' "$GAPS" "$LOW_VALUE"
 

@@ -68,16 +68,17 @@ assert_line() {
 }
 
 # RC-8's field-count rule as a structural invariant rather than a text
-# match: `link` and `command` records carry six fields whose sixth is one
-# of the two scope literals, `marker` and `section-value` records carry
-# five and no scope tag, and no other RULE is legal. A record of any other
-# shape is printed and fails the assertion.
+# match: `link`, `command`, `signature`, and `self-citation` records carry
+# six fields whose sixth is one of the two scope literals, `marker` and
+# `section-value` records carry five and no scope tag, and no other RULE
+# is legal. A record of any other shape is printed and fails the
+# assertion.
 assert_record_shape() {
   local name="$1" haystack="$2"
   local bad
   bad="$(awk -F'|' '
     /^SUMMARY\|/ { next }
-    $2 == "link" || $2 == "command" {
+    $2 == "link" || $2 == "command" || $2 == "signature" || $2 == "self-citation" {
       if (NF != 6 || ($6 != "in-patch" && $6 != "out-of-patch")) print
       next
     }
@@ -611,6 +612,192 @@ rc=$?
 assert_exit "no-markers fixed: exit 0" "0" "$rc"
 assert_line "no-markers fixed: OK record carries the same out-of-patch tag" \
   "OK|link|$TMP_WORK/scope-no-markers-fixed/README.no-markers.candidate.md:5|missing-inside.md|resolves under REPO_ROOT|out-of-patch" "$out"
+
+# ──────────────────────────────────────────────────────────────────────────────
+# GATE (e): Tier-1 claim existence proxies — the `signature` and
+# `self-citation` rules (RC-27 recognition, RC-28 match predicates; full
+# definitions in core/claim-verification.md).
+#
+# Each rule gets four assertions: the GAP case against its fixture (exit
+# code, whole-line record, scope tag), the fenced negative control (the
+# fixture repeats its own defective line inside a fenced ```markdown```
+# block, which must NOT emit a second record — asserted as a record
+# count, since presence alone cannot see a duplicate), a pass-once-fixed
+# corrected candidate, and an assert_record_shape call over the output.
+# Two shared cases follow: RC-27's no-qualifying-link non-firing branch,
+# and the dotted-identifier case that is the only observation of RC-28's
+# literal-interpolation rule.
+# ──────────────────────────────────────────────────────────────────────────────
+
+echo ""
+echo "Tier-1 claim existence proxies (gate e):"
+
+# signature — signature-mismatch/: the candidate cites `openSession(options)`
+# and the cited source defines `openSessionStore(options)` only, so RC-28's
+# whole-word predicate fails on the trailing boundary.
+out="$(bash "$CHECK" "$FIXTURES_DIR/signature-mismatch/README.candidate.md" "$FIXTURES_DIR/signature-mismatch" 2>&1)"
+rc=$?
+assert_exit "signature mismatch: exit 1" "1" "$rc"
+assert_line "signature mismatch: exact record, in-patch" \
+  "GAP|signature|$FIXTURES_DIR/signature-mismatch/README.candidate.md:6|openSession|cited symbol does not appear in the cited source file (existence proxy)|in-patch" "$out"
+assert_contains "signature mismatch: SUMMARY gaps=1" "SUMMARY|gaps=1|low_value=0" "$out"
+assert_record_shape "signature mismatch: RC-8 field counts" "$out"
+signature_record_count="$(grep -cE '^(OK|GAP)\|signature\|' <<<"$out")"
+if [ "$signature_record_count" = "1" ]; then
+  printf '  ok   — signature mismatch: exactly 1 signature record (fenced example ignored)\n'
+  PASS=$((PASS + 1))
+else
+  printf '  FAIL — signature mismatch: expected 1 signature record (fenced example must be ignored), got %s\n' "$signature_record_count"
+  FAIL=$((FAIL + 1))
+fi
+
+# pass-once-fixed: correct the cited symbol to the one the source defines.
+mkdir -p "$TMP_WORK/signature-fixed/lib"
+cp "$FIXTURES_DIR/signature-mismatch/lib/session-store.js" "$TMP_WORK/signature-fixed/lib/"
+cat > "$TMP_WORK/signature-fixed/README.candidate.md" <<'EOF'
+# Example
+
+## Usage
+
+<!-- cartographer:managed:start usage -->
+The store is opened with `openSessionStore(options)` — see [lib/session-store.js](lib/session-store.js).
+<!-- cartographer:managed:end usage -->
+EOF
+out="$(bash "$CHECK" "$TMP_WORK/signature-fixed/README.candidate.md" "$TMP_WORK/signature-fixed" 2>&1)"
+rc=$?
+assert_exit "signature fixed: exit 0" "0" "$rc"
+assert_not_contains "signature fixed: no GAP|signature record" "GAP|signature|" "$out"
+assert_line "signature fixed: OK record carries the same in-patch tag" \
+  "OK|signature|$TMP_WORK/signature-fixed/README.candidate.md:6|openSessionStore|cited symbol appears in the cited source file (existence proxy)|in-patch" "$out"
+assert_record_shape "signature fixed: RC-8 field counts" "$out"
+
+# self-citation — self-citation-false/: the candidate attributes the term
+# `exporter registry` to CONVENTIONS.md, which does not contain it.
+out="$(bash "$CHECK" "$FIXTURES_DIR/self-citation-false/README.candidate.md" "$FIXTURES_DIR/self-citation-false" 2>&1)"
+rc=$?
+assert_exit "self-citation false: exit 1" "1" "$rc"
+assert_line "self-citation false: exact record, in-patch" \
+  "GAP|self-citation|$FIXTURES_DIR/self-citation-false/README.candidate.md:6|exporter registry|cited document does not contain the cited term (existence proxy)|in-patch" "$out"
+assert_contains "self-citation false: SUMMARY gaps=1" "SUMMARY|gaps=1|low_value=0" "$out"
+assert_record_shape "self-citation false: RC-8 field counts" "$out"
+# RC-27's no-qualifying-link non-firing branch. The candidate's third
+# claim line carries the code span `module manifest` and NO markdown link
+# at all, and `module manifest` IS a term CONVENTIONS.md contains — so an
+# implementation that ignored RC-27's link requirement would emit an OK
+# record here, not a GAP. Absence of any record for that subject is the
+# assertion, and it cannot pass by accident.
+assert_not_contains "self-citation false: no record for the link-less claim line" \
+  "|module manifest|" "$out"
+self_citation_record_count="$(grep -cE '^(OK|GAP)\|self-citation\|' <<<"$out")"
+if [ "$self_citation_record_count" = "1" ]; then
+  printf '  ok   — self-citation false: exactly 1 self-citation record (fenced example ignored, link-less line emits none)\n'
+  PASS=$((PASS + 1))
+else
+  printf '  FAIL — self-citation false: expected 1 self-citation record (fenced example and link-less line must emit none), got %s\n' "$self_citation_record_count"
+  FAIL=$((FAIL + 1))
+fi
+
+# pass-once-fixed: cite a term the document does contain.
+mkdir -p "$TMP_WORK/self-citation-fixed"
+cp "$FIXTURES_DIR/self-citation-false/CONVENTIONS.md" "$TMP_WORK/self-citation-fixed/"
+cat > "$TMP_WORK/self-citation-fixed/README.candidate.md" <<'EOF'
+# Example
+
+## Conventions
+
+<!-- cartographer:managed:start conventions -->
+Every module registers through the `module manifest`, per [CONVENTIONS.md](CONVENTIONS.md).
+<!-- cartographer:managed:end conventions -->
+EOF
+out="$(bash "$CHECK" "$TMP_WORK/self-citation-fixed/README.candidate.md" "$TMP_WORK/self-citation-fixed" 2>&1)"
+rc=$?
+assert_exit "self-citation fixed: exit 0" "0" "$rc"
+assert_not_contains "self-citation fixed: no GAP|self-citation record" "GAP|self-citation|" "$out"
+assert_line "self-citation fixed: OK record carries the same in-patch tag" \
+  "OK|self-citation|$TMP_WORK/self-citation-fixed/README.candidate.md:6|module manifest|cited document contains the cited term (existence proxy)|in-patch" "$out"
+assert_record_shape "self-citation fixed: RC-8 field counts" "$out"
+
+# RC-28's literal-interpolation rule, and the ONLY case that observes it.
+# RC-27 admits dotted identifiers, so `store.open` reaches the predicate
+# with a `.` in it. Interpolated raw, `.` is a regex wildcard and the
+# predicate matches `storeXopen` — the cited source below contains exactly
+# that and not `store.open`, so an unescaped implementation emits OK here
+# and a correct one emits GAP. No other case in this suite can tell those
+# two implementations apart.
+mkdir -p "$TMP_WORK/signature-dotted/lib"
+cat > "$TMP_WORK/signature-dotted/lib/session-store.js" <<'EOF'
+// Synthetic fixture module — not real shipped code.
+function storeXopen(options) {
+  return { options };
+}
+
+module.exports = { storeXopen };
+EOF
+cat > "$TMP_WORK/signature-dotted/README.candidate.md" <<'EOF'
+# Example
+
+## Usage
+
+<!-- cartographer:managed:start usage -->
+The store is opened with `store.open(options)` — see [lib/session-store.js](lib/session-store.js).
+<!-- cartographer:managed:end usage -->
+EOF
+out="$(bash "$CHECK" "$TMP_WORK/signature-dotted/README.candidate.md" "$TMP_WORK/signature-dotted" 2>&1)"
+rc=$?
+assert_exit "dotted identifier vs same-shape-different-separator source: exit 1" "1" "$rc"
+assert_line "dotted identifier: GAP, not OK — storeXopen is not store.open" \
+  "GAP|signature|$TMP_WORK/signature-dotted/README.candidate.md:6|store.open|cited symbol does not appear in the cited source file (existence proxy)|in-patch" "$out"
+assert_record_shape "dotted identifier: RC-8 field counts" "$out"
+
+# pass-once-fixed, and the counterpart that proves the escaped predicate
+# still matches: the same dotted identifier against a source that does
+# contain its whole form.
+mkdir -p "$TMP_WORK/signature-dotted-fixed/lib"
+cp "$TMP_WORK/signature-dotted/README.candidate.md" "$TMP_WORK/signature-dotted-fixed/"
+cat > "$TMP_WORK/signature-dotted-fixed/lib/session-store.js" <<'EOF'
+// Synthetic fixture module — not real shipped code.
+const store = {};
+store.open = function (options) {
+  return { options };
+};
+
+module.exports = { store };
+EOF
+out="$(bash "$CHECK" "$TMP_WORK/signature-dotted-fixed/README.candidate.md" "$TMP_WORK/signature-dotted-fixed" 2>&1)"
+rc=$?
+assert_exit "dotted identifier fixed: exit 0" "0" "$rc"
+assert_line "dotted identifier fixed: whole dotted form matches" \
+  "OK|signature|$TMP_WORK/signature-dotted-fixed/README.candidate.md:6|store.open|cited symbol appears in the cited source file (existence proxy)|in-patch" "$out"
+assert_not_contains "dotted identifier fixed: no GAP|signature record" "GAP|signature|" "$out"
+assert_record_shape "dotted identifier fixed: RC-8 field counts" "$out"
+
+# RC-27's qualifying link must resolve to a REGULAR FILE. A directory
+# target resolves under REPO_ROOT, so gate (a) reports it OK — but both
+# Tier-1 predicates read their cited target as a file, and a gate that
+# accepted a directory here would emit a blocking in-patch GAP whose
+# message asserts a symbol is absent from a "cited source file" that is
+# not a file. The line below cites a symbol the directory's contents DO
+# define, so an implementation testing mere existence goes red on the
+# absence assertion rather than passing by luck.
+mkdir -p "$TMP_WORK/signature-dir-target/lib"
+cp "$FIXTURES_DIR/signature-mismatch/lib/session-store.js" "$TMP_WORK/signature-dir-target/lib/"
+cat > "$TMP_WORK/signature-dir-target/README.candidate.md" <<'EOF'
+# Example
+
+## Usage
+
+<!-- cartographer:managed:start usage -->
+The store is opened with `openSessionStore(options)` — see [lib/](lib/).
+<!-- cartographer:managed:end usage -->
+EOF
+out="$(bash "$CHECK" "$TMP_WORK/signature-dir-target/README.candidate.md" "$TMP_WORK/signature-dir-target" 2>&1)"
+rc=$?
+assert_exit "directory target: exit 0 (no qualifying link, so no claim)" "0" "$rc"
+assert_not_contains "directory target: no signature record at all" "|signature|" "$out"
+assert_line "directory target: gate (a) still resolves the link" \
+  "OK|link|$TMP_WORK/signature-dir-target/README.candidate.md:6|lib/|resolves under REPO_ROOT|in-patch" "$out"
+assert_contains "directory target: SUMMARY gaps=0" "SUMMARY|gaps=0|low_value=0" "$out"
+assert_record_shape "directory target: RC-8 field counts" "$out"
 
 # ──────────────────────────────────────────────────────────────────────────────
 # SUMMARY line — counts match records, across simultaneous findings

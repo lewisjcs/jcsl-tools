@@ -95,18 +95,24 @@ fence-toggle idiom `local-validation.md`'s `check_links()` and
 - A **`signature` claim** is an inline code span matching
   `^[A-Za-z_][A-Za-z0-9_.]*\(` — an identifier immediately followed by
   `(`. Its cited source is the **first** markdown link on the same line
-  whose target resolves under `REPO_ROOT` and does **not** end in `.md`.
-  `<SUBJECT>` is the identifier text (everything before the first `(`).
+  whose target resolves to a **regular file** under `REPO_ROOT` and does
+  **not** end in `.md`. `<SUBJECT>` is the identifier text (everything
+  before the first `(`).
 - A **`self-citation` claim** is an inline code span that does not match
   the signature form and contains no `/`. Its cited document is the
-  **first** markdown link on the same line whose target resolves under
-  `REPO_ROOT` and **does** end in `.md`. `<SUBJECT>` is the code span's
-  text — the cited term.
+  **first** markdown link on the same line whose target resolves to a
+  **regular file** under `REPO_ROOT` and **does** end in `.md`.
+  `<SUBJECT>` is the code span's text — the cited term.
 
 Non-firing branches, stated so a literal executor cannot improvise:
 
 - A qualifying code span on a line with no qualifying link for its class
-  emits **no record**.
+  emits **no record**. A link whose target is not a regular file — a
+  directory, most commonly — is not a qualifying link for either class,
+  because RC-28's predicates read the cited target as a file. Gate (a)
+  still resolves it as a link; this branch is what keeps a Tier-1 record
+  from asserting a symbol is absent from a "cited source file" that is
+  not one.
 - A code span containing `/` is a path, not a cited term: no
   `self-citation` record. Paths are gate (a)'s and `local-validation.md`
   RC-11's territory.
