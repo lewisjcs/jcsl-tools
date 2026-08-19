@@ -183,9 +183,10 @@ therefore stands on three things stated together, not on the prose
 reading well in isolation: the denial (Effectiveness's
 `{{ARTIFACT_LIST}}` carries no repository access), the detection tell
 (any repository path, symbol, or line in a returned verdict, above), and
-the consequence (discard, re-dispatch once, then the reserved `EVIDENCE`
-literal and `NEEDS WORK`, above). A reader who finds only the denial has
-not found this gate's whole force.
+the consequence (`core/claim-verification.md` RC-29's consequence
+branch, in the five-record Effectiveness form this file gives above).
+A reader who finds only the denial has not found this gate's whole
+force.
 
 **Non-firing branch: a run that produced no draft.** `core/claim-verification.md`
 RC-32 states the shared non-firing branch for both gates — stage 5

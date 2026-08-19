@@ -241,7 +241,19 @@ terms that stage promised: the checker's post-state is "reported as
 excluded item's ultimate disposition is `core/claim-model.md`'s
 `unresolved-gap` — the same disposition a claim with no evidence
 reference already carries, reached here by a different gate on a
-different artifact (the draft, not the ledger).
+different artifact (the draft, not the ledger). What stage 4 hands the
+reduced candidate and this report to is stage 5, which verifies the
+claims that survived rather than re-deciding the findings above.
+
+**A re-entry stage 5 sends back is an ordinary stage-4 run.** Stage 5
+may return the caller here once per run, against a candidate it reduced
+by excluding a disproved claim (`core/pipeline.md` § The stage sequence
+names that bounded re-entry; `core/claim-verification.md` RC-32 owns its
+sequence). Nothing on this side changes for it: RC-9 applies unchanged,
+including the loop and the termination argument above, and the re-entry
+rewrites this report. This file decides what a stage-4 run does with the
+records it finds; it does not decide how many times stage 4 is entered,
+and the two questions never conflict.
 
 ## Internal link resolution (gate a)
 

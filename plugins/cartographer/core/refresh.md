@@ -27,9 +27,9 @@ interchanged: `source-revision` is the header field and
 
 | Term | Kind | Definition |
 |---|---|---|
-| full mode | run mode | Every section of the README under analysis is assessed. Stages 1 through 5 run for all of them. |
+| full mode | run mode | Every section of the README under analysis is assessed. Stages 1 through 6 run for all of them. |
 | targeted mode | run mode | Only the sections the per-section procedure selects are assessed; the rest are carried forward. |
-| run state | artifact | `.cartographer/last-run.md`, the file one run writes at stage 5 and the next run reads at Step 0. |
+| run state | artifact | `.cartographer/last-run.md`, the file one run writes at stage 6 and the next run reads at Step 0. |
 | fingerprint | artifact | The table inside the run state: one row per classified section of the README the writing run analyzed. |
 | `section-key` | identifier | The fingerprint's row key for a section. Defined below; this file is its sole definition site. |
 | `source-revision` | run-state header field | The revision the run that wrote the file completed at. A later run diffs from it. |
@@ -48,7 +48,7 @@ they are two facts. A carried-forward row keeps its older
 The report's "last assessed at" figure reads `last-assessed-revision`;
 the diff base reads `source-revision`.
 
-## The run state is rewritten in whole at stage 5
+## The run state is rewritten in whole at stage 6
 
 `.cartographer/last-run.md` is written in whole every run and never
 partially updated. Its format:
@@ -56,7 +56,7 @@ partially updated. Its format:
 ```markdown
 # Cartographer run state
 
-- source-revision: <output of `git -C <REPO_ROOT> rev-parse HEAD` at stage 5>
+- source-revision: <output of `git -C <REPO_ROOT> rev-parse HEAD` at stage 6>
 - readme-path: <path of the README under analysis, relative to REPO_ROOT>
 
 | section-key | ownership | freshness | last-assessed-revision | evidence-paths | watched-paths | body-hash |
@@ -146,7 +146,7 @@ hashing it would be circular.
 
 - **Compare (Step 0, before stage 1):** hash each section of the on-disk
   README and compare against the recorded `body-hash`.
-- **Write (stage 5):** hash each section of the on-disk README as it
+- **Write (stage 6):** hash each section of the on-disk README as it
   stands at that moment — the unmodified file on a report-only run, the
   post-patch file on an authorized-patch run that applied one.
 
@@ -314,7 +314,7 @@ working tree, and `section-key`s are heading slugs (`overview`,
 `quick-start`) that collide freely across two different READMEs in one
 repository. Without step 4 a run against a second README would match
 another file's fingerprint rows and carry that file's sections forward.
-Stage 5 writes `readme-path` for the README this run analyzed, so the
+Stage 6 writes `readme-path` for the README this run analyzed, so the
 next run against the same README passes this step, and the next run
 against a different one falls back to full mode and rewrites the state
 file for its own README.
@@ -347,7 +347,7 @@ remaining fingerprint-only keys in table order.
 1. The `section-key` is in the fingerprint and the section is absent
    from the current README → the section is not part of this run. List
    it in the report under `sections removed since <source-revision>`,
-   put it in **no** bucket, and write **no** row for it at stage 5. Its
+   put it in **no** bucket, and write **no** row for it at stage 6. Its
    absence does not trigger full mode.
 2. The section is present and its `section-key` is absent from the
    fingerprint → **assess**. A new section is never carried forward, and
@@ -361,7 +361,7 @@ remaining fingerprint-only keys in table order.
    **assess**, regardless of which paths the row covers.
 7. Otherwise → **carry forward**: reuse the recorded ownership and
    freshness, report the section under **not assessed** together with
-   its `last-assessed-revision`, and re-emit its row at stage 5 with a
+   its `last-assessed-revision`, and re-emit its row at stage 6 with a
    freshly computed `body-hash` and its unchanged
    `last-assessed-revision`.
 
@@ -417,6 +417,39 @@ exit code. Carrying a section forward never suppresses a `GAP`. Which
 `GAP`s block patch readiness is `core/local-validation.md`'s RC-9 rule,
 consumed by the skill, and not this file's.
 
+## The accuracy dispatch covers the claims this run wrote ledger rows for
+
+Stage 5 runs two dispatches, and targeted mode scopes them differently.
+The asymmetry is stated here rather than left to be inferred from the
+section above, because the two dispatches read two different inputs.
+
+**The accuracy dispatch covers the claims this run wrote ledger rows
+for.** In targeted mode a carried-forward section produced no ledger
+rows this run — stages 1 through 3 did not run for it — so its claims
+are not dispatched: the verification recorded by the run that last
+assessed the section stands, exactly as its ownership and freshness do.
+`.cartographer/verification-report.md` therefore holds accuracy records
+only for freshly drafted claims, and `dispatched`, `spot-checked`, and
+`unverified-other` count over that set.
+
+**The effectiveness dispatch is not scoped this way.** It reads the
+whole drafted README as a newcomer would, so it runs whole-file, once,
+on every run in both modes — the same reasoning § Stage 4 is never
+skipped per section gives for the checker. A newcomer reads the file,
+not the diff.
+
+The asymmetry is load-bearing beyond cost. Scoping the effectiveness
+dispatch per section would leave `.cartographer/verification-report.md`
+carrying fewer than five `question` records in targeted mode, which
+`scripts/check-verification-report.sh` rejects. Whole-file
+effectiveness is what keeps that record set total on every run, in
+either mode.
+
+The gates themselves are defined elsewhere and are not restated here:
+`core/claim-verification.md` owns the accuracy dispatch scope and cites
+this section for the targeted-mode rule, and
+`core/effectiveness-verification.md` owns the effectiveness half.
+
 ## Every classified section lands in exactly one bucket
 
 | Bucket | Fires when |
@@ -457,7 +490,7 @@ report the first that fails:
    counted toward the exit code.
 6. Every classified section appears in exactly one of the three buckets,
    and every carried-forward entry states its `last-assessed-revision`.
-7. The run state written at stage 5 carries a `source-revision` line, a
+7. The run state written at stage 6 carries a `source-revision` line, a
    `readme-path` line naming the README this run analyzed, and one
    well-formed row per classified section — no `section-key` appearing
    twice, each `body-hash` a 64-character lowercase hex digest.

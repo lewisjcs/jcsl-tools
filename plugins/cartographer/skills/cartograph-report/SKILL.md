@@ -7,8 +7,8 @@ description: Use when onboarding to an unfamiliar repository, orienting a new co
 
 Runs Cartographer's core pipeline against the repository under analysis:
 evidence collection, a claim ledger, a drafted README section or diff,
-local validation, and a run report — or, only when explicitly authorized,
-a patch. Slice 1 ships the core only; no `profiles/contentful/` behavior
+local validation, accuracy and effectiveness verification, and a run
+report — or, only when explicitly authorized, a patch. Slice 1 ships the core only; no `profiles/contentful/` behavior
 is in scope here.
 
 ## Before anything else — three blocking gates
@@ -21,7 +21,7 @@ any of them is not complete, no matter what else it produced.
    in the caller's own words to write or apply the change (e.g. "apply
    this," "write the patch," "update the file"). Check: re-read the
    request that started this run. If it contains no such instruction,
-   stage 5 produces a report only — do not offer, draft, or write a patch.
+   stage 6 produces a report only — do not offer, draft, or write a patch.
 2. **Omit an unsupported section and report it as a gap.** A section
    whose every candidate claim resolved to `unresolved-gap`
    (`core/claim-model.md`) never reaches the draft. Check: before adding
@@ -71,7 +71,7 @@ step for any of them.
 
 Step 0 reads two state files, and they answer two different questions.
 `.cartographer/progress.md` records whether an earlier attempt at this
-run was interrupted; it is a `mode:` line followed by a five-line
+run was interrupted; it is a `mode:` line followed by a six-line
 checklist, one line per stage, each marked `[x]` (complete) or `[ ]`
 (incomplete). `.cartographer/last-run.md` is the **run state** a previous
 completed run wrote, and it decides whether this run assesses every
@@ -81,9 +81,9 @@ for both files, then apply exactly one row of this table:
 
 | `.cartographer/progress.md` | `.cartographer/last-run.md` | Do this |
 |---|---|---|
-| absent | absent | Create `progress.md` with `mode: full` as its first line and five `[ ]` stage lines beneath it. Run in full mode. |
-| absent | present | Select the mode by `core/refresh.md` § Selecting the mode — apply in order, once per run, at Step 0. Create `progress.md` with the resulting `mode:` line first — `mode: full` or `mode: targeted <source-revision>` — and five `[ ]` stage lines beneath it. |
-| present | absent | Read the mode from `progress.md`'s `mode:` line; do not re-derive it. `mode: full` → resume the run at the first `[ ]` stage in full mode. `mode: targeted <source-revision>` → the recorded mode is unexecutable, because the fingerprint it would carry forward from is gone, so restart at stage 1 in **full mode** and rewrite the checklist with `mode: full` as its first line and five `[ ]` stage lines beneath it — the same safe-failure move as a checklist carrying no `mode:` line. |
+| absent | absent | Create `progress.md` with `mode: full` as its first line and six `[ ]` stage lines beneath it. Run in full mode. |
+| absent | present | Select the mode by `core/refresh.md` § Selecting the mode — apply in order, once per run, at Step 0. Create `progress.md` with the resulting `mode:` line first — `mode: full` or `mode: targeted <source-revision>` — and six `[ ]` stage lines beneath it. |
+| present | absent | Read the mode from `progress.md`'s `mode:` line; do not re-derive it. `mode: full` → resume the run at the first `[ ]` stage in full mode. `mode: targeted <source-revision>` → the recorded mode is unexecutable, because the fingerprint it would carry forward from is gone, so restart at stage 1 in **full mode** and rewrite the checklist with `mode: full` as its first line and six `[ ]` stage lines beneath it — the same safe-failure move as a checklist carrying no `mode:` line. |
 | present | present | Resume the run at the first `[ ]` stage. Read the mode from `progress.md`'s `mode:` line; do not re-derive it. An interrupted run's mode is a fact about that run, not about the current state of `last-run.md`. |
 
 A resumed run may be in targeted mode — that is what recording the mode
@@ -96,12 +96,16 @@ visible without opening the run state. It is **not** consulted on resume
 and is compared against nothing — the `mode:` line is authoritative for
 which mode a resumed run is in.
 
-One non-firing branch, stated so it is not improvised: `progress.md`
-exists but carries no `mode:` line — a checklist written before this
-mechanism existed. Restart at stage 1 in **full mode** and rewrite the
-checklist with `mode: full` as its first line and five `[ ]` stage lines
-beneath it. An unrecorded mode is not guessable, and a partially
-completed targeted run cannot be finished as a full one.
+Two non-firing branches, stated so they are not improvised, and both
+take the same safe-failure move: `progress.md` exists but carries no
+`mode:` line — a checklist written before this mechanism existed — or
+its checklist is not six stage lines, as a checklist written against an
+earlier five-stage pipeline is not. In either case restart at stage 1 in
+**full mode** and rewrite the checklist with `mode: full` as its first
+line and six `[ ]` stage lines beneath it. An unrecorded mode is not
+guessable, a checklist that does not have one line per stage cannot say
+which stages are done, and a partially completed targeted run cannot be
+finished as a full one.
 
 Mode selection itself: `core/refresh.md`. That file is the sole
 definition site for the ordered selection procedure, the run-state
@@ -132,9 +136,9 @@ checklist is part of finishing the stage, not a separate bookkeeping step.
 
 Concrete check before advancing to stage 1: `.cartographer/progress.md`
 exists, its first line reads `mode: full` or
-`mode: targeted <source-revision>`, and exactly five stage lines follow it.
+`mode: targeted <source-revision>`, and exactly six stage lines follow it.
 
-## The five-stage pipeline
+## The six-stage pipeline
 
 Full stage contract: `core/pipeline.md`. Summarized here with the working
 file each stage writes; do not restate `core/pipeline.md`'s content
@@ -145,9 +149,10 @@ matters.
 |---|---|---|---|---|
 | 1 | Evidence collection — in targeted mode, only for the sections selected for assessment | `.cartographer/evidence.md` | Confirm every collected fact cites a file and location, and that every claim established by the *absence* of a file set records beside it the exact pathspec evaluated (e.g. `git -C <REPO_ROOT> ls-files -- '.github/workflows/*'`); if any input was unreadable, stop and report before advancing. | `core/pipeline.md` § Stage 1 |
 | 2 | Claim ledger | `.cartographer/claim-ledger.md` | Confirm every stage-1 fact has exactly one classified ledger row before drafting begins. | `core/pipeline.md` § Stage 2 |
-| 3 | Draft | (held in-memory / conversation until stage 5) | Confirm every drafted sentence cites an `included` row, and every generic-overview-shaped section carries a recorded necessity justification. | `core/pipeline.md` § Stage 3, `core/knowledge/readme-section-necessity.md` |
+| 3 | Draft | (held in-memory / conversation until stage 6) | Confirm every drafted sentence cites an `included` row, and every generic-overview-shaped section carries a recorded necessity justification. | `core/pipeline.md` § Stage 3, `core/knowledge/readme-section-necessity.md` |
 | 4 | Local validation | `.cartographer/validation-report.md` | Run the checker (below) and record its exit code before advancing. | `core/pipeline.md` § Stage 4, `core/local-validation.md` |
-| 5 | Report or authorized patch | `.cartographer/report.md`, `.cartographer/last-run.md` | Confirm the report states both the initial and final state of every finding, and that `.cartographer/last-run.md` was rewritten with a `source-revision` equal to `git -C <REPO_ROOT> rev-parse HEAD`, before closing the run. | `core/pipeline.md` § Stage 5, `core/refresh.md` § The run state is rewritten in whole at stage 5 |
+| 5 | Accuracy and effectiveness verification | `.cartographer/verification-report.md` | Confirm the verification report's last three lines are the two `RESULT` lines and the `OVERALL` line — or that this run produced no draft, the one branch on which stage 5 writes no artifact. | `core/pipeline.md` § Stage 5, `core/claim-verification.md`, `core/effectiveness-verification.md` |
+| 6 | Report or authorized patch | `.cartographer/report.md`, `.cartographer/last-run.md` | Confirm the report states both the initial and final state of every finding, carries both the `## Accuracy` and the `## Effectiveness` block, and that `.cartographer/last-run.md` was rewritten with a `source-revision` equal to `git -C <REPO_ROOT> rev-parse HEAD`, before closing the run. | `core/pipeline.md` § Stage 6, `core/refresh.md` § The run state is rewritten in whole at stage 6 |
 
 ## What targeted mode changes
 
@@ -162,6 +167,12 @@ file; do not restate its rules here.
   The checker takes a file, not a section. Attribute its records to
   sections for the report by nearest preceding heading; never filter a
   record out because its section was carried forward.
+- **Stage 5's two dispatches are scoped differently**: the accuracy
+  dispatch covers the claims this run wrote ledger rows for, and the
+  effectiveness dispatch runs whole-file, once, on every run in both
+  modes. `core/refresh.md` § The accuracy dispatch covers the claims this
+  run wrote ledger rows for holds the rule and its reasoning; name the
+  branch and read that file.
 - A section present in the README but absent from the fingerprint is
   always assessed. A section recorded in the fingerprint but absent from
   the README lands in no bucket: list it in the report under
@@ -234,16 +245,16 @@ anything itself. Excluding is this skill's job, not the checker's:
 - Exit `2` → usage or invocation error. Stop and report the invocation
   failure; this is not a finding about the draft.
 
-## Stage 5 in detail — writing the run state
+## Stage 6 in detail — writing the run state
 
 Every run ends by rewriting `.cartographer/last-run.md` in whole; it is
 never partially updated, and it is written on every run in both modes.
 The run is not complete until it exists. Format, header fields, and row
 fields: `core/refresh.md` § The run state is rewritten in whole at
-stage 5.
+stage 6.
 
 - `source-revision` is the output of `git -C <REPO_ROOT> rev-parse HEAD`
-  at stage 5. `readme-path` is the README under analysis, relative to
+  at stage 6. `readme-path` is the README under analysis, relative to
   `REPO_ROOT`.
 - Write one row per section this run classified. A freshly assessed
   section's `last-assessed-revision` is this run's `source-revision`; a
@@ -279,6 +290,7 @@ content only:
 | `.cartographer/evidence.md` | working-only | This run's working directory |
 | `.cartographer/claim-ledger.md` | working-only | This run's working directory |
 | `.cartographer/validation-report.md` | working-only | This run's working directory |
+| `.cartographer/verification-report.md` | working-only | This run's working directory |
 | `.cartographer/report.md` | working-only | This run's working directory |
 | `.cartographer/last-run.md` | working-only | This run's working directory |
 
@@ -299,7 +311,7 @@ or proposed, never edited in place.
 
 ## Core/profile scope (Slice 1)
 
-This run completes all five stages using repository-local evidence only,
+This run completes all six stages using repository-local evidence only,
 for a repository with no `profiles/contentful/` integration configured.
 It declares no dependency on Glean, Backstage, a `catalog-info.yaml`, or a
 repository visibility policy. A repository with none of them is an
@@ -336,7 +348,7 @@ Confirm every one of these, and report the first that fails instead of
 the report:
 
 1. `.cartographer/progress.md` records this run's mode on its first line
-   and shows all five stages `[x]`, or the run stopped at a named stage
+   and shows all six stages `[x]`, or the run stopped at a named stage
    and reported why.
 2. Every drafted sentence in stage 3's output traces to an `included`
    ledger row in `.cartographer/claim-ledger.md`; every `unresolved-gap`
