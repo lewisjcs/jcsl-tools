@@ -69,12 +69,12 @@ if [[ ${#missing[@]} -gt 0 ]]; then
   exit 1
 fi
 
-# Assert one unique hash across all 10
+# Assert one unique hash across all files in FILES
 unique_hashes="$(printf '%s\n' "${hashes[@]}" | awk '{print $1}' | sort -u)"
 unique_count="$(printf '%s\n' "$unique_hashes" | wc -l | tr -d ' ')"
 
 if [[ "$unique_count" -ne 1 ]]; then
-  echo "FAIL: GROUNDING-CONTRACT block is NOT byte-identical across all 10 files ($unique_count distinct hashes found)."
+  echo "FAIL: GROUNDING-CONTRACT block is NOT byte-identical across all ${#FILES[@]} files ($unique_count distinct hashes found)."
   echo ""
   echo "Per-file hashes:"
   printf '  %s\n' "${hashes[@]}"
@@ -103,7 +103,7 @@ echo "OK: GROUNDING-CONTRACT block present and byte-identical in all ${#FILES[@]
 echo "    SHA-256: $unique_hashes"
 
 # ---------------------------------------------------------------------------
-# FINDER-GROUNDING block check: present + byte-identical across the 5 finders
+# FINDER-GROUNDING block check: present + byte-identical across the finder files
 # ---------------------------------------------------------------------------
 
 FINDER_FILES=(
@@ -147,7 +147,7 @@ finder_unique_hashes="$(printf '%s\n' "${finder_hashes[@]}" | awk '{print $1}' |
 finder_unique_count="$(printf '%s\n' "$finder_unique_hashes" | wc -l | tr -d ' ')"
 
 if [[ "$finder_unique_count" -ne 1 ]]; then
-  echo "FAIL: FINDER-GROUNDING block is NOT byte-identical across all 5 finder files ($finder_unique_count distinct hashes found)."
+  echo "FAIL: FINDER-GROUNDING block is NOT byte-identical across all ${#FINDER_FILES[@]} finder files ($finder_unique_count distinct hashes found)."
   echo ""
   echo "Per-file hashes:"
   printf '  %s\n' "${finder_hashes[@]}"
@@ -176,7 +176,7 @@ echo "OK: FINDER-GROUNDING block present and byte-identical in all ${#FINDER_FIL
 echo "    SHA-256: $finder_unique_hashes"
 
 # ---------------------------------------------------------------------------
-# VALIDATOR-GROUNDING block check: present + byte-identical across the 5 validators
+# VALIDATOR-GROUNDING block check: present + byte-identical across the validator files
 # ---------------------------------------------------------------------------
 
 VALIDATOR_FILES=(
@@ -220,7 +220,7 @@ validator_unique_hashes="$(printf '%s\n' "${validator_hashes[@]}" | awk '{print 
 validator_unique_count="$(printf '%s\n' "$validator_unique_hashes" | wc -l | tr -d ' ')"
 
 if [[ "$validator_unique_count" -ne 1 ]]; then
-  echo "FAIL: VALIDATOR-GROUNDING block is NOT byte-identical across all 5 validator files ($validator_unique_count distinct hashes found)."
+  echo "FAIL: VALIDATOR-GROUNDING block is NOT byte-identical across all ${#VALIDATOR_FILES[@]} validator files ($validator_unique_count distinct hashes found)."
   echo ""
   echo "Per-file hashes:"
   printf '  %s\n' "${validator_hashes[@]}"

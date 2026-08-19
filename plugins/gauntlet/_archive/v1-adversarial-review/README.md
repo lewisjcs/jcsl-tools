@@ -1,5 +1,7 @@
 # Archive: v1 adversarial-review
 
+Archived August 2026.
+
 This directory holds the agent-orchestrated (v1) implementation of the
 `adversarial-review` skill: `skill/SKILL.md` and its `agents/adversarial-finder.md`
 / `agents/adversarial-validator.md` pair. `adversarial-review` is now the
