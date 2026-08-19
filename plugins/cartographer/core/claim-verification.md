@@ -702,6 +702,151 @@ versus nothing to verify — and where both descriptions could be applied
 to a run, this branch is the one that fires, because a run with no draft
 has demonstrated neither accuracy nor effectiveness.
 
+## The verification-report checker (RC-36)
+
+`scripts/check-verification-report.sh` is the deterministic validator for
+the artifact RC-31 defines. It validates the record grammar and both gate
+predicates' arithmetic — field counts, the two per-gate enums, the
+claim-id predicate, the `EVIDENCE` sentinel rule, the five-question
+invariant (`core/effectiveness-verification.md` RC-35), and each summary
+line's agreement with the records. It never judges whether a verdict is
+itself correct: that is the dispatched subagent's job (RC-29), and a
+checker that re-decided it would be a third opinion with no inputs to
+form one from.
+
+### Invocation
+
+```
+check-verification-report.sh <VERIFICATION_REPORT_FILE>
+```
+
+One argument, the stage-5 artifact. The script is read-only: it never
+rewrites `VERIFICATION_REPORT_FILE` and writes no file of its own. It
+never reads the claim ledger — `local-validation.md` RC-6's reasoning
+holds here unchanged, the ledger is a working-only artifact
+(`core/claim-model.md`) and a checker that depended on it would read the
+drafting session's conclusion rather than test the emitted artifact. It
+is only ever invoked on a file that exists: the no-draft branch above
+writes no `.cartographer/verification-report.md` and does not invoke the
+checker. Its regression fixtures are
+`scripts/fixtures/accuracy-verification/` and
+`scripts/fixtures/effectiveness-verification/`.
+
+### The report is stdout, one violation per line
+
+```
+INVALID|<LINE>|<MESSAGE>
+```
+
+- `<LINE>` is the **1-based line number** of the offending line, a bare
+  integer. It is not the record text: the text is already in the file,
+  and locating it is the number's whole job. `local-validation.md` RC-8's
+  `<FILE>:<LINE>` is the in-repo precedent.
+- A **file-level** violation — one with no single offending line —
+  carries `<LINE>` `0`. Zero is a line number in no file, so it is
+  unambiguous and keeps the field integral.
+- The final line of every run is `SUMMARY|invalid=<n>`, where `<n>`
+  counts exactly the `INVALID` records that run just emitted. This
+  mirrors RC-8's `SUMMARY|gaps=<n>|low_value=<n>`: same register, no new
+  conventions.
+- **This grammar is the checker's stdout. The `RESULT` and `OVERALL`
+  lines are the input file's last three lines (RC-31).** Two
+  pipe-delimited grammars on two artifacts: a reader who conflates them
+  looks for `INVALID` in the verification report, or for `RESULT` in the
+  checker's output, and neither is there.
+- A blank line carries no record and is ignored everywhere, including in
+  "the last three lines". Reported line numbers are the file's own, blank
+  lines counted, so every `<LINE>` locates a line in the file as it
+  stands.
+
+### The message strings
+
+Byte-for-byte, so a consumer and a regression fixture pin the same
+target:
+
+| Case | `<LINE>` | `<MESSAGE>` |
+|---|---|---|
+| record field count | record | `record does not carry exactly five fields` |
+| summary field count | summary | `summary line does not carry its stated field count` |
+| illegal gate | record | `unknown gate: legal values are accuracy and effectiveness` |
+| illegal kind | record | `kind is not legal for this gate` |
+| illegal verdict | record | `verdict is not legal for this gate` |
+| malformed subject | record | `claim id does not match ^[A-Za-z0-9._-]+$` |
+| unknown question subject | record | `question subject is not one of q1 through q5` |
+| duplicate question | record | `question subject appears more than once` |
+| missing question record | `0` | `the five question records q1 through q5 are not all present` |
+| evidence sentinel misuse | record | `evidence is none on a record that is not an unanswered question` |
+| empty evidence | record | `evidence is empty` |
+| accuracy result | summary | `RESULT accuracy is PASS while a disproved or plausible accuracy record exists` |
+| effectiveness result | summary | `RESULT effectiveness is PASS while an unanswered question record exists` |
+| answered count | summary | `RESULT effectiveness answered count does not match the question records` |
+| dispatched count | summary | `RESULT accuracy dispatched count does not match the accuracy records` |
+| spot-check count | summary | `RESULT accuracy spot-checked numerator does not match the signature and self-citation records` |
+| overall | summary | `OVERALL is PASS while a RESULT line is NEEDS WORK` |
+| missing or misordered summary lines | `0` | `the three summary lines are not the last three lines of the file, in order` |
+
+Two of those rows carry a stated scope, so a reader is not left to infer
+one:
+
+- The **summary field count** message covers a summary line that is not
+  in RC-31's stated form for that line — a field count other than six,
+  four, and two, a result value other than `PASS` or `NEEDS WORK`, or a
+  count field that is not in its stated `key=value` form, including a
+  `unverified-other=<m>` whose `<m>` is not a non-negative integer. A
+  summary line carrying this violation is not then compared against the
+  records: a value that cannot be read cannot be shown to disagree with
+  them.
+- The **missing or misordered summary lines** violation is terminal. The
+  checker emits it, emits `SUMMARY|invalid=1`, and exits 1 without
+  validating any record, because without the three summary lines the
+  record region has no end and every per-record result would be an
+  artifact of the miscut rather than a finding about a record.
+
+### Exit codes
+
+| Exit | Meaning |
+|---|---|
+| `0` | no `INVALID` records. The file is a legal RC-31 emission |
+| `1` | one or more `INVALID` records |
+| `2` | usage or invocation error (a missing, unreadable, or non-file `VERIFICATION_REPORT_FILE`) |
+
+Exit 1 is a defect in the artifact, not a gate result: a legal file whose
+`OVERALL` is `NEEDS WORK` exits 0, because the gate result and the
+artifact's validity are two different questions. The three shapes that
+most invite a wrong answer here are all legal and all exit 0 — the
+contaminated-dispatch accuracy records (`plausible` +
+`isolation not demonstrated`), the contaminated-dispatch five
+effectiveness records (`unanswered` + `isolation not demonstrated`), and
+the vacuous accuracy PASS with `dispatched=0` and `spot-checked=0/0`.
+
+### What the checker confirms, and what it cannot
+
+Stated in the same never-flattering register `local-validation.md` §
+`derivation` is not mechanically enforced uses, because a checker that
+implied coverage it does not have is worse than one that names its blind
+spots:
+
+- It **cannot** confirm `unverified-other=<m>` against the claim ledger,
+  which it never reads. It confirms `<m>` is a non-negative integer and
+  nothing more; the count itself is asserted by the run and checked by a
+  human reviewer.
+- It checks the `none` sentinel in both directions — `none` appears on an
+  `effectiveness|question|<q>|unanswered` record and nowhere else — and
+  it does **not** police the free prose inside an `EVIDENCE` excerpt.
+  RC-31 states no form for that prose, and a check that pinned it would
+  reject correct output over formatting, which trains a caller to fight
+  the check instead of meeting it.
+- The reserved literal `isolation not demonstrated` is admitted wherever
+  RC-31 permits it and is not otherwise policed: no message string above
+  names its misuse, and a checker that reported a violation this contract
+  does not define would be inventing one.
+- `spot-checked=<n>/<N>` is checked in full from the file alone — `<n>`
+  equals the `signature` plus `self-citation` record count, and `<n>`
+  equals `<N>` when `<N>` is 10 or fewer and 10 when `<N>` is greater —
+  but `<N>` itself is the eligible count RC-30 draws from, which lives in
+  the ledger. The checker cannot confirm `<N>`, for the same reason it
+  cannot confirm `<m>`.
+
 ## Verification check
 
 Before trusting a content-class assignment, a Tier-1 finding, or a
