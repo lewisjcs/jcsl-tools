@@ -1,7 +1,7 @@
 {
   "name": "gauntlet",
   "version": "1.5.0",
-  "description": "Multi-skill AI review harness — orchestrates adversarial, security, directive, doc, plan, and skill-audit review lanes; the adversarial lane runs the v2 runtime Class (gauntlet2-adversarial-review) by default with v1 as explicit fallback; includes the v2 pilot lane gauntlet2-code-quality-audit (explicit invocation only)",
+  "description": "Multi-skill AI review harness — orchestrates adversarial, security, directive, doc, plan, and skill-audit review lanes; the adversarial lane runs as a runtime-driven Class; includes the v2 pilot lane gauntlet2-code-quality-audit (explicit invocation only)",
   "author": { "name": "Josh C.S. Lewis" },
   "repository": "https://github.com/lewisjcs/jcsl-tools",
   "license": "MIT",

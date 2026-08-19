@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # check-grounding-parity.sh
 # Verifies that GROUNDING-CONTRACT:START / GROUNDING-CONTRACT:END sentinel block
-# is present and byte-identical across all 10 finder/validator agent files.
+# is present and byte-identical across all 8 finder/validator agent files.
+# adversarial-review's finder/validator pair runs as a runtime-driven Class and
+# carries no sentinel contract block, so it is not part of this checked set.
 # Exit 0 = parity confirmed. Exit non-zero = failure with diff.
 
 set -euo pipefail
@@ -20,8 +22,6 @@ fi
 AGENTS_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 FILES=(
-  "$AGENTS_DIR/adversarial-finder.md"
-  "$AGENTS_DIR/adversarial-validator.md"
   "$AGENTS_DIR/directive-finder.md"
   "$AGENTS_DIR/directive-validator.md"
   "$AGENTS_DIR/doc-finder.md"
@@ -107,7 +107,6 @@ echo "    SHA-256: $unique_hashes"
 # ---------------------------------------------------------------------------
 
 FINDER_FILES=(
-  "$AGENTS_DIR/adversarial-finder.md"
   "$AGENTS_DIR/directive-finder.md"
   "$AGENTS_DIR/doc-finder.md"
   "$AGENTS_DIR/plan-finder.md"
@@ -181,7 +180,6 @@ echo "    SHA-256: $finder_unique_hashes"
 # ---------------------------------------------------------------------------
 
 VALIDATOR_FILES=(
-  "$AGENTS_DIR/adversarial-validator.md"
   "$AGENTS_DIR/directive-validator.md"
   "$AGENTS_DIR/doc-validator.md"
   "$AGENTS_DIR/plan-validator.md"

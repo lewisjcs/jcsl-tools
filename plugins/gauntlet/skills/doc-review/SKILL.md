@@ -8,7 +8,7 @@ argument-hint: "[<path-to-doc.md>]"
 
 Apply 4 doc-review lenses (Memory-encoded rules with 6 sub-lenses, Internal consistency, Accuracy of references, Voice and writing-style) to a markdown documentation artifact via opposed-framing agents. Find → Validate → Adjudicate.
 
-Hidden assumptions lens (per master spec §3.5 lens 5) fires only when doc-review is invoked from gauntlet (Phase 7 §9 resolution, 2026-05-27). gauntlet additionally dispatches `adversarial-review` with `Artifact type: doc-text` and relabels its findings to `doc-review / Hidden assumptions` per the cross-skill canonical-lens mapping. When doc-review runs standalone (direct invocation), Hidden-assumptions findings are NOT produced — the lens requires gauntlet's separate adversarial-review dispatch to fire.
+Hidden assumptions lens (per master spec §3.5 lens 5) fires only when doc-review is invoked from gauntlet (Phase 7 §9 resolution, 2026-05-27). gauntlet additionally dispatches `adversarial-review` with family `doc-text` and relabels its findings to `doc-review / Hidden assumptions` per the cross-skill canonical-lens mapping. When doc-review runs standalone (direct invocation), Hidden-assumptions findings are NOT produced — the lens requires gauntlet's separate adversarial-review dispatch to fire.
 
 ## Usage
 
