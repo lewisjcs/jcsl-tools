@@ -1,6 +1,6 @@
 # Gauntlet Reference — lens mapping & schema-promotion rules
 
-Load this file **only in Phase 3 substep 1** (Concatenate/promote), when adversarial-review's findings are being promoted to the canonical 10-field shape and relabeled. The orchestrator does not need this content to run Phases 0–2 or 4.
+Load this file **only in Phase 3 substep 1** (Concatenate/promote), when the runtime lanes' (adversarial-review, code-quality-audit) findings are being promoted to the canonical 10-field shape and relabeled. The orchestrator does not need this content to run Phases 0–2 or 4.
 
 Authoritative source: the gauntlet master spec (see jcslOS workspace history) §4.1 / §4.1.1. This file is the operational extract; if the two ever disagree, the master spec wins.
 
@@ -24,16 +24,13 @@ When `adversarial-review` is dispatched against `plan-text` or `doc-text` (Phase
 
 **`directive` artifacts are the one exception to the `doc-text` row above.** `directive` has no native family — run/SKILL.md dispatches it with `family=doc-text` as the closest fit (footer-noted substitution), but a `directive` artifact's Lanes are `directive-review · adversarial · security`, not `doc-review`. Relabeling its adversarial findings to `doc-review / Hidden assumptions - *` per the `doc-text` row would violate the lens-matches-Lanes invariant (a reader cross-referencing the Findings table to the 🧪 Lanes row would see a `doc-review` prefix with no `doc-review` lane in the set). For `directive` specifically, keep the **native, unrelabeled** `adversarial-review / <sub-lens>` labels (same treatment as the `code-diff` rows) despite the `doc-text` family used to dispatch it.
 
-**R4 — Audit-skill lens mappings (skill-audit and code-quality-audit prose → canonical lens values)**
+**R4 — Audit-skill lens mapping (skill-audit prose → canonical lens values)**
 
 | Audit-skill output | Canonical `lens` value |
 |---|---|
 | skill-audit — Compliance | `skill-audit / Compliance` |
 | skill-audit — Staleness | `skill-audit / Staleness` |
 | skill-audit — Gaps | `skill-audit / Gaps` |
-| code-quality-audit — Compliance | `code-quality-audit / Compliance` |
-| code-quality-audit — Staleness | `code-quality-audit / Staleness` |
-| code-quality-audit — Gaps | `code-quality-audit / Gaps` |
 
 **Why preserve all three sub-lenses (don't collapse to one):** Phase 8 Task 5+6 soft-validation showed that collapsing the 3 sub-lenses to 1 canonical lens caused Phase 3 substep 4 dedup to drop HIGH-confidence critical findings (severity=High AND confidence≥85 AND category=correctness). Two fixtures lost Required-Changes findings to the lens-collapse blind spot (plan/02 dropped F5-AR at conf 87; doc/01 dropped F6-AR at conf 85). The hyphenated-suffix vocabulary keeps each sub-lens distinct for dedup while preserving the parent family for report grouping. Dedup (substep 4) treats two findings as duplicates only when the original sub-lens AND the location both match.
 
@@ -59,6 +56,22 @@ Apply the master spec §4.3 skill-audit transformation table for any skill-audit
 
 ---
 
+## Phase 3 substep 1 — code-quality-audit promotion to the 10-field shape
+
+Each `result.json` finding carries `id`, `layer`, `rule`, `location`, `claim`, `evidence`, `level`, `recommendation`. Promotion adds/derives:
+
+- **`skill`** → `code-quality-audit`.
+- **`verdict`** → `survives` (the runtime validated every item against the auditor's output contract; the Class has no validator stage to overrule it).
+- **`lens`** → from `layer`: `compliance` → `code-quality-audit / Compliance`; `staleness` → `code-quality-audit / Staleness`; `gaps` → `code-quality-audit / Gaps`; `test-integrity` → `code-quality-audit / Test integrity`.
+- **`severity`** → from `level`: `violation` → High; `warning` → Medium; `gap` → Low.
+- **`confidence`** → 100. Audit findings are rule citations, not probabilistic claims — the auditor cites a written rule or does not emit.
+- **`category`** → `quality`, uniformly. Deliberate: the Class protocol runs no adjudication ("rule citations with levels, not accusations"), so its findings are never auto-classified critical by substep 6's three-filter rule (`quality` ∉ {security, data-loss, correctness}); a violation surfaces as a top-ranked High finding, not an automatic Required Change.
+- **`claim`** → prefix the rule anchor: `<rule>: <original claim>` (the canonical shape has no `rule` field; the anchor must survive in prose).
+
+Never re-gate, drop, or re-adjudicate these items. **Carry `id` through unchanged** — the deferred triage batch submits `triage-entries.json` keyed on this value as `findingId`, against the CQA lane's own `runId` (never the adversarial lane's).
+
+---
+
 ## Location & lens emission contract (§4.1.1 extract)
 
 Sub-skills emit these two fields in exact formats (the calibration scorer does exact-string match):
@@ -71,4 +84,4 @@ Sub-skills emit these two fields in exact formats (the calibration scorer does e
 
 Code line numbers reference the **post-diff source file** (the patched file's numbering, as GitHub PR comments and IDE goto-line use), NOT diff-text positions. Multiple defects of the same lens at adjacent paragraphs emit as **N findings with single-paragraph locations**, never one finding with a paragraph-range location.
 
-**`lens`:** `<skill-name> / <lens-label>`, where `<skill-name>` ∈ {`security-gauntlet`, `plan-review`, `doc-review`, `skill-audit`, `adversarial-review`, `directive-review`, `code-quality-standards`}, ` / ` is a literal space-slash-space, and `<lens-label>` is the lens name as defined in master spec §3.
+**`lens`:** `<skill-name> / <lens-label>`, where `<skill-name>` ∈ {`security-gauntlet`, `plan-review`, `doc-review`, `skill-audit`, `adversarial-review`, `code-quality-audit`, `directive-review`, `code-quality-standards`}, ` / ` is a literal space-slash-space, and `<lens-label>` is the lens name as defined in master spec §3.
