@@ -1,11 +1,18 @@
 #!/bin/bash
 # Local validation for a drafted README patch — gates (a) link resolution,
-# (b) command existence, (c) low-value section flagging. Contract: RC-6
-# (invocation), RC-8 (report format + exit codes), RC-9 (read-only —
-# reports GAP, never excludes), RC-10 (command verification clauses,
+# (b) command existence, (c) low-value section flagging, (d) managed-
+# section marker-grammar (readme-ownership.md's <id> rules — format,
+# uniqueness, matching, nesting — plus the orphan-start/orphan-end
+# conditions and a malformed-marker-line branch; `derivation` is not
+# mechanically enforced, see core/local-validation.md). Contract: RC-6
+# (invocation), RC-8 (report format + exit codes, including the `marker`
+# RULE and the in-patch/out-of-patch scope field `link` and `command`
+# records carry), RC-9 (read-only — reports GAP, never excludes; scope
+# decides which GAPs block), RC-10 (command verification clauses,
 # including the external-tool allowlist), RC-11 (low-value proxies).
-# Full definitions: core/local-validation.md. This script is read-only —
-# it never rewrites README_FILE and writes no file of its own.
+# Full definitions: core/local-validation.md. This
+# script is read-only — it never rewrites README_FILE and writes no file
+# of its own.
 #
 # Run: bash check-readme-patch.sh <README_FILE> [REPO_ROOT]
 # REPO_ROOT default: git -C <dir of README_FILE> rev-parse --show-toplevel,
@@ -53,7 +60,17 @@ fi
 GAPS=0
 LOW_VALUE=0
 
-# RC-10 clause 4 — declared in core/local-validation.md as the visible,
+# Published for downstream callers within this process only (record_scope()
+# is the one reader): well-formed managed-section marker pairs,
+# each element formatted "<start_line>:<end_line>". Populated by
+# scan_markers(). A pair enters this array only when it popped cleanly
+# with byte-identical ids, neither marker emitted a format record, its id
+# emitted no uniqueness record, and no nesting record fired within its
+# line range. See scan_markers() below and core/local-validation.md §
+# Managed-section marker grammar.
+MARKER_WELLFORMED_PAIRS=()
+
+# RC-10 clause 5 — declared in core/local-validation.md as the visible,
 # auditable list; this is the single source the script reads.
 ALLOWLIST="claude git jq bash python3 shasum sha256sum"
 
@@ -92,6 +109,228 @@ extract_slugs() {
 }
 
 # ──────────────────────────────────────────────────────────────────────────────
+# GATE (d): managed-section marker grammar (readme-ownership.md's <id>
+# rules — format, uniqueness, matching, nesting — plus orphan-start,
+# orphan-end, and the malformed-marker-line branch). Runs FIRST in MAIN,
+# before gates (a)-(c). `derivation` is not enforced — see
+# core/local-validation.md.
+# ──────────────────────────────────────────────────────────────────────────────
+
+# Anchored recognition: exactly one non-space id token between the
+# marker keyword and `-->`.
+MARKER_START_RE='^[[:space:]]*<!--[[:space:]]*cartographer:managed:start[[:space:]]+([^[:space:]]+)[[:space:]]*-->[[:space:]]*$'
+MARKER_END_RE='^[[:space:]]*<!--[[:space:]]*cartographer:managed:end[[:space:]]+([^[:space:]]+)[[:space:]]*-->[[:space:]]*$'
+# Loose recognition — applied only to lines that matched neither anchored
+# pattern above — catches zero-token and multi-token marker lines.
+MARKER_LOOSE_RE='^[[:space:]]*<!--[[:space:]]*cartographer:managed:(start|end)([[:space:]]+.*)?[[:space:]]*-->[[:space:]]*$'
+MARKER_FORMAT_RE='^[a-z0-9]+(-[a-z0-9]+)*$'
+
+scan_markers() {
+  local fence_state=0
+  local line_num=0
+
+  # Open-start stack (parallel arrays), for pairing/nesting.
+  local stack_ids=()
+  local stack_lines=()
+
+  # Every well-formed start marker's (id, line) — for uniqueness + format.
+  local all_start_ids=()
+  local all_start_lines=()
+  # Every well-formed start-or-end marker's (id, line) — for format only.
+  local all_marker_ids=()
+  local all_marker_lines=()
+  # Lines where a nesting record fired (always a start line).
+  local nesting_lines=()
+  # Candidate pairs that popped cleanly with matching ids: "start:end:id".
+  local candidates=()
+
+  local id top_idx id0 line0
+
+  while IFS= read -r line; do
+    line_num=$((line_num + 1))
+
+    if [[ $line =~ ^[[:space:]]*\`{3,} ]] || [[ $line =~ ^[[:space:]]*~{3,} ]]; then
+      fence_state=$((1 - fence_state))
+      continue
+    fi
+    [ "$fence_state" -ne 0 ] && continue
+
+    if [[ $line =~ $MARKER_START_RE ]]; then
+      id="${BASH_REMATCH[1]}"
+      all_start_ids+=("$id")
+      all_start_lines+=("$line_num")
+      all_marker_ids+=("$id")
+      all_marker_lines+=("$line_num")
+      if [ "${#stack_ids[@]}" -gt 0 ]; then
+        top_idx=$(( ${#stack_ids[@]} - 1 ))
+        printf 'GAP|marker|%s:%d|%s|marker violates the nesting rule: a managed block opened at line %d is still open\n' \
+          "$README_FILE" "$line_num" "$id" "${stack_lines[$top_idx]}"
+        GAPS=$((GAPS + 1))
+        nesting_lines+=("$line_num")
+      fi
+      stack_ids+=("$id")
+      stack_lines+=("$line_num")
+      continue
+    fi
+
+    if [[ $line =~ $MARKER_END_RE ]]; then
+      id="${BASH_REMATCH[1]}"
+      all_marker_ids+=("$id")
+      all_marker_lines+=("$line_num")
+      if [ "${#stack_ids[@]}" -eq 0 ]; then
+        printf 'GAP|marker|%s:%d|%s|end marker has no matching start marker\n' \
+          "$README_FILE" "$line_num" "$id"
+        GAPS=$((GAPS + 1))
+      else
+        top_idx=$(( ${#stack_ids[@]} - 1 ))
+        id0="${stack_ids[$top_idx]}"
+        line0="${stack_lines[$top_idx]}"
+        # Pop is always the top element (LIFO nesting stack), so a
+        # truncating slice is equivalent to unset+recompact and never
+        # expands a possibly-empty array bare (stack_ids is non-empty
+        # here, per the count check above).
+        stack_ids=("${stack_ids[@]:0:top_idx}")
+        stack_lines=("${stack_lines[@]:0:top_idx}")
+        if [ "$id" != "$id0" ]; then
+          printf 'GAP|marker|%s:%d|%s|marker pair violates the matching rule: end id does not match the start id at line %d\n' \
+            "$README_FILE" "$line_num" "$id" "$line0"
+          GAPS=$((GAPS + 1))
+        else
+          candidates+=("$line0:$line_num:$id")
+        fi
+      fi
+      continue
+    fi
+
+    if [[ $line =~ $MARKER_LOOSE_RE ]]; then
+      printf 'GAP|marker|%s:%d|-|marker line violates the format rule: expected exactly one id token between the marker keyword and -->\n' \
+        "$README_FILE" "$line_num"
+      GAPS=$((GAPS + 1))
+      continue
+    fi
+  done < "$README_FILE"
+
+  # EOF — every entry left on the stack is an orphan-start.
+  local i
+  for ((i = 0; i < ${#stack_ids[@]}; i++)); do
+    printf 'GAP|marker|%s:%d|%s|start marker has no matching end marker\n' \
+      "$README_FILE" "${stack_lines[$i]}" "${stack_ids[$i]}"
+    GAPS=$((GAPS + 1))
+  done
+
+  # uniqueness — across every start marker's id, in encounter order.
+  local dup_ids=()
+  local seen_ids=()
+  local seen_lines=()
+  local j ln first_line already_dup d
+  for ((i = 0; i < ${#all_start_ids[@]}; i++)); do
+    id="${all_start_ids[$i]}"
+    ln="${all_start_lines[$i]}"
+    first_line=""
+    for ((j = 0; j < ${#seen_ids[@]}; j++)); do
+      if [ "${seen_ids[$j]}" = "$id" ]; then
+        first_line="${seen_lines[$j]}"
+        break
+      fi
+    done
+    if [ -n "$first_line" ]; then
+      printf 'GAP|marker|%s:%d|%s|marker id violates the uniqueness rule: id already used by a start marker at line %s\n' \
+        "$README_FILE" "$ln" "$id" "$first_line"
+      GAPS=$((GAPS + 1))
+      already_dup=0
+      for d in "${dup_ids[@]+"${dup_ids[@]}"}"; do
+        [ "$d" = "$id" ] && already_dup=1 && break
+      done
+      [ "$already_dup" -eq 0 ] && dup_ids+=("$id")
+    else
+      seen_ids+=("$id")
+      seen_lines+=("$ln")
+    fi
+  done
+
+  # format — every well-formed start and end marker line.
+  local bad_format_lines=()
+  for ((i = 0; i < ${#all_marker_ids[@]}; i++)); do
+    id="${all_marker_ids[$i]}"
+    ln="${all_marker_lines[$i]}"
+    if ! [[ $id =~ $MARKER_FORMAT_RE ]] || [ "${#id}" -gt 64 ]; then
+      printf 'GAP|marker|%s:%d|%s|marker id violates the format rule: must match ^[a-z0-9]+(-[a-z0-9]+)*$ and be at most 64 characters\n' \
+        "$README_FILE" "$ln" "$id"
+      GAPS=$((GAPS + 1))
+      bad_format_lines+=("$ln")
+    fi
+  done
+
+  # Publish the well-formed-pair set: a candidate pair qualifies only when
+  # its id was never flagged for uniqueness, neither its start nor its end
+  # line was flagged for format, and no nesting record fell inside its
+  # [start_line, end_line] range (this also excludes a pair whose OWN
+  # start triggered nesting, since that start line is its own range's
+  # lower bound).
+  local c rest start_ln end_ln pid excluded b n
+  for c in "${candidates[@]+"${candidates[@]}"}"; do
+    start_ln="${c%%:*}"
+    rest="${c#*:}"
+    end_ln="${rest%%:*}"
+    pid="${rest#*:}"
+
+    excluded=0
+    for d in "${dup_ids[@]+"${dup_ids[@]}"}"; do
+      [ "$d" = "$pid" ] && excluded=1 && break
+    done
+    if [ "$excluded" -eq 0 ]; then
+      for b in "${bad_format_lines[@]+"${bad_format_lines[@]}"}"; do
+        if [ "$b" = "$start_ln" ] || [ "$b" = "$end_ln" ]; then
+          excluded=1
+          break
+        fi
+      done
+    fi
+    if [ "$excluded" -eq 0 ]; then
+      for n in "${nesting_lines[@]+"${nesting_lines[@]}"}"; do
+        if [ "$n" -ge "$start_ln" ] && [ "$n" -le "$end_ln" ]; then
+          excluded=1
+          break
+        fi
+      done
+    fi
+    [ "$excluded" -eq 0 ] && MARKER_WELLFORMED_PAIRS+=("$start_ln:$end_ln")
+  done
+}
+
+# ──────────────────────────────────────────────────────────────────────────────
+# SCOPE ATTRIBUTION — RC-8's sixth field on `link` and `command` records
+# ──────────────────────────────────────────────────────────────────────────────
+
+# Echoes `in-patch` when the given line falls strictly between the start
+# and end lines of some well-formed managed-section marker pair, and
+# `out-of-patch` otherwise. Strictly between: neither marker line is
+# itself in-patch, because a marker line delimits the patch region rather
+# than being content inside it.
+#
+# The pair set is scan_markers()'s published MARKER_WELLFORMED_PAIRS and
+# nothing else — this function never recomputes well-formedness. A second
+# predicate here would be free to drift from gate (d)'s, and the two are
+# required to be the same notion (core/local-validation.md § The
+# well-formed-pair set). The array is legitimately empty for a candidate
+# with no well-formed pair, so its value expansion is guarded for bash
+# 4.0-4.3 under `set -u`; that case yields `out-of-patch` for every
+# record, and RC-9 is where a candidate with no marked region is handled.
+record_scope() {
+  local line_num="$1"
+  local pair start_ln end_ln
+  for pair in "${MARKER_WELLFORMED_PAIRS[@]+"${MARKER_WELLFORMED_PAIRS[@]}"}"; do
+    start_ln="${pair%%:*}"
+    end_ln="${pair##*:}"
+    if [ "$line_num" -gt "$start_ln" ] && [ "$line_num" -lt "$end_ln" ]; then
+      printf 'in-patch'
+      return
+    fi
+  done
+  printf 'out-of-patch'
+}
+
+# ──────────────────────────────────────────────────────────────────────────────
 # GATE (a): internal link resolution
 # ──────────────────────────────────────────────────────────────────────────────
 
@@ -118,6 +357,9 @@ check_links() {
         continue
       fi
 
+      local scope
+      scope="$(record_scope "$line_num")"
+
       if [[ $target == \#* ]]; then
         local anchor="${target#\#}"
         local found=0
@@ -128,9 +370,9 @@ check_links() {
           fi
         done < <(extract_slugs "$README_FILE")
         if [ "$found" -eq 1 ]; then
-          printf 'OK|link|%s:%d|%s|anchor resolves within README\n' "$README_FILE" "$line_num" "$target"
+          printf 'OK|link|%s:%d|%s|anchor resolves within README|%s\n' "$README_FILE" "$line_num" "$target" "$scope"
         else
-          printf 'GAP|link|%s:%d|%s|anchor does not resolve within README\n' "$README_FILE" "$line_num" "$target"
+          printf 'GAP|link|%s:%d|%s|anchor does not resolve within README|%s\n' "$README_FILE" "$line_num" "$target" "$scope"
           GAPS=$((GAPS + 1))
         fi
         continue
@@ -138,9 +380,9 @@ check_links() {
 
       local path_part="${target%%#*}"
       if [ -e "$REPO_ROOT/$path_part" ]; then
-        printf 'OK|link|%s:%d|%s|resolves under REPO_ROOT\n' "$README_FILE" "$line_num" "$target"
+        printf 'OK|link|%s:%d|%s|resolves under REPO_ROOT|%s\n' "$README_FILE" "$line_num" "$target" "$scope"
       else
-        printf 'GAP|link|%s:%d|%s|does not resolve under REPO_ROOT\n' "$README_FILE" "$line_num" "$target"
+        printf 'GAP|link|%s:%d|%s|does not resolve under REPO_ROOT|%s\n' "$README_FILE" "$line_num" "$target" "$scope"
         GAPS=$((GAPS + 1))
       fi
     done < <(grep -oE '\[[^]]*\]\([^)]+\)' <<<"$line")
@@ -162,43 +404,58 @@ verify_command() {
   local argv0="${tokens[0]:-}"
   [ -z "$argv0" ] && return
 
+  local scope
+  scope="$(record_scope "$line_num")"
+
   # Clause 1: npm/pnpm/yarn run <name>, <name> a key under package.json .scripts
+  # Disjoint from clause 2: "run" is not in {install,ci,audit,outdated,list,prune}
   if [[ $argv0 == "npm" || $argv0 == "pnpm" || $argv0 == "yarn" ]] \
      && [ "${tokens[1]:-}" = "run" ] && [ -n "${tokens[2]:-}" ]; then
     local script_name="${tokens[2]}"
     local pkg="$REPO_ROOT/package.json"
     if [ -f "$pkg" ] && jq -e --arg n "$script_name" '(.scripts // {}) | has($n)' "$pkg" >/dev/null 2>&1; then
-      printf 'OK|command|%s:%d|%s|verified via package.json .scripts\n' "$README_FILE" "$line_num" "$cmd"
+      printf 'OK|command|%s:%d|%s|verified via package.json .scripts|%s\n' "$README_FILE" "$line_num" "$cmd" "$scope"
       return
     fi
   fi
 
-  # Clause 2: verbatim match in a file under REPO_ROOT/.github/workflows/
+  # Clause 2: npm/pnpm/yarn with built-in verbs (install, ci, audit, outdated, list, prune)
+  if [[ $argv0 == "npm" || $argv0 == "pnpm" || $argv0 == "yarn" ]]; then
+    local verb="${tokens[1]:-}"
+    case "$verb" in
+      install|ci|audit|outdated|list|prune)
+        printf 'OK|command|%s:%d|%s|npm-builtin|%s\n' "$README_FILE" "$line_num" "$cmd" "$scope"
+        return
+        ;;
+    esac
+  fi
+
+  # Clause 3: verbatim match in a file under REPO_ROOT/.github/workflows/
   local wf_dir="$REPO_ROOT/.github/workflows"
   if [ -d "$wf_dir" ] && grep -rFl -- "$cmd" "$wf_dir" >/dev/null 2>&1; then
-    printf 'OK|command|%s:%d|%s|verified via .github/workflows verbatim match\n' "$README_FILE" "$line_num" "$cmd"
+    printf 'OK|command|%s:%d|%s|verified via .github/workflows verbatim match|%s\n' "$README_FILE" "$line_num" "$cmd" "$scope"
     return
   fi
 
-  # Clause 3: invokes a path that exists under REPO_ROOT
+  # Clause 4: invokes a path that exists under REPO_ROOT
   local tok candidate
   for tok in "${tokens[@]}"; do
     candidate="$tok"
     candidate="${candidate%\"}"; candidate="${candidate#\"}"
     candidate="${candidate%\'}"; candidate="${candidate#\'}"
     if [ -n "$candidate" ] && [ -e "$REPO_ROOT/$candidate" ]; then
-      printf 'OK|command|%s:%d|%s|verified via in-repo path %s\n' "$README_FILE" "$line_num" "$cmd" "$candidate"
+      printf 'OK|command|%s:%d|%s|verified via in-repo path %s|%s\n' "$README_FILE" "$line_num" "$cmd" "$candidate" "$scope"
       return
     fi
   done
 
-  # Clause 4: external-tool allowlist
+  # Clause 5: external-tool allowlist
   if is_allowlisted "$argv0"; then
-    printf 'OK|command|%s:%d|%s|external-tool\n' "$README_FILE" "$line_num" "$cmd"
+    printf 'OK|command|%s:%d|%s|external-tool|%s\n' "$README_FILE" "$line_num" "$cmd" "$scope"
     return
   fi
 
-  printf 'GAP|command|%s:%d|%s|not verified: no package.json script, no CI match, no in-repo path, not on external-tool allowlist\n' "$README_FILE" "$line_num" "$cmd"
+  printf 'GAP|command|%s:%d|%s|not verified: no package.json script, no npm-builtin verb, no CI match, no in-repo path, not on external-tool allowlist|%s\n' "$README_FILE" "$line_num" "$cmd" "$scope"
   GAPS=$((GAPS + 1))
 }
 
@@ -330,6 +587,7 @@ check_sections() {
 # MAIN
 # ──────────────────────────────────────────────────────────────────────────────
 
+scan_markers
 check_links
 check_commands
 check_sections
