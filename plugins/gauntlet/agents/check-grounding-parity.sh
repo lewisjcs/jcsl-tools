@@ -269,3 +269,48 @@ if [[ -n "$bare_dispatches" ]]; then
 fi
 
 echo "OK: all finder/validator dispatches use the gauntlet: prefix (no bare dispatch)."
+
+# ---------------------------------------------------------------------------
+# DISPATCH-RESOLUTION check: every `gauntlet:<name>` Skill dispatch string
+# named in skills/run/*.md must resolve to a real skill directory
+# (plugins/gauntlet/skills/<name>/SKILL.md). A dispatch string is only as
+# good as the skill it names — a rename or archive move on one side that
+# isn't mirrored in run/SKILL.md's dispatch strings is a latent runtime
+# failure this guard catches mechanically, before a real run hits it.
+#
+# EXPECTED RED AT THIS COMMIT: `adversarial-review` does not resolve yet.
+# The canon repo has renamed the Class to the plain `adversarial-review`
+# name, but the generated bundle in THIS repo still ships it under
+# `skills/gauntlet2-adversarial-review/` — a separate, later, merge-gated
+# bundle-refresh commit renames the directory to match. Until that commit
+# lands, this one assertion is expected to fail; every check above it must
+# still pass. This assertion runs LAST specifically so a refresh-gate
+# failure here never masks (or gets masked by) a real parity regression
+# above.
+# ---------------------------------------------------------------------------
+
+SKILLS_RUN_DIR="$AGENTS_DIR/../skills/run"
+
+dispatch_names="$(grep -hoE 'Skill:[[:space:]]*gauntlet:[a-zA-Z0-9_-]+' "$SKILLS_RUN_DIR"/*.md 2>/dev/null | sed -E 's/^Skill:[[:space:]]*gauntlet://' | sort -u || true)"
+
+missing_skills=()
+while IFS= read -r name; do
+  [[ -z "$name" ]] && continue
+  if [[ ! -f "$SKILLS_DIR/$name/SKILL.md" ]]; then
+    missing_skills+=("$name")
+  fi
+done <<< "$dispatch_names"
+
+if [[ ${#missing_skills[@]} -gt 0 ]]; then
+  echo "FAIL: dispatch-resolution check — ${#missing_skills[@]} gauntlet:<name> dispatch string(s) in skills/run/*.md do not resolve to skills/<name>/SKILL.md:"
+  for name in "${missing_skills[@]}"; do
+    if [[ "$name" == "adversarial-review" ]]; then
+      echo "  MISSING: skills/adversarial-review/SKILL.md — expected until the v2 bundle refresh lands (renames skills/gauntlet2-adversarial-review/ to skills/adversarial-review/)"
+    else
+      echo "  MISSING: skills/$name/SKILL.md — unexpected: this dispatch string names a skill that does not exist; fix the dispatch string or add the skill"
+    fi
+  done
+  exit 1
+fi
+
+echo "OK: every gauntlet:<name> dispatch string in skills/run/*.md resolves to skills/<name>/SKILL.md."
