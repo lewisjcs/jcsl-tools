@@ -8,7 +8,7 @@ argument-hint: "[<path-to-plan.md>]"
 
 Apply 5 plan-review lenses (EARS compliance, Internal consistency, Ambiguity, Scope, Test strategy adequacy) to a plan markdown artifact via opposed-framing agents. Find → Validate → Adjudicate.
 
-Architectural-risk lens (per master spec §3.4 lens 5) fires only when plan-review is invoked from gauntlet (Phase 7 §9 resolution, 2026-05-27). gauntlet additionally dispatches `adversarial-review` with `Artifact type: plan-text` and relabels its findings to `plan-review / Architectural risk` per the cross-skill canonical-lens mapping. When plan-review runs standalone (direct invocation), Architectural-risk findings are NOT produced — the lens requires gauntlet's separate adversarial-review dispatch to fire.
+Architectural-risk lens (per master spec §3.4 lens 5) fires only when plan-review is invoked from gauntlet (Phase 7 §9 resolution, 2026-05-27). gauntlet additionally dispatches `adversarial-review` with family `plan-text` and relabels its findings to `plan-review / Architectural risk` per the cross-skill canonical-lens mapping. When plan-review runs standalone (direct invocation), Architectural-risk findings are NOT produced — the lens requires gauntlet's separate adversarial-review dispatch to fire.
 
 ## Usage
 

@@ -54,7 +54,7 @@ There's no repo-wide test command — verification is per-component, where a com
 | Component | Verify with |
 |---|---|
 | Kiln guard hooks | `bash plugins/kiln/hooks/test-kiln-guards.sh` — offline unit tests, feeds synthetic `PreToolUse` stdin JSON to each guard and asserts allow/deny. No Claude session needed. |
-| Gauntlet finder/validator agents | `bash plugins/gauntlet/agents/check-grounding-parity.sh` — asserts the shared grounding-contract sentinel block is byte-identical across all 10 agent files. |
+| Gauntlet finder/validator agents | `bash plugins/gauntlet/agents/check-grounding-parity.sh` — asserts the shared grounding-contract sentinel block is byte-identical across the checked finder/validator agent files. |
 | Context Economy hooks | `bash plugins/context-economy/hooks/<hook-name>.test.sh` for each of `cost-statusline`, `telemetry-record`, `handoff-nudge`, `context-reset-nudge`. Exits non-zero on any failure. |
 | Context Economy behavioral fixtures | Five operator-in-the-loop scenarios in `plugins/context-economy/fixtures/` (`CE-01`–`CE-05`), each with a `prompt.md` + `expected.md` checkbox rubric. See `fixtures/README.md`. Target ≥3/5 pass before shipping a change that touches Steward/Assembler/Delegator behavior. |
 | Cartographer grounding checker | `bash plugins/cartographer/scripts/check-knowledge-grounding.sh` — fixture-driven unit tests via `bash plugins/cartographer/scripts/check-knowledge-grounding.test.sh`. Validates rules (a), (b), (c), (c′), (d) per RC-1 through RC-5. Note: `plugins/cartographer/scripts/fixtures/` contains synthetic test manifests (permitted per RC-12); the repo-root invariant in § Prerequisites is unchanged. |

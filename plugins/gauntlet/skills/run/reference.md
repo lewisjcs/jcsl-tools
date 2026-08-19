@@ -1,6 +1,6 @@
 # Gauntlet Reference — lens mapping & schema-promotion rules
 
-Load this file **only in Phase 3 substep 1** (Concatenate/promote), when adversarial-review's 5-field findings are being promoted to the canonical 10-field shape and relabeled. The orchestrator does not need this content to run Phases 0–2 or 4.
+Load this file **only in Phase 3 substep 1** (Concatenate/promote), when adversarial-review's findings are being promoted to the canonical 10-field shape and relabeled. The orchestrator does not need this content to run Phases 0–2 or 4.
 
 Authoritative source: the gauntlet master spec (see jcslOS workspace history) §4.1 / §4.1.1. This file is the operational extract; if the two ever disagree, the master spec wins.
 
@@ -21,6 +21,8 @@ When `adversarial-review` is dispatched against `plan-text` or `doc-text` (Phase
 | `code-diff` | `Hidden Assumptions` | `adversarial-review / Hidden Assumptions` (no relabel) |
 | `code-diff` | `Failure Scenarios` | `adversarial-review / Failure Scenarios` (no relabel) |
 | `code-diff` | `Blast Radius` | `adversarial-review / Blast Radius` (no relabel) |
+
+**`directive` artifacts are the one exception to the `doc-text` row above.** `directive` has no native family — run/SKILL.md dispatches it with `family=doc-text` as the closest fit (footer-noted substitution), but a `directive` artifact's Lanes are `directive-review · adversarial · security`, not `doc-review`. Relabeling its adversarial findings to `doc-review / Hidden assumptions - *` per the `doc-text` row would violate the lens-matches-Lanes invariant (a reader cross-referencing the Findings table to the 🧪 Lanes row would see a `doc-review` prefix with no `doc-review` lane in the set). For `directive` specifically, keep the **native, unrelabeled** `adversarial-review / <sub-lens>` labels (same treatment as the `code-diff` rows) despite the `doc-text` family used to dispatch it.
 
 **R4 — Audit-skill lens mappings (skill-audit and code-quality-audit prose → canonical lens values)**
 
@@ -43,15 +45,17 @@ To group by parent lens family, split on ` - ` (space-hyphen-space) ONLY — nev
 
 ---
 
-## Phase 3 substep 1 — 5-field → 10-field promotion
+## Phase 3 substep 1 — adversarial-review promotion to the 10-field shape
 
-Promote each adversarial-review finding (`lens`, `location`, `claim`, `evidence`, `severity` + Validator's `verdict` + `confidence`) to the canonical 10-field shape:
+Each `result.json` finding already carries `id`, `lens`, `location`, `claim`, `evidence`, `severity`, `category`, `confidence`, `recommendation`, `disposition: "survives"`. Promotion adds only:
 
 - **`skill`** → `adversarial-review`.
+- **`verdict`** → `survives` (from `disposition`).
 - **`lens`** → apply the mapping table above (9 rows = 3 sub-lenses × 3 dispatch types).
-- **`category`** → single deterministic rule: `plan-text` → `correctness`; `doc-text` → `correctness`; `code-diff` → `correctness`. Adversarial findings always represent correctness concerns (hidden assumptions break intended behavior). The Phase 6 doc-review multi-category mapping does NOT apply here.
-- **`recommendation`** → if the `claim` already carries a `Recommendation:`/`Fix:` suffix, use it; otherwise derive a one-sentence action from the claim (e.g. "Step 3 has a hidden dependency on the cache being warm" → "Add an explicit cache-warm step or guard Step 3 on cache miss").
-- Apply the master spec §4.3 skill-audit transformation table for any skill-audit findings.
+
+Never re-gate or re-adjudicate these items — the runtime's severity-stratified adjudication already did. **Carry `id` through unchanged** — it is never dropped or regenerated during promotion or any later Phase 3 substep; the deferred triage batch (run/SKILL.md's "adversarial-review under orchestration") submits `triage-entries.json` keyed on this same value as `findingId`.
+
+Apply the master spec §4.3 skill-audit transformation table for any skill-audit findings.
 
 ---
 

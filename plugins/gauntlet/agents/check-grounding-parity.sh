@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # check-grounding-parity.sh
 # Verifies that GROUNDING-CONTRACT:START / GROUNDING-CONTRACT:END sentinel block
-# is present and byte-identical across all 10 finder/validator agent files.
+# is present and byte-identical across all 8 finder/validator agent files.
+# adversarial-review's finder/validator pair runs as a runtime-driven Class and
+# carries no sentinel contract block, so it is not part of this checked set.
 # Exit 0 = parity confirmed. Exit non-zero = failure with diff.
 
 set -euo pipefail
@@ -20,8 +22,6 @@ fi
 AGENTS_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 FILES=(
-  "$AGENTS_DIR/adversarial-finder.md"
-  "$AGENTS_DIR/adversarial-validator.md"
   "$AGENTS_DIR/directive-finder.md"
   "$AGENTS_DIR/directive-validator.md"
   "$AGENTS_DIR/doc-finder.md"
@@ -69,12 +69,12 @@ if [[ ${#missing[@]} -gt 0 ]]; then
   exit 1
 fi
 
-# Assert one unique hash across all 10
+# Assert one unique hash across all files in FILES
 unique_hashes="$(printf '%s\n' "${hashes[@]}" | awk '{print $1}' | sort -u)"
 unique_count="$(printf '%s\n' "$unique_hashes" | wc -l | tr -d ' ')"
 
 if [[ "$unique_count" -ne 1 ]]; then
-  echo "FAIL: GROUNDING-CONTRACT block is NOT byte-identical across all 10 files ($unique_count distinct hashes found)."
+  echo "FAIL: GROUNDING-CONTRACT block is NOT byte-identical across all ${#FILES[@]} files ($unique_count distinct hashes found)."
   echo ""
   echo "Per-file hashes:"
   printf '  %s\n' "${hashes[@]}"
@@ -103,11 +103,10 @@ echo "OK: GROUNDING-CONTRACT block present and byte-identical in all ${#FILES[@]
 echo "    SHA-256: $unique_hashes"
 
 # ---------------------------------------------------------------------------
-# FINDER-GROUNDING block check: present + byte-identical across the 5 finders
+# FINDER-GROUNDING block check: present + byte-identical across the finder files
 # ---------------------------------------------------------------------------
 
 FINDER_FILES=(
-  "$AGENTS_DIR/adversarial-finder.md"
   "$AGENTS_DIR/directive-finder.md"
   "$AGENTS_DIR/doc-finder.md"
   "$AGENTS_DIR/plan-finder.md"
@@ -148,7 +147,7 @@ finder_unique_hashes="$(printf '%s\n' "${finder_hashes[@]}" | awk '{print $1}' |
 finder_unique_count="$(printf '%s\n' "$finder_unique_hashes" | wc -l | tr -d ' ')"
 
 if [[ "$finder_unique_count" -ne 1 ]]; then
-  echo "FAIL: FINDER-GROUNDING block is NOT byte-identical across all 5 finder files ($finder_unique_count distinct hashes found)."
+  echo "FAIL: FINDER-GROUNDING block is NOT byte-identical across all ${#FINDER_FILES[@]} finder files ($finder_unique_count distinct hashes found)."
   echo ""
   echo "Per-file hashes:"
   printf '  %s\n' "${finder_hashes[@]}"
@@ -177,11 +176,10 @@ echo "OK: FINDER-GROUNDING block present and byte-identical in all ${#FINDER_FIL
 echo "    SHA-256: $finder_unique_hashes"
 
 # ---------------------------------------------------------------------------
-# VALIDATOR-GROUNDING block check: present + byte-identical across the 5 validators
+# VALIDATOR-GROUNDING block check: present + byte-identical across the validator files
 # ---------------------------------------------------------------------------
 
 VALIDATOR_FILES=(
-  "$AGENTS_DIR/adversarial-validator.md"
   "$AGENTS_DIR/directive-validator.md"
   "$AGENTS_DIR/doc-validator.md"
   "$AGENTS_DIR/plan-validator.md"
@@ -222,7 +220,7 @@ validator_unique_hashes="$(printf '%s\n' "${validator_hashes[@]}" | awk '{print 
 validator_unique_count="$(printf '%s\n' "$validator_unique_hashes" | wc -l | tr -d ' ')"
 
 if [[ "$validator_unique_count" -ne 1 ]]; then
-  echo "FAIL: VALIDATOR-GROUNDING block is NOT byte-identical across all 5 validator files ($validator_unique_count distinct hashes found)."
+  echo "FAIL: VALIDATOR-GROUNDING block is NOT byte-identical across all ${#VALIDATOR_FILES[@]} validator files ($validator_unique_count distinct hashes found)."
   echo ""
   echo "Per-file hashes:"
   printf '  %s\n' "${validator_hashes[@]}"
@@ -271,3 +269,43 @@ if [[ -n "$bare_dispatches" ]]; then
 fi
 
 echo "OK: all finder/validator dispatches use the gauntlet: prefix (no bare dispatch)."
+
+# ---------------------------------------------------------------------------
+# DISPATCH-RESOLUTION check: every `gauntlet:<name>` Skill dispatch string
+# named in skills/run/*.md must resolve to a real skill directory
+# (plugins/gauntlet/skills/<name>/SKILL.md). A dispatch string is only as
+# good as the skill it names — a rename or archive move on one side that
+# isn't mirrored in run/SKILL.md's dispatch strings is a latent runtime
+# failure this guard catches mechanically, before a real run hits it.
+#
+# This assertion runs LAST so a resolution failure never masks (or gets
+# masked by) a real parity regression above.
+# ---------------------------------------------------------------------------
+
+SKILLS_RUN_DIR="$AGENTS_DIR/../skills/run"
+
+dispatch_names="$(grep -hoE 'Skill:[[:space:]]*gauntlet:[a-zA-Z0-9_-]+' "$SKILLS_RUN_DIR"/*.md 2>/dev/null | sed -E 's/^Skill:[[:space:]]*gauntlet://' | sort -u || true)"
+
+dispatch_name_count="$(printf '%s\n' "$dispatch_names" | sed '/^$/d' | wc -l | tr -d ' ')"
+if [[ "$dispatch_name_count" -lt 3 ]]; then
+  echo "FAIL: dispatch-resolution check found only $dispatch_name_count gauntlet:<name> dispatch string(s) in skills/run/*.md (expected at least 3) — the extraction pattern no longer matches how dispatch strings are written; update the pattern rather than trusting a vacuous pass."
+  exit 1
+fi
+
+missing_skills=()
+while IFS= read -r name; do
+  [[ -z "$name" ]] && continue
+  if [[ ! -f "$SKILLS_DIR/$name/SKILL.md" ]]; then
+    missing_skills+=("$name")
+  fi
+done <<< "$dispatch_names"
+
+if [[ ${#missing_skills[@]} -gt 0 ]]; then
+  echo "FAIL: dispatch-resolution check — ${#missing_skills[@]} gauntlet:<name> dispatch string(s) in skills/run/*.md do not resolve to skills/<name>/SKILL.md:"
+  for name in "${missing_skills[@]}"; do
+    echo "  MISSING: skills/$name/SKILL.md — this dispatch string names a skill that does not exist; fix the dispatch string or add the skill"
+  done
+  exit 1
+fi
+
+echo "OK: every gauntlet:<name> dispatch string in skills/run/*.md resolves to skills/<name>/SKILL.md."
