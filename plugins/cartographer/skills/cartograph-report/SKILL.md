@@ -28,11 +28,21 @@ any of them is not complete, no matter what else it produced.
    any section to the draft, confirm it has at least one `included` ledger
    row; if it has none, add it to the report's skipped-sections list
    instead and continue.
-3. **Never report a patch ready while a `GAP` record exists for it**
-   (RC-9, `core/local-validation.md`). Check: the local-validation stage's
-   exit code is `0`, or every `GAP` record's subject has been removed from
-   the patch and carried verbatim into the report's unresolved-gaps list.
-   A patch reported ready with an outstanding `GAP` record is a contract
+3. **Never report a patch ready while an `in-patch` `GAP` record — or any
+   `GAP` record whose `RULE` is `marker` — exists for it** (RC-9,
+   `core/local-validation.md`). Check: the local-validation stage's exit
+   code is `0`, or every remaining `GAP` record is tagged `out-of-patch`
+   (sixth field of the record), no remaining record's `RULE` is `marker`,
+   and every `in-patch` record's subject has been removed from the patch
+   and carried verbatim into the report's unresolved-gaps list. **When
+   the candidate README contains no well-formed `cartographer:managed`
+   marker pair, every `GAP` record blocks** — with no marked patch region
+   there is no out-of-patch exemption to claim. **A `marker` record
+   always blocks**: repair the marker line it names when this run
+   authored or modified that line, and otherwise report the patch
+   blocked — a marker line carried unchanged from the on-disk README sits
+   in a section `core/readme-ownership.md` authorizes no write to. A
+   patch reported ready in violation of any of this is a contract
    violation, not a formatting issue.
 
 ## Step 0 — resume-first check and mode selection (load-bearing, runs before stage 1)
@@ -71,7 +81,7 @@ for both files, then apply exactly one row of this table:
 |---|---|---|
 | absent | absent | Create `progress.md` with `mode: full` as its first line and five `[ ]` stage lines beneath it. Run in full mode. |
 | absent | present | Select the mode by `core/refresh.md` § Selecting the mode — apply in order, once per run, at Step 0. Create `progress.md` with the resulting `mode:` line first — `mode: full` or `mode: targeted <source-revision>` — and five `[ ]` stage lines beneath it. |
-| present | absent | Read the mode from `progress.md`'s `mode:` line; do not re-derive it. `mode: full` → resume the run at the first `[ ]` stage in full mode. `mode: targeted <source-revision>` → the recorded mode is unexecutable, because the fingerprint it would carry forward from is gone, so restart at stage 1 in **full mode** and rewrite the checklist with `mode: full` as its first line — the same safe-failure move as a checklist carrying no `mode:` line. |
+| present | absent | Read the mode from `progress.md`'s `mode:` line; do not re-derive it. `mode: full` → resume the run at the first `[ ]` stage in full mode. `mode: targeted <source-revision>` → the recorded mode is unexecutable, because the fingerprint it would carry forward from is gone, so restart at stage 1 in **full mode** and rewrite the checklist with `mode: full` as its first line and five `[ ]` stage lines beneath it — the same safe-failure move as a checklist carrying no `mode:` line. |
 | present | present | Resume the run at the first `[ ]` stage. Read the mode from `progress.md`'s `mode:` line; do not re-derive it. An interrupted run's mode is a fact about that run, not about the current state of `last-run.md`. |
 
 A resumed run may be in targeted mode — that is what recording the mode
@@ -87,9 +97,9 @@ which mode a resumed run is in.
 One non-firing branch, stated so it is not improvised: `progress.md`
 exists but carries no `mode:` line — a checklist written before this
 mechanism existed. Restart at stage 1 in **full mode** and rewrite the
-checklist with `mode: full` as its first line. An unrecorded mode is not
-guessable, and a partially completed targeted run cannot be finished as a
-full one.
+checklist with `mode: full` as its first line and five `[ ]` stage lines
+beneath it. An unrecorded mode is not guessable, and a partially
+completed targeted run cannot be finished as a full one.
 
 Mode selection itself: `core/refresh.md`. That file is the sole
 definition site for the ordered selection procedure, the run-state
@@ -187,10 +197,34 @@ anything itself. Excluding is this skill's job, not the checker's:
 
 - Exit `0` → no `GAP` records. Proceed; carry any `LOW_VALUE` records into
   the report as advisory findings.
-- Exit `1` → one or more `GAP` records. Remove each `GAP` record's subject
-  from the draft/patch, and carry that record verbatim into the report's
-  unresolved-gaps list. Re-run the checker against the reduced candidate
-  before reporting the patch ready.
+- Exit `1` → one or more `GAP` records. Act on them in this order, then
+  re-run:
+
+  1. For every `GAP` record whose `RULE` is `marker`: repair the marker
+     line at the record's `<FILE>:<LINE>` if this run authored or
+     modified that line. If the line is carried unchanged from the
+     on-disk README, repair nothing — that section is not this run's to
+     write (`core/readme-ownership.md`) — and carry the record verbatim
+     into the report's unresolved-gaps list. A `marker` record is never
+     resolved by removing its subject.
+  2. Remove the subject of every `GAP` record tagged `in-patch` from the
+     draft/patch and carry that record verbatim into the report's
+     unresolved-gaps list.
+  3. Carry every `GAP` record tagged `out-of-patch` into the report as
+     an informational finding and remove nothing for it.
+
+  Re-run the checker against the reduced candidate. **Stop re-running
+  when no record remains that step 1 or step 2 can act on** — that is,
+  when every remaining `GAP` record is either tagged `out-of-patch` or
+  is a `marker` record at a line this run did not author. Each pass
+  strictly reduces the count of actionable records, so this terminates
+  in at most that many passes. Then report the outcome: **ready** when
+  the only remaining records are `out-of-patch` `GAP`s and the candidate
+  contains at least one well-formed marker pair — the checker still
+  exits `1`, and that is a passing state for gate 3, not a failure — and
+  **blocked**, not ready, when any `marker` record remains. If the
+  candidate contains no well-formed marker pair, keep acting until the
+  checker exits `0`.
 - Exit `2` → usage or invocation error. Stop and report the invocation
   failure; this is not a finding about the draft.
 
@@ -281,6 +315,15 @@ yet for README drafting or onboarding-context quality. Do not present a
 run of this skill as evidence that it improves outcomes; that claim is
 Slice 3's to make, with a baseline behind it, not this file's to assert.
 
+## Interactive-only — an honest constraint on this file
+
+This skill requires an interactive session. It does not support headless
+(`claude -p`) invocation in Slice 2 — the dogfood failures that shaped
+this constraint were harness permission denials plugin code cannot fix.
+Do not invoke this skill from a headless `claude -p` run expecting a
+completed report; the run will hit a permission boundary this file has
+no way to route around.
+
 ## Verification check — before reporting this run complete
 
 Confirm every one of these, and report the first that fails instead of
@@ -294,8 +337,12 @@ the report:
    row appears in `.cartographer/report.md`'s unresolved-gaps list and
    nowhere in the draft.
 3. The local-validation checker's exit code is recorded in
-   `.cartographer/validation-report.md`, and if it was `1`, every `GAP`
-   subject is absent from the draft/patch and present in the report.
+   `.cartographer/validation-report.md`, and if it was `1`, every
+   `in-patch` `GAP` subject is absent from the draft/patch and present in
+   the report, every `out-of-patch` `GAP` record is present in the
+   report, every `marker` record is either repaired or reported with the
+   patch marked blocked, and — when the candidate carries no well-formed
+   marker pair — no `GAP` record remains.
 4. If a patch was produced, it was explicitly authorized (gate 1 above),
    and it contains only repository-bound content (the artifact-split table
    above).

@@ -435,10 +435,13 @@ they share a bucket.
 Before a run reports itself complete, confirm every one of these, and
 report the first that fails:
 
-1. The mode was selected by the ordered Step 0 procedure, and a run in
-   full mode for any reason other than an absent
-   `.cartographer/last-run.md` reported exactly one of the eight strings
-   in steps 2 through 8.
+1. A run that selected its mode this run by the ordered Step 0
+   procedure — not a run that resumed from an existing `progress.md` and
+   read its mode from the `mode:` line, and not a restart forced into
+   full mode by a missing `mode:` line or an unexecutable recorded
+   `mode: targeted` — and that landed in full mode for any reason other
+   than an absent `.cartographer/last-run.md`, reported exactly one of
+   the eight strings in steps 2 through 8.
 2. No section was carried forward in a run that fell back to full mode.
 3. A targeted-mode run visited every key in the union of the
    fingerprint's `section-key`s and the current README's section keys,
