@@ -4,16 +4,20 @@ TL;DR: `check-readme-patch.sh` runs the three `spec-draft.md` § Local
 validation gates against a drafted README patch — link resolution,
 command existence, and low-value section flagging — plus the
 managed-section marker-grammar gate that mechanically enforces
-`readme-ownership.md`'s `<id>` rules, and reports every finding as one
-stdout record in RC-8's record format, tagging `link` and `command`
-findings `in-patch` or `out-of-patch`. It is read-only: RC-9 makes
-exclusion the caller's job, not the checker's.
+`readme-ownership.md`'s `<id>` rules and the two Tier-1 claim existence
+gates `core/claim-verification.md` defines, and reports every finding as
+one stdout record in RC-8's record format, tagging `link`, `command`,
+`signature`, and `self-citation` findings `in-patch` or `out-of-patch`.
+It is read-only: RC-9 makes exclusion the caller's job, not the
+checker's.
 
 This file is the sole definition site for the report format, the scope
 tag, the rule for which records block patch readiness, the exit codes,
 the external-tool allowlist, and the low-value proxy list. It uses
-`core/pipeline.md`'s stage sequence and `core/claim-model.md`'s
-`unresolved-gap` disposition, and defines neither.
+`core/pipeline.md`'s stage sequence, `core/claim-model.md`'s
+`unresolved-gap` disposition, and `core/claim-verification.md`'s Tier-1
+recognition rule (RC-27) and match predicates (RC-28), and defines none
+of them.
 
 ## External-tool allowlist
 
@@ -56,10 +60,12 @@ one record per line:
 ```
 
 - `SEVERITY` ∈ `OK` | `GAP` | `LOW_VALUE` | `INFO`
-- `RULE` ∈ `link` | `command` | `section-value` | `marker`
-- `SUBJECT` = the link target, the command string, the section heading, or
+- `RULE` ∈ `link` | `command` | `section-value` | `marker` | `signature` |
+  `self-citation`
+- `SUBJECT` = the link target, the command string, the section heading,
   the marker id (`-` for a malformed marker line — see § Managed-section
-  marker grammar below)
+  marker grammar below), the cited symbol (`signature`), or the cited
+  term (`self-citation`)
 - `SCOPE` ∈ `in-patch` | `out-of-patch`. Those two hyphenated lowercase
   tokens are the literals; nothing else is legal in the field
 - The final line of every run is `SUMMARY|gaps=<n>|low_value=<n>`, where
@@ -67,12 +73,17 @@ one record per line:
   emitted
 
 **The field count varies by `RULE`, and this is the rule.** A record whose
-`RULE` is `link` or `command` carries **six** fields, the sixth being
-`<SCOPE>`. A record whose `RULE` is `section-value` or `marker` carries
-**five** and no scope tag. A consumer reading `$5` still gets `<MESSAGE>`
-on every record, so a positional reader written against the five-field
-form keeps working; only a reader that assumes a fixed field count needs
-to change.
+`RULE` is `link`, `command`, `signature`, or `self-citation` carries
+**six** fields, the sixth being `<SCOPE>`. A record whose `RULE` is
+`section-value` or `marker` carries **five** and no scope tag. A consumer
+reading `$5` still gets `<MESSAGE>` on every record, so a positional
+reader written against the five-field form keeps working; only a reader
+that assumes a fixed field count needs to change.
+
+`signature` and `self-citation` records take the scope tag because they
+are line-positional findings about content inside or outside the managed
+region, exactly as `link` and `command` findings are. A `marker` record
+is not: its line delimits the region rather than sitting in it.
 
 The scope tag is on **every** severity, not only failures — an `OK|link`
 record carries it exactly as a `GAP|link` record does. The criteria the
@@ -90,9 +101,10 @@ count is a real cost that is better stated as a rule than discovered.
 
 ## Scope attribution (the `<SCOPE>` field)
 
-A `link` or `command` finding whose line falls **within** a well-formed
-managed-section marker pair is tagged `in-patch`. One whose line falls
-**outside every** well-formed pair is tagged `out-of-patch`.
+A `link`, `command`, `signature`, or `self-citation` finding whose line
+falls **within** a well-formed managed-section marker pair is tagged
+`in-patch`. One whose line falls **outside every** well-formed pair is
+tagged `out-of-patch`.
 
 "Within" is strictly between: a finding at line `L` is `in-patch` when
 `start_line < L < end_line` for some pair. Neither marker line is itself
@@ -109,9 +121,9 @@ but was withheld for a `format`, `uniqueness`, or `nesting` violation.
 
 The tag is purely positional, and deliberately says nothing about
 blocking. When a candidate contains no well-formed pair at all, every
-`link` and `command` record is `out-of-patch` — there is no marked region
-for anything to be inside. That case is handled by RC-9's blocking rule
-below, not by the tag.
+`link`, `command`, `signature`, and `self-citation` record is
+`out-of-patch` — there is no marked region for anything to be inside.
+That case is handled by RC-9's blocking rule below, not by the tag.
 
 ## Exit codes
 
@@ -149,13 +161,48 @@ unresolved gap" is the **caller's** obligation:
 > authored or modified in the candidate, and shall otherwise report the
 > patch blocked and carry the record verbatim into its unresolved-gaps
 > report — a marker line carried unchanged from the on-disk README belongs
-> to a section this contract authorizes no write to. A `GAP` record tagged
-> `out-of-patch` is carried into the report as an informational finding
-> and never blocks patch readiness. When the candidate README contains no
-> well-formed managed-section marker pair, every `GAP` record blocks: with
-> no marked patch region, there is no out-of-patch exemption to claim. A
-> patch reported ready in violation of any of these is a contract
-> violation.
+> to a section this contract authorizes no write to. A `GAP` record whose
+> `RULE` is `signature` or `self-citation` is dispositioned exactly as a
+> `link` or `command` record is, and never as a `marker` record is: it
+> carries a scope tag, so the skill shall remove the subject of each
+> `in-patch` one from the patch and report each `out-of-patch` one. A
+> `GAP` record tagged `out-of-patch` is carried into the report as an
+> informational finding and never blocks patch readiness. When the
+> candidate README contains no well-formed managed-section marker pair,
+> every `GAP` record blocks: with no marked patch region, there is no
+> out-of-patch exemption to claim. A patch reported ready in violation of
+> any of these is a contract violation.
+
+**The join to a claim id, on a `signature` or `self-citation` record.**
+RC-6 is unchanged: the checker never reads the claim ledger, so a Tier-1
+record carries no claim id and RC-8's six fields gain no seventh. The
+record carries the unresolved reference in `<SUBJECT>` and its location
+in `<FILE>:<LINE>`, and the join is the caller's:
+
+> The skill shall join each `signature` and `self-citation` record to the
+> ledger row whose drafted sentence occupies the line `<FILE>:<LINE>`
+> names, and shall name that row's claim id alongside the record in its
+> report.
+
+Non-firing branch, stated so neither side is left to inference:
+
+> When no ledger row's drafted sentence occupies the line a `signature`
+> or `self-citation` `GAP` record names, the record does not join. The
+> skill carries it into the report verbatim as an informational finding
+> with no claim id and the note `no drafted claim on this line`, and
+> never invents, substitutes, or guesses a claim id. An unjoinable record
+> is by construction tagged `out-of-patch` — a line this run did not
+> draft lies outside the managed region — so the out-of-patch rule above
+> already makes it non-blocking **when the candidate carries at least one
+> well-formed marker pair**. When it carries none, the absolute rule
+> above wins over the out-of-patch exemption and every `GAP` record
+> blocks, unjoinable or not; there is no marked region for the exemption
+> to be claimed against. An `in-patch` record that does not join
+> is a contract violation rather than a reporting case: every line inside
+> the managed region was drafted by this run and has a ledger row
+> (`core/claim-model.md` § The claim ledger, "A drafted sentence that has
+> no ledger row is a contract violation"). The run reports the unjoinable
+> `in-patch` record and does not report the patch ready.
 
 **Why a candidate with no well-formed pair blocks on everything.**
 "Out-of-patch" means "outside the region this run owns and is rewriting".
@@ -194,7 +241,19 @@ terms that stage promised: the checker's post-state is "reported as
 excluded item's ultimate disposition is `core/claim-model.md`'s
 `unresolved-gap` — the same disposition a claim with no evidence
 reference already carries, reached here by a different gate on a
-different artifact (the draft, not the ledger).
+different artifact (the draft, not the ledger). What stage 4 hands the
+reduced candidate and this report to is stage 5, which verifies the
+claims that survived rather than re-deciding the findings above.
+
+**A re-entry stage 5 sends back is an ordinary stage-4 run.** Stage 5
+may return the caller here once per run, against a candidate it reduced
+by excluding a disproved claim (`core/pipeline.md` § The stage sequence
+names that bounded re-entry; `core/claim-verification.md` RC-32 owns its
+sequence). Nothing on this side changes for it: RC-9 applies unchanged,
+including the loop and the termination argument above, and the re-entry
+rewrites this report. This file decides what a stage-4 run does with the
+records it finds; it does not decide how many times stage 4 is entered,
+and the two questions never conflict.
 
 ## Internal link resolution (gate a)
 
@@ -327,10 +386,12 @@ The exact message strings, byte-for-byte:
 | orphan-end | `end marker has no matching start marker` |
 
 **Record order.** Marker records print before link, command, and
-section records, because `scan_markers()` runs first in `MAIN`. This is
-now a contractual ordering, not an incidental one — no existing
-assertion in `check-readme-patch.test.sh` is order-sensitive, so this
-change is safe.
+section records, because `scan_markers()` runs first in `MAIN`;
+`signature` and `self-citation` records print after all of them, because
+`check_claims()` runs last. This is a contractual ordering, not an
+incidental one — no assertion in `check-readme-patch.test.sh` is
+order-sensitive, so it costs nothing to state and gives a consumer a
+stable read.
 
 **The well-formed-pair set.** `scan_markers()` also publishes, for
 in-process callers of `check-readme-patch.sh` (§ Scope attribution's tag
@@ -342,6 +403,63 @@ excludes a pair whose own start triggered nesting, since that start
 line is its own range's lower bound. A pair that produced any record is
 not well-formed and is excluded from the set, even if its own `start`/
 `end` pop was otherwise clean.
+
+## Tier-1 claim existence proxies (gate e)
+
+`check_claims()` runs **last** in `MAIN` and implements the two Tier-1
+rules `core/claim-verification.md` defines: RC-27 fixes how a
+`signature` or `self-citation` claim is recognized in the candidate's own
+text, and RC-28 fixes the match predicate each rule applies against its
+cited target, including the rule that an identifier is interpolated
+literally and a dotted identifier is matched whole. This file defines
+neither rule. What it defines is the records they emit: their `RULE`
+literals, their field count, their scope tag, and their blocking
+disposition.
+
+The gate scans outside fenced code blocks only, reusing the same
+fence-toggle idiom gates (a) and (d) use — a fenced example is not a
+live claim, exactly as it is not a navigable link.
+
+**A qualifying link's target must be a regular file**, which is a
+stricter test than gate (a)'s. Gate (a) asks whether a link is
+navigable, so a directory target resolves and records `OK|link`. Both
+Tier-1 predicates instead read their cited target as a file, so a
+directory is not a cited source or a cited document at all, and RC-27's
+no-qualifying-link branch applies: no record. Accepting one would emit a
+blocking `in-patch` `GAP` whose message asserts a symbol is absent from
+a "cited source file" that is not a file.
+
+Every finding is one six-field record, `<SCOPE>` included:
+
+```
+<SEVERITY>|signature|<FILE>:<LINE>|<SYMBOL>|<MESSAGE>|<SCOPE>
+<SEVERITY>|self-citation|<FILE>:<LINE>|<TERM>|<MESSAGE>|<SCOPE>
+```
+
+`<SEVERITY>` is `OK` when the cited target satisfies RC-28's predicate
+and `GAP` when it does not. The four `<MESSAGE>` strings are fixed
+byte-for-byte by `core/claim-verification.md` RC-28's message table,
+which is their sole definition site — they are cited here, not restated,
+so the two files cannot drift.
+
+Each `GAP` increments `GAPS`, so a Tier-1 finding participates in the
+same exit-1 consequence as gates (a), (b), and (d), and RC-9 above
+governs which of them block.
+
+**These records carry no claim id, and that is the design, not an
+omission.** RC-6 is unchanged: the checker reads the candidate README
+and the repository, never the claim ledger — a checker that depended on
+the ledger would break the property stage 4 rests on. RC-9's join clause
+above is where a record reaches a claim id, and its non-firing branch is
+where an unjoinable record goes.
+
+**Both predicates are proxies for transcription, never semantic
+verification**, in the same register § Low-value section flagging uses
+for RC-11's proxy table. A cited document can contain the cited term
+without stating the claimed rule, and a cited source can contain the
+identifier without documenting the claimed behavior. That known gap is
+Tier 2's territory, and `core/claim-verification.md` states it out loud
+rather than implying a verification neither predicate performs.
 
 ## Verification check
 
@@ -360,11 +478,11 @@ Before a checker change is trusted, confirm every one of these:
    exits 0 (this file lives under `core/` and is subject to RC-7 like
    every other file there; it names no profile directory path, so no
    exemption token is needed).
-5. Every `link` and `command` record carries six fields whose sixth is
-   `in-patch` or `out-of-patch`, on every severity, and every
-   `section-value` and `marker` record carries five and no scope tag.
-   Assert this whole-line — a substring assertion cannot see a field
-   appended to or dropped from the end of a record.
+5. Every `link`, `command`, `signature`, and `self-citation` record
+   carries six fields whose sixth is `in-patch` or `out-of-patch`, on
+   every severity, and every `section-value` and `marker` record carries
+   five and no scope tag. Assert this whole-line — a substring assertion
+   cannot see a field appended to or dropped from the end of a record.
 6. The scope tag is computed from the well-formed-pair set defined in
    § The well-formed-pair set above and from nothing else. A pair that
    popped cleanly with matching ids but
@@ -378,3 +496,23 @@ Before a checker change is trusted, confirm every one of these:
    conditions and the malformed-marker-line branch — never
    `derivation`, the deliberately-unenforced fifth rule, which stays a
    human-reviewer check per the gap note above.
+8. Every `signature` and `self-citation` record was recognized outside a
+   fenced block, on a line carrying a qualifying link for its rule, and
+   reproduces `core/claim-verification.md` RC-28's message table
+   byte-for-byte. The suite proves each non-firing branch by a record
+   **count**, not by presence: a fixture that repeats its own defective
+   line inside a fenced block and a claim line carrying no qualifying
+   link must both leave the count at one, and a presence assertion
+   cannot see a duplicate.
+9. The cited identifier was interpolated literally — every character
+   outside `[A-Za-z0-9_]` backslash-escaped — and a dotted identifier
+   was matched whole, with no last-segment fallback. Assert this with a
+   case where a dotted identifier meets a same-shape-different-separator
+   string in the cited source (`store.open` against a source containing
+   `storeXopen`): it must be a `GAP`. Nothing else in a suite separates
+   a literal interpolation from a raw one, because every undotted
+   identifier behaves identically under both.
+10. Every `signature` and `self-citation` `GAP` record reaching the
+    report either names the claim id RC-9's join produced or carries the
+    note `no drafted claim on this line`, and no patch was reported
+    ready while an unjoinable `in-patch` record of either rule existed.

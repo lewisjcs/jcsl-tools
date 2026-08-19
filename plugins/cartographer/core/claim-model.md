@@ -42,12 +42,21 @@ One row per claim, written before drafting and carried through the run:
 
 | Field | Contents |
 |---|---|
-| claim id | Stable within the run; the draft and the report both cite it. |
+| claim id | Stable within the run; the draft and the report both cite it. Matches `^[A-Za-z0-9._-]+$`, so it is safe in the plugin's pipe-delimited record grammars. |
 | subject | The drafted README section the claim would appear in. |
 | statement | The claim text as it would be drafted, in the words the draft would use. |
 | class | `direct-repository-evidence`, `institutional-evidence`, or `inference`. Empty only when disposition is `unresolved-gap`. |
 | reference | The located evidence: path plus location, commit, or supplied record id. Empty only when disposition is `unresolved-gap`. |
 | disposition | `included` or `unresolved-gap`. |
+| content-class | `signature`, `self-citation`, `behavioral`, or `other`; assigned by `claim-verification.md`'s RC-26 procedure, once per row, at stage 2. Recorded on `included` rows only; empty when disposition is `unresolved-gap`. |
+
+`claim-verification.md` is the sole definition site for the content-class
+field's four values and the stage-2 procedure that assigns them to a
+row; this table records only the field. Content-class is a separate
+field on the same ledger row, not a fourth member of `class` — the three
+evidence classes above stay exhaustive and mutually exclusive, and
+content-class classifies a claim's *content* for verification routing,
+an orthogonal question from *what evidence backs it*.
 
 The ledger is the run's record of what it believed and why. It is a
 working-only artifact and never enters a patch — see `core/pipeline.md`.
@@ -134,3 +143,6 @@ the first that fails instead of the draft:
    list and nowhere in the draft.
 4. Every `included` row whose class is `inference` appears in the
    report's inferred-claims list.
+5. Every `included` row carries exactly one content-class value assigned
+   by `claim-verification.md`'s RC-26 procedure, and every
+   `unresolved-gap` row's content-class is empty.

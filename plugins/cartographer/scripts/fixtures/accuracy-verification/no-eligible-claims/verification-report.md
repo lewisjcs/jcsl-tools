@@ -1,0 +1,8 @@
+effectiveness|question|q1|answered|This service turns uploaded documents into a searchable index.
+effectiveness|question|q2|answered|Run make setup and then make check to confirm the install.
+effectiveness|question|q3|answered|src/loader holds ingestion and src/indexer holds the search index.
+effectiveness|question|q4|answered|Never edit files under generated/ by hand.
+effectiveness|question|q5|answered|Add a document format by registering it in src/formats/registry.js.
+RESULT|accuracy|PASS|dispatched=0|spot-checked=0/0|unverified-other=2
+RESULT|effectiveness|PASS|answered=5/5
+OVERALL|PASS
