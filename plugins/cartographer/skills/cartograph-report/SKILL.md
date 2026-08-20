@@ -543,12 +543,21 @@ not invoke this skill from a headless `claude -p` run expecting a
 completed report; the run will hit a permission boundary this file has
 no way to route around.
 
-Beyond interactivity, the pipeline requires two harness capabilities:
-fresh-context subagent dispatch, which stage 5's two verification
-dispatches each need, and shell execution, which the stage-4 and
-stage-5 checkers need. A harness lacking either must stop and report
-the missing capability by name — never skip a stage, run a verification
-dispatch in the main context, or degrade silently.
+Beyond interactivity, the pipeline needs two capabilities:
+
+1. **Shell execution** — the stage-4 and stage-5 checkers and the
+   core-neutrality check are `bash` invocations.
+2. **A conforming verification dispatch** (`core/dispatch-contract.md`)
+   — stage 5's two dispatches each need a fresh isolated helper agent
+   that returns its records to this session.
+
+Known conforming mechanisms:
+
+- **Claude Code:** the built-in fresh-subagent dispatch satisfies the
+  contract; use it for both stage-5 dispatches.
+- **Any other harness:** stop at stage 5 and report the missing
+  capability by name — never skip a stage, run a verification dispatch
+  in the main context, or degrade silently.
 
 ## Verification check — before reporting this run complete
 
