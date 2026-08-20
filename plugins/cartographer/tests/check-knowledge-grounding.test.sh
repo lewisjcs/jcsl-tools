@@ -466,15 +466,38 @@ bash "$PROVENANCE_CHECK" "$TMP_REPO/core" > /dev/null 2>&1
 assert_exit "provenance: untracked knowledge (should fail)" "1" "$?"
 
 # ──────────────────────────────────────────────────────────────────────────────
-# ARGUMENT PRECEDENCE TEST (explicit argument wins over CLAUDE_PLUGIN_ROOT)
+# ENV IGNORED (CLAUDE_PLUGIN_ROOT has no effect at all)
 # ──────────────────────────────────────────────────────────────────────────────
 
 echo ""
-echo "Argument Precedence (explicit argument should win):"
+echo "env-ignored:"
 
-# Test with explicit fixture argument while CLAUDE_PLUGIN_ROOT points elsewhere
+# With an explicit argument, a poisoned env var changes nothing
 CLAUDE_PLUGIN_ROOT="/nonexistent" bash "$GROUNDING_CHECK" "$FIXTURES_DIR/grounding/compliant/core" > /dev/null 2>&1
-assert_exit "precedence: explicit path wins over CLAUDE_PLUGIN_ROOT" "0" "$?"
+assert_exit "env ignored: explicit path still wins" "0" "$?"
+
+# With NO argument, a poisoned env var must ALSO change nothing — the checker
+# self-locates against the real core/ beside it. A poisoned /nonexistent/core
+# silently short-circuits the [ -d ] guards (zero files found, exit 0), which
+# is indistinguishable by exit code alone from a genuinely empty compliant
+# scan of the real core/ — so trace the run and count real per-file
+# processing (check_rule_a invocations): zero means no scan happened at all,
+# nonzero means the actual core/ beside the script was walked. (Exit 0 or 1
+# both acceptable on a real scan — the tree may legitimately have findings
+# mid-branch; what it must NOT do is silently skip the real core/.)
+env_ignored_trace="$(mktemp)"
+CLAUDE_PLUGIN_ROOT="/nonexistent" bash -x "$GROUNDING_CHECK" > /dev/null 2>"$env_ignored_trace"
+env_ignored_exit="$?"
+env_ignored_scan_count="$(grep -c '+ check_rule_a ' "$env_ignored_trace")"
+rm -f "$env_ignored_trace"
+
+if { [ "$env_ignored_exit" = "0" ] || [ "$env_ignored_exit" = "1" ]; } && [ "$env_ignored_scan_count" -gt 0 ]; then
+  printf '  ok   — env ignored: no-arg run self-locates and actually scans core/ (exit %s, %s file(s) processed)\n' "$env_ignored_exit" "$env_ignored_scan_count"
+  PASS=$((PASS + 1))
+else
+  printf '  FAIL — env ignored: no-arg run exited %s with %s file(s) processed (env var still consulted, or scan skipped)\n' "$env_ignored_exit" "$env_ignored_scan_count"
+  FAIL=$((FAIL + 1))
+fi
 
 # ──────────────────────────────────────────────────────────────────────────────
 # SUMMARY

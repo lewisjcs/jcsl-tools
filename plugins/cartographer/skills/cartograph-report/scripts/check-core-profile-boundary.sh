@@ -7,15 +7,12 @@
 
 set -u
 
-# Derive PLUGIN_ROOT from argument or default; explicit argument wins over env
+# Derive PLUGIN_ROOT from argument or self-location; no environment variable
+# is consulted — a vendored copy has no plugin root to point at.
 if [ -n "${1:-}" ]; then
   PLUGIN_ROOT="$1"
 else
   PLUGIN_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-  # Only use CLAUDE_PLUGIN_ROOT as override if no explicit argument was given
-  if [ -n "${CLAUDE_PLUGIN_ROOT:-}" ]; then
-    PLUGIN_ROOT="$CLAUDE_PLUGIN_ROOT"
-  fi
 fi
 
 CORE_DIR="$PLUGIN_ROOT/core"
