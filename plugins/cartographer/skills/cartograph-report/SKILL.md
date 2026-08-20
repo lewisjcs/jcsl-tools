@@ -501,22 +501,36 @@ bash "${CLAUDE_PLUGIN_ROOT}/scripts/check-core-profile-boundary.sh"
 Exit `0` required. This checks the plugin's own `core/` files, not the
 repository under analysis.
 
-## Evaluation-first — an honest constraint on this file
+## Verification coverage — an honest constraint on this file
 
-This skill's effectiveness is **unproven pending Slice 3**. Slice 1 ships
-no evaluation harness — no baseline-without-the-skill comparison exists
-yet for README drafting or onboarding-context quality. Do not present a
-run of this skill as evidence that it improves outcomes; that claim is
-Slice 3's to make, with a baseline behind it, not this file's to assert.
+This skill's verification is scoped, not total. Three claim types are
+mechanically verified: path existence, command existence, and
+`signature`/`self-citation` existence. Three are flagged, not verified:
+behavioral and semantic claims; a `signature`/`self-citation` claim
+whose stage-5 verdict remains `plausible` at report time; and the
+`other` content-class, which is verified by neither tier — each run's
+report states its `unverified-other` count. The effectiveness evidence
+behind this skill is interactive dogfood runs on two real repositories
+of different shape; no benchmarked baseline against not using the skill
+exists. Do not present a run of this skill as proof it improves
+outcomes — present the report's Accuracy and Effectiveness verdicts,
+which state exactly what was and was not verified.
 
-## Interactive-only — an honest constraint on this file
+## Harness requirements — an honest constraint on this file
 
 This skill requires an interactive session. It does not support headless
-(`claude -p`) invocation in Slice 2 — the dogfood failures that shaped
-this constraint were harness permission denials plugin code cannot fix.
-Do not invoke this skill from a headless `claude -p` run expecting a
+(`claude -p`) invocation — the dogfood failures that shaped this
+constraint were harness permission denials plugin code cannot fix. Do
+not invoke this skill from a headless `claude -p` run expecting a
 completed report; the run will hit a permission boundary this file has
 no way to route around.
+
+Beyond interactivity, the pipeline requires two harness capabilities:
+fresh-context subagent dispatch, which stage 5's two verification
+dispatches each need, and shell execution, which the stage-4 and
+stage-5 checkers need. A harness lacking either must stop and report
+the missing capability by name — never skip a stage, run a verification
+dispatch in the main context, or degrade silently.
 
 ## Verification check — before reporting this run complete
 
