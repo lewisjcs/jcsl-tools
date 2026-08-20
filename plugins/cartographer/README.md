@@ -19,9 +19,15 @@ per-working-tree run state that lets a later run re-check only what
 changed. A repository needs no external system
 — no Glean, no Backstage, no `catalog-info.yaml` — for the core to run
 against it; those are Contentful-profile additions layered on top, not
-core dependencies. The drafted output's effectiveness is unproven pending
-Slice 3's evaluation harness — this is stated explicitly rather than
-implied as measured.
+core dependencies. The drafted output's verification is scoped, not
+total — stated here rather than implied as measured. Path, command, and
+`signature`/`self-citation` existence claims are mechanically verified.
+Behavioral and semantic claims, `signature`/`self-citation` claims whose
+verdict remains `plausible`, and `other`-class claims are flagged in the
+run's report, not verified. The effectiveness evidence to date is
+interactive dogfood runs on two real repositories, not a benchmarked
+baseline against not using the tool — a run of this skill is not, by
+itself, proof it improves outcomes.
 
 ## Prerequisites
 
