@@ -78,7 +78,7 @@ slot values, per RC-29's own definition of "inversion" — a named
 substitution of one template slot's content, or of one enumerated line of
 `{{ARTIFACT_LIST}}`. It rewords nothing in the template's prose, and
 everything RC-29 defines that this section does not restate — the fresh
-Task-tool dispatch, the malformed-verdict branch, the one-re-dispatch
+isolated dispatch, the malformed-verdict branch, the one-re-dispatch
 bound, and the general shape of the `isolation not demonstrated`
 consequence — is RC-29's, cited here and owned there.
 

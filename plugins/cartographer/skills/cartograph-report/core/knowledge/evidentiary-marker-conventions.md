@@ -51,6 +51,6 @@ the entry to `core/references/` instead. <!-- rationale: documented internal dec
 
 Before committing a `core/knowledge/` file, confirm every claim-bearing
 section carries a marker in one of the two forms above, then run
-`bash plugins/cartographer/scripts/check-knowledge-grounding.sh` and
+`bash <skill-root>/scripts/check-knowledge-grounding.sh` and
 confirm it exits 0. A claim-bearing section with no marker is a defect in
 the file, not the checker.

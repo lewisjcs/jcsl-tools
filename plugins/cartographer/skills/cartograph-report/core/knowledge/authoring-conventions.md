@@ -60,5 +60,5 @@ bright-line prohibition, not a hedge. <!-- rationale: documented internal decisi
 ## Verification check
 
 Before committing an authored file, run
-`bash plugins/cartographer/scripts/check-knowledge-grounding.sh` over
+`bash <skill-root>/scripts/check-knowledge-grounding.sh` over
 `core/` and confirm it exits 0.

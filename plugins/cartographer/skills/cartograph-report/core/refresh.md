@@ -494,5 +494,5 @@ report the first that fails:
    `readme-path` line naming the README this run analyzed, and one
    well-formed row per classified section — no `section-key` appearing
    twice, each `body-hash` a 64-character lowercase hex digest.
-8. `bash plugins/cartographer/scripts/check-core-profile-boundary.sh`
+8. `bash <skill-root>/scripts/check-core-profile-boundary.sh`
    exits 0.

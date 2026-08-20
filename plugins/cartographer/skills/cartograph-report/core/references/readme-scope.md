@@ -30,9 +30,9 @@ reason a generated README section must justify its own existence rather
 than being included because the section name is conventional.
 
 Locator: arXiv:2602.11988, transcribed via
-`plugins/cartographer/core/references/sources/design-research-basis-2026-08-17.md` § "Research
+`core/references/sources/design-research-basis-2026-08-17.md` § "Research
 basis: not every README section is worth its cost by default".
-Status: transcribed-from plugins/cartographer/core/references/sources/design-research-basis-2026-08-17.md
+Status: transcribed-from core/references/sources/design-research-basis-2026-08-17.md
 
 ## Concrete instructions succeed; generic overviews do not
 
@@ -48,9 +48,9 @@ AI agents): the former carries the paper's unhelpful-but-costly profile,
 the latter its effective profile.
 
 Locator: arXiv:2602.11988, transcribed via
-`plugins/cartographer/core/references/sources/design-research-basis-2026-08-17.md` § "Research
+`core/references/sources/design-research-basis-2026-08-17.md` § "Research
 basis: not every README section is worth its cost by default".
-Status: transcribed-from plugins/cartographer/core/references/sources/design-research-basis-2026-08-17.md
+Status: transcribed-from core/references/sources/design-research-basis-2026-08-17.md
 
 ## The AGENTS.md inclusion litmus test
 
@@ -108,10 +108,10 @@ purpose and status; an eight-category multi-label classifier reached F1
 section labeling as easing information discovery.
 
 Locator: arXiv:1802.06997, transcribed via
-`plugins/cartographer/core/references/sources/external-sweep-2026-08-17.md` (Query 3 /
+`core/references/sources/external-sweep-2026-08-17.md` (Query 3 /
 Findings § "README content skews to 'What' and 'How'; purpose and status
 are commonly absent"; Independent verification addendum).
-Status: transcribed-from plugins/cartographer/core/references/sources/external-sweep-2026-08-17.md
+Status: transcribed-from core/references/sources/external-sweep-2026-08-17.md
 
 ## README structural features correlate with project popularity
 
@@ -125,10 +125,10 @@ popularity. Correlational, not causal — popularity, not onboarding
 success, is the measured outcome.
 
 Locator: arXiv:2206.10772, transcribed via
-`plugins/cartographer/core/references/sources/external-sweep-2026-08-17.md` (Query 2 /
+`core/references/sources/external-sweep-2026-08-17.md` (Query 2 /
 Findings § "README structural features correlate with project
 popularity").
-Status: transcribed-from plugins/cartographer/core/references/sources/external-sweep-2026-08-17.md
+Status: transcribed-from core/references/sources/external-sweep-2026-08-17.md
 
 ## README updates almost never accompany code changes, and some should
 
@@ -142,10 +142,10 @@ agentic detector reached 98.7% specificity but only 28.7% user-facing
 accuracy.
 
 Locator: arXiv:2603.00489, transcribed via
-`plugins/cartographer/core/references/sources/external-sweep-2026-08-17.md` (Query 2 /
+`core/references/sources/external-sweep-2026-08-17.md` (Query 2 /
 Findings § "README updates are rare in PRs and a fifth of 'no-update' PRs
 actually warranted one"; Independent verification addendum).
-Status: transcribed-from plugins/cartographer/core/references/sources/external-sweep-2026-08-17.md
+Status: transcribed-from core/references/sources/external-sweep-2026-08-17.md
 
 ## LLM staleness judges are blind to the drift direction that matters most
 
@@ -161,10 +161,10 @@ therefore needs deterministic anchors (symbol/path existence), not model
 self-judgment.
 
 Locator: arXiv:2604.03447, transcribed via
-`plugins/cartographer/core/references/sources/external-sweep-2026-08-17.md` (Query 4 /
+`core/references/sources/external-sweep-2026-08-17.md` (Query 4 /
 Findings § "LLMs detect documentation faults but are blind to
 implementation-only drift"; Independent verification addendum).
-Status: transcribed-from plugins/cartographer/core/references/sources/external-sweep-2026-08-17.md
+Status: transcribed-from core/references/sources/external-sweep-2026-08-17.md
 
 ## Outdated code-element references are near-universal in repository docs
 
@@ -176,10 +176,10 @@ code-element reference that survived in documentation after every source
 instance was deleted, at some point in their history.
 
 Locator: arXiv:2212.01479, transcribed via
-`plugins/cartographer/core/references/sources/external-sweep-2026-08-17.md` (Query 13 /
+`core/references/sources/external-sweep-2026-08-17.md` (Query 13 /
 Findings § "Outdated code element references are near-universal in
 repository documentation"; Independent verification addendum).
-Status: transcribed-from plugins/cartographer/core/references/sources/external-sweep-2026-08-17.md
+Status: transcribed-from core/references/sources/external-sweep-2026-08-17.md
 
 ## Vendor spec: AGENTS.md is a README for agents, not a README replacement
 
@@ -195,7 +195,7 @@ projects" — a self-reported GitHub code-search count, not an audited
 number.
 
 Locator: [agents.md](https://agents.md/) (as of 2026-08-17), transcribed
-via `plugins/cartographer/core/references/sources/external-sweep-2026-08-17.md` (Query 9 /
+via `core/references/sources/external-sweep-2026-08-17.md` (Query 9 /
 Findings § "Vendor spec: AGENTS.md is positioned as a README for agents,
 with adoption scale").
-Status: transcribed-from plugins/cartographer/core/references/sources/external-sweep-2026-08-17.md
+Status: transcribed-from core/references/sources/external-sweep-2026-08-17.md

@@ -304,11 +304,11 @@ A command matching none of the five is
 `GAP|command|<file>:<line>|<command>|…`.
 
 Checking in this fixed order means a command like `bash
-plugins/cartographer/scripts/check-x.sh` — whose `argv[0]` (`bash`) is
-also on the allowlist — is reported via clause 4 (in-repo path), not
-clause 5, because clause 4 is checked first and is the more specific
-finding. The `external-tool` tag is reserved for commands no clause but
-5 resolves — the case the install line needs.
+scripts/check-x.sh` — whose `argv[0]` (`bash`) is also on the
+allowlist — is reported via clause 4 (in-repo path), not clause 5,
+because clause 4 is checked first and is the more specific finding.
+The `external-tool` tag is reserved for commands no clause but 5
+resolves — the case the install line needs.
 
 ## Low-value section flagging (gate c, RC-11)
 
@@ -474,7 +474,7 @@ Before a checker change is trusted, confirm every one of these:
 3. The external-tool allowlist above is exactly the list RC-10 fixes —
    adding or removing an entry here without a corresponding contract
    change is a scope violation, not a bug fix.
-4. `bash plugins/cartographer/scripts/check-core-profile-boundary.sh`
+4. `bash <skill-root>/scripts/check-core-profile-boundary.sh`
    exits 0 (this file lives under `core/` and is subject to RC-7 like
    every other file there; it names no profile directory path, so no
    exemption token is needed).

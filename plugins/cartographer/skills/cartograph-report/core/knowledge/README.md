@@ -31,5 +31,5 @@ in any file under `core/knowledge/` always resolves against
 
 Before adding a file here, confirm its basename appears in "Files
 indexed" above, then run
-`bash plugins/cartographer/scripts/check-knowledge-grounding.sh` and
+`bash <skill-root>/scripts/check-knowledge-grounding.sh` and
 confirm it exits 0.

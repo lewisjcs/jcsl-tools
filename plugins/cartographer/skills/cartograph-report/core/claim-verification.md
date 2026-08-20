@@ -197,8 +197,9 @@ obligation and defines nothing about it.
 
 ## The shared Tier-2 isolated-dispatch contract (RC-29)
 
-Tier 2 is one dispatch per gate per run, each to a fresh Task-tool
-subagent. It exists for exactly what Tier 1 structurally cannot decide:
+Tier 2 is one dispatch per gate per run, each to a fresh isolated
+helper agent (a conforming dispatch per `core/dispatch-contract.md`).
+It exists for exactly what Tier 1 structurally cannot decide:
 transcription *fidelity* — RC-28 confirms that a symbol's spelling
 appears in the cited source, and only judgment confirms that the
 sentence written about it is accurate — and the `behavioral`
@@ -220,7 +221,7 @@ construction and which half is an assertion with a detector behind it,
 rather than implying an enforcement it does not have.
 
 - **No stage 1-through-3 session memory: enforced by construction.** A
-  fresh Task-tool subagent receives its dispatch prompt and nothing
+  fresh isolated helper agent receives its dispatch prompt and nothing
   else. It holds no transcript of this run, so there is nothing to
   instruct it to forget — the drafting session's reasoning is
   unreachable because it was never handed over, not because the prompt

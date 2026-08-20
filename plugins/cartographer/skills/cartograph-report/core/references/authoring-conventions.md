@@ -83,7 +83,7 @@ multiple-testing correction.
 
 Locator: `plugins/gauntlet/skills/skill-authoring-principles/SKILL.md#verification-checklist`;
 Anthropic skill-authoring best practices, transcribed via
-`plugins/cartographer/core/references/sources/external-sweep-2026-08-17.md` (Query 9 /
+`core/references/sources/external-sweep-2026-08-17.md` (Query 9 /
 Findings § "Vendor spec: concrete size and reference-depth limits for
 agent knowledge files").
 Status: transcribed-from plugins/gauntlet/skills/skill-authoring-principles/SKILL.md
@@ -225,10 +225,10 @@ vendor size guidance above: the numeric limits are prescriptive, not
 shown to move adherence in this study.
 
 Locator: arXiv:2605.10039, transcribed via
-`plugins/cartographer/core/references/sources/external-sweep-2026-08-17.md` (Query 1 /
+`core/references/sources/external-sweep-2026-08-17.md` (Query 1 /
 Findings § "File-structure variables show no detectable effect on
 instruction adherence; compliance decays within a session").
-Status: transcribed-from plugins/cartographer/core/references/sources/external-sweep-2026-08-17.md
+Status: transcribed-from core/references/sources/external-sweep-2026-08-17.md
 
 ## Citation-grounded generation reaches high accuracy on code comprehension (single-author, self-reported)
 
@@ -244,10 +244,10 @@ sweep that transcribed it:** single-author preprint, self-reported "zero
 hallucinations," no independent replication.
 
 Locator: arXiv:2512.12117, transcribed via
-`plugins/cartographer/core/references/sources/external-sweep-2026-08-17.md` (Query 6 /
+`core/references/sources/external-sweep-2026-08-17.md` (Query 6 /
 Findings § "Citation-grounded retrieval reaches 92% citation accuracy on
 code comprehension").
-Status: transcribed-from plugins/cartographer/core/references/sources/external-sweep-2026-08-17.md
+Status: transcribed-from core/references/sources/external-sweep-2026-08-17.md
 
 ## Long standing-instruction documents are followed poorly over extended horizons
 
@@ -272,10 +272,10 @@ the study does show directly: self-reported compliance is not a usable
 gate signal.
 
 Locator: arXiv:2607.25398, transcribed via
-`plugins/cartographer/core/references/sources/external-sweep-2026-08-17.md` (Query 8 /
+`core/references/sources/external-sweep-2026-08-17.md` (Query 8 /
 Findings § "Long standing-instruction documents are followed poorly over
 extended tool-use horizons").
-Status: transcribed-from plugins/cartographer/core/references/sources/external-sweep-2026-08-17.md
+Status: transcribed-from core/references/sources/external-sweep-2026-08-17.md
 
 ## Single-agent README generation matches multi-agent quality at a fraction of the cost
 
@@ -291,10 +291,10 @@ of any configuration tested, with autonomous planning identified as the
 primary single-agent bottleneck.
 
 Locator: arXiv:2606.30524, transcribed via
-`plugins/cartographer/core/references/sources/external-sweep-2026-08-17.md` (Query 7 /
+`core/references/sources/external-sweep-2026-08-17.md` (Query 7 /
 Findings § "Single-agent README generation matches multi-agent quality
 at a fraction of the cost").
-Status: transcribed-from plugins/cartographer/core/references/sources/external-sweep-2026-08-17.md
+Status: transcribed-from core/references/sources/external-sweep-2026-08-17.md
 
 ## Repository-doc generation is benchmarked against other generators, not humans
 
@@ -312,8 +312,8 @@ framework for automated repository-level documentation across seven
 programming languages."
 
 Locator: arXiv:2510.24428, transcribed via
-`plugins/cartographer/core/references/sources/external-sweep-2026-08-17.md` (Query 7 /
+`core/references/sources/external-sweep-2026-08-17.md` (Query 7 /
 Findings § "Repository-level documentation generation benchmarked
 against a closed-source baseline, not humans"; Independent verification
 addendum).
-Status: transcribed-from plugins/cartographer/core/references/sources/external-sweep-2026-08-17.md
+Status: transcribed-from core/references/sources/external-sweep-2026-08-17.md

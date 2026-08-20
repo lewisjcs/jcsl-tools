@@ -11,6 +11,12 @@ local validation, accuracy and effectiveness verification, and a run
 report — or, only when explicitly authorized, a patch. Slice 1 ships the
 core only; no `profiles/contentful/` behavior is in scope here.
 
+Every path in this file and in `core/` resolves against the **skill
+root** — the directory containing the `SKILL.md` you are reading. A
+command written as `bash <skill-root>/scripts/x.sh` means: substitute
+the skill root's actual location. No environment variable is part of
+this contract.
+
 ## Before anything else — three blocking gates
 
 These are the highest-consequence rules in this file. A run that violates
@@ -200,7 +206,7 @@ states its `last-assessed-revision`.
 Run the plugin's own checker against the drafted README candidate:
 
 ```bash
-bash "${CLAUDE_PLUGIN_ROOT}/scripts/check-readme-patch.sh" <candidate_README> <REPO_ROOT>
+bash <skill-root>/scripts/check-readme-patch.sh <candidate_README> <REPO_ROOT>
 ```
 
 Capture its stdout verbatim into `.cartographer/validation-report.md`.
@@ -288,16 +294,17 @@ Otherwise run these eight steps in order:
    id, the drafted statement, and that statement's content-class — and no
    other ledger field. `{{OUTPUT_GRAMMAR}}` is RC-31's record line with
    the field values legal for the accuracy gate. `{{VIOLATION_NOTE}}` is
-   empty on this first dispatch. Dispatch one fresh Task-tool subagent
-   and capture the returned records verbatim.
+   empty on this first dispatch. Dispatch one fresh isolated helper
+   agent (per § Harness requirements) and capture the returned records
+   verbatim.
 2. **Dispatch the effectiveness subagent.** The same template, with
    RC-35's inversions: `{{ARTIFACT_LIST}}` is RC-35's single line — the
    drafted candidate alone, with the source denial stated in the line
    itself — and `{{ITEMS}}` is RC-33's five questions, verbatim and in
    order, with no ledger-derived value of any kind. `{{OUTPUT_GRAMMAR}}`
    is RC-35's per-question line; `{{VIOLATION_NOTE}}` is empty. Dispatch
-   one fresh Task-tool subagent, separate from step 1's — never the same
-   one, and never one prompt carrying both gates — and capture the
+   one fresh isolated helper agent, separate from step 1's — never the
+   same one, and never one prompt carrying both gates — and capture the
    returned records verbatim.
 3. **Check each dispatch for contamination.** Apply RC-29's detection
    branch to the returned output of each dispatch this run made, against
@@ -330,7 +337,7 @@ Otherwise run these eight steps in order:
 5. **Invoke the checker** against the file just written:
 
    ```bash
-   bash "${CLAUDE_PLUGIN_ROOT}/scripts/check-verification-report.sh" .cartographer/verification-report.md
+   bash <skill-root>/scripts/check-verification-report.sh .cartographer/verification-report.md
    ```
 
    Its stdout is `INVALID|<LINE>|<MESSAGE>` records and a closing
@@ -495,7 +502,7 @@ ordinary subject for this run, not a degraded one. Confirm this run's own
 `core/` files still honor that boundary:
 
 ```bash
-bash "${CLAUDE_PLUGIN_ROOT}/scripts/check-core-profile-boundary.sh"
+bash <skill-root>/scripts/check-core-profile-boundary.sh
 ```
 
 Exit `0` required. This checks the plugin's own `core/` files, not the
