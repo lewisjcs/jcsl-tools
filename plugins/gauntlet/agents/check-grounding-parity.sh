@@ -286,7 +286,9 @@ echo "OK: all finder/validator dispatches use the gauntlet: prefix (no bare disp
 
 SKILLS_RUN_DIR="$AGENTS_DIR/../skills/run"
 
-dispatch_names="$(grep -hoE 'Skill:[[:space:]]*gauntlet:[a-zA-Z0-9_-]+' "$SKILLS_RUN_DIR"/*.md 2>/dev/null | sed -E 's/^Skill:[[:space:]]*gauntlet://' | sort -u || true)"
+skill_prefixed_names="$(grep -hoE 'Skill:[[:space:]]*gauntlet:[a-zA-Z0-9_-]+' "$SKILLS_RUN_DIR"/*.md 2>/dev/null | sed -E 's/^Skill:[[:space:]]*gauntlet://' || true)"
+dispatch_of_names="$(grep -hoE 'dispatch of `gauntlet:[a-zA-Z0-9_-]+`' "$SKILLS_RUN_DIR"/*.md 2>/dev/null | sed -E 's/^dispatch of `gauntlet:([a-zA-Z0-9_-]+)`$/\1/' || true)"
+dispatch_names="$(printf '%s\n%s\n' "$skill_prefixed_names" "$dispatch_of_names" | sed '/^$/d' | sort -u)"
 
 dispatch_name_count="$(printf '%s\n' "$dispatch_names" | sed '/^$/d' | wc -l | tr -d ' ')"
 if [[ "$dispatch_name_count" -lt 3 ]]; then
