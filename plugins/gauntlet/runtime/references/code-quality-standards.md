@@ -4,9 +4,10 @@ adversarial-review and code-quality-audit Classes both consult this file for
 the anti-defensive-code priorities it documents. This is the source; edit it
 directly here.
 
-The v1 copy in jcsl-tools (plugins/gauntlet/skills/code-quality-standards/)
-is the frozen incumbent, locked by the re-admission dossiers, and is no
-longer the source of truth — do not re-vendor from it.
+The jcsl-tools plugin skill (plugins/gauntlet/skills/code-quality-standards/)
+re-vendors this file's body behind its own skill frontmatter and routing
+sections; a parity check in that repo guards the copy. Edit here first, then
+re-vendor.
 -->
 
 # Code Quality Standards
@@ -30,6 +31,7 @@ Working code that technically solves the problem but hedges with unnecessary def
 - Check return types and callers before adding guards -- if the type system or architecture guarantees a condition, trust it
 - If asked for a breaking change or refactor, commit fully to that change -- don't wrap new behavior in fallbacks to old behavior
 - Working code with three layers of fallbacks that ensure tests pass but the actual new code never runs is a failure
+- Unreleased changes carry no backwards-compatibility obligation -- a compat shim for behavior no consumer has ever depended on is pure hedging
 - Don't be afraid to make the change that was asked for
 
 **Red flags:**
@@ -59,7 +61,10 @@ boundaries -- schema-validated inputs at the edge of the system (API
 requests, file parses, external-service responses). Once a value has crossed
 that boundary and the type system says it's shaped a certain way, trust the
 type; re-validating it again deeper in the call stack is the defensive
-pattern this priority forbids, not the boundary check itself.
+pattern this priority forbids, not the boundary check itself. The common
+failure runs both ways at once: over-guarding internal calls the type system
+already covers while under-validating true system boundaries. What matters
+is where the boundary sits, not more or less validation everywhere.
 
 ## Common AI Anti-Patterns
 
@@ -69,6 +74,7 @@ pattern this priority forbids, not the boundary check itself.
 - Adding three layers of fallbacks that ensure tests pass but bypass the actual change
 - Using generic patterns when the codebase has specific conventions
 - Over-commenting with obvious narration instead of letting clean code speak
+- Weakening assertions, skipping tests, or special-casing test inputs so tests pass instead of fixing the change
 
 ## When Reviewing Code
 
