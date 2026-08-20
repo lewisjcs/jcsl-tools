@@ -474,10 +474,10 @@ Before a checker change is trusted, confirm every one of these:
 3. The external-tool allowlist above is exactly the list RC-10 fixes —
    adding or removing an entry here without a corresponding contract
    change is a scope violation, not a bug fix.
-4. `bash <skill-root>/scripts/check-core-profile-boundary.sh`
-   exits 0 (this file lives under `core/` and is subject to RC-7 like
-   every other file there; it names no profile directory path, so no
-   exemption token is needed).
+4. `bash <skill-root>/scripts/check-core-neutrality.sh`
+   exits 0 (this file lives under `core/` and is scanned by the
+   neutrality check like every other parity-set file; it names no org
+   token and no unlicensed `profile/` path).
 5. Every `link`, `command`, `signature`, and `self-citation` record
    carries six fields whose sixth is `in-patch` or `out-of-patch`, on
    every severity, and every `section-value` and `marker` record carries

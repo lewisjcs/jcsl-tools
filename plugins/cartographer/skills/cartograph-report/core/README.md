@@ -69,7 +69,7 @@ make two families one.
 |---|---|---|
 | scripts/check-knowledge-grounding.sh | `knowledge/` and `references/` | A claim-bearing knowledge section carries a marker; full citations live in `references/`; a `see:` target and anchor resolve; a `rationale:` text is non-empty and cites no external source; every `references/` entry is indexed. |
 | scripts/check-grounding-provenance.sh | `knowledge/` | The reference entry a `see:` marker cites was not committed after the knowledge line citing it, by line-level blame; landing together (as a squash merge does) passes. |
-| scripts/check-core-profile-boundary.sh | Every `.md` file under `core/` | No line names the profile directory unless it carries the `boundary-exempt: prose` token, and no such line hides inside a fenced block. |
+| scripts/check-core-neutrality.sh | `SKILL.md`, `core/`, `scripts/` | No org-specific token (see the checker's own header comment for the current list) anywhere in the parity set, and no unlicensed reference into the org-content seam outside the two licensed files. |
 
 The contract files at the top of this directory are not scanned by the
 grounding rules: those rules run against `knowledge/` and `references/`

@@ -3,7 +3,7 @@
 This directory contains synthetic test inputs for the cartographer checkers:
 - `check-knowledge-grounding.sh` (rules a, b, c, c′, d)
 - `check-grounding-provenance.sh` (entry-level blame ordering)
-- `check-core-profile-boundary.sh` (boundary enforcement)
+- `check-core-neutrality.sh` (org-neutrality enforcement)
 - `check-readme-patch.sh` (link, command, low-value, marker-grammar, and Tier-1 claim gates)
 - `check-verification-report.sh` (the stage-5 verification-report grammar and both gate predicates)
 

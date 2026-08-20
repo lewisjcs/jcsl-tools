@@ -1,13 +1,13 @@
 #!/bin/bash
 # Fixture-driven test suite for cartographer checkers
-# Tests: check-knowledge-grounding.sh, check-grounding-provenance.sh, check-core-profile-boundary.sh
+# Tests: check-knowledge-grounding.sh, check-grounding-provenance.sh, check-core-neutrality.sh
 # Run: bash check-knowledge-grounding.test.sh
 set -u
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 GROUNDING_CHECK="$SCRIPT_DIR/../skills/cartograph-report/scripts/check-knowledge-grounding.sh"
 PROVENANCE_CHECK="$SCRIPT_DIR/../skills/cartograph-report/scripts/check-grounding-provenance.sh"
-BOUNDARY_CHECK="$SCRIPT_DIR/../skills/cartograph-report/scripts/check-core-profile-boundary.sh"
+NEUTRALITY_CHECK="$SCRIPT_DIR/../skills/cartograph-report/scripts/check-core-neutrality.sh"
 FIXTURES_DIR="$SCRIPT_DIR/fixtures"
 
 PASS=0
@@ -270,31 +270,64 @@ EOF
 bash "$GROUNDING_CHECK" "$TMP_WORK/numeric-threshold-fixed/core" > /dev/null 2>&1
 assert_exit "grounding: numeric-threshold-fixed" "0" "$?"
 
-# ──────────────────────────────────────────────────────────────────────────────
-# BOUNDARY TESTS
-# ──────────────────────────────────────────────────────────────────────────────
+# ──────────────────────────────────────────────────────────────
+# NEUTRALITY CHECKS (check-core-neutrality.sh)
+# ──────────────────────────────────────────────────────────────
+echo "neutrality:"
+NFIX="$SCRIPT_DIR/fixtures/neutrality"
 
-echo ""
-echo "Boundary Checks:"
+bash "$NEUTRALITY_CHECK" "$NFIX/clean" > /dev/null 2>&1
+assert_exit "neutrality: clean skill root passes" "0" "$?"
 
-# Test 1: prose-exempt fixture (should pass)
-bash "$BOUNDARY_CHECK" "$FIXTURES_DIR/boundary/prose-exempt" > /dev/null 2>&1
-assert_exit "boundary: prose-exempt" "0" "$?"
+bash "$NEUTRALITY_CHECK" "$NFIX/org-token-in-core" > /dev/null 2>&1
+assert_exit "neutrality: org token in core fails" "1" "$?"
 
-# Test 2: unexempted fixture (should fail)
-bash "$BOUNDARY_CHECK" "$FIXTURES_DIR/boundary/unexempted" > /dev/null 2>&1
-assert_exit "boundary: unexempted" "1" "$?"
+bash "$NEUTRALITY_CHECK" "$NFIX/org-token-in-skillmd" > /dev/null 2>&1
+assert_exit "neutrality: org token in SKILL.md fails (licensing never covers org tokens)" "1" "$?"
 
-# Test 3: fenced fixture (should fail - token not honored in fences)
-bash "$BOUNDARY_CHECK" "$FIXTURES_DIR/boundary/fenced" > /dev/null 2>&1
-assert_exit "boundary: fenced" "1" "$?"
+bash "$NEUTRALITY_CHECK" "$NFIX/org-token-in-scripts" > /dev/null 2>&1
+assert_exit "neutrality: org token in scripts fails" "1" "$?"
 
-# Test 4: boundary unexempted fixed (should pass when token is added)
-mkdir -p "$TMP_WORK/boundary-fixed"
-cp -r "$FIXTURES_DIR/boundary/unexempted/core" "$TMP_WORK/boundary-fixed/"
-sed -i '' 's|profiles/|profiles/ <!-- boundary-exempt: prose -->|' "$TMP_WORK/boundary-fixed/core/test.md"
-bash "$BOUNDARY_CHECK" "$TMP_WORK/boundary-fixed" > /dev/null 2>&1
-assert_exit "boundary: unexempted-fixed" "0" "$?"
+bash "$NEUTRALITY_CHECK" "$NFIX/profile-ref-in-core" > /dev/null 2>&1
+assert_exit "neutrality: profile/ ref outside licensed files fails" "1" "$?"
+
+out="$(bash "$NEUTRALITY_CHECK" "$NFIX/profile-ref-in-core" 2>/dev/null)"
+case "$out" in
+  *'ERROR|neutrality|core/pipeline.md:2|profile/ reference outside licensed files'*)
+    printf '  ok   — neutrality: record names file, line, and reason\n'; PASS=$((PASS + 1));;
+  *) printf '  FAIL — neutrality: record shape wrong, got:\n%s\n' "$out"; FAIL=$((FAIL + 1));;
+esac
+
+bash "$NEUTRALITY_CHECK" "$NFIX/profile-ref-licensed" > /dev/null 2>&1
+assert_exit "neutrality: profile/ refs in contract doc and SKILL.md pass" "0" "$?"
+
+# Test: org-token-in-core fixed (defect line removed)
+rm -rf "$TMP_WORK/org-token-in-core-fixed"
+cp -r "$NFIX/org-token-in-core" "$TMP_WORK/org-token-in-core-fixed"
+sed -i '' '/Glean/d' "$TMP_WORK/org-token-in-core-fixed/core/pipeline.md"
+bash "$NEUTRALITY_CHECK" "$TMP_WORK/org-token-in-core-fixed" > /dev/null 2>&1
+assert_exit "neutrality: org-token-in-core-fixed" "0" "$?"
+
+# Test: org-token-in-skillmd fixed (defect line removed)
+rm -rf "$TMP_WORK/org-token-in-skillmd-fixed"
+cp -r "$NFIX/org-token-in-skillmd" "$TMP_WORK/org-token-in-skillmd-fixed"
+sed -i '' '/Contentful/d' "$TMP_WORK/org-token-in-skillmd-fixed/SKILL.md"
+bash "$NEUTRALITY_CHECK" "$TMP_WORK/org-token-in-skillmd-fixed" > /dev/null 2>&1
+assert_exit "neutrality: org-token-in-skillmd-fixed" "0" "$?"
+
+# Test: org-token-in-scripts fixed (defect line removed)
+rm -rf "$TMP_WORK/org-token-in-scripts-fixed"
+cp -r "$NFIX/org-token-in-scripts" "$TMP_WORK/org-token-in-scripts-fixed"
+sed -i '' '/Backstage/d' "$TMP_WORK/org-token-in-scripts-fixed/scripts/helper.sh"
+bash "$NEUTRALITY_CHECK" "$TMP_WORK/org-token-in-scripts-fixed" > /dev/null 2>&1
+assert_exit "neutrality: org-token-in-scripts-fixed" "0" "$?"
+
+# Test: profile-ref-in-core fixed (defect line removed)
+rm -rf "$TMP_WORK/profile-ref-in-core-fixed"
+cp -r "$NFIX/profile-ref-in-core" "$TMP_WORK/profile-ref-in-core-fixed"
+sed -i '' '/profile\/evidence-sources\.md/d' "$TMP_WORK/profile-ref-in-core-fixed/core/pipeline.md"
+bash "$NEUTRALITY_CHECK" "$TMP_WORK/profile-ref-in-core-fixed" > /dev/null 2>&1
+assert_exit "neutrality: profile-ref-in-core-fixed" "0" "$?"
 
 # ──────────────────────────────────────────────────────────────────────────────
 # PROVENANCE TESTS (entry-level blame, RC-24)

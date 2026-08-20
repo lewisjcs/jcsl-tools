@@ -502,7 +502,7 @@ ordinary subject for this run, not a degraded one. Confirm this run's own
 `core/` files still honor that boundary:
 
 ```bash
-bash <skill-root>/scripts/check-core-profile-boundary.sh
+bash <skill-root>/scripts/check-core-neutrality.sh
 ```
 
 Exit `0` required. This checks the plugin's own `core/` files, not the

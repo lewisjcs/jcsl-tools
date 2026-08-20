@@ -279,5 +279,5 @@ report the first that fails:
    run's overall result is `PASS` only if both of them are.
 4. The patch, if any, contains only repository-bound artifacts and only
    sections `core/readme-ownership.md` permits writing.
-5. `bash <skill-root>/scripts/check-core-profile-boundary.sh`
+5. `bash <skill-root>/scripts/check-core-neutrality.sh`
    exits 0.
