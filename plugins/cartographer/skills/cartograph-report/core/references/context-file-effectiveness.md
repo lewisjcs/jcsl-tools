@@ -86,7 +86,8 @@ Status: transcribed-from plugins/gauntlet/skills/skill-authoring-principles/SKIL
 
 `doc-types.md` § 6's Source line names Cartographer's own
 `file-format-agents-md.md` and `file-format-claude-md.md` (in
-`contentful/agents-kit`) as sources for its AGENTS.md structural template.
+an internal agent-tooling repository) as sources for its AGENTS.md
+structural template.
 `doc-patterns` therefore already treats those currently-uncited
 Cartographer knowledge files as authoritative, while Cartographer itself
 cites nothing back to `doc-patterns` or to any external research. This is

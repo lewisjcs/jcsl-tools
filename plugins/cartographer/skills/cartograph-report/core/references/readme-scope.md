@@ -54,7 +54,7 @@ Status: transcribed-from core/references/sources/design-research-basis-2026-08-1
 
 ## The AGENTS.md inclusion litmus test
 
-`contentful-update-agents-md` conventions' litmus test, cited in
+The internal AGENTS.md-conventions doctrine's litmus test, cited in
 `doc-patterns/doc-types.md`: "If removing this line would cause an agent
 to violate a repo constraint it has no other way to learn, the line
 belongs. Otherwise it does not." The same file states the companion
@@ -87,8 +87,9 @@ bloat rule's *cost* half is corroborated externally — arXiv:2602.11988
 cost" above) independently found context files raising inference cost by
 over 20% on average. The bloat rule's *task-success* half ("bloated
 context files reduce agent task success rates", stated two entries above)
-has no external study behind it in this sweep — it is internal
-Contentful doctrine, and it sits in direct tension with arXiv:2602.11988's
+has no external study behind it in this sweep — it is internal house
+doctrine (transcribed from `doc-types.md`), and it sits in direct
+tension with arXiv:2602.11988's
 own null result on task success. Treat the task-success clause as
 uncorroborated doctrine transcribed from `doc-types.md`, not as an
 independently verified finding.

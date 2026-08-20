@@ -199,7 +199,7 @@ an explicit Considered-Options comparison and
 optional-extension reference for ADRs; and the community AGENTS.md
 standard ([agents.md](https://agents.md/)), which lists setup/build
 commands as a "popular choice" to include — a choice `doc-types.md`
-records that Contentful's internal doctrine deliberately narrows away
+records that the house doctrine it transcribes deliberately narrows away
 (setup commands are `bloat` in that doctrine's AGENTS.md, not the
 community spec's).
 

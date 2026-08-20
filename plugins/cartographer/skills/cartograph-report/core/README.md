@@ -2,8 +2,8 @@
 
 TL;DR: `core/` holds the generalized Cartographer workflow — the claim
 model, the README ownership model, the pipeline, and the authoring
-guidance those three draw on. Nothing here depends on a profile, and the
-boundary is checked, not just asserted.
+guidance those three draw on. Nothing here depends on org content, and
+the boundary is checked, not just asserted.
 
 ## Files
 
@@ -13,25 +13,25 @@ boundary is checked, not just asserted.
 | [claim-verification.md](./claim-verification.md) | The content-class taxonomy and its stage-2 assignment procedure, the Tier-1 textual recognition rule and match predicates, the shared Tier-2 isolated-dispatch contract and its prompt template, the accuracy dispatch scope, the verification-report record grammar, and the Accuracy gate. Sole definition site for those terms. |
 | [effectiveness-verification.md](./effectiveness-verification.md) | The newcomer-question set, the answered/unanswered predicate, the Effectiveness dispatch's slot values on `claim-verification.md`'s shared Tier-2 contract, and the Effectiveness gate. Sole definition site for those terms. |
 | [readme-ownership.md](./readme-ownership.md) | The ownership × freshness classification, the twelve-cell action matrix, and the managed-section marker grammar. Sole definition site for the ownership and freshness values. |
-| [pipeline.md](./pipeline.md) | The six-stage sequence, the report contract, the repository-bound vs working-only artifact split, and the core/profile independence guarantee. |
+| [pipeline.md](./pipeline.md) | The six-stage sequence, the report contract, the repository-bound vs working-only artifact split, and the core/org-content independence guarantee. |
+| [profile-contract.md](./profile-contract.md) | The org-content seam: the four fixed entry filenames and the stage each is read at, the sovereignty rule, the external-source honesty rule, and the run-report disclosure lines. Sole definition site for those terms. |
 | [local-validation.md](./local-validation.md) | The link, command, and low-value-section gates plus the managed-section marker-grammar gate; the report format, the scope tag, and the exit-code rule. Sole definition site for those terms. `pipeline.md` stage 4 states the hand-off it owns. |
 | [refresh.md](./refresh.md) | The run-state file format, the per-section fingerprint schema, the mode-selection rule (full mode vs targeted mode), and the three-bucket run report (confirmed current / not assessed / drifted). Sole definition site for those terms. |
 | [knowledge/](./knowledge/) | Terse, always-loaded authoring guidance the core draws on while drafting. Every claim-bearing section carries one short marker. |
 | [references/](./references/) | The fuller cited research behind `knowledge/`, loaded on demand only — never at drafting time. |
 
-## The core never depends on a profile
+## The core never depends on org content
 
-The core runs its whole pipeline against a repository with no profile
-integration configured, using repository-local evidence only, and
-declares no required runtime dependency on any module under
-`profiles/contentful/`. <!-- boundary-exempt: prose -->
-It never assumes Glean, Backstage, a `catalog-info.yaml`, or a visibility
-policy exists; a repository that has none of them is an ordinary subject,
-not a degraded one.
+The core runs its whole pipeline against a repository with no org
+content configured, using repository-local evidence only, and declares
+no required runtime dependency on any org-content entry file. It never
+assumes an external search, catalog, or visibility-policy system
+exists; a repository that has none of them is an ordinary subject, not
+a degraded one.
 
-A profile may add evidence sources and may narrow a core rule. It may not
-weaken a core guarantee. The full statement, with its enforcement, is in
-`pipeline.md`.
+Org content may add evidence sources and may narrow a core rule. It may
+not weaken a core guarantee. The full statement, with its enforcement,
+is in `pipeline.md`; the seam's contract is `profile-contract.md`.
 
 ## Two vocabularies that both use the word "evidence"
 

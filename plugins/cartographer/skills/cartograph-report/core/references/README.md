@@ -56,8 +56,8 @@ deliberately **not** listed as an indexed file above and never trips rule
    instruction-following, Meaning-preserving rephrasing swings accuracy,
    Prompt-level evaluation and conflicting instructions).
 
-2. **Glean search over Slack and PR-review history** — unavailable:
-   Glean not accessible to this agent.
+2. **Internal org search over Slack and PR-review history** —
+   unavailable: no internal search tool accessible to this agent.
 
 3. **Reuse: arXiv:2602.11988, already written up in the release design
    document § "Research basis" (captured at

@@ -477,7 +477,7 @@ Before a checker change is trusted, confirm every one of these:
 4. `bash <skill-root>/scripts/check-core-neutrality.sh`
    exits 0 (this file lives under `core/` and is scanned by the
    neutrality check like every other parity-set file; it names no org
-   token and no unlicensed `profile/` path).
+   token and no unlicensed org-content path).
 5. Every `link`, `command`, `signature`, and `self-citation` record
    carries six fields whose sixth is `in-patch` or `out-of-patch`, on
    every severity, and every `section-value` and `marker` record carries

@@ -241,26 +241,26 @@ README — is not reported ready. The core removes the artifact from the
 patch and reports the violation; it does not ship the patch and mention
 the extra file in passing.
 
-## Core/profile independence
+## Core/org-content independence
 
 The core completes stages 1 through 6, using repository-local evidence
-only, for a repository with no `profiles/contentful/` integration. <!-- boundary-exempt: prose -->
-The core declares no required runtime dependency on any module under
-`profiles/contentful/`, and no core stage waits on one. <!-- boundary-exempt: prose -->
-The core never assumes that Glean, Backstage, a `catalog-info.yaml`, or a
-repository visibility policy exists. A run in a repository that has none
-of them is an ordinary run, not a degraded one.
+only, for a distribution that ships no org content. It declares no
+required runtime dependency on any org-content entry file, and no core
+stage waits on one. The core never assumes any external system —
+search, catalog, or visibility policy — exists. A run with none of them
+is an ordinary run, not a degraded one.
 
-A profile may add evidence sources and may narrow the core's rules. It
-may not weaken the ownership, claim, or validation guarantees this file
-and its two siblings state.
+Org content may add evidence sources and may narrow the core's rules.
+It may not weaken the ownership, claim, or validation guarantees this
+file and its siblings state — the full contract, including the four
+entry points and the sovereignty rule, is `core/profile-contract.md`.
 
 Prose is half of this guarantee. The other half is mechanical:
-`scripts/check-core-profile-boundary.sh` flags any line under `core/`
-containing the profile directory path unless the line carries the
-`boundary-exempt: prose` token, and exits non-zero when one does not.
-A statement of independence that the check does not back is the way the
-original coupling returns.
+`scripts/check-core-neutrality.sh` flags any org-specific token in the
+shipped parity set and any org-content path reference outside the
+contract's licensed locations, and exits non-zero on a hit. A statement
+of independence that the check does not back is the way the guarantee
+would silently rot.
 
 ## Verification check
 

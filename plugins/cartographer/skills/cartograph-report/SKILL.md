@@ -8,8 +8,10 @@ description: Use when onboarding to an unfamiliar repository, orienting a new co
 Runs Cartographer's core pipeline against the repository under analysis:
 evidence collection, a claim ledger, a drafted README section or diff,
 local validation, accuracy and effectiveness verification, and a run
-report — or, only when explicitly authorized, a patch. Slice 1 ships the
-core only; no `profiles/contentful/` behavior is in scope here.
+report — or, only when explicitly authorized, a patch. Ships the general
+core. Org-specific content, when a distribution provides it, loads
+through the `profile/` seam per `core/profile-contract.md`; with no
+`profile/` directory present, every run is an ordinary core-only run.
 
 Every path in this file and in `core/` resolves against the **skill
 root** — the directory containing the `SKILL.md` you are reading. A
@@ -91,6 +93,15 @@ for both files, then apply exactly one row of this table:
 | absent | present | Select the mode by `core/refresh.md` § Selecting the mode — apply in order, once per run, at Step 0. Create `progress.md` with the resulting `mode:` line first — `mode: full` or `mode: targeted <source-revision>` — and six `[ ]` stage lines beneath it. |
 | present | absent | Read the mode from `progress.md`'s `mode:` line; do not re-derive it. `mode: full` → resume the run at the first `[ ]` stage in full mode. `mode: targeted <source-revision>` → the recorded mode is unexecutable, because the fingerprint it would carry forward from is gone, so restart at stage 1 in **full mode** and rewrite the checklist with `mode: full` as its first line and six `[ ]` stage lines beneath it — the same safe-failure move as a checklist carrying no `mode:` line. |
 | present | present | Resume the run at the first `[ ]` stage. Read the mode from `progress.md`'s `mode:` line; do not re-derive it. An interrupted run's mode is a fact about that run, not about the current state of `last-run.md`. |
+
+Step 0 also fixes this run's org-content state, once: check `profile/`
+at the skill root for the four entry files `core/profile-contract.md`
+names. Each entry file present is loaded at the stage that contract
+assigns it — and at no other point; each absent is skipped silently. No
+entry file present means a core-only run — an ordinary run, not a
+degraded one. Record which entry files were present; stage 6's report
+carries the disclosure line `core/profile-contract.md` § Run-report
+disclosure defines.
 
 A resumed run may be in targeted mode — that is what recording the mode
 buys. Do not treat resumption as full mode, and do not re-run a stage
@@ -492,21 +503,21 @@ sections classified `cartographer-managed` (enclosed by a matching
 value — `human-authored`, `other-tool-generated`, `unknown` — is preserved
 or proposed, never edited in place.
 
-## Core/profile scope (Slice 1)
+## Core neutrality
 
-This run completes all six stages using repository-local evidence only,
-for a repository with no `profiles/contentful/` integration configured.
-It declares no dependency on Glean, Backstage, a `catalog-info.yaml`, or a
-repository visibility policy. A repository with none of them is an
-ordinary subject for this run, not a degraded one. Confirm this run's own
-`core/` files still honor that boundary:
+The core completes all six stages using repository-local evidence plus
+whatever `profile/evidence-sources.md` adds (Step 0). It declares no
+required dependency on any external system; a repository reachable by
+no external system is an ordinary subject for a core-only run, not a
+degraded one. Confirm the shipped core is org-neutral — this doubles as
+a tamper/drift tripwire on a vendored copy:
 
 ```bash
 bash <skill-root>/scripts/check-core-neutrality.sh
 ```
 
-Exit `0` required. This checks the plugin's own `core/` files, not the
-repository under analysis.
+Exit `0` required. This checks this skill's own parity set (`SKILL.md`,
+`core/`, `scripts/`), not the repository under analysis.
 
 ## Verification coverage — an honest constraint on this file
 
