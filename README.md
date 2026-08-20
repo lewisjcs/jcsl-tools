@@ -1,6 +1,6 @@
 # jcsl-tools
 
-Josh C.S. Lewis's personal Claude Code plugin marketplace — five independently installable plugins covering implementation workflow, multi-lens review, discovery-first research, context-spend discipline, and repository documentation. No build step, no server, no compiled artifact: every plugin is markdown (skills, agents) plus a handful of small shell/Python scripts that Claude Code loads directly.
+Josh C.S. Lewis's personal Claude Code plugin marketplace — five independently installable plugins covering implementation workflow, multi-lens review, discovery-first research, context-spend discipline, and repository documentation. No build step runs in this repo and there is no server: every plugin is markdown (skills, agents) plus shell, Python, and JavaScript components that Claude Code loads directly — gauntlet's runtime CLI among them, tracked as a pre-generated bundle (`plugins/gauntlet/runtime/bin/cli.mjs`) rather than built here.
 
 ## Plugins
 
@@ -36,6 +36,7 @@ claude plugin install kiln@jcsl-tools
 claude plugin install gauntlet@jcsl-tools
 claude plugin install prospector@jcsl-tools
 claude plugin install context-economy@jcsl-tools
+claude plugin install cartographer@jcsl-tools
 ```
 
 Restart Claude Code after installing or after any change to a plugin's `hooks.json` or `plugin.json`.

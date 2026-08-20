@@ -2,7 +2,7 @@
 
 ## What this repo is
 
-`jcsl-tools` is a Claude Code **plugin marketplace**: a directory registered via `extraKnownMarketplaces` (or installed directly) that Claude Code reads to discover installable plugins. It is not an application — there is no runtime, no server, no build artifact. Every plugin is a bundle of markdown (skills, agents) and small shell/Python scripts that Claude Code loads directly.
+`jcsl-tools` is a Claude Code **plugin marketplace**: a directory registered via `extraKnownMarketplaces` (or installed directly) that Claude Code reads to discover installable plugins. It is not an application — there is no server and no build step runs in this repo. Every plugin is a bundle of markdown (skills, agents) and shell, Python, and JavaScript components that Claude Code loads directly; gauntlet's runtime CLI among them, tracked as a pre-generated bundle (`plugins/gauntlet/runtime/bin/cli.mjs`) rather than built here.
 
 ```
 jcsl-tools/
