@@ -273,6 +273,86 @@ fi
 echo "OK: all finder/validator dispatches use the gauntlet: prefix (no bare dispatch)."
 
 # ---------------------------------------------------------------------------
+# STANDARDS-RE-VENDOR check: skills/code-quality-standards/SKILL.md is a
+# re-vendored projection of the canon reference shipped in the runtime payload
+# (runtime/references/code-quality-standards.md — the source of truth is
+# lewisjcs/gauntlet references/, per PROVENANCE.json). The skill is allowed
+# exactly two kinds of additions on top of the canon body: skill-routing
+# bullets inside "## When NOT to use", and trailing skill-only sections (e.g.
+# "## Sibling Skills"). So the assertion is two-part, both derived from the
+# runtime reference at check time so a canon edit that isn't re-vendored
+# goes red here mechanically:
+#   1. every "## When NOT to use" bullet in the canon body appears verbatim
+#      as a line in the skill;
+#   2. the canon body from "## Overview" to EOF appears in the skill as one
+#      contiguous byte-identical block.
+# ---------------------------------------------------------------------------
+
+RUNTIME_REF="$AGENTS_DIR/../runtime/references/code-quality-standards.md"
+STANDARDS_SKILL="$SKILLS_DIR/code-quality-standards/SKILL.md"
+
+for f in "$RUNTIME_REF" "$STANDARDS_SKILL"; do
+  if [[ ! -f "$f" ]]; then
+    echo "FAIL: standards-re-vendor check — expected file missing: $f"
+    exit 1
+  fi
+done
+
+# Canon body = runtime reference minus its leading maintainer HTML comment
+# and the blank lines that follow it.
+ref_body="$TMPDIR_WORK/standards-ref.body"
+awk 'NR==1 && /^<!--/{skip=1} skip{if(/-->/){skip=0}; next} {print}' "$RUNTIME_REF" \
+  | sed '/./,$!d' > "$ref_body"
+
+if [[ ! -s "$ref_body" ]]; then
+  echo "FAIL: standards-re-vendor check — canon body extraction from the runtime reference came back empty; the comment-stripping pattern no longer matches the file. Fix the extraction rather than trusting a vacuous pass."
+  exit 1
+fi
+
+# Part 1: every canon "When NOT to use" bullet must appear verbatim in the skill.
+canon_bullets="$(awk '/^## When NOT to use$/{inside=1; next} inside && /^## /{inside=0} inside && /^- /{print}' "$ref_body")"
+canon_bullet_count="$(printf '%s\n' "$canon_bullets" | sed '/^$/d' | wc -l | tr -d ' ')"
+
+if [[ "$canon_bullet_count" -lt 1 ]]; then
+  echo "FAIL: standards-re-vendor check — found no bullets under '## When NOT to use' in the canon body (expected at least 1); the extraction pattern no longer matches. Fix the pattern rather than trusting a vacuous pass."
+  exit 1
+fi
+
+missing_bullets=()
+while IFS= read -r bullet; do
+  [[ -z "$bullet" ]] && continue
+  if ! grep -Fxq -e "$bullet" "$STANDARDS_SKILL"; then
+    missing_bullets+=("$bullet")
+  fi
+done <<< "$canon_bullets"
+
+if [[ ${#missing_bullets[@]} -gt 0 ]]; then
+  echo "FAIL: standards-re-vendor check — ${#missing_bullets[@]} canon 'When NOT to use' bullet(s) missing verbatim from skills/code-quality-standards/SKILL.md:"
+  printf '  MISSING: %s\n' "${missing_bullets[@]}"
+  echo "Re-vendor the skill body from the runtime reference."
+  exit 1
+fi
+
+# Part 2: the canon body from "## Overview" to EOF must appear contiguously,
+# byte-identical, in the skill.
+ref_block="$TMPDIR_WORK/standards-ref.block"
+awk '/^## Overview$/{found=1} found{print}' "$ref_body" > "$ref_block"
+
+ref_block_lines="$(wc -l < "$ref_block" | tr -d ' ')"
+if [[ "$ref_block_lines" -lt 10 ]]; then
+  echo "FAIL: standards-re-vendor check — '## Overview'-to-EOF block extracted from the canon body is implausibly small ($ref_block_lines line(s)); the extraction pattern no longer matches. Fix the pattern rather than trusting a vacuous pass."
+  exit 1
+fi
+
+if ! awk 'NR==FNR{block = block $0 "\n"; next} {skill = skill $0 "\n"} END{exit (index(skill, block) ? 0 : 1)}' "$ref_block" "$STANDARDS_SKILL"; then
+  echo "FAIL: standards-re-vendor check — the canon body ('## Overview' through EOF of the runtime reference, $ref_block_lines lines) does not appear as a contiguous verbatim block in skills/code-quality-standards/SKILL.md."
+  echo "Re-vendor the skill body from the runtime reference (runtime/references/code-quality-standards.md)."
+  exit 1
+fi
+
+echo "OK: skills/code-quality-standards/SKILL.md carries the canon standards body verbatim ($canon_bullet_count canon 'When NOT to use' bullet(s) + $ref_block_lines-line body block)."
+
+# ---------------------------------------------------------------------------
 # DISPATCH-RESOLUTION check: every `gauntlet:<name>` Skill dispatch string
 # named in skills/run/*.md must resolve to a real skill directory
 # (plugins/gauntlet/skills/<name>/SKILL.md). A dispatch string is only as
