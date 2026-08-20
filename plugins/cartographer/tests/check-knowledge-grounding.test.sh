@@ -5,9 +5,9 @@
 set -u
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-GROUNDING_CHECK="$SCRIPT_DIR/check-knowledge-grounding.sh"
-PROVENANCE_CHECK="$SCRIPT_DIR/check-grounding-provenance.sh"
-BOUNDARY_CHECK="$SCRIPT_DIR/check-core-profile-boundary.sh"
+GROUNDING_CHECK="$SCRIPT_DIR/../skills/cartograph-report/scripts/check-knowledge-grounding.sh"
+PROVENANCE_CHECK="$SCRIPT_DIR/../skills/cartograph-report/scripts/check-grounding-provenance.sh"
+BOUNDARY_CHECK="$SCRIPT_DIR/../skills/cartograph-report/scripts/check-core-profile-boundary.sh"
 FIXTURES_DIR="$SCRIPT_DIR/fixtures"
 
 PASS=0

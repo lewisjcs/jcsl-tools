@@ -20,7 +20,7 @@
 set -u
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CHECK="$SCRIPT_DIR/check-readme-patch.sh"
+CHECK="$SCRIPT_DIR/../skills/cartograph-report/scripts/check-readme-patch.sh"
 FIXTURES_DIR="$SCRIPT_DIR/fixtures/readme-patch"
 
 PASS=0

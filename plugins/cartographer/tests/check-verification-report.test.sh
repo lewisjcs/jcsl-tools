@@ -24,7 +24,7 @@
 set -u
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CHECK="$SCRIPT_DIR/check-verification-report.sh"
+CHECK="$SCRIPT_DIR/../skills/cartograph-report/scripts/check-verification-report.sh"
 ACCURACY_FIXTURES="$SCRIPT_DIR/fixtures/accuracy-verification"
 EFFECTIVENESS_FIXTURES="$SCRIPT_DIR/fixtures/effectiveness-verification"
 
