@@ -4,6 +4,8 @@
 # is present and byte-identical across all 8 finder/validator agent files.
 # adversarial-review's finder/validator pair runs as a runtime-driven Class and
 # carries no sentinel contract block, so it is not part of this checked set.
+# code-quality-audit's auditor likewise runs as a runtime-driven Class with no
+# sentinel contract block, and sits outside the checked 8-file set below.
 # Exit 0 = parity confirmed. Exit non-zero = failure with diff.
 
 set -euo pipefail
@@ -260,7 +262,7 @@ echo "    SHA-256: $validator_unique_hashes"
 SKILLS_DIR="$(cd "$AGENTS_DIR/../skills" && pwd)"
 
 # Match `subagent_type: <name>-finder|validator` NOT preceded by `gauntlet:`.
-bare_dispatches="$(grep -rnE 'subagent_type:[[:space:]]*(adversarial|directive|doc|plan|security)-(finder|validator)' "$SKILLS_DIR" || true)"
+bare_dispatches="$(grep -rnE 'subagent_type:[[:space:]]*((adversarial|directive|doc|plan|security)-(finder|validator)|code-quality-auditor)' "$SKILLS_DIR" || true)"
 
 if [[ -n "$bare_dispatches" ]]; then
   echo "FAIL: bare (un-prefixed) agent dispatch found — must use the gauntlet: prefix:"
