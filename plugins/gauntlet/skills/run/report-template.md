@@ -21,7 +21,7 @@ Write the file with TWO zones. **Bright-line: Zone 1 vocabulary never appears in
 
 ## Required Changes
 
-[Only present if critical[] non-empty. Each entry: location, claim, severity, confidence, recommendation. NO truncation — the user is making a ship/no-ship call. **Adversarial-lane-failure blocker (`code-pr`/`code-local` only, per run/SKILL.md Phase 3 substep 6):** when adversarial-review's Phase 1 status is `⚠ failed`, its synthetic blocker entry renders FIRST, with `location: N/A — lane failure` in place of a `file:line` — everything else about the entry (claim, severity, recommendation) renders like any other Required Changes row.]
+[Only present if critical[] non-empty. Each entry: location, claim, severity, confidence, recommendation. NO truncation — the user is making a ship/no-ship call. **Runtime-lane-failure blocker (adversarial-review and/or code-quality-audit, `code-pr`/`code-local` only, per run/SKILL.md Phase 3 substep 6):** when a runtime lane's Phase 1 status is `⚠ failed`, its synthetic blocker entry renders FIRST, with `location: N/A — lane failure` in place of a `file:line` — everything else about the entry (claim, severity, recommendation) renders like any other Required Changes row.]
 
 ## Findings (ranked, by severity × confidence)
 
@@ -114,9 +114,10 @@ If ticket-key extraction or detection errors out, omit silently.]
 > [!WARNING]
 > **<Blocker title>** — `<file>:<line>`. <claim>. **Fix:** <recommendation>.
 
-(one `> [!WARNING]` per blocker; omit the block entirely on a clean run. The adversarial-lane-failure blocker
-has no `file:line` — render its callout as `> [!WARNING]` `**Adversarial review did not run** — <claim>.
-**Fix:** <recommendation>.` with the location clause dropped, not stubbed with a placeholder path.)
+(one `> [!WARNING]` per blocker; omit the block entirely on a clean run. A runtime-lane-failure blocker
+has no `file:line` — render its callout as `> [!WARNING]` `**<Adversarial review | Code-quality audit> did
+not run** — <claim>. **Fix:** <recommendation>.` with the location clause dropped, not stubbed with a
+placeholder path.)
 
 > [!TIP]
 > **🚀 Go-Live: SHIP** · _as-of <YYYY-MM-DD>_
@@ -140,7 +141,7 @@ has no `file:line` — render its callout as `> [!WARNING]` `**Adversarial revie
 
 (Render as a TABLE. Columns:
 - **Col 1** — severity emoji (⚠️ Concern, 💡 Nit).
-- **Lens** — the finding's canonical `lens` value, **character-for-character identical to the `lens` field in the machine-readable JSON block below** (e.g. `adversarial-review / Failure Scenarios`, `code-quality-standards / Gaps`, `security-gauntlet / Authorization`). Do NOT translate it to a friendlier synonym (`Failure scenario`, `Design / scoping`, `Type safety`, …) — a paraphrase mints a THIRD vocabulary that mismatches both the JSON and the 🧪 Lanes row, so a reader cross-referencing a row to the JSON sees two labels for one finding. One concept, one label, across both surfaces. The lane (the skill-prefix before ` / `) always equals a 🧪 Lanes entry; the sub-lens after ` / ` is the extra triage signal for the human. The lens taxonomy is allowed in this column (it's the carve-out, like the box score) — the no-internal-vocabulary rule still bars *process narration*, not the lens label itself.
+- **Lens** — the finding's canonical `lens` value, **character-for-character identical to the `lens` field in the machine-readable JSON block below** (e.g. `adversarial-review / Failure Scenarios`, `code-quality-audit / Compliance`, `code-quality-standards / Gaps`, `security-gauntlet / Authorization`). Do NOT translate it to a friendlier synonym (`Failure scenario`, `Design / scoping`, `Type safety`, …) — a paraphrase mints a THIRD vocabulary that mismatches both the JSON and the 🧪 Lanes row, so a reader cross-referencing a row to the JSON sees two labels for one finding. One concept, one label, across both surfaces. The lane (the skill-prefix before ` / `) always equals a 🧪 Lanes entry; the sub-lens after ` / ` is the extra triage signal for the human. The lens taxonomy is allowed in this column (it's the carve-out, like the box score) — the no-internal-vocabulary rule still bars *process narration*, not the lens label itself.
 - **Finding** — one-line claim.
 - **Location** — `` `file:line` ``.
 - **Status — RE-REVIEW ONLY.** Append a **Status** column ONLY on a Phase 4d re-review. **Omit it entirely on an initial review** — every cell would read `Open`, a dead column carrying no signal. On a re-review, Status is set BY THE GAUNTLET (never self-ticked) and reflects what the re-review VERIFIED against the code: `✅ Resolved` (fix confirmed in the diff), `➖ By design` / `➖ Author` (author dispositioned and the rationale holds), or `🔴 Still open` (claimed fixed but verification failed, OR not yet addressed). Never mark `✅ Resolved` on an author's say-so alone — confirm against the code per Phase 4d.
@@ -176,7 +177,7 @@ Two rationales: (a) **Lens matches the JSON** — the human table and the agent 
 
 **Verdict badge** (`shields.io`, static, rendered at post time from adjudicated counts): label `gauntlet`; message+color track state — ≥1 blocker → `<n>_blocker[s]`/`red`; 0 blockers + ≥1 advisory → `<n>_advisory`/`yellow`; 0 findings → `clean`/`brightgreen`. The badge is garnish (Camo-cached, breaks on host outage); the text box score is the source of truth — the badge never carries info absent from the text.
 
-**Agent channel.** The `<details>` JSON is the machine contract: `severity` ∈ {blocker, concern, nit}; `location` is `file:line`, except the adversarial-lane-failure blocker (`code-pr`/`code-local` only), whose `location` is the literal string `"N/A — lane failure"`; fields mirror the canonical schema subset. Keep the blank line after `</summary>` or the fenced block won't render. The `<!-- gauntlet:v1 ref=<sha> -->` marker is the comment's self-ID: on a re-run, grep existing PR comments for `gauntlet:v1` and UPDATE the prior comment (Phase 4d delta) rather than posting a duplicate. The `go_live` sibling key is present ONLY when Phase 2.5 ran; it carries `{verdict, as_of}` and is deliberately a SEPARATE top-level key from `verdict:{}` — agent consumers read the ship/hold decision from `go_live`, never by inflating the `verdict` counts. Omit the `go_live` key entirely when Phase 2.5 did not run (do not emit `null`).
+**Agent channel.** The `<details>` JSON is the machine contract: `severity` ∈ {blocker, concern, nit}; `location` is `file:line`, except a runtime-lane-failure blocker (adversarial-review or code-quality-audit, `code-pr`/`code-local` only), whose `location` is the literal string `"N/A — lane failure"`; fields mirror the canonical schema subset. Keep the blank line after `</summary>` or the fenced block won't render. The `<!-- gauntlet:v1 ref=<sha> -->` marker is the comment's self-ID: on a re-run, grep existing PR comments for `gauntlet:v1` and UPDATE the prior comment (Phase 4d delta) rather than posting a duplicate. The `go_live` sibling key is present ONLY when Phase 2.5 ran; it carries `{verdict, as_of}` and is deliberately a SEPARATE top-level key from `verdict:{}` — agent consumers read the ship/hold decision from `go_live`, never by inflating the `verdict` counts. Omit the `go_live` key entirely when Phase 2.5 did not run (do not emit `null`).
 
 **Zone 2 is the canonical postable text** for EVERY artifact type (code-pr, code-local, plan, doc, skill — for non-PR artifacts the operator pastes it into the ticket). When the operator later posts a PR comment or runs `/create-pr`, that step reuses Zone 2 verbatim. One voice pass, one source of truth.]
 ````

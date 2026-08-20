@@ -131,14 +131,14 @@ Six invariants enforced by this skill:
 
 On entry to the Phase 1 task, create the Phase 1 sub-tasks (a `TaskCreate` call per sub-task). The set of sub-tasks varies by artifact type:
 
-- `code-pr`: code-quality-audit (audit/inline), adversarial-review (family=code-diff).
+- `code-pr`: code-quality-audit (runtime-driven Class; family=code-diff), adversarial-review (family=code-diff).
 **Conditionally also dispatch doc-review (typed) against the PR body text** only when the body is ≥ 200 words
 AND the PR is own-authored (per the Phase 0 `code-pr` rule). Pass the body content as the doc artifact. Record
 the outcome in the trust-signal footer either way — `doc-review (PR body): ran (Nit-capped)`,
 `… skipped — body too short`, or `… skipped — cross-author (advisory lane)`. The lane must never silently
 disappear: always run the `wc -w` + author check and record the result. Findings from this lane are capped at
 Nit in Phase 3 substep 6.
-- `code-local`: code-quality-audit, adversarial-review (family=code-diff). Same dispatch pair as `code-pr`; both lanes operate on diff content rather than GitHub metadata. No PR body dispatch (no PR exists for `code-local`).
+- `code-local`: code-quality-audit (runtime-driven Class; family=code-diff), adversarial-review (family=code-diff). Same dispatch pair as `code-pr`; both lanes operate on diff content rather than GitHub metadata. No PR body dispatch (no PR exists for `code-local`).
 - `plan`: plan-review, adversarial-review (family=plan-text — wires up plan-review's Architectural-risk lens per Phase 7 §9 resolution)
 - `doc`: doc-review, adversarial-review (family=doc-text — wires up doc-review's Hidden-assumptions lens per Phase 7 §9 resolution)
 - `directive`: directive-review (typed; `Skill:` black-box dispatch) + adversarial-review (the runtime has no `directive-text` family; pass family=doc-text as the closest fit and note the substitution in the trust-signal footer). No PR body dispatch. **For multi-file directive runs:** before dispatching any directive-review sub-tasks, count the files to be reviewed and emit a single line to chat: `"Dispatching directive-review for N file(s): [list]. This will spawn N×2 agent passes."` Then proceed without gating.
@@ -149,25 +149,28 @@ Mark each sub-task complete as its sub-skill returns its findings array.
 
 ### Canonical dispatch contract
 
-Each sibling falls into one of two dispatch shapes. **Use exactly these — do not improvise a third.**
+Each sibling falls into one of two dispatch shapes (`Skill:` dispatch, or inline `Skill:` invocation). **Use exactly these — do not improvise a third.**
 
 | Lens | Owns typed agents? | Dispatch shape |
 |---|---|---|
 | `security-gauntlet`, `plan-review`, `doc-review`, `directive-review` | Yes (`*-finder` + `*-validator`) | **`Skill:` dispatch.** Invoke the sibling skill (`Skill: gauntlet:security-gauntlet`). The skill runs its OWN internal Find→Validate→Adjudicate against its calibrated agents and returns survivors-only JSON (verdict=survives, confidence≥70). Treat it as a black box. |
 | `adversarial-review` | Yes (runtime-driven `adversarial-finder` + `adversarial-validator`) | **`Skill:` dispatch of `gauntlet:adversarial-review`.** The skill drives the deterministic runtime handshake (bundle → init → dispatch → receipt → result) inline; consume `<runDir>/result.json` `findings` as the lane's survivors — they arrive pre-adjudicated (severity-stratified gate) with `disposition: "survives"`. If the skill's own preflight fails (`node --version` absent or major < 22), it stops and reports that as its blocker before staging anything — treat this as a lane failure per Phase 1 verify below (no fallback dispatch). |
-| `code-quality-audit`, `skill-audit` | No (workflow skills) | **Inline skill.** Invoke via `Skill:`; these read files and emit 3-layer prose in the main context (no typed finder/validator agents exist for them). gauntlet applies the §4.3 transformation to their prose. |
+| `code-quality-audit` | Yes (runtime-driven `code-quality-auditor`) | **`Skill:` dispatch of `gauntlet:code-quality-audit`.** The skill drives the deterministic runtime handshake (bundle → init → dispatch → receipt → result) inline; consume `<runDir>/result.json` `findings` as the lane's findings — rule citations validated against the auditor's output contract (single-role Class: no validator stage, no adjudication; the findings keep their warnings-and-gaps character). If the skill's own preflight fails (`node --version` absent or major < 22), it stops and reports that as its blocker before staging anything — treat this as a lane failure per Phase 1 verify below (no fallback dispatch). |
+| `skill-audit` | No (workflow skill) | **Inline skill.** Invoke via `Skill:`; it reads files and emits 3-layer prose in the main context (no typed finder/validator agents exist for it). gauntlet applies the §4.3 transformation to its prose. |
 
 Why black-box the typed lenses: each sibling is a *calibrated unit* — it owns the finder→validator handoff, the empty-finder short-circuit, schema-retry, count-match verification, and its own per-lens adjudication. The calibration harness scores the **skill**, not the raw agents. Reaching past the skill to dispatch its agents directly would duplicate that coordination in the orchestrator AND diverge the production path from the calibration path.
 
 **adversarial-review under orchestration:** when `adversarial-review` runs inside a gauntlet, defer its "Presenting the result" and disposition/triage prompt — the Phase 4 report IS the presentation. After the final report, ask dispositions for the adversarial-lane findings once (single batch) and submit them via the runtime's `triage` subcommand against the run's `runId`. Do not merge `result.json`'s below-the-line findings into Phase 3 — record their count, the `runDir`, and the `runId` in the trust-signal footer instead (the deferred triage call needs `runId`; record it there rather than re-deriving it later). The runtime handshake itself (stages, receipts, retries) is untouched by orchestration: the sibling skill's HARD-GATE applies verbatim.
 
+**code-quality-audit under orchestration:** same deferral — when `code-quality-audit` runs inside a gauntlet, defer its "Presenting the result" and disposition/triage prompt; the Phase 4 report IS the presentation. After the final report, ask dispositions for the code-quality-lane findings once (single batch) and submit them via the runtime's `triage` subcommand against that lane's own `runId` — each runtime lane is its own run; never submit one lane's `triage-entries.json` against the other lane's `runId`. Record this lane's `runDir` and `runId` in the trust-signal footer. The runtime handshake itself is untouched by orchestration: the sibling skill's HARD-GATE applies verbatim.
+
 <HARD-GATE>
-**Never wrap a sibling skill in a `general-purpose` (or any non-typed) subagent.** Dispatching `Agent(subagent_type: general-purpose, "run the adversarial review…")` collapses the sibling's Find→Validate→Adjudicate into a single Find pass — the Validator stage silently vanishes and false positives ship as fact. This is an observed failure (it required user correction in two prior runs). Typed lenses → `Skill:` dispatch; audit lenses → inline `Skill:`. There is no general-purpose path.
+**Never wrap a sibling skill in a `general-purpose` (or any non-typed) subagent.** Dispatching `Agent(subagent_type: general-purpose, "run the adversarial review…")` collapses the sibling's Find→Validate→Adjudicate into a single Find pass — the Validator stage silently vanishes and false positives ship as fact. This is an observed failure (it required user correction in two prior runs). Typed lenses and runtime Classes → `Skill:` dispatch; the audit lens (skill-audit) → inline `Skill:`. There is no general-purpose path.
 </HARD-GATE>
 
 **Parallelism — why these run sequentially.** Phase 1's lenses are logically independent (security, adversarial, doc-on-body share no state and only meet at Phase 3 adjudication), so in principle they could run concurrently. They do NOT, by design: typed lenses are invoked via the `Skill:` tool, which executes **inline in the main conversation and has no background/concurrent mode** (verified — the Skill tool exposes no `run_in_background`). The only concurrency primitive in this harness is the `Agent` tool, and reaching past a sibling's `Skill:` boundary to batch its internal `*-finder`/`*-validator` agents directly is forbidden (the HARD-GATE above: it collapses Find→Validate and diverges the production path from the calibrated path). So independent lenses run one after another; this is an accepted latency cost of the black-box calibration boundary, not an oversight. Do not attempt to "background" `Skill:` dispatches or `Agent`-wrap siblings to parallelize them.
 
-For the four typed black-box siblings (`security-gauntlet`, `plan-review`, `doc-review`, `directive-review`), the sibling's "Called from gauntlet orchestrator" Invocation Context Detection row activates on `Skill:` dispatch; it returns a JSON findings array per its declared output contract. `adversarial-review` has no Invocation Context Detection table — it always drives the runtime handshake itself and its result is read from `<runDir>/result.json` regardless of caller (see the dispatch contract table above).
+For the four typed black-box siblings (`security-gauntlet`, `plan-review`, `doc-review`, `directive-review`), the sibling's "Called from gauntlet orchestrator" Invocation Context Detection row activates on `Skill:` dispatch; it returns a JSON findings array per its declared output contract. `adversarial-review` and `code-quality-audit` have no Invocation Context Detection table — each always drives the runtime handshake itself and its result is read from `<runDir>/result.json` regardless of caller (see the dispatch contract table above).
 
 **For plan and doc artifact types, dispatch the adversarial lane with the family named:**
 
@@ -180,12 +183,13 @@ Artifact path: <repo-relative path>
 
 The skill stages the artifact file itself (`bundle --family <family> --primary <path>`). Its Finder emits the same native 3-lens vocabulary (`Hidden Assumptions` | `Failure Scenarios` | `Blast Radius`); Phase 3 substep 1 relabels ALL THREE to canonical lenses (the sub-lenses must NOT collapse to one — that drops HIGH-confidence critical findings in dedup). The full 9-row cross-skill lens-mapping table, the collapse-rationale, and the ` - ` vs ` — ` separator rule live in [reference.md](reference.md) — load it in Phase 3 substep 1.
 
-**Phase 1 verify (per master spec §5.5):** for each domain skill dispatched, parse the output as JSON and confirm its shape (item 2 covers all three sub-skill kinds). Items 1, 3, 4, and 5 are the verify checklist for the **black-box and prose-emitting** sub-skills — adversarial-review's bullet under item 2 is self-contained and doesn't need to separately pass them (its raw `result.json` items carry `disposition`, not `verdict`, until Phase 3 substep 1 promotes them — checking item 4 against the unpromoted items would be a type error, not a verify step).
+**Phase 1 verify (per master spec §5.5):** for each domain skill dispatched, parse the output as JSON and confirm its shape (item 2 covers all four sub-skill kinds). Items 1, 3, 4, and 5 are the verify checklist for the **black-box and prose-emitting** sub-skills — the runtime-lane bullets (adversarial-review, code-quality-audit) under item 2 are self-contained and don't need to separately pass them (adversarial-review's raw `result.json` items carry `disposition`, not `verdict`, and code-quality-audit's carry neither `verdict` nor `confidence`, until Phase 3 substep 1 promotes them — checking items 4 and 5 against the unpromoted items would be a type error, not a verify step).
 1. The output is an array (possibly empty). *(black-box/prose sub-skills)*
-2. Each entry has one of three shapes:
+2. Each entry has one of four shapes:
    - **Black-box sub-skill output (plan-review, doc-review, security-gauntlet, directive-review):** the 10 canonical fields per §4.1, pre-filtered to verdict=`survives` AND confidence≥70.
    - **Adversarial-review output:** read `<runDir>/result.json`. `findings` is the survivors array; each item already carries `id`, `lens`, `location`, `claim`, `evidence`, `severity`, `category`, `confidence`, `recommendation`, `disposition: "survives"`. Promotion to the canonical 10-field shape (Phase 3 substep 1) only adds `skill: adversarial-review` and `verdict: "survives"` and applies the lens relabel — never re-gate these findings (the runtime's severity-stratified adjudication already did). **Carry `id` through promotion and every Phase 3 substep unchanged** — the deferred triage batch (see "adversarial-review under orchestration" above) submits `triage-entries.json` keyed on it (`findingId` there is this same `id`). If `executionStatus` is `failed`/`incomplete`, the run recorded a stage gap, or the skill's own preflight failed (Node < 22, reported as its own blocker before any staging), mark the lane `review failed` in the trust-signal footer and continue (existing failed-domain rule) — there is no fallback dispatch. **For `code-pr`/`code-local` artifacts, this failure is more than a footer line — it becomes a report-level blocker, not merely advisory: see Phase 3 substep 6.** (For `plan`/`doc`/`skill`/`directive`/`multi`, the footer line is the whole treatment — adversarial-review is a supplementary lens there, not one of the two mandatory Phase 1 lenses.)
-   - **Prose-emitting sub-skill output (skill-audit, code-quality-audit):** these skills emit 3-layer prose (Compliance / Staleness / Gap) rather than canonical 10-field JSON. Apply the master spec §4.3 transformation to convert the prose into the canonical schema before adjudication.
+   - **code-quality-audit output:** read `<runDir>/result.json`. `findings` items carry `id`, `layer`, `rule`, `location`, `claim`, `evidence`, `level`, `recommendation`. Promotion to the canonical 10-field shape happens in Phase 3 substep 1 (reference.md holds the field map). **Carry `id` through promotion and every Phase 3 substep unchanged** — the deferred triage batch (see "code-quality-audit under orchestration" above) submits `triage-entries.json` keyed on it against this lane's own `runId`. The Class is experimental, so `outcome` is never `clean` — a zero-count run still reports `findings` with an empty array; record it as `✓` with 0 findings, never as a failure. If `executionStatus` is `failed`/`incomplete` or the skill's own preflight failed (Node < 22, reported as its own blocker before any staging), mark the lane `review failed` in the trust-signal footer and continue — there is no fallback dispatch. **For `code-pr`/`code-local` artifacts this failure is a report-level blocker, not merely advisory: see Phase 3 substep 6.** Footer this lane as `✓ — 0 findings`, never the generic `clean — no findings` of the empty-array rule below — the Class's calibration-honesty rule bars the word "clean" for an experimental Class.
+   - **Prose-emitting sub-skill output (skill-audit):** emits 3-layer prose (Compliance / Staleness / Gap) rather than canonical 10-field JSON. Apply the master spec §4.3 transformation to convert the prose into the canonical schema before adjudication.
 3. The `lens` value matches the sub-skill's declared lens vocabulary. *(black-box/prose sub-skills)*
 4. `verdict ∈ {survives, disproved}`. *(black-box/prose sub-skills)*
 5. `confidence ∈ [0, 100]`. *(black-box/prose sub-skills)*
@@ -249,7 +253,7 @@ Before creating the substep list or touching any finding, prove the review is co
    `⚠ failed`), OR Phase 2 was skipped because the Phase-0 `security_relevant` flag was FALSE (a deliberate,
    footer-recorded gated skip — NOT a missing lens). If Phase 2 neither ran nor was gate-skipped (i.e. it was
    silently dropped with no flag decision), it is not optional — dispatch it now (HARD-GATE invariant 2).
-2. **Every dispatched lens completed.** For the artifact type's routing set (per Phase 0), each lens shows status `✓` (returned findings/empty) or `⚠ failed` (errored after one retry) — never `in_progress`, never absent. A lens that was dispatched as a typed `Skill:` must have run its full Find→Validate→Adjudicate (survivors-only JSON returned), not just a Finder pass. `⚠ failed` is a terminal state this gate accepts so Phase 3 can proceed — do not halt here on a single lens failure — but it is not uniformly low-stakes: for `code-pr`/`code-local`, an `⚠ failed` adversarial-review is escalated to a Required Changes blocker in Phase 3 substep 6, not just noted and passed through.
+2. **Every dispatched lens completed.** For the artifact type's routing set (per Phase 0), each lens shows status `✓` (returned findings/empty) or `⚠ failed` (errored after one retry) — never `in_progress`, never absent. A lens that was dispatched as a typed `Skill:` must have run its full Find→Validate→Adjudicate (survivors-only JSON returned), not just a Finder pass. `⚠ failed` is a terminal state this gate accepts so Phase 3 can proceed — do not halt here on a single lens failure — but it is not uniformly low-stakes: for `code-pr`/`code-local`, an `⚠ failed` runtime lane (adversarial-review or code-quality-audit) is escalated to a Required Changes blocker in Phase 3 substep 6, not just noted and passed through.
 
 Concretely, list each lens in the routing set with its status before proceeding:
 
@@ -269,7 +273,7 @@ This gate exists because two prior runs advanced toward a report with an incompl
 
 Create the Phase 3 sub-tasks with these 7 substeps (a `TaskCreate` call per substep). Each substep is mechanically distinct; skipping any one degrades report quality.
 
-1. **Concatenate** — Combine all findings from Phase 1 (per-domain) and Phase 2 (security) into a single array. Promote adversarial-review's result items to the 10-field canonical shape (add `skill`/`verdict` and relabel the lens — `category`/`recommendation` already arrive on the item, nothing to derive), and apply the §4.3 skill-audit transformation to any skill-audit findings. **Load [reference.md](reference.md) now** — it holds the promotion rules (`skill`, `verdict`, `lens` via the 9-row mapping table) and the lens-mapping needed for this substep.
+1. **Concatenate** — Combine all findings from Phase 1 (per-domain) and Phase 2 (security) into a single array. Promote adversarial-review's result items to the 10-field canonical shape (add `skill`/`verdict` and relabel the lens — `category`/`recommendation` already arrive on the item, nothing to derive). Promote code-quality-audit's result items likewise (reference.md holds its field map — severity/confidence/category are derived there, not re-judged), and apply the §4.3 skill-audit transformation to any skill-audit findings. **Load [reference.md](reference.md) now** — it holds the promotion rules (`skill`, `verdict`, `lens` via the 9-row mapping table) and the lens-mapping needed for this substep.
 
 2. **Normalize verdicts (NEW — runs before drop-disproved).** Validators occasionally drift to non-canonical verdict strings under load. Before any drop, case-fold each `verdict` and apply this deterministic synonym map — known synonyms have unambiguous intent and MUST be mapped, not kept:
 
@@ -282,7 +286,7 @@ Create the Phase 3 sub-tasks with these 7 substeps (a `TaskCreate` call per subs
 
 3. **Drop disproved** — Remove findings where the (now-normalized) `verdict = "disproved"` exactly. For any verdict that substep 2's map did NOT recognize (truly unknown string), do NOT drop it — treat it as `survives`, keep it, and surface in the trust-signal footer as "Validator emitted unrecognized verdict `<value>`; finding kept for safety." This residual fallback now applies only to strings outside the synonym map, not to known synonyms.
 
-4. **Drop low-confidence** — Remove findings where `verdict = "survives"` but `confidence < 70`. NOTE: sub-skills called via "Called from gauntlet orchestrator" path already pre-filter to confidence≥70; this substep is a no-op for those (preserved for safety). adversarial-review arrives pre-adjudicated (deterministic severity-stratified gate) — this substep is a no-op for it too, preserved for safety.
+4. **Drop low-confidence** — Remove findings where `verdict = "survives"` but `confidence < 70`. NOTE: sub-skills called via "Called from gauntlet orchestrator" path already pre-filter to confidence≥70; this substep is a no-op for those (preserved for safety). adversarial-review arrives pre-adjudicated (deterministic severity-stratified gate) — this substep is a no-op for it too, preserved for safety. code-quality-audit arrives with fixed confidence 100 (rule citations validated by the runtime) — this substep is a no-op for it too, preserved for safety.
 
 5. **Deduplicate** — Two findings are duplicates if they have **same `location` AND same `lens`**. Adjacent paragraphs / lines with the same lens are NOT duplicates and MUST both survive (per §4.1.1's multi-defect-same-section emission contract added Phase 6). When duplicates exist, keep the higher-confidence version; tie-break by severity (High > Medium > Low), then by skill-name alphabetical.
 
@@ -290,26 +294,34 @@ Create the Phase 3 sub-tasks with these 7 substeps (a `TaskCreate` call per subs
 
 6. **Classify critical** — Apply the §4.4 three-filter rule. A finding is critical IFF: severity == "High" AND confidence ≥ 85 AND category ∈ {"security", "data-loss", "correctness"}. NEVER promote based on Finder's "High severity" claim alone (per HARD-GATE invariant 4). Findings that fail any of the three filters remain in the regular ranked list, NOT in Required Changes.
 
-   **Adversarial-lane-failure blocker (code artifacts only).** If the artifact type is `code-pr`/`code-local`
-   AND adversarial-review's Phase 1 status is `⚠ failed` (preflight failure or execution failure — see Phase 1
-   verify), add a synthetic entry directly to Required Changes. It is critical by construction, not by the
+   **Runtime-lane-failure blocker (code artifacts only).** If the artifact type is `code-pr`/`code-local`
+   AND a runtime lane's (`adversarial-review` or `code-quality-audit`) Phase 1 status is `⚠ failed` (preflight
+   failure or execution failure — see Phase 1 verify), add a synthetic entry directly to Required Changes for
+   that lane. It is critical by construction, not by the
    three-filter rule above — skip 6b's ground-truth check too, since this is a deterministic system fact (the
    lane did not run), not a Finder/Validator claim to verify. The entry uses the full canonical 10-field shape
-   (master spec §4.1) — no special case: `skill: "adversarial-review"`,
+   (master spec §4.1) — no special case. For **adversarial-review**: `skill: "adversarial-review"`,
    `lens: "adversarial-review / Lane failure"`, `category: "correctness"`, `location: "N/A — lane failure"`,
    `claim: "Adversarial review did not run for this code change (<reason: Node < 22 | execution failure>) —
    code coverage is materially incomplete."`, `evidence: "<the preflight node --version output, or the run's
    executionStatus/stage-gap detail, verbatim from the skill's own report>"`, `verdict: "survives"`,
    `severity: "High"`, `confidence: 100`, `recommendation: "Rerun /gauntlet on a Node ≥ 22 host before
-   merging."` The `severity` field follows the same High/Medium/Low
+   merging."` For **code-quality-audit**: `skill: "code-quality-audit"`,
+   `lens: "code-quality-audit / Lane failure"`, `category: "correctness"`, `location: "N/A — lane failure"`,
+   `claim: "Code-quality audit did not run for this code change (<reason: Node < 22 | execution failure>) —
+   convention/quality coverage is materially incomplete."`, `evidence: "<the preflight node --version output,
+   or the run's executionStatus/stage-gap detail, verbatim from the skill's own report>"`,
+   `verdict: "survives"`, `severity: "High"`, `confidence: 100`, `recommendation: "Rerun /gauntlet on a
+   Node ≥ 22 host before merging."` Both lanes failing synthesizes two entries. The `severity` field follows
+   the same High/Medium/Low
    vocabulary as every other Phase 3 finding — `blocker`/`concern`/`nit` is a Phase 4 render-time label derived
-   from `critical[]` membership (report-template.md), never an authored Phase 3 value. Render it FIRST in
-   Required Changes (Phase 4b) and count it
+   from `critical[]` membership (report-template.md), never an authored Phase 3 value. Render these FIRST in
+   Required Changes (Phase 4b) and count each
    toward `verdict.blockers` in the box score — the header verdict shows `🛑 Required Changes — do not ship
    yet` even when every other lens is clean. For `plan`/`doc`/`skill`/`directive`/`multi` artifacts,
    adversarial-review is a supplementary lens (per the Phase 0 per-type dispatch set), not one of the two
    mandatory Phase 1 lenses for code — its failure there stays footer-only (`review failed`); do not synthesize
-   a blocker.
+   a blocker. code-quality-audit simply never dispatches for non-code artifacts, so it has no non-code case.
 
    **Source cap (doc-on-body):** any finding whose `lens` is `doc-review / *` AND whose origin is the PR-body
    lane (not a standalone `doc` artifact) is capped at severity Low (Nit) before this filter runs — it can never
@@ -328,6 +340,7 @@ Create the Phase 3 sub-tasks with these 7 substeps (a `TaskCreate` call per subs
 
 **Phase 3 verify (per master spec §5.5):** filtering count ≥ 0; critical-classification rule applied; dedup ran. If the disproved + low-confidence filters dropped zero findings AND the Phase 1+2 dispatches produced findings, the re-dispatch path depends on which sub-skill is most permissive. Sub-skills are NOT uniformly addressable — gauntlet dispatches them via `Skill:` tool (black box), so internal Validators are not directly invokable. The re-dispatch logic:
 - **For adversarial-review:** re-dispatch is NOT available — adjudication is deterministic inside the runtime and the lane returns pre-gated survivors; treat it like the black-box sub-skills below.
+- **For code-quality-audit:** re-dispatch is NOT available — the runtime validated the auditor's output against its contract and the Class has no validator stage to re-run; treat it like the black-box sub-skills below.
 - **For black-box sub-skills (plan-review, doc-review, security-gauntlet):** re-dispatch is NOT available — those skills pre-filter to confidence≥70 internally and return only surviving findings. If they returned findings that gauntlet's drop-disproved + drop-confidence-low produced zero drops on, that's a SUB-SKILL output that already passed the sub-skill's own re-dispatch path. Do not re-invoke; accept the surviving set.
 
 If the re-dispatch path is unavailable (all in-Phase-1 sub-skills are black-box) AND zero findings were dropped, accept survivors and emit a `<details>` note in the report (per §5.2 row 9): "no false-positive filter triggered at gauntlet level — sub-skills already pre-filtered." Do not loop further.
@@ -373,7 +386,7 @@ To **chat** (not the full report), post only:
 2. The **Required Changes** block verbatim if `critical[]` non-empty (the ship/no-ship call shouldn't require opening a file).
 3. The report file path, and a one-line note that full findings + the postable comment are in the file.
 
-**Phase 4 verify (per master spec §5.5):** after writing, confirm the file exists and is non-empty — `wc -l <path>` returns ≥ 1 and `ls <path>` succeeds. State the path in chat only after this check passes (evidence before assertion — do not claim "report written" without the `ls`/`wc` confirmation). In-file checks: required sections present and ordered; if `critical[]` non-empty, Required Changes appears first; if Phase 2 failed, the header callout is present; if `findings[]` > ~30, surface top 10 critical/High and collapse Medium/Low into a `<details>` count summary (§5.2 row 10). If the artifact is `code-pr`/`code-local` and adversarial-review's status is `⚠ failed`, confirm the Phase 3 substep 6 adversarial-lane-failure blocker is present as the first Required Changes entry, counted in `verdict.blockers`, and that the header verdict reads `🛑 Required Changes — do not ship yet`.
+**Phase 4 verify (per master spec §5.5):** after writing, confirm the file exists and is non-empty — `wc -l <path>` returns ≥ 1 and `ls <path>` succeeds. State the path in chat only after this check passes (evidence before assertion — do not claim "report written" without the `ls`/`wc` confirmation). In-file checks: required sections present and ordered; if `critical[]` non-empty, Required Changes appears first; if Phase 2 failed, the header callout is present; if `findings[]` > ~30, surface top 10 critical/High and collapse Medium/Low into a `<details>` count summary (§5.2 row 10). If the artifact is `code-pr`/`code-local` and either runtime lane's (adversarial-review, code-quality-audit) status is `⚠ failed`, confirm the Phase 3 substep 6 runtime-lane-failure blocker for that lane is present in Required Changes, counted in `verdict.blockers`, and that the header verdict reads `🛑 Required Changes — do not ship yet`.
 
 **Output length discipline:** Zone 1 is for a human ship/no-ship decision, not an exhaustive audit log — trim verbose evidence to the lines that demonstrate each issue. Keep the trust-signal footer (Reviewed by) always visible. Chat stays lean; the file holds the detail.
 
@@ -390,7 +403,7 @@ This gives re-reviews a defined path instead of an improvised ad-hoc rerun.
 
 ## Sibling Skills
 
-Dispatch shape per the canonical contract in Phase 1: **typed** lenses own `*-finder`/`*-validator` agents and are `Skill:`-dispatched as black boxes; **audit** lenses own no agents and run inline.
+Dispatch shape per the canonical contract in Phase 1: **typed** lenses own `*-finder`/`*-validator` agents and are `Skill:`-dispatched as black boxes; **runtime Classes** (adversarial-review, code-quality-audit) drive the deterministic runtime handshake behind the same `Skill:` dispatch; the **audit** lens (skill-audit) owns no agents and runs inline.
 
 - `security-gauntlet` — typed. Phase 2 dispatch target. **Always runs for `plan`/`doc`/`skill`/`directive`;
   for code artifacts it is gated by the Phase-0 `security_relevant` fail-open flag** (skipped only on a
@@ -401,7 +414,7 @@ Dispatch shape per the canonical contract in Phase 1: **typed** lenses own `*-fi
 - `adversarial-review` — runtime-driven Class, dispatched via `gauntlet:adversarial-review`. Phase 1 dispatch target for code (`code-pr`, `code-local`) AND for plan/doc (family-named dispatch). Owns `adversarial-finder`/`adversarial-validator`, running inside the runtime handshake (not directly dispatchable).
 - `directive-review` — typed. Phase 1 dispatch target for `directive` artifacts, AND for the SKILL.md body prose (post-frontmatter) of ANY `skill` artifact (single-file or directory), AND for the non-frontmatter prose siblings (`modes.md`, `references/*`) of a `skill`-directory run. Owns `directive-finder`/`directive-validator`; returns survivors-only canonical JSON like the other typed lenses.
 - `skill-audit` — audit (inline). Phase 1 dispatch target for `skill` artifacts. gauntlet performs the §4.3 transformation; skill-audit's output contract is unchanged.
-- `code-quality-audit` — audit (inline). Phase 1 dispatch target for `code-pr` and `code-local` artifacts. 3-layer audit (Compliance / Staleness / Gap) against `code-quality-standards` rules. Returns prose; gauntlet transforms to canonical 10-field shape via master spec §4.3.
+- `code-quality-audit` — runtime-driven Class, dispatched via `gauntlet:code-quality-audit`. Phase 1 dispatch target for `code-pr` and `code-local` artifacts (family=code-diff). Single-role: owns `code-quality-auditor`, running inside the runtime handshake (not directly dispatchable); no validator stage — findings are rule citations against the Class's code-quality rulebook, returned in `<runDir>/result.json`.
 - `go-live-review` — **verdict lane (Phase 2.5), not a finding lens.** Conditionally dispatched for `code-pr`/`code-local` when the go-live pre-filter matches and the operator opts in. `Skill:`-dispatched as a black box; returns a fenced SHIP/HOLD/NEEDS-INFO readiness verdict that renders in its own Phase 4b zone and never enters Phase 3 adjudication or the blocker/concern/nit counts. Calibration + gold corpus: `projects/active/gauntlet/test-dataset/golive/`.
 - `code-quality-standards` — reference skill loaded by Validators (security-validator, adversarial-validator, plan-validator, doc-validator) for false-positive rules. Not a dispatch target; emits no findings. The `code-quality-standards / *` lens prefix appears in the canonical lens vocabulary for routing-by-lens, not skill-attribution — actual emissions against those lenses come from sibling Finder agents (e.g., security-finder).
 
@@ -409,7 +422,7 @@ Dispatch shape per the canonical contract in Phase 1: **typed** lenses own `*-fi
 
 When the report's "Reviewed by" footer shows `⚠ failed` for any skill, the gauntlet operator should manually re-run that skill in standalone mode and append findings to the report. The `n/a` status is a positive signal ("we considered this skill and it didn't apply"), not a degradation.
 
-**Exception — adversarial-review on `code-pr`/`code-local`.** An `⚠ failed` status here is not just a footer line to note and move on from: Phase 3 substep 6 synthesizes a Required Changes blocker for it, so the report itself already reads `🛑 Required Changes — do not ship yet`. The operator's action isn't optional manual follow-up — it's what the header verdict is already telling them: rerun the gauntlet on a Node ≥ 22 host before merging. For every other artifact type, an adversarial-review `⚠ failed` stays the ordinary footer-only case above.
+**Exception — the runtime lanes (adversarial-review, code-quality-audit) on `code-pr`/`code-local`.** An `⚠ failed` status on either lane here is not just a footer line to note and move on from: Phase 3 substep 6 synthesizes a Required Changes blocker for that lane, so the report itself already reads `🛑 Required Changes — do not ship yet`. The operator's action isn't optional manual follow-up — it's what the header verdict is already telling them: rerun the gauntlet on a Node ≥ 22 host before merging. For every other artifact type, an adversarial-review `⚠ failed` stays the ordinary footer-only case above; code-quality-audit never dispatches for non-code artifacts.
 
 A `skipped (gated)` (security) or `skipped (cross-author)` (doc-on-body) status is the diet's intended
 behavior, not a gap: the lane was *considered* and deliberately not dispatched per a calibrated, fail-open

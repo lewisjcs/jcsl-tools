@@ -1,6 +1,6 @@
 ---
-name: gauntlet2-code-quality-audit
-description: Gauntlet v2 pilot — runtime-driven code-quality audit (a single auditor role reviews a code artifact against a written rulebook under a deterministic runtime). Use ONLY when explicitly asked for gauntlet2-code-quality-audit, the v2 pilot, or the runtime-driven code-quality audit. Not a trigger-phrase surface: the incumbent gauntlet:code-quality-audit skill remains the default lane during the pilot.
+name: code-quality-audit
+description: Runtime-driven code-quality audit — a single auditor role reviews a code artifact against a written rulebook (compliance rules, staleness signals, gap heuristics, test-integrity checks) under a deterministic runtime. Use when auditing code for quality, reviewing a diff against code-quality-standards, checking conventions on a PR, or "audit code quality". Also use after writing or modifying code to verify it meets the team's defensive-code-anti-pattern rules. Dispatched by /gauntlet for code-pr and code-local artifacts. Requires Node >= 22.
 ---
 <!-- generated from canon; do not edit -->
 
@@ -18,7 +18,7 @@ Set `RUN_DIR` from the reported `runDir`, and pass every later path under it: `s
 
 The two subcommands take the family in different forms, and mixing them up is a hard refusal: `bundle --family` takes the bare id (`code-diff`), while `init --family` takes the prefixed id the bundle records in `artifactFamily` (`jcsl:artifact-family:code-diff`). Pass the `artifactFamily` value from the `bundle` summary (or read it off `"$RUN_DIR/bundle.json"`) to `init`.
 
-Perform the single `dispatch-auditor` action with the Agent tool using `subagent_type: gauntlet:gauntlet2-code-quality-auditor`. Pass the dispatch prompt from the pending action verbatim — it directs the auditor to read the bundle from the run directory by reference; never paste or embed artifact content into the dispatch prompt yourself. Each dispatch is a fresh agent with no shared history. Record the model the agent actually ran on in that receipt's host-meta file.
+Perform the single `dispatch-auditor` action with the Agent tool using `subagent_type: gauntlet:code-quality-auditor`. Pass the dispatch prompt from the pending action verbatim — it directs the auditor to read the bundle from the run directory by reference; never paste or embed artifact content into the dispatch prompt yourself. Each dispatch is a fresh agent with no shared history. Record the model the agent actually ran on in that receipt's host-meta file.
 
 Class `jcsl:gauntlet:code-quality-audit@2.0.0` — single-role code-quality audit. One role (`jcsl:gauntlet:code-quality-auditor`) runs in a fresh, isolated dispatch under a deterministic runtime.
 

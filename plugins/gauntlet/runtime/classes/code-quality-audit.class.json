@@ -22,12 +22,12 @@
   "functionRole": "code-quality-audit",
   "members": {
     "skills": [
-      "hosts/claude-code/skills/gauntlet2-code-quality-audit/SKILL.md",
-      "hosts/codex/skills/gauntlet2-code-quality-audit/SKILL.md"
+      "hosts/claude-code/skills/code-quality-audit/SKILL.md",
+      "hosts/codex/skills/code-quality-audit/SKILL.md"
     ],
     "agents": [
-      "hosts/claude-code/agents/gauntlet2-code-quality-auditor.md",
-      "hosts/codex/roles/gauntlet2-code-quality-auditor.md"
+      "hosts/claude-code/agents/code-quality-auditor.md",
+      "hosts/codex/roles/code-quality-auditor.md"
     ],
     "references": [
       "canon/code-quality-auditor-persona.md",
@@ -557,7 +557,7 @@
   "entrypoints": {
     "claude-code": {
       "kind": "skill",
-      "path": "hosts/claude-code/skills/gauntlet2-code-quality-audit/SKILL.md",
+      "path": "hosts/claude-code/skills/code-quality-audit/SKILL.md",
       "projection": {
         "canonicalSources": [
           "canon/code-quality-auditor-persona.md",
@@ -573,7 +573,7 @@
     },
     "codex": {
       "kind": "skill",
-      "path": "hosts/codex/skills/gauntlet2-code-quality-audit/SKILL.md",
+      "path": "hosts/codex/skills/code-quality-audit/SKILL.md",
       "projection": {
         "canonicalSources": [
           "canon/code-quality-auditor-persona.md",
