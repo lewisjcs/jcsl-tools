@@ -12,14 +12,14 @@ claim-classified README draft or patch, or a report of what it could not
 support. Every drafted claim carries a ledger row and an evidence
 reference; a claim with none is omitted and reported, never rendered as
 hedged prose. Cartographer ships the profile-independent
-`plugins/cartographer/core/` pipeline — evidence collection, a claim
+`skills/cartograph-report/core/` pipeline — evidence collection, a claim
 ledger, drafting, local validation, and reporting — plus the ownership
 rules that decide which README sections it may ever write, and
 per-working-tree run state that lets a later run re-check only what
-changed. A repository needs no external system
-— no Glean, no Backstage, no `catalog-info.yaml` — for the core to run
-against it; those are Contentful-profile additions layered on top, not
-core dependencies. The drafted output's verification is scoped, not
+changed. A repository needs no external system for the core to run
+against it; org-specific evidence sources are additions a distribution
+can layer on through the `profile/` seam (`core/profile-contract.md`),
+never core dependencies. The drafted output's verification is scoped, not
 total — stated here rather than implied as measured. Path, command, and
 `signature`/`self-citation` existence claims are mechanically verified.
 Behavioral and semantic claims, `signature`/`self-citation` claims whose
@@ -57,6 +57,9 @@ This skill requires an interactive Claude Code session. It does not
 support headless (`claude -p`) invocation: that path hits a harness
 permission boundary the plugin cannot route around. Do not invoke this
 skill from a headless `claude -p` run expecting a completed report.
+Stage 5's verification dispatches require a harness with a conforming
+dispatch mechanism (`core/dispatch-contract.md`); on any harness without
+one the run stops at stage 5 and reports the missing capability by name.
 
 Each run checks whether a previous run in the same working tree left
 usable state. When it does, the run re-checks only the README sections
@@ -69,11 +72,19 @@ never committed and never part of a patch.
 
 ## Architecture
 
-This plugin splits into a profile-independent core and a profile-specific
-adapter tree, with the boundary between them mechanically enforced. See
-[ARCHITECTURE.md](ARCHITECTURE.md)'s Cartographer subsection for the full
-split, the enforcement mechanism, and how this plugin fits alongside the
-marketplace's other plugins.
+The skill folder `skills/cartograph-report/` is self-contained — it is
+the exact unit an external package manager can copy and ship
+(`SKILL.md` + `core/` + `scripts/`, the "parity set"). Org-specific
+content never lives here: a distribution adds it work-side through the
+`profile/` seam that `core/profile-contract.md` defines, and
+`scripts/check-core-neutrality.sh` mechanically keeps the shipped set
+org-neutral. Test suites and fixtures live outside the skill folder in
+`tests/` and never ship. Promotion into another catalog is a
+deterministic copy: `tools/promote.sh` replaces the parity set at the
+target and records the source commit in `PROVENANCE.md`; re-running it
+at the recorded commit and diffing the parity set is the drift check.
+See [ARCHITECTURE.md](ARCHITECTURE.md)'s Cartographer subsection for
+how this plugin fits alongside the marketplace's other plugins.
 
 ## Contributing
 

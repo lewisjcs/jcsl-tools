@@ -1,0 +1,84 @@
+# `core/` — Index
+
+TL;DR: `core/` holds the generalized Cartographer workflow — the claim
+model, the README ownership model, the pipeline, and the authoring
+guidance those three draw on. Nothing here depends on org content, and
+the boundary is checked, not just asserted.
+
+## Files
+
+| File | What it owns |
+|---|---|
+| [claim-model.md](./claim-model.md) | The three evidence classes, the `unresolved-gap` disposition, the claim ledger, and the omit-and-report rule. Sole definition site for those terms. |
+| [claim-verification.md](./claim-verification.md) | The content-class taxonomy and its stage-2 assignment procedure, the Tier-1 textual recognition rule and match predicates, the shared Tier-2 isolated-dispatch contract and its prompt template, the accuracy dispatch scope, the verification-report record grammar, and the Accuracy gate. Sole definition site for those terms. |
+| [effectiveness-verification.md](./effectiveness-verification.md) | The newcomer-question set, the answered/unanswered predicate, the Effectiveness dispatch's slot values on `claim-verification.md`'s shared Tier-2 contract, and the Effectiveness gate. Sole definition site for those terms. |
+| [dispatch-contract.md](./dispatch-contract.md) | The five properties a stage-5 verification dispatch mechanism must satisfy (fresh context, at-most-read-only repository access, returns-content-not-files, grammar-constrained report, failure-stops-the-run), referenced by `claim-verification.md`'s and `effectiveness-verification.md`'s shared Tier-2 contract. Sole definition site for those terms. |
+| [readme-ownership.md](./readme-ownership.md) | The ownership × freshness classification, the twelve-cell action matrix, and the managed-section marker grammar. Sole definition site for the ownership and freshness values. |
+| [pipeline.md](./pipeline.md) | The six-stage sequence, the report contract, the repository-bound vs working-only artifact split, and the core/org-content independence guarantee. |
+| [profile-contract.md](./profile-contract.md) | The org-content seam: the four fixed entry filenames and the stage each is read at, the sovereignty rule, the external-source honesty rule, and the run-report disclosure lines. Sole definition site for those terms. |
+| [local-validation.md](./local-validation.md) | The link, command, and low-value-section gates plus the managed-section marker-grammar gate; the report format, the scope tag, and the exit-code rule. Sole definition site for those terms. `pipeline.md` stage 4 states the hand-off it owns. |
+| [refresh.md](./refresh.md) | The run-state file format, the per-section fingerprint schema, the mode-selection rule (full mode vs targeted mode), and the three-bucket run report (confirmed current / not assessed / drifted). Sole definition site for those terms. |
+| [knowledge/](./knowledge/) | Terse, always-loaded authoring guidance the core draws on while drafting. Every claim-bearing section carries one short marker. |
+| [references/](./references/) | The fuller cited research behind `knowledge/`, loaded on demand only — never at drafting time. |
+
+## The core never depends on org content
+
+The core runs its whole pipeline against a repository with no org
+content configured, using repository-local evidence only, and declares
+no required runtime dependency on any org-content entry file. It never
+assumes an external search, catalog, or visibility-policy system
+exists; a repository that has none of them is an ordinary subject, not
+a degraded one.
+
+Org content may add evidence sources and may narrow a core rule. It may
+not weaken a core guarantee. The full statement, with its enforcement,
+is in `pipeline.md`; the seam's contract is `profile-contract.md`.
+
+## Two vocabularies that both use the word "evidence"
+
+They are unrelated, and no rule of one reaches the other:
+
+1. **Claim evidence** — facts about the repository under analysis,
+   classified by `claim-model.md`. This is what the pipeline collects and
+   what a drafted claim cites.
+2. **Evidentiary markers** — the short `see:` and `rationale:` comments
+   that ground this plugin's own `knowledge/` files against its
+   `references/` files. This is documentation hygiene for the files
+   shipped here, not evidence about anyone's repository.
+
+The marker forms are defined once, in
+[knowledge/evidentiary-marker-conventions.md](./knowledge/evidentiary-marker-conventions.md).
+The two literal forms, reproduced here for orientation only:
+
+```markdown
+<!-- see: references/<file>.md#<anchor> -->
+<!-- rationale: documented internal decision, no external research available -->
+```
+
+A `see:` marker's path resolves relative to `core/`, never relative to
+the directory of the file holding the marker, and its `#anchor` is
+mandatory.
+
+The managed-section markers
+(`cartographer:managed:start` / `:end`) are a third, separate family,
+owned by `readme-ownership.md`. Sharing the HTML-comment shape does not
+make two families one.
+
+## What the Slice 1 checks cover
+
+| Check | Reads | Enforces |
+|---|---|---|
+| scripts/check-knowledge-grounding.sh | `knowledge/` and `references/` | A claim-bearing knowledge section carries a marker; full citations live in `references/`; a `see:` target and anchor resolve; a `rationale:` text is non-empty and cites no external source; every `references/` entry is indexed. |
+| scripts/check-grounding-provenance.sh | `knowledge/` | The reference entry a `see:` marker cites was not committed after the knowledge line citing it, by line-level blame; landing together (as a squash merge does) passes. |
+| scripts/check-core-neutrality.sh | `SKILL.md`, `core/`, `scripts/` | No org-specific token (see the checker's own header comment for the current list) anywhere in the parity set, and no unlicensed reference into the org-content seam outside the two licensed files. |
+
+The contract files at the top of this directory are not scanned by the
+grounding rules: those rules run against `knowledge/` and `references/`
+only. The boundary check is the one that reads every file here, including
+this one.
+
+## Verification check
+
+After editing any file in this directory, run all three checks above and
+confirm each exits 0. A failure names the file and line; fix the named
+file rather than the check.

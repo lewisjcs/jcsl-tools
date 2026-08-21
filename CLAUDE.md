@@ -20,6 +20,7 @@ There is no install/build/lint/test command at the repo level — see [CONTRIBUT
 - Conventional Commits scoped to the plugin touched: `<type>(<plugin>): <description>`.
 - Branch as `<type>/<plugin-or-scope>[-description]` (e.g. `feat/kiln-drafter`).
 - PRs are the norm even for solo work — most commits on `main` carry a `(#N)` merge reference.
+- Version bumps ride the content PR that motivates them — edit the plugin's `.claude-plugin/plugin.json` version in the same PR; no separate bump PRs.
 
 ## Architecture
 
