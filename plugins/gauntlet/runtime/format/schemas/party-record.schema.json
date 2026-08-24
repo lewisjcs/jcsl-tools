@@ -1,0 +1,342 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "jcsl:party-record@1",
+  "type": "object",
+  "required": [
+    "contractId", "partyRunId", "phase", "createdAt", "artifact",
+    "profile", "roster", "goldenContextHint", "laneRuns", "reportedAt"
+  ],
+  "properties": {
+    "contractId": { "const": "jcsl:party-record@1" },
+    "partyRunId": { "$ref": "#/$defs/nonEmptyString" },
+    "phase": { "enum": ["formed", "reported"] },
+    "createdAt": { "type": "string", "format": "date-time", "pattern": "Z$" },
+    "artifact": {
+      "type": "object",
+      "required": ["artifactId", "artifactType", "snapshotSha256", "components", "body", "pinned"],
+      "properties": {
+        "artifactId": { "$ref": "#/$defs/nonEmptyString" },
+        "artifactType": { "$ref": "#/$defs/artifactType" },
+        "snapshotSha256": { "type": "string", "format": "sha256" },
+        "components": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "fileName", "contentSha256"],
+            "properties": {
+              "id": { "$ref": "#/$defs/nonEmptyString" },
+              "fileName": { "$ref": "#/$defs/nonEmptyString" },
+              "contentSha256": { "type": "string", "format": "sha256" }
+            },
+            "additionalProperties": false
+          }
+        },
+        "body": { "$ref": "#/$defs/artifactBody" },
+        "pinned": { "$ref": "#/$defs/artifactPinned" }
+      },
+      "additionalProperties": false
+    },
+    "profile": {
+      "type": "object",
+      "required": ["rulesVersion", "artifactType", "family", "mechanicalOnly", "sizeBytes", "signals"],
+      "properties": {
+        "rulesVersion": { "$ref": "#/$defs/semver" },
+        "artifactType": { "$ref": "#/$defs/artifactType" },
+        "family": { "enum": ["code-diff", "plan-text", "doc-text", null] },
+        "mechanicalOnly": { "type": ["boolean", "null"] },
+        "sizeBytes": { "type": "integer", "minimum": 0 },
+        "signals": {
+          "type": "object",
+          "required": ["goLive", "security"],
+          "properties": {
+            "goLive": {
+              "type": "object",
+              "required": ["vector", "matched", "source", "forced", "suppressed"],
+              "properties": {
+                "vector": { "type": "array", "items": { "$ref": "#/$defs/nonEmptyString" } },
+                "matched": { "type": "boolean" },
+                "source": { "$ref": "#/$defs/nonEmptyString" },
+                "forced": { "type": "boolean" },
+                "suppressed": { "type": "boolean" }
+              },
+              "additionalProperties": false
+            },
+            "security": {
+              "type": "object",
+              "required": ["matched", "source", "calibration"],
+              "properties": {
+                "matched": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["id", "evidence"],
+                    "properties": {
+                      "id": { "$ref": "#/$defs/nonEmptyString" },
+                      "evidence": { "$ref": "#/$defs/nonEmptyString" }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "source": { "$ref": "#/$defs/nonEmptyString" },
+                "calibration": { "$ref": "#/$defs/nonEmptyString" }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "roster": {
+      "type": "object",
+      "required": ["policyVersion", "rowId", "fielded", "skipped", "gaps", "overrides", "goLivePrompt"],
+      "properties": {
+        "policyVersion": { "$ref": "#/$defs/semver" },
+        "rowId": { "$ref": "#/$defs/nonEmptyString" },
+        "fielded": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["classKey", "classId", "family", "reason", "via"],
+            "properties": {
+              "classKey": { "$ref": "#/$defs/nonEmptyString" },
+              "classId": { "$ref": "#/$defs/nonEmptyString" },
+              "family": { "$ref": "#/$defs/nonEmptyString" },
+              "reason": { "$ref": "#/$defs/nonEmptyString" },
+              "via": { "enum": ["policy", "override"] }
+            },
+            "additionalProperties": false
+          }
+        },
+        "skipped": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["classKey", "reason", "via"],
+            "properties": {
+              "classKey": { "$ref": "#/$defs/nonEmptyString" },
+              "reason": { "$ref": "#/$defs/nonEmptyString" },
+              "via": { "enum": ["policy", "override"] }
+            },
+            "additionalProperties": false
+          }
+        },
+        "gaps": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["lane", "reason", "trigger"],
+            "properties": {
+              "lane": { "$ref": "#/$defs/nonEmptyString" },
+              "reason": { "$ref": "#/$defs/nonEmptyString" },
+              "trigger": { "$ref": "#/$defs/nonEmptyString" }
+            },
+            "additionalProperties": false
+          }
+        },
+        "overrides": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["kind", "target", "effect"],
+            "properties": {
+              "kind": { "$ref": "#/$defs/nonEmptyString" },
+              "target": { "$ref": "#/$defs/nonEmptyString" },
+              "effect": { "$ref": "#/$defs/nonEmptyString" }
+            },
+            "additionalProperties": false
+          }
+        },
+        "goLivePrompt": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "goldenContextHint": { "$ref": "#/$defs/goldenContextHint" },
+    "laneRuns": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["classKey", "runId", "bundleSha256", "executionStatus"],
+        "properties": {
+          "classKey": { "$ref": "#/$defs/nonEmptyString" },
+          "runId": { "$ref": "#/$defs/nonEmptyString" },
+          "bundleSha256": { "type": "string", "format": "sha256" },
+          "executionStatus": { "enum": [null, "complete", "incomplete"] },
+          "findings": { "type": "integer", "minimum": 0 },
+          "belowTheLine": { "type": "integer", "minimum": 0 }
+        },
+        "additionalProperties": false
+      }
+    },
+    "reportedAt": { "type": ["string", "null"], "pattern": "Z$" },
+    "cost": {
+      "type": "object",
+      "required": ["basis", "priceTableVersion", "perLane", "totals", "omissions"],
+      "properties": {
+        "basis": { "const": "full-flow-api-equivalent" },
+        "priceTableVersion": { "$ref": "#/$defs/semver" },
+        "perLane": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["classKey", "bookedUsd", "fullFlowUsd"],
+            "properties": {
+              "classKey": { "$ref": "#/$defs/nonEmptyString" },
+              "bookedUsd": { "type": "number", "minimum": 0 },
+              "fullFlowUsd": { "type": "number", "minimum": 0 }
+            },
+            "additionalProperties": false
+          }
+        },
+        "totals": {
+          "type": "object",
+          "required": ["bookedUsd", "fullFlowUsd"],
+          "properties": {
+            "bookedUsd": { "type": "number", "minimum": 0 },
+            "fullFlowUsd": { "type": "number", "minimum": 0 }
+          },
+          "additionalProperties": false
+        },
+        "omissions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^(model-unbound|model-unpriced|inputTokens-unavailable|cacheWriteTokens-unavailable|cacheReadTokens-unavailable|outputTokens-unavailable):.+$"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "report": {
+      "type": "object",
+      "required": ["path", "sha256"],
+      "properties": {
+        "path": { "$ref": "#/$defs/nonEmptyString" },
+        "sha256": { "type": "string", "format": "sha256" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false,
+  "if": {
+    "properties": { "phase": { "const": "reported" } }
+  },
+  "then": {
+    "required": ["cost", "report"],
+    "properties": {
+      "reportedAt": { "type": "string", "pattern": "Z$" },
+      "laneRuns": {
+        "items": {
+          "properties": {
+            "executionStatus": { "enum": ["complete", "incomplete"] }
+          }
+        }
+      }
+    },
+    "if": {
+      "properties": {
+        "artifact": {
+          "properties": {
+            "pinned": {
+              "properties": { "mode": { "const": "worktree" } }
+            }
+          }
+        }
+      }
+    },
+    "then": {
+      "properties": {
+        "artifact": {
+          "properties": {
+            "pinned": {
+              "required": ["removed"]
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "nonEmptyString": { "type": "string", "minLength": 1 },
+    "semver": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+    "artifactType": { "enum": ["code-pr", "code-local", "plan", "doc", "skill", "directive"] },
+    "artifactBody": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["recorded", "sha256"],
+          "properties": {
+            "recorded": { "const": true },
+            "sha256": { "type": "string", "format": "sha256" }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["recorded"],
+          "properties": {
+            "recorded": { "const": false }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "artifactPinned": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["mode", "sha"],
+          "properties": {
+            "mode": { "const": "worktree" },
+            "sha": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+            "repoRoot": { "$ref": "#/$defs/nonEmptyString" },
+            "removed": { "type": "boolean" }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["mode", "digest", "note"],
+          "properties": {
+            "mode": { "const": "working-tree" },
+            "digest": { "type": "string", "format": "sha256" },
+            "note": { "$ref": "#/$defs/nonEmptyString" }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["mode"],
+          "properties": {
+            "mode": { "const": "none" }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "goldenContextHint": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["provided", "sha256", "status"],
+          "properties": {
+            "provided": { "const": true },
+            "sha256": { "type": "string", "format": "sha256" },
+            "status": { "const": "recorded-dark" }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["provided", "status"],
+          "properties": {
+            "provided": { "const": false },
+            "status": { "const": "recorded-dark" }
+          },
+          "additionalProperties": false
+        }
+      ]
+    }
+  }
+}

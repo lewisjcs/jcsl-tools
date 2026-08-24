@@ -1,0 +1,95 @@
+{
+  "kind": "roster-policy",
+  "version": "1.0.0",
+  "pool": [
+    {
+      "classKey": "adversarial-review",
+      "classId": "jcsl:gauntlet:adversarial-review",
+      "families": ["code-diff", "plan-text", "doc-text"]
+    },
+    {
+      "classKey": "code-quality-audit",
+      "classId": "jcsl:gauntlet:code-quality-audit",
+      "families": ["code-diff"]
+    }
+  ],
+  "rows": [
+    {
+      "rowId": "code-behavioral",
+      "match": { "family": "code-diff", "mechanicalOnly": false },
+      "field": [
+        { "classKey": "adversarial-review", "reason": "behavioral code diff — adversarial surface" },
+        { "classKey": "code-quality-audit", "reason": "code diff — rulebook audit applies" }
+      ],
+      "skip": [],
+      "gaps": [
+        { "lane": "security-gauntlet", "when": "security-signal", "reason": "applicable, not yet admitted — run its skill manually" },
+        { "lane": "go-live-review", "when": "golive-flag", "reason": "applicable, not yet admitted — run its skill manually" }
+      ]
+    },
+    {
+      "rowId": "code-mechanical",
+      "match": { "family": "code-diff", "mechanicalOnly": true },
+      "field": [
+        { "classKey": "code-quality-audit", "reason": "code diff — rulebook audit applies" }
+      ],
+      "skip": [
+        { "classKey": "adversarial-review", "reason": "mechanical-only diff — no behavioral surface to attack" }
+      ],
+      "gaps": [
+        { "lane": "security-gauntlet", "when": "security-signal", "reason": "applicable, not yet admitted — run its skill manually" },
+        { "lane": "go-live-review", "when": "golive-flag", "reason": "applicable, not yet admitted — run its skill manually" }
+      ]
+    },
+    {
+      "rowId": "plan",
+      "match": { "family": "plan-text" },
+      "field": [
+        { "classKey": "adversarial-review", "reason": "plan text — adversarial surface" }
+      ],
+      "skip": [
+        { "classKey": "code-quality-audit", "reason": "no profile for family plan-text" }
+      ],
+      "gaps": [
+        { "lane": "plan-review", "when": "always", "reason": "applicable, not yet admitted — run its skill manually" }
+      ]
+    },
+    {
+      "rowId": "doc",
+      "match": { "family": "doc-text" },
+      "field": [
+        { "classKey": "adversarial-review", "reason": "doc text — adversarial surface" }
+      ],
+      "skip": [
+        { "classKey": "code-quality-audit", "reason": "no profile for family doc-text" }
+      ],
+      "gaps": [
+        { "lane": "doc-review", "when": "always", "reason": "applicable, not yet admitted — run its skill manually" }
+      ]
+    },
+    {
+      "rowId": "skill",
+      "match": { "artifactType": "skill" },
+      "field": [],
+      "skip": [
+        { "classKey": "adversarial-review", "reason": "no profile for family" },
+        { "classKey": "code-quality-audit", "reason": "no profile for family" }
+      ],
+      "gaps": [
+        { "lane": "skill-audit", "when": "always", "reason": "applicable, not yet admitted — run its skill manually" }
+      ]
+    },
+    {
+      "rowId": "directive",
+      "match": { "artifactType": "directive" },
+      "field": [],
+      "skip": [
+        { "classKey": "adversarial-review", "reason": "no profile for family" },
+        { "classKey": "code-quality-audit", "reason": "no profile for family" }
+      ],
+      "gaps": [
+        { "lane": "directive-review", "when": "always", "reason": "applicable, not yet admitted — run its skill manually" }
+      ]
+    }
+  ]
+}

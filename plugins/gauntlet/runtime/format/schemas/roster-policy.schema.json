@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "jcsl:roster-policy@1",
+  "type": "object",
+  "required": ["kind", "version", "pool", "rows"],
+  "properties": {
+    "kind": { "const": "roster-policy" },
+    "version": { "$ref": "#/$defs/semver" },
+    "pool": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["classKey", "classId", "families"],
+        "properties": {
+          "classKey": { "$ref": "#/$defs/nonEmptyString" },
+          "classId": { "$ref": "#/$defs/nonEmptyString" },
+          "families": {
+            "type": "array",
+            "items": { "$ref": "#/$defs/nonEmptyString" }
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "rows": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["rowId", "match", "field", "skip", "gaps"],
+        "properties": {
+          "rowId": { "$ref": "#/$defs/nonEmptyString" },
+          "match": {
+            "type": "object",
+            "minProperties": 1,
+            "properties": {
+              "family": { "type": "string" },
+              "mechanicalOnly": { "type": "boolean" },
+              "artifactType": { "type": "string" }
+            },
+            "additionalProperties": false
+          },
+          "field": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["classKey", "reason"],
+              "properties": {
+                "classKey": { "$ref": "#/$defs/nonEmptyString" },
+                "reason": { "$ref": "#/$defs/nonEmptyString" }
+              },
+              "additionalProperties": false
+            }
+          },
+          "skip": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["classKey", "reason"],
+              "properties": {
+                "classKey": { "$ref": "#/$defs/nonEmptyString" },
+                "reason": { "$ref": "#/$defs/nonEmptyString" }
+              },
+              "additionalProperties": false
+            }
+          },
+          "gaps": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["lane", "when", "reason"],
+              "properties": {
+                "lane": { "$ref": "#/$defs/nonEmptyString" },
+                "when": { "enum": ["always", "security-signal", "golive-flag"] },
+                "reason": { "$ref": "#/$defs/nonEmptyString" }
+              },
+              "additionalProperties": false
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "nonEmptyString": { "type": "string", "minLength": 1 },
+    "semver": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" }
+  }
+}
