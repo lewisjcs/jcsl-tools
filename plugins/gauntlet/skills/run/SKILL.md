@@ -1,6 +1,6 @@
 ---
 name: gauntlet
-description: Use when running a full multi-skill review across an artifact (PR, local diff, plan, doc, or skill). The canonical PR-review surface — "review this PR" routes here. Trigger phrases include "review this PR", "review PR <number>", "review the PR", "review this", "run the gauntlet", "do a full review", "fully review", "review my plan and security", or any natural-language variation requesting a multi-domain review of an artifact. When NOT to use: for single-aspect review use the corresponding sibling (security-gauntlet, code-quality-audit, adversarial-review). For author-side approval ritual use /ownership-check standalone.
+description: Use when running the full review Party over one artifact — a pull request, a local diff, a plan, a doc, a skill, or an agent-instruction file. The canonical PR-review surface — "review this PR" routes here. Forms a Party through the deterministic runtime, which decides the artifact type and picks the review lanes that fit it, drives each lane the runtime fielded, and places the report the runtime wrote; lanes the runtime does not yet run are reported as gaps and offered as follow-ups the operator chooses. Trigger phrases include "review this PR", "review PR <number>", "review the PR", "review this", "run the gauntlet", "do a full review", "fully review", or any natural-language variation requesting a full review of an artifact. When NOT to use: for a single-lane review invoke the corresponding sibling directly (security-gauntlet, code-quality-audit, adversarial-review, plan-review, doc-review, skill-audit, directive-review). For author-side approval ritual use /ownership-check standalone.
 argument-hint: "[<pr-url> | <path>] [--type <type>] [--go-live] [--no-go-live] [--force-lane <class>] [--skip-lane <class>]"
 ---
 
@@ -30,7 +30,7 @@ One artifact per run. The runtime reviews one file per party run and refuses a d
 
 **Node.** Run `node --version`. If it fails or the major version is below 22, stop and report that as the blocker: the runtime requires Node 22 or newer.
 
-**The command.** Every runtime call below is `node "${CLAUDE_PLUGIN_ROOT}/runtime/bin/cli.mjs" <subcommand> …`. Never write run files into the plugin directory or into the repository under review — the runtime owns where a run is recorded.
+**The command.** Every runtime call below is `node "${CLAUDE_PLUGIN_ROOT}/runtime/bin/cli.mjs" <subcommand> …`. Never write run files into the plugin directory or into the repository under review — the runtime owns where a run is recorded. The report copy that step 8 places under a repository's `reviews/` directory is not a run file: it is the deliverable, and putting it there is deliberate.
 
 ## 2. Normalize the input
 
@@ -43,7 +43,11 @@ gh pr diff <n> > "$STAGE/pr.diff"
 gh pr view <n> --json body,headRefOid
 ```
 
-Write the `body` value to `"$STAGE/pr-body.md"`. The repository root is the local clone of that repository. The runtime pins the review to the head commit in its own git worktree, so that commit must exist locally: check with `git -C <repo-root> cat-file -e <headRefOid>^{commit}` and, if it is absent, fetch it (`git -C <repo-root> fetch origin <headRefOid>`). Then form the party with `--primary "$STAGE/pr.diff" --type code-pr --repo-root <repo-root> --reviewed-commit <headRefOid> --body "$STAGE/pr-body.md"`.
+Write the `body` value to `"$STAGE/pr-body.md"`.
+
+**Resolve the repository root explicitly.** `--repo-root` and `--reviewed-commit` are both hard requirements for `--type code-pr` — without them the runtime refuses with `CLI_REVIEWED_COMMIT_REQUIRED` — and it pins its review worktree from that root. `gh pr diff` and `gh pr view` resolve against the current directory, so start there: `git rev-parse --show-toplevel`. For a pull-request URL, confirm that root is actually the right clone — check that one of its remotes matches the URL's `<org>/<repo>` (`git -C <repo-root> remote -v`). If none matches, stop and ask the operator for the path to the clone. That question is a refusal in all but name; it is a legitimate pause, listed with the others below.
+
+The head commit must also exist locally, since the runtime pins the review to it in its own git worktree: check with `git -C <repo-root> cat-file -e <headRefOid>^{commit}` and, if it is absent, fetch it (`git -C <repo-root> fetch origin <headRefOid>`). Then form the party with `--primary "$STAGE/pr.diff" --type code-pr --repo-root <repo-root> --reviewed-commit <headRefOid> --body "$STAGE/pr-body.md"`.
 
 **No argument.** Review the current branch against the trunk:
 
@@ -55,9 +59,9 @@ Fall back to `master` only if `main` does not exist. Then form the party with `-
 
 **A path.** Pass the file as `--primary <path>` and let the runtime detect the type. Do not pass `--type`: the operator can, and the runtime records it as an override, but this skill never guesses one.
 
-If detection cannot settle, the runtime refuses with `CLI_PARTY_TYPE_AMBIGUOUS` or `CLI_PARTY_TYPE_REQUIRED` and names the candidate types in the refusal message. Ask the operator which one, using the refusal's own candidate list, and re-invoke with their answer as `--type`. **This is the only pause before the report other than the go-live question in step 5.** Every other refusal stops the run and is surfaced as-is.
+If detection cannot settle, the runtime refuses with `CLI_PARTY_TYPE_AMBIGUOUS` or `CLI_PARTY_TYPE_REQUIRED` and names the candidate types in the refusal message. Ask the operator which one, using the refusal's own candidate list, and re-invoke with their answer as `--type`. **Only three pauses are legitimate before the report: this one, the missing-clone question above, and the go-live question in step 5.** Every other refusal stops the run and is surfaced as-is.
 
-For a code diff also pass `--path <logical-path>` — the artifact's path inside the repository under review, which is what reported finding locations anchor to.
+For a **single-file** code diff also pass `--path <logical-path>` — the artifact's path inside the repository under review, which is what reported finding locations anchor to. Omit `--path` for a multi-file diff: there is no one logical path to name, and the runtime falls back to the `--primary` file name.
 
 ## 3. Extract the go-live signals
 
@@ -74,7 +78,7 @@ Pass each signal that matched to `party-form` as a repeated `--golive-signal <id
 | terminal rollout language | `terminal_rollout_language` |
 | SDK major-version bump | `sdk_major_release` |
 
-This step reports signals; it decides nothing. Whether the signals lead to a go-live question is the runtime's call, read off its answer in step 5. Pass `--go-live` or `--no-go-live` straight through when the operator gave one; never act on the flag yourself.
+This step reports signals; it decides nothing. Whether the signals lead to a go-live question is the runtime's call, read off its answer in step 5. Pass `--go-live` or `--no-go-live` straight through to `party-form` when the operator gave one, and never re-derive what they do to the roster. One consequence belongs to this skill rather than the runtime: `--go-live` **is** the operator's answer to step 5's question, already given, which is why step 5 does not ask it again.
 
 ## 4. Form the party
 
@@ -84,6 +88,8 @@ Compose one call. Detection, the roster, and the artifact snapshot are all the r
 node "${CLAUDE_PLUGIN_ROOT}/runtime/bin/cli.mjs" party-form --primary <artifact-file> [--path <logical-path>] [--type <code-pr|code-local|plan|doc|skill|directive>] [--body <pr-body-file>] [--repo-root <dir> --reviewed-commit <sha>] [--golive-signal <id>]... [--go-live|--no-go-live] [--force-lane <class>]... [--skip-lane <class>]...
 # stdout: {partyRunId, partyDir, profile, roster:{fielded, skipped, gaps, overrides}, goLivePrompt, lanes:[{classKey, runId, runDir, family}], worktree, events}
 ```
+
+Forward the operator's lane overrides untouched: `--force-lane <class>` and `--skip-lane <class>` are both repeatable, and the runtime validates each against its roster pool — forcing a Class onto a family it does not support is a typed refusal, not a silent no-op. Never add an override the operator did not ask for.
 
 Parse the stdout JSON. Keep `partyRunId` (step 7 needs it) and `lanes` (step 6 needs each lane's `classKey`, `runId`, and `runDir`).
 
@@ -97,13 +103,17 @@ Name every fielded lane, every skipped lane with the runtime's reason, and every
 
 ## 5. The go-live question
 
-Ask this **only when the runtime returned `goLivePrompt: true`**. Never re-derive the condition from the signals, the flags, or the diff.
+**When the operator passed `--go-live`, do not ask.** The flag is the answer, already given: run `Skill: gauntlet:go-live-review` against the same artifact after the report is placed (step 8), exactly as a `y` would.
+
+**Otherwise, ask only when the runtime returned `goLivePrompt: true`.** Never re-derive that condition from the signals, the other flags, or the diff. (`--no-go-live` suppresses it at the runtime, so no question arises.)
 
 Ask once, and take the operator's first answer:
 
 ```
-This change matched the go-live signals (<the gap's trigger list>). Run the go-live readiness lane after the report? [y/N]
+This change matched the go-live signals (<trigger>). Run the go-live readiness lane after the report? [y/N]
 ```
+
+Fill `<trigger>` from the `go-live-review` entry in `roster.gaps[]` — its `trigger` value, which names the signals that fired.
 
 On `y`, run `Skill: gauntlet:go-live-review` against the same artifact **after** the report is placed (step 8), never before. Anything else declines: say `go-live-review: declined` and move on. A wrong question costs one keystroke; never escalate a signal match into an automatic run.
 
@@ -190,7 +200,9 @@ List every gap verbatim — lane and reason, no paraphrase — then offer each a
 
 ## 10. Record dispositions
 
-After the report is placed, ask the operator once — a single batch for the whole run — for a disposition on each reported finding: `accepted`, `rejected`, or `not-useful`, with an optional short note. If they decline, record nothing and say nothing further about it. A run that reported no findings prompts for nothing.
+Ask only after the operator has actually seen the findings — through the step 8 chat summary or the report file itself. Never ask for a disposition on something they have not been shown.
+
+The findings to ask about are the ones `party-report` counted in `lanes[].findings`; name each by its id and its one-line claim, read from that lane's `<runDir>/result.json`, so the operator is judging something concrete. Ask once — a single batch for the whole run — for a disposition on each: `accepted`, `rejected`, or `not-useful`, with an optional short note. If they decline, record nothing and say nothing further about it. A run that reported no findings prompts for nothing.
 
 Each lane is its own run and is triaged separately. For each lane the operator dispositioned, write that lane's entries into that lane's own run directory — a JSON array, one object per finding, `{"findingId": "<id>", "userDisposition": "accepted|rejected|not-useful"}`, adding a `"note"` key only when the operator actually gave one — then submit:
 
@@ -211,4 +223,3 @@ What carries over is the discipline around the previous review, not its machiner
 - **Separate the author's changes from rebase artifacts.** Files pulled in by a rebase onto a newer base are not this change's work and do not belong in the verdict.
 - **State the transition in the chat summary** — for example, `2 of 3 prior findings resolved; 1 new low-severity finding`.
 - **Updating a posted comment is an outward-facing action.** Approval to post the first comment does not authorize editing it on a later run. Ask before updating the existing `gauntlet:v1` comment or posting a new one. Iterate freely in the report file; the posted comment is the gated surface.
-</content>
