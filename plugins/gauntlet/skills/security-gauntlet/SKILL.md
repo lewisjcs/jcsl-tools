@@ -28,11 +28,8 @@ The skill is also invoked by `/plan-gauntlet`, `/doc-gauntlet`, and `gauntlet` w
 | Context | Diff source | Output target |
 |---|---|---|
 | Called from `/create-pr` | Already in context | High-severity findings → `## Security Findings` in PR body |
-| Called from `gauntlet` orchestrator | Diff or non-code artifact passed in invocation prompt | Returns surviving findings JSON for orchestrator aggregation |
 | Standalone with `<repo> <pr-number>` | `gh pr diff <number> --repo contentful/<repo>` | Standalone report |
 | Standalone no args | `git diff main...HEAD` (fall back to `master` only if `main` does not exist) | Standalone report |
-
-The gauntlet-orchestrator output JSON is a findings array per master spec §4.1's canonical 10-field schema (`skill`, `lens`, `category`, `location`, `claim`, `evidence`, `verdict`, `severity`, `confidence`, `recommendation`), with `verdict = "survives"` only (disproved findings already filtered) AND `confidence ≥ 70` (low-confidence findings already dropped). Phase 7's gauntlet adjudicator should NOT re-apply a confidence filter to findings received from security-gauntlet since the filter has already been applied. Disproved findings are NOT included in the returned JSON; they remain internal to security-gauntlet's execution.
 
 ---
 

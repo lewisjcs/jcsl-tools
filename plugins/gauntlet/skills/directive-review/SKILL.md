@@ -17,8 +17,6 @@ Reviews the instruction artifact at the **prompt level** — on its own terms, f
 /directive-review                             — review the most recently modified instruction file in $PWD
 ```
 
-The skill is also invoked by `gauntlet` when the orchestrator detects a `directive` artifact.
-
 **When NOT to use:** Human-facing docs/RFCs/READMEs (use `/doc-review`). SKILL.md or agent.md frontmatter definitions (use `/skill-audit`). Plan review (use `/plan-review`). Code (use `/gauntlet` or `/code-quality-audit`). Checking whether a generated golden-context doc has drifted from repo code (use `/cartograph` refresh). Brainstorming/designing the instruction (use `superpowers:brainstorming`, then review the result).
 
 ## Invocation Context Detection
@@ -27,9 +25,6 @@ The skill is also invoked by `gauntlet` when the orchestrator detects a `directi
 |---|---|---|
 | Standalone with `<path>` | Read from path | Standalone report |
 | Standalone no args | Most recently modified instruction `.md` in `$PWD` (under a `prompts/`, `knowledge/`, `references/`, `reference/`, or `rules/` dir), excluding `SKILL.md`/`agent.md` and `.plan.md` | Standalone report |
-| Called from `gauntlet` orchestrator | Artifact content passed in invocation prompt | Returns surviving findings JSON for orchestrator aggregation |
-
-The gauntlet-orchestrator output JSON has the canonical 10 fields per master spec §4.1, pre-filtered to `verdict = "survives"` AND `confidence ≥ 70` (the Phase 3 cutoff below). Disproved findings are NOT propagated to the orchestrator; they render in the standalone `<details>` block.
 
 ---
 
@@ -87,8 +82,6 @@ On re-dispatch: apply disproof strategies 2 (verbosity-bias) and 3 (correctly-op
 ## Output
 
 **Standalone:** Full report with surviving findings (location, claim, evidence, severity, recommendation each), plus a collapsed `<details>` section of disproved findings for transparency.
-
-**From `gauntlet` orchestrator:** Return surviving findings as a JSON array.
 
 ## Calibration
 

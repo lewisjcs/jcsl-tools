@@ -17,8 +17,6 @@ Hidden assumptions lens (per master spec §3.5 lens 5) is not currently wired up
 /doc-review                                   — review the most recently modified .md doc in the current repo
 ```
 
-The skill is also invoked by `gauntlet` when the gauntlet orchestrator runs a doc review pass.
-
 **When NOT to use:** Code review (use `/gauntlet` for multi-skill review or `/code-quality-audit` for convention-only audit). Plan review (use `/plan-review`). Adversarial pressure-testing of code changes (use `/adversarial-review`). Skill markdown review (use `/skill-audit`). Brainstorming or designing a doc (use `superpowers:brainstorming` to design the doc, then run doc-review on the result).
 
 ## Invocation Context Detection
@@ -27,10 +25,7 @@ The skill is also invoked by `gauntlet` when the gauntlet orchestrator runs a do
 |---|---|---|
 | Standalone with `<path>` | Read from path | Standalone report |
 | Standalone no args | Most recently modified `.md` doc in `$PWD`, excluding files the doc-finder would reject as non-docs: `.plan.md` files and `SKILL.md` files. When `$PWD` is the jcslOS workspace root, also exclude its `README.md`; when `$PWD` is inside a cloned repo, `README.md` is a valid target and is NOT excluded. | Standalone report |
-| Called from `gauntlet` orchestrator | Doc content passed in invocation prompt | Returns surviving findings JSON for orchestrator aggregation |
 | Called from `/create-pr` | Not triggered in v1 — doc review runs only on artifacts dispatched via `/gauntlet`, not on PR creation. May revisit if doc findings should appear in PR descriptions at creation time. | (none) |
-
-The gauntlet-orchestrator output JSON has the same schema as the Phase 3 adjudicated findings array: each entry has the 10 fields per master spec §4.1 (`skill`, `lens`, `category`, `location`, `claim`, `evidence`, `verdict`, `severity`, `confidence`, `recommendation`), with `verdict = "survives"` only (disproved findings already filtered) **and `confidence ≥ 70`** (low-confidence findings already dropped). The 70-confidence threshold is the Phase 3 cutoff (see Phase 3 step 2 below). Phase 7 should NOT re-apply a confidence filter to findings received from doc-review since the filter has already been applied. Disproved findings are NOT included in the returned JSON — they remain internal to the doc-review execution and are not propagated to the gauntlet orchestrator. If Phase 7 needs disproved-finding visibility, it should invoke doc-review in standalone mode (which renders them in a `<details>` block).
 
 ---
 
@@ -93,11 +88,7 @@ On re-dispatch: apply disproof strategies 2 (personal-OS-workspace check) and 3 
 
 ## Output
 
-Format based on invocation context:
-
 **Standalone:** Full report with surviving findings (location, claim, evidence, severity, recommendation for each). Include a collapsed `<details>` section of disproved findings for transparency.
-
-**From `gauntlet` orchestrator:** Return surviving findings as a JSON array for orchestrator aggregation.
 
 ## Sibling Skills
 
