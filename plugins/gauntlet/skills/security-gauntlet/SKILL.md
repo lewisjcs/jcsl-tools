@@ -27,7 +27,6 @@ The skill is also invoked by `/plan-gauntlet`, `/doc-gauntlet`, and `gauntlet` w
 
 | Context | Diff source | Output target |
 |---|---|---|
-| Called from `/gauntlet` | Already in context | Surviving findings feed into the gauntlet report's Findings section |
 | Called from `/create-pr` | Already in context | High-severity findings → `## Security Findings` in PR body |
 | Called from `gauntlet` orchestrator | Diff or non-code artifact passed in invocation prompt | Returns surviving findings JSON for orchestrator aggregation |
 | Standalone with `<repo> <pr-number>` | `gh pr diff <number> --repo contentful/<repo>` | Standalone report |
@@ -96,8 +95,6 @@ On re-dispatch: apply false-positive rules from code-quality-standards and secur
 Format based on invocation context:
 
 **Standalone:** Full report with surviving findings (location, claim, evidence, severity, recommendation for each). Include a collapsed `<details>` section of disproved findings for transparency.
-
-**From `/gauntlet`:** Surviving findings feed directly into the gauntlet report's Findings section. No separate report.
 
 **From `/create-pr`:** High-severity findings → `## Security Findings` section in the PR body. Medium and low severity → mention count only (e.g., "2 medium-severity findings noted during security review"). Advisory only — never blocking.
 

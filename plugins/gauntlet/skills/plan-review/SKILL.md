@@ -25,7 +25,6 @@ The skill is also invoked by `gauntlet` when the gauntlet orchestrator runs a pl
 
 | Context | Plan source | Output target |
 |---|---|---|
-| Called from `/gauntlet` (PR or local artifact contains a `.plan.md`) | Already in context | Surviving findings feed into the gauntlet report's Findings section |
 | Standalone with `<path>` | Read from path | Standalone report |
 | Standalone no args | Most recently modified `.plan.md` under `projects/active/` | Standalone report |
 | Called from `gauntlet` orchestrator | Plan content passed in invocation prompt | Returns surviving findings JSON for orchestrator aggregation |
@@ -93,8 +92,6 @@ On re-dispatch: apply false-positive rules from code-quality-standards and plan-
 Format based on invocation context:
 
 **Standalone:** Full report with surviving findings (location, claim, evidence, severity, recommendation for each). Include a collapsed `<details>` section of disproved findings for transparency.
-
-**From `/gauntlet`:** Surviving findings feed directly into the gauntlet report's Findings section. No separate report.
 
 **From `gauntlet` orchestrator:** Return surviving findings as a JSON array for orchestrator aggregation.
 

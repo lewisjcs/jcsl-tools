@@ -25,7 +25,6 @@ The skill is also invoked by `gauntlet` when the gauntlet orchestrator runs a do
 
 | Context | Doc source | Output target |
 |---|---|---|
-| Called from `/gauntlet` (artifact contains a doc-shaped `.md`) | Already in context — full file content (Finder needs the whole doc for Accuracy of references and Internal consistency lenses) | Surviving findings feed into the gauntlet report's Findings section |
 | Standalone with `<path>` | Read from path | Standalone report |
 | Standalone no args | Most recently modified `.md` doc in `$PWD`, excluding files the doc-finder would reject as non-docs: `.plan.md` files and `SKILL.md` files. When `$PWD` is the jcslOS workspace root, also exclude its `README.md`; when `$PWD` is inside a cloned repo, `README.md` is a valid target and is NOT excluded. | Standalone report |
 | Called from `gauntlet` orchestrator | Doc content passed in invocation prompt | Returns surviving findings JSON for orchestrator aggregation |
@@ -97,8 +96,6 @@ On re-dispatch: apply disproof strategies 2 (personal-OS-workspace check) and 3 
 Format based on invocation context:
 
 **Standalone:** Full report with surviving findings (location, claim, evidence, severity, recommendation for each). Include a collapsed `<details>` section of disproved findings for transparency.
-
-**From `/gauntlet`:** Surviving findings feed directly into the gauntlet report's Findings section. No separate report.
 
 **From `gauntlet` orchestrator:** Return surviving findings as a JSON array for orchestrator aggregation.
 

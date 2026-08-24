@@ -25,7 +25,6 @@ The skill is also invoked by `gauntlet` when the orchestrator detects a `directi
 
 | Context | Artifact source | Output target |
 |---|---|---|
-| Called from `/gauntlet` (artifact detected as `directive`) | Full file content in context | Surviving findings feed the gauntlet report's Findings section |
 | Standalone with `<path>` | Read from path | Standalone report |
 | Standalone no args | Most recently modified instruction `.md` in `$PWD` (under a `prompts/`, `knowledge/`, `references/`, `reference/`, or `rules/` dir), excluding `SKILL.md`/`agent.md` and `.plan.md` | Standalone report |
 | Called from `gauntlet` orchestrator | Artifact content passed in invocation prompt | Returns surviving findings JSON for orchestrator aggregation |
@@ -88,8 +87,6 @@ On re-dispatch: apply disproof strategies 2 (verbosity-bias) and 3 (correctly-op
 ## Output
 
 **Standalone:** Full report with surviving findings (location, claim, evidence, severity, recommendation each), plus a collapsed `<details>` section of disproved findings for transparency.
-
-**From `/gauntlet`:** Surviving findings feed the gauntlet report's Findings section.
 
 **From `gauntlet` orchestrator:** Return surviving findings as a JSON array.
 

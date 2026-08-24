@@ -78,7 +78,7 @@ Pass each signal that matched to `party-form` as a repeated `--golive-signal <id
 | terminal rollout language | `terminal_rollout_language` |
 | SDK major-version bump | `sdk_major_release` |
 
-This step reports signals; it decides nothing. Whether the signals lead to a go-live question is the runtime's call, read off its answer in step 5. Pass `--go-live` or `--no-go-live` straight through to `party-form` when the operator gave one, and never re-derive what they do to the roster. One consequence belongs to this skill rather than the runtime: `--go-live` **is** the operator's answer to step 5's question, already given, which is why step 5 does not ask it again.
+This step reports signals; it decides nothing. Whether the signals lead to a go-live question is the runtime's call, read off its answer in step 5. One consequence belongs to this skill rather than the runtime: `--go-live` **is** the operator's answer to step 5's question, already given, which is why step 5 does not ask it again.
 
 ## 4. Form the party
 
@@ -89,7 +89,7 @@ node "${CLAUDE_PLUGIN_ROOT}/runtime/bin/cli.mjs" party-form --primary <artifact-
 # stdout: {partyRunId, partyDir, profile, roster:{fielded, skipped, gaps, overrides}, goLivePrompt, lanes:[{classKey, runId, runDir, family}], worktree, events}
 ```
 
-Forward the operator's lane overrides untouched: `--force-lane <class>` and `--skip-lane <class>` are both repeatable, and the runtime validates each against its roster pool — forcing a Class onto a family it does not support is a typed refusal, not a silent no-op. Never add an override the operator did not ask for.
+Forward the operator's lane overrides untouched: `--force-lane <class>` and `--skip-lane <class>` are both repeatable, and the runtime validates each against its roster pool — forcing a Class onto a family it does not support is a typed refusal, not a silent no-op. Never add an override the operator did not ask for. Pass `--go-live` or `--no-go-live` straight through when the operator gave one, and never re-derive what they do to the roster — this applies to every artifact type, not just `code-pr` and `code-local`.
 
 Parse the stdout JSON. Keep `partyRunId` (step 7 needs it) and `lanes` (step 6 needs each lane's `classKey`, `runId`, and `runDir`).
 
@@ -155,7 +155,7 @@ node "${CLAUDE_PLUGIN_ROOT}/runtime/bin/cli.mjs" party-report --party <partyRunI
 # stdout: {partyRunId, reportPath, recordPath, blockers, gaps, lanes, cost:{bookedUsd, fullFlowUsd, omissions}}
 ```
 
-The runtime has now written the report and the signed record: it verified that each lane's frozen bytes still match the snapshot, collected the usage envelopes, priced the run, and removed the pinned worktree. Pass `--keep-worktree` only when the operator wants to inspect it. A lane that failed comes back reported as a blocker with exit code 0 — that is the run's result, not an error.
+The runtime has now written the report and the digested record: it verified that each lane's frozen bytes still match the snapshot, collected the usage envelopes, priced the run, and removed the pinned worktree. Pass `--keep-worktree` only when the operator wants to inspect it. A lane that failed comes back reported as a blocker with exit code 0 — that is the run's result, not an error.
 
 **Reporting happens once.** A second `party-report` on the same party is refused with `CLI_PARTY_ALREADY_REPORTED`; the command never rewrites recorded evidence. If more review is needed, that is a new party run (step 11).
 
@@ -169,7 +169,7 @@ Do not re-adjudicate, re-count, or re-word what the report says. It is the deliv
 - **No ticket** (ad-hoc doc, unticketed local diff): `scratch/gauntlet-<YYYYMMDD-HHMMSS>/report.md` (`date +%Y%m%d-%H%M%S`).
 - **Collision:** if the dated path already exists, append `-2`, `-3`, … A re-review against an advanced head is its own party run with its own report — see step 11.
 
-The runtime already recorded what was reviewed (artifact type, snapshot digest, and the pinned commit for a `code-pr`) in the report header and the party record. Do not re-derive the reviewed ref.
+The runtime already recorded what was reviewed: the artifact type is in the report header, and the snapshot digest and the pinned commit for a `code-pr` are in the party record at `recordPath`. Do not re-derive the reviewed ref.
 
 Confirm the copy landed — `wc -l <path>` returns at least 1 — before naming the path in chat. Evidence before assertion: never say "report written" without the check.
 
@@ -210,7 +210,7 @@ Each lane is its own run and is triaged separately. For each lane the operator d
 node "${CLAUDE_PLUGIN_ROOT}/runtime/bin/cli.mjs" triage --run <that lane's runId> --entries <that lane's runDir>/triage-entries.json
 ```
 
-**Never cross-submit.** A finding id belongs to the lane run that produced it; submitting one lane's entries against another lane's `runId` is wrong even where the command accepts it. One call per lane, and never one call per finding — the sidecar is rewritten per call, so several calls against one run silently drop entries. If a call exits non-zero, surface the error and correct the file; do not fall back to one call per finding.
+**Never cross-submit.** A finding id belongs to the lane run that produced it; submitting one lane's entries against another lane's `runId` is wrong even where the command accepts it. One call per lane, and never one call per finding — the sidecar is rewritten per call, so concurrent calls against one run would silently drop entries. If a call exits non-zero, surface the error and correct the file; do not fall back to one call per finding.
 
 ## 11. Re-reviewing an advanced head
 

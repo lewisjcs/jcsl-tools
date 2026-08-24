@@ -37,7 +37,7 @@ Load this file **only when the operator asks for something to post** (step 8 of 
 | 🛑 Blockers | **<n>** |
 | ⚠️ Concerns | <n> |
 | 💡 Nits | <n> |
-| 🔒 Security | <clean ✓ | N findings | not run> |
+| 🔒 Security | <clean ✓ / N findings / not run> |
 | 🧪 Lanes | <the lanes this run actually fielded> |
 
 > [!WARNING]
