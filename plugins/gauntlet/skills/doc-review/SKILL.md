@@ -8,7 +8,7 @@ argument-hint: "[<path-to-doc.md>]"
 
 Apply 4 doc-review lenses (Memory-encoded rules with 6 sub-lenses, Internal consistency, Accuracy of references, Voice and writing-style) to a markdown documentation artifact via opposed-framing agents. Find → Validate → Adjudicate.
 
-Hidden assumptions lens (per master spec §3.5 lens 5) fires only when doc-review is invoked from gauntlet (Phase 7 §9 resolution, 2026-05-27). gauntlet additionally dispatches `adversarial-review` with family `doc-text` and relabels its findings to `doc-review / Hidden assumptions` per the cross-skill canonical-lens mapping. When doc-review runs standalone (direct invocation), Hidden-assumptions findings are NOT produced — the lens requires gauntlet's separate adversarial-review dispatch to fire.
+Hidden assumptions lens (per master spec §3.5 lens 5) is not currently wired up — it depended on gauntlet cross-dispatching `adversarial-review` with family `doc-text` and relabeling the findings to `doc-review / Hidden assumptions`, and the run skill no longer does that cross-dispatch. doc-review is now a lane the Party runtime lists as a gap and offers as an operator-invoked follow-up (`Skill: gauntlet:doc-review`), same as a direct invocation. Hidden-assumptions findings are NOT produced, standalone or via gauntlet.
 
 ## Usage
 
@@ -110,4 +110,4 @@ Format based on invocation context:
 - `security-gauntlet` — security review skill, also Finder/Validator pattern. Sibling within the gauntlet review-skill family.
 - `plan-review` — plan-quality review skill, also Finder/Validator pattern. Sibling within the gauntlet review-skill family.
 - (review-pr archived 2026-05-27 per Phase 9 — see `.claude/_archive/skills/review-pr/`. doc-review is now invoked by gauntlet, not review-pr.)
-- `gauntlet` — Phase 7 orchestrator; calls doc-review for the doc-quality pass.
+- `gauntlet` — offers doc-review as a follow-up when the Party runtime reports it as a gap lane.

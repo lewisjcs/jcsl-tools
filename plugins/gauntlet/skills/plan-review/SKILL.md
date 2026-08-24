@@ -8,7 +8,7 @@ argument-hint: "[<path-to-plan.md>]"
 
 Apply 5 plan-review lenses (EARS compliance, Internal consistency, Ambiguity, Scope, Test strategy adequacy) to a plan markdown artifact via opposed-framing agents. Find → Validate → Adjudicate.
 
-Architectural-risk lens (per master spec §3.4 lens 5) fires only when plan-review is invoked from gauntlet (Phase 7 §9 resolution, 2026-05-27). gauntlet additionally dispatches `adversarial-review` with family `plan-text` and relabels its findings to `plan-review / Architectural risk` per the cross-skill canonical-lens mapping. When plan-review runs standalone (direct invocation), Architectural-risk findings are NOT produced — the lens requires gauntlet's separate adversarial-review dispatch to fire.
+Architectural-risk lens (per master spec §3.4 lens 5) is not currently wired up — it depended on gauntlet cross-dispatching `adversarial-review` with family `plan-text` and relabeling the findings to `plan-review / Architectural risk`, and the run skill no longer does that cross-dispatch. plan-review is now a lane the Party runtime lists as a gap and offers as an operator-invoked follow-up (`Skill: gauntlet:plan-review`), same as a direct invocation. Architectural-risk findings are NOT produced, standalone or via gauntlet.
 
 ## Usage
 
@@ -105,4 +105,4 @@ Format based on invocation context:
 - `security-gauntlet` — security review skill, also Finder/Validator pattern. Sibling within the gauntlet review-skill family.
 - `superpowers:writing-plans` — authors plans. plan-review is the QA pass on plans authored by writing-plans.
 - (review-pr archived 2026-05-27 per Phase 9 — see `.claude/_archive/skills/review-pr/`. plan-review is now invoked by gauntlet, not review-pr.)
-- `gauntlet` — Phase 7 orchestrator; calls plan-review for the plan-quality pass.
+- `gauntlet` — offers plan-review as a follow-up when the Party runtime reports it as a gap lane.
