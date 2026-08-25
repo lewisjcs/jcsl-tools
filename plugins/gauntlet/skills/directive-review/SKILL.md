@@ -17,20 +17,14 @@ Reviews the instruction artifact at the **prompt level** — on its own terms, f
 /directive-review                             — review the most recently modified instruction file in $PWD
 ```
 
-The skill is also invoked by `gauntlet` when the orchestrator detects a `directive` artifact.
-
 **When NOT to use:** Human-facing docs/RFCs/READMEs (use `/doc-review`). SKILL.md or agent.md frontmatter definitions (use `/skill-audit`). Plan review (use `/plan-review`). Code (use `/gauntlet` or `/code-quality-audit`). Checking whether a generated golden-context doc has drifted from repo code (use `/cartograph` refresh). Brainstorming/designing the instruction (use `superpowers:brainstorming`, then review the result).
 
 ## Invocation Context Detection
 
 | Context | Artifact source | Output target |
 |---|---|---|
-| Called from `/gauntlet` (artifact detected as `directive`) | Full file content in context | Surviving findings feed the gauntlet report's Findings section |
 | Standalone with `<path>` | Read from path | Standalone report |
 | Standalone no args | Most recently modified instruction `.md` in `$PWD` (under a `prompts/`, `knowledge/`, `references/`, `reference/`, or `rules/` dir), excluding `SKILL.md`/`agent.md` and `.plan.md` | Standalone report |
-| Called from `gauntlet` orchestrator | Artifact content passed in invocation prompt | Returns surviving findings JSON for orchestrator aggregation |
-
-The gauntlet-orchestrator output JSON has the canonical 10 fields per master spec §4.1, pre-filtered to `verdict = "survives"` AND `confidence ≥ 70` (the Phase 3 cutoff below). Disproved findings are NOT propagated to the orchestrator; they render in the standalone `<details>` block.
 
 ---
 
@@ -89,10 +83,6 @@ On re-dispatch: apply disproof strategies 2 (verbosity-bias) and 3 (correctly-op
 
 **Standalone:** Full report with surviving findings (location, claim, evidence, severity, recommendation each), plus a collapsed `<details>` section of disproved findings for transparency.
 
-**From `/gauntlet`:** Surviving findings feed the gauntlet report's Findings section.
-
-**From `gauntlet` orchestrator:** Return surviving findings as a JSON array.
-
 ## Calibration
 
 Calibrated against the gauntlet gold-fixture suite (`projects/active/gauntlet/test-dataset/directive/`, 6 fixtures: 4 plants + 2 controls including a long-but-clean verbosity-bias guard). Opus 4.8, 2026-06-03: **TPR 1.0, FPR 0.0, Cohen's κ = φ = 1.0, drift 0.0** — every plant caught at the correct lens, both controls silent. Meets the tightened 0.90/0.05 bar. Re-run via `run-calibration.sh directive-review` on model bumps; the suite is the ongoing discrimination guard, not a one-time certificate.
@@ -103,4 +93,4 @@ Calibrated against the gauntlet gold-fixture suite (`projects/active/gauntlet/te
 - `code-quality-standards` — defensive-code anti-patterns. Loaded by the Validator for false-positive filtering.
 - `doc-review` — reviews human-facing docs (RFCs/READMEs/AGENTS.md). Different audience: doc-review protects human readers and Contentful house voice; directive-review protects a literal agent executor.
 - `skill-audit` — reviews SKILL.md/agent.md frontmatter definitions. directive-review covers the non-frontmatter prose those skills reference.
-- `gauntlet` — orchestrator; dispatches directive-review for `directive` artifacts.
+- `gauntlet` — offers directive-review as a follow-up when the Party runtime reports it as a gap lane for `directive` artifacts.

@@ -19,21 +19,15 @@ This skill is part of the gauntlet skill family. It is named `security-gauntlet`
 /security-gauntlet                       — Local mode (diff against base branch)
 ```
 
-The skill is also invoked by `/plan-gauntlet`, `/doc-gauntlet`, and `gauntlet` when those skills want a security pass over a non-code artifact (a plan, a doc, a skill).
-
 **When NOT to use:** General code review (use `/gauntlet` for multi-skill review or `/code-quality-audit` for convention-only audit). Adversarial pressure-testing of structural assumptions (use `/adversarial-review`). Generic security pass on git changes without calibration (use Claude Code's built-in `/security-review`). Code or content that has not changed (security review is diff-scoped or change-scoped, not full-codebase audit).
 
 ## Invocation Context Detection
 
 | Context | Diff source | Output target |
 |---|---|---|
-| Called from `/gauntlet` | Already in context | Surviving findings feed into the gauntlet report's Findings section |
 | Called from `/create-pr` | Already in context | High-severity findings → `## Security Findings` in PR body |
-| Called from `gauntlet` orchestrator | Diff or non-code artifact passed in invocation prompt | Returns surviving findings JSON for orchestrator aggregation |
 | Standalone with `<repo> <pr-number>` | `gh pr diff <number> --repo contentful/<repo>` | Standalone report |
 | Standalone no args | `git diff main...HEAD` (fall back to `master` only if `main` does not exist) | Standalone report |
-
-The gauntlet-orchestrator output JSON is a findings array per master spec §4.1's canonical 10-field schema (`skill`, `lens`, `category`, `location`, `claim`, `evidence`, `verdict`, `severity`, `confidence`, `recommendation`), with `verdict = "survives"` only (disproved findings already filtered) AND `confidence ≥ 70` (low-confidence findings already dropped). Phase 7's gauntlet adjudicator should NOT re-apply a confidence filter to findings received from security-gauntlet since the filter has already been applied. Disproved findings are NOT included in the returned JSON; they remain internal to security-gauntlet's execution.
 
 ---
 
@@ -96,8 +90,6 @@ On re-dispatch: apply false-positive rules from code-quality-standards and secur
 Format based on invocation context:
 
 **Standalone:** Full report with surviving findings (location, claim, evidence, severity, recommendation for each). Include a collapsed `<details>` section of disproved findings for transparency.
-
-**From `/gauntlet`:** Surviving findings feed directly into the gauntlet report's Findings section. No separate report.
 
 **From `/create-pr`:** High-severity findings → `## Security Findings` section in the PR body. Medium and low severity → mention count only (e.g., "2 medium-severity findings noted during security review"). Advisory only — never blocking.
 

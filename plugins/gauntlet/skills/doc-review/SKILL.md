@@ -8,7 +8,7 @@ argument-hint: "[<path-to-doc.md>]"
 
 Apply 4 doc-review lenses (Memory-encoded rules with 6 sub-lenses, Internal consistency, Accuracy of references, Voice and writing-style) to a markdown documentation artifact via opposed-framing agents. Find → Validate → Adjudicate.
 
-Hidden assumptions lens (per master spec §3.5 lens 5) fires only when doc-review is invoked from gauntlet (Phase 7 §9 resolution, 2026-05-27). gauntlet additionally dispatches `adversarial-review` with family `doc-text` and relabels its findings to `doc-review / Hidden assumptions` per the cross-skill canonical-lens mapping. When doc-review runs standalone (direct invocation), Hidden-assumptions findings are NOT produced — the lens requires gauntlet's separate adversarial-review dispatch to fire.
+Hidden assumptions lens (per master spec §3.5 lens 5) is not currently wired up — it depended on gauntlet cross-dispatching `adversarial-review` with family `doc-text` and relabeling the findings to `doc-review / Hidden assumptions`, and the run skill no longer does that cross-dispatch. doc-review is now a lane the Party runtime lists as a gap and offers as an operator-invoked follow-up (`Skill: gauntlet:doc-review`), same as a direct invocation. Hidden-assumptions findings are NOT produced, standalone or via gauntlet.
 
 ## Usage
 
@@ -17,21 +17,15 @@ Hidden assumptions lens (per master spec §3.5 lens 5) fires only when doc-revie
 /doc-review                                   — review the most recently modified .md doc in the current repo
 ```
 
-The skill is also invoked by `gauntlet` when the gauntlet orchestrator runs a doc review pass.
-
 **When NOT to use:** Code review (use `/gauntlet` for multi-skill review or `/code-quality-audit` for convention-only audit). Plan review (use `/plan-review`). Adversarial pressure-testing of code changes (use `/adversarial-review`). Skill markdown review (use `/skill-audit`). Brainstorming or designing a doc (use `superpowers:brainstorming` to design the doc, then run doc-review on the result).
 
 ## Invocation Context Detection
 
 | Context | Doc source | Output target |
 |---|---|---|
-| Called from `/gauntlet` (artifact contains a doc-shaped `.md`) | Already in context — full file content (Finder needs the whole doc for Accuracy of references and Internal consistency lenses) | Surviving findings feed into the gauntlet report's Findings section |
 | Standalone with `<path>` | Read from path | Standalone report |
 | Standalone no args | Most recently modified `.md` doc in `$PWD`, excluding files the doc-finder would reject as non-docs: `.plan.md` files and `SKILL.md` files. When `$PWD` is the jcslOS workspace root, also exclude its `README.md`; when `$PWD` is inside a cloned repo, `README.md` is a valid target and is NOT excluded. | Standalone report |
-| Called from `gauntlet` orchestrator | Doc content passed in invocation prompt | Returns surviving findings JSON for orchestrator aggregation |
 | Called from `/create-pr` | Not triggered in v1 — doc review runs only on artifacts dispatched via `/gauntlet`, not on PR creation. May revisit if doc findings should appear in PR descriptions at creation time. | (none) |
-
-The gauntlet-orchestrator output JSON has the same schema as the Phase 3 adjudicated findings array: each entry has the 10 fields per master spec §4.1 (`skill`, `lens`, `category`, `location`, `claim`, `evidence`, `verdict`, `severity`, `confidence`, `recommendation`), with `verdict = "survives"` only (disproved findings already filtered) **and `confidence ≥ 70`** (low-confidence findings already dropped). The 70-confidence threshold is the Phase 3 cutoff (see Phase 3 step 2 below). Phase 7 should NOT re-apply a confidence filter to findings received from doc-review since the filter has already been applied. Disproved findings are NOT included in the returned JSON — they remain internal to the doc-review execution and are not propagated to the gauntlet orchestrator. If Phase 7 needs disproved-finding visibility, it should invoke doc-review in standalone mode (which renders them in a `<details>` block).
 
 ---
 
@@ -94,13 +88,7 @@ On re-dispatch: apply disproof strategies 2 (personal-OS-workspace check) and 3 
 
 ## Output
 
-Format based on invocation context:
-
 **Standalone:** Full report with surviving findings (location, claim, evidence, severity, recommendation for each). Include a collapsed `<details>` section of disproved findings for transparency.
-
-**From `/gauntlet`:** Surviving findings feed directly into the gauntlet report's Findings section. No separate report.
-
-**From `gauntlet` orchestrator:** Return surviving findings as a JSON array for orchestrator aggregation.
 
 ## Sibling Skills
 
@@ -110,4 +98,4 @@ Format based on invocation context:
 - `security-gauntlet` — security review skill, also Finder/Validator pattern. Sibling within the gauntlet review-skill family.
 - `plan-review` — plan-quality review skill, also Finder/Validator pattern. Sibling within the gauntlet review-skill family.
 - (review-pr archived 2026-05-27 per Phase 9 — see `.claude/_archive/skills/review-pr/`. doc-review is now invoked by gauntlet, not review-pr.)
-- `gauntlet` — Phase 7 orchestrator; calls doc-review for the doc-quality pass.
+- `gauntlet` — offers doc-review as a follow-up when the Party runtime reports it as a gap lane.

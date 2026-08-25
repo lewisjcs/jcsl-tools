@@ -23,7 +23,13 @@
         "run-terminal",
         "outcome-validated",
         "result-written",
-        "triage-appended"
+        "triage-appended",
+        "profile-computed",
+        "roster-selected",
+        "snapshot-staged",
+        "worktree-pinned",
+        "lane-run-linked",
+        "party-report-written"
       ]
     },
     "data": { "type": "object" }

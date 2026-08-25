@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "jcsl:artifact-profile-rules@1",
+  "type": "object",
+  "required": ["kind", "version", "detection", "mechanicalOnly", "securitySignals", "goLiveSignalIds"],
+  "properties": {
+    "kind": { "const": "artifact-profile-rules" },
+    "version": { "$ref": "#/$defs/semver" },
+    "detection": {
+      "type": "object",
+      "$comment": "Detection-rule content is consumer-supplied data (read by src/party/detect.mjs); validated here so a rules file missing e.g. skillFrontmatterKeys fails fast instead of silently misrouting artifacts.",
+      "required": [
+        "planPathSuffixes", "planPathSegments", "planHeadings", "earsPattern",
+        "skillFileNames", "skillFrontmatterKeys", "directivePathSegments", "directiveExcludedSegments"
+      ],
+      "properties": {
+        "planPathSuffixes": { "type": "array", "items": { "$ref": "#/$defs/nonEmptyString" }, "minItems": 1 },
+        "planPathSegments": { "type": "array", "items": { "$ref": "#/$defs/nonEmptyString" }, "minItems": 1 },
+        "planHeadings": { "type": "array", "items": { "$ref": "#/$defs/nonEmptyString" }, "minItems": 1 },
+        "earsPattern": { "$ref": "#/$defs/nonEmptyString" },
+        "skillFileNames": { "type": "array", "items": { "$ref": "#/$defs/nonEmptyString" } },
+        "skillFrontmatterKeys": { "type": "array", "items": { "$ref": "#/$defs/nonEmptyString" }, "minItems": 1 },
+        "directivePathSegments": { "type": "array", "items": { "$ref": "#/$defs/nonEmptyString" } },
+        "directiveExcludedSegments": { "type": "array", "items": { "$ref": "#/$defs/nonEmptyString" } }
+      },
+      "additionalProperties": false
+    },
+    "mechanicalOnly": {
+      "type": "object",
+      "$comment": "Mechanical-only-rule content is consumer-supplied data (read by src/party/diff.mjs); validated here so a rules file missing e.g. manifestVersionOnly fails fast instead of silently misclassifying a behavioral diff as mechanical.",
+      "required": ["documentationSuffixes", "lockfileBasenames", "manifestVersionOnly", "commentPrefixesByExtension"],
+      "properties": {
+        "documentationSuffixes": { "type": "array", "items": { "$ref": "#/$defs/nonEmptyString" } },
+        "lockfileBasenames": { "type": "array", "items": { "$ref": "#/$defs/nonEmptyString" } },
+        "manifestVersionOnly": {
+          "type": "object",
+          "required": ["basenames", "versionKeyPattern"],
+          "properties": {
+            "basenames": { "type": "array", "items": { "$ref": "#/$defs/nonEmptyString" } },
+            "versionKeyPattern": { "$ref": "#/$defs/nonEmptyString" }
+          },
+          "additionalProperties": false
+        },
+        "commentPrefixesByExtension": {
+          "type": "object",
+          "patternProperties": {
+            "^\\.": { "type": "array", "items": { "$ref": "#/$defs/nonEmptyString" } }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "securitySignals": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id"],
+        "properties": {
+          "id": { "$ref": "#/$defs/nonEmptyString" },
+          "pathPattern": { "type": "string" },
+          "addedLinePattern": { "type": "string" },
+          "basenames": {
+            "type": "array",
+            "items": { "$ref": "#/$defs/nonEmptyString" }
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "goLiveSignalIds": {
+      "type": "array",
+      "minItems": 6,
+      "maxItems": 6,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/nonEmptyString" }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "nonEmptyString": { "type": "string", "minLength": 1 },
+    "semver": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" }
+  }
+}

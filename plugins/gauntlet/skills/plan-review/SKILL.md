@@ -8,7 +8,7 @@ argument-hint: "[<path-to-plan.md>]"
 
 Apply 5 plan-review lenses (EARS compliance, Internal consistency, Ambiguity, Scope, Test strategy adequacy) to a plan markdown artifact via opposed-framing agents. Find → Validate → Adjudicate.
 
-Architectural-risk lens (per master spec §3.4 lens 5) fires only when plan-review is invoked from gauntlet (Phase 7 §9 resolution, 2026-05-27). gauntlet additionally dispatches `adversarial-review` with family `plan-text` and relabels its findings to `plan-review / Architectural risk` per the cross-skill canonical-lens mapping. When plan-review runs standalone (direct invocation), Architectural-risk findings are NOT produced — the lens requires gauntlet's separate adversarial-review dispatch to fire.
+Architectural-risk lens (per master spec §3.4 lens 5) is not currently wired up — it depended on gauntlet cross-dispatching `adversarial-review` with family `plan-text` and relabeling the findings to `plan-review / Architectural risk`, and the run skill no longer does that cross-dispatch. plan-review is now a lane the Party runtime lists as a gap and offers as an operator-invoked follow-up (`Skill: gauntlet:plan-review`), same as a direct invocation. Architectural-risk findings are NOT produced, standalone or via gauntlet.
 
 ## Usage
 
@@ -17,20 +17,14 @@ Architectural-risk lens (per master spec §3.4 lens 5) fires only when plan-revi
 /plan-review                                            — review the most recently modified .plan.md in projects/active/
 ```
 
-The skill is also invoked by `gauntlet` when the gauntlet orchestrator runs a plan review pass.
-
 **When NOT to use:** Code review (use `/gauntlet` for multi-skill review or `/code-quality-audit` for convention-only audit). Doc review (use `/doc-review`). Adversarial pressure-testing of code changes (use `/adversarial-review`). Brainstorming or designing a plan (use `superpowers:writing-plans` to create the plan, then run plan-review on the result).
 
 ## Invocation Context Detection
 
 | Context | Plan source | Output target |
 |---|---|---|
-| Called from `/gauntlet` (PR or local artifact contains a `.plan.md`) | Already in context | Surviving findings feed into the gauntlet report's Findings section |
 | Standalone with `<path>` | Read from path | Standalone report |
 | Standalone no args | Most recently modified `.plan.md` under `projects/active/` | Standalone report |
-| Called from `gauntlet` orchestrator | Plan content passed in invocation prompt | Returns surviving findings JSON for orchestrator aggregation |
-
-The gauntlet-orchestrator output JSON has the same schema as the Phase 3 adjudicated findings array: each entry has the 10 fields per master spec §4.1 (`skill`, `lens`, `category`, `location`, `claim`, `evidence`, `verdict`, `severity`, `confidence`, `recommendation`), with `verdict = "survives"` only (disproved findings already filtered) **and `confidence ≥ 70`** (low-confidence findings already dropped). The 70-confidence threshold is the Phase 3 cutoff (see Phase 3 step 2 below). Phase 7 can rank/dedupe these alongside findings from sibling skills (`security-gauntlet`, `doc-review`) using the shared schema; Phase 7 should NOT re-apply a confidence filter to findings received from plan-review since the filter has already been applied.
 
 ---
 
@@ -90,13 +84,7 @@ On re-dispatch: apply false-positive rules from code-quality-standards and plan-
 
 ## Output
 
-Format based on invocation context:
-
 **Standalone:** Full report with surviving findings (location, claim, evidence, severity, recommendation for each). Include a collapsed `<details>` section of disproved findings for transparency.
-
-**From `/gauntlet`:** Surviving findings feed directly into the gauntlet report's Findings section. No separate report.
-
-**From `gauntlet` orchestrator:** Return surviving findings as a JSON array for orchestrator aggregation.
 
 ## Sibling Skills
 
@@ -105,4 +93,4 @@ Format based on invocation context:
 - `security-gauntlet` — security review skill, also Finder/Validator pattern. Sibling within the gauntlet review-skill family.
 - `superpowers:writing-plans` — authors plans. plan-review is the QA pass on plans authored by writing-plans.
 - (review-pr archived 2026-05-27 per Phase 9 — see `.claude/_archive/skills/review-pr/`. plan-review is now invoked by gauntlet, not review-pr.)
-- `gauntlet` — Phase 7 orchestrator; calls plan-review for the plan-quality pass.
+- `gauntlet` — offers plan-review as a follow-up when the Party runtime reports it as a gap lane.

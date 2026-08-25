@@ -1,0 +1,23 @@
+{
+  "kind": "price-table",
+  "version": "1.0.0",
+  "currency": "USD",
+  "provenance": {
+    "source": "Anthropic model pricing: https://platform.claude.com/docs/en/about-claude/pricing; OpenAI model pricing: https://developers.openai.com/api/docs/pricing",
+    "retrievedAt": "2026-08-21T00:00:00Z"
+  },
+  "models": {
+    "claude-sonnet-5": {
+      "inputPerMTok": 2,
+      "cacheWritePerMTok": 2.5,
+      "cacheReadPerMTok": 0.2,
+      "outputPerMTok": 10
+    },
+    "gpt-5.6-terra": {
+      "inputPerMTok": 2,
+      "cacheWritePerMTok": 2.5,
+      "cacheReadPerMTok": 0.2,
+      "outputPerMTok": 12
+    }
+  }
+}
