@@ -423,6 +423,17 @@
                   "type": "number",
                   "minimum": 0,
                   "maximum": 100
+                },
+                "category": {
+                  "enum": [
+                    "security",
+                    "correctness",
+                    "data-loss",
+                    "maintainability",
+                    "style",
+                    "accuracy",
+                    "other"
+                  ]
                 }
               },
               "additionalProperties": false
@@ -580,6 +591,17 @@
                   "Low"
                 ]
               },
+              "originalCategory": {
+                "enum": [
+                  "security",
+                  "correctness",
+                  "data-loss",
+                  "maintainability",
+                  "style",
+                  "accuracy",
+                  "other"
+                ]
+              },
               "adjudicationNotes": {
                 "type": "array",
                 "items": {
@@ -652,7 +674,7 @@
           "profiles/adversarial-review/doc-text/lenses.md",
           "bindings/claude-code.json"
         ],
-        "sourceHash": "acf58de476ef0d63da8ff672b1c903a43e58a7d86c45034deba2d81c8c2f5ea3"
+        "sourceHash": "e25e65b51fd8201edb95e9ed0c47fc260f5dfdf2f1663b22d60d7a722ea4af9c"
       }
     },
     "codex": {
@@ -672,7 +694,7 @@
           "profiles/adversarial-review/doc-text/lenses.md",
           "bindings/codex.json"
         ],
-        "sourceHash": "c73a1a8f1b1dc1d27238b9d1d68f679d803ae8131be1588dcac9db9b624b75d9"
+        "sourceHash": "889d04cbeb9aff46a3d806bd6c1e59389ca0e4c24020d0106b5e6cac563190db"
       }
     }
   },

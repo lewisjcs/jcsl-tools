@@ -76,10 +76,11 @@ contains ONE of:
 
 - **(a) A quoted line** from the artifact you cite in `location` — exact
   substring, copied as it appears in the artifact. The quote must come from
-  a component whose content is supplied inline in your prompt: adjudication
-  verifies quotes mechanically against inline component content only, so a
-  quote from a reference-only component (one shown as a resolved reference
-  rather than inline text) cannot be verified and will not hold a High. If
+  a component the bundle carries as `inlineContent`: adjudication verifies
+  quotes mechanically against inline component content only, so a quote
+  from a reference-only component (one the bundle names as a
+  `resolvedReference` rather than carrying its text) cannot be verified and
+  will not hold a High. If
   your High rests on reference-only content, ground it as a computed
   verification instead, or emit it at Medium.
 - **(b) A computed verification** — a numeric, structural, or definitional

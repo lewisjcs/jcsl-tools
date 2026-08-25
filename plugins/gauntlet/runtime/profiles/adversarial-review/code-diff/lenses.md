@@ -55,7 +55,11 @@ change.
 3. Is this theoretical, or realistic given how the code is actually used
    under real traffic patterns?
 4. Read source files beyond the diff to verify, per the grounding contract's
-   tool-discipline rule.
+   tool-discipline rule. Scope those reads to what the diff references:
+   the post-change files its hunks touch, and the definitions, callers, and
+   siblings those files name. Orienting over the whole tree is not review;
+   a file the diff neither touches nor references is out of reach unless a
+   specific claim leads there.
 5. For a Missed Integration finding: does the cited alternative exist at
    the cited location in the reviewed tree, is it reachable from the
    changed code, and does it actually cover the claimed capability? If any

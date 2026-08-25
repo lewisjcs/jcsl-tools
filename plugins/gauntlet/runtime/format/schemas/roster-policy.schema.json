@@ -70,7 +70,7 @@
               "required": ["lane", "when", "reason"],
               "properties": {
                 "lane": { "$ref": "#/$defs/nonEmptyString" },
-                "when": { "enum": ["always", "security-signal", "golive-flag"] },
+                "when": { "enum": ["always", "security-signal", "golive-flag", "doc-only"] },
                 "reason": { "$ref": "#/$defs/nonEmptyString" }
               },
               "additionalProperties": false

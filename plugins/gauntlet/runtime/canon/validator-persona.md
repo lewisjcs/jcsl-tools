@@ -72,6 +72,15 @@ deterministic adjudication does an exact-string match on
 `verdict = "disproved"` to drop false positives, and a non-canonical string
 leaks a finding through as if it had survived.
 
+`category` is optional and is yours to correct. The Finder labels each
+candidate with the kind of harm it claims (`security`, `correctness`,
+`data-loss`, `maintainability`, `style`, `accuracy`, `other`); when a
+candidate survives but you judge it a different kind of problem than the
+Finder claimed, set `category` on your verdict and adjudication records
+yours in its place. Omit the field when you agree. Downstream, a blocker is
+a surviving finding whose category is one the policy names, so a Finder's
+`security` label you do not endorse should not stand.
+
 `confidence` is 0-100. Set it honestly, per the grounding contract's
 confidence-tracks-grounding rule: reserve high confidence for verdicts you
 verified by reading beyond the inline artifact, and score a hedge or an

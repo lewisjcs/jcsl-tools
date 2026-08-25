@@ -37,7 +37,7 @@
       "type": "array",
       "items": {
         "type": "object", "required": ["findingId", "verdict", "confidence"],
-        "properties": {"findingId": {"type": "string"}, "verdict": {"enum": ["survives", "disproved"]}, "confidence": {"type": "number", "minimum": 0, "maximum": 100}},
+        "properties": {"findingId": {"type": "string"}, "verdict": {"enum": ["survives", "disproved"]}, "confidence": {"type": "number", "minimum": 0, "maximum": 100}, "category": {"enum": ["security", "correctness", "data-loss", "maintainability", "style", "accuracy", "other"]}},
         "additionalProperties": false
       }
     },
@@ -74,6 +74,7 @@
         "recommendation": {"type": "string"}, "disposition": {"enum": ["survives"]},
         "boundary": {"enum": ["in-bundle", "cross-boundary", "component-ref", "unclassified"]},
         "originalSeverity": {"enum": ["High", "Medium", "Low"]},
+        "originalCategory": {"enum": ["security", "correctness", "data-loss", "maintainability", "style", "accuracy", "other"]},
         "adjudicationNotes": {"type": "array", "items": {"type": "string", "minLength": 1}}
       }, "additionalProperties": false
     }
