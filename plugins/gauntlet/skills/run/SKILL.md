@@ -129,7 +129,7 @@ Some artifacts field no lanes at all: a skill file and an agent-instruction file
 node "${CLAUDE_PLUGIN_ROOT}/runtime/bin/cli.mjs" init --bundle <runDir>/bundle.json --family <family> --host claude-code --class <classKey> --out <runDir>/state.json
 # loop: next --state <runDir>/state.json → {dispatch action | terminal:true}
 #   Agent tool: subagent_type gauntlet:adversarial-finder | gauntlet:adversarial-validator | gauntlet:code-quality-auditor, prompt = action.promptBody verbatim
-#   write <runDir>/<role>-output-<attempt>.json (raw) and <runDir>/<role>-host-meta-<attempt>.json = {"modelBinding": {"<role>": {"model": "<agent file model: line>"}}, "usage": {...when available}}
+#   write <runDir>/<role>-output-<attempt>.json (raw) and <runDir>/<role>-host-meta-<attempt>.json = {"modelBinding": {"<role>": {"model": "<agent file model: line>"}}, "usage": {"totalTokens": <agent tool total>, "latencySeconds": <wall seconds>, ...when available}}
 #   receipt --state <runDir>/state.json --action <actionId> --output <raw> --host-meta <meta>
 node ... result --state <runDir>/state.json --out <runDir>/result.json --evidence <runDir>/evidence.json
 ```
@@ -138,9 +138,9 @@ node ... result --state <runDir>/state.json --out <runDir>/result.json --evidenc
 
 **Which agent for which action.** On the `adversarial-review` lane, a `dispatch-finder` action goes to `subagent_type: gauntlet:adversarial-finder` and a `dispatch-validator` action to `gauntlet:adversarial-validator`. On the `code-quality-audit` lane, its single `dispatch-auditor` action goes to `gauntlet:code-quality-auditor`. Pass `action.promptBody` verbatim; never paste artifact content into a prompt yourself — the prompt already tells the agent to read the artifact from the run directory.
 
-**Host metadata on every receipt.** Always pass `--host-meta`. The role key matches the dispatch: `finder`, `validator`, or `auditor`. Record the model the agent file pins — the `model:` frontmatter line of `${CLAUDE_PLUGIN_ROOT}/agents/<subagent>.md`; the Agent tool does not report which model ran, so the pinned value is the only measurable one. Where the dispatch also pins a reasoning effort, record it in the same object under `reasoningEffort`. Add a `usage` object (`inputTokens`, `cacheWriteTokens`, `cacheReadTokens`, `outputTokens`, `turns`, `latencySeconds`) when the host can measure it. A metric you cannot measure is left out — the runtime records it as a named omission rather than a guess, and a run with no `modelBinding` receipt produces an unverifiable evidence record.
+**Host metadata on every receipt.** Always pass `--host-meta`. The role key matches the dispatch: `finder`, `validator`, or `auditor`. Record the model the agent file pins — the `model:` frontmatter line of `${CLAUDE_PLUGIN_ROOT}/agents/<subagent>.md`; the Agent tool does not report which model ran, so the pinned value is the only measurable one. Where the dispatch also pins a reasoning effort, record it in the same object under `reasoningEffort`. Add a `usage` object (`inputTokens`, `cacheWriteTokens`, `cacheReadTokens`, `outputTokens`, `turns`, `latencySeconds`) when the host can measure it. The Agent tool reports one unsplit token total for a dispatch: record that as `totalTokens` in the same `usage` object — the runtime measures it as the lane's tokens whenever no split field is present — and leave the four split fields out rather than guessing a split. A metric you cannot measure is left out — the runtime records it as a named omission rather than a guess, and a run with no `modelBinding` receipt produces an unverifiable evidence record.
 
-**Run `result` once `next` reports `terminal: true`**, at the exact paths above — `triage` (step 10) reads a lane's findings from `<runDir>/result.json`, so a result written anywhere else leaves the lane untriageable. A lane that ended in a gap is still terminal: run `result` anyway and move to the next lane. Do not retry it, do not substitute a lane, and do not stop the party — step 7's report renders a failed lane as a blocker on its own.
+**Run `result` once `next` reports `terminal: true`**, at the exact paths above — `party-report` (step 7) reads a lane's findings from `<runDir>/result.json`, so a result written anywhere else leaves the lane unreadable and the party reports it as failed. A lane that ended in a gap is still terminal: run `result` anyway and move to the next lane. Do not retry it, do not substitute a lane, and do not stop the party — step 7's report renders a failed lane as a blocker on its own.
 
 <HARD-GATE>
 The host never reorders, collapses, or skips a stage; never decides whether a second Finder or Validator pass runs; and never invents, drops, or re-labels a candidate or verdict ID. One dispatch per Agent call — never the Finder and the Validator from a single call. Each dispatch is a fresh, isolated context with no shared history and no visibility into the other role's reasoning. Do not adjudicate, filter, re-rank, or re-severity anything: adjudication is the runtime's job, not the host's. Do not skip `receipt`, and do not infer a result before `next` reports `terminal: true`. An out-of-order, substituted, stale, or wrong-digest receipt is a typed refusal the runtime raises itself — surface it; never work around it or retry outside the runtime's own one-retry-per-stage rule.
@@ -157,7 +157,7 @@ node "${CLAUDE_PLUGIN_ROOT}/runtime/bin/cli.mjs" party-report --party <partyRunI
 
 The runtime has now written the report and the digested record: it verified that each lane's frozen bytes still match the snapshot, collected the usage envelopes, priced the run, and removed the pinned worktree. Pass `--keep-worktree` only when the operator wants to inspect it. A lane that failed comes back reported as a blocker with exit code 0; treat that as the run's result.
 
-**Reporting happens once.** A second `party-report` on the same party is refused with `CLI_PARTY_ALREADY_REPORTED`; the command never rewrites recorded evidence. If more review is needed, that is a new party run (step 11).
+**Reporting happens once.** A second `party-report` on the same party is refused with `CLI_PARTY_ALREADY_REPORTED`; the command never rewrites recorded evidence. If more review is needed, that is a new party run (step 10).
 
 Do not re-adjudicate, re-count, or re-word what the report says. It is the deliverable.
 
@@ -167,7 +167,7 @@ Do not re-adjudicate, re-count, or re-word what the report says. It is the deliv
 
 - **Ticket found:** check for an existing ticket dir case-insensitively — `ls -d projects/active/* 2>/dev/null | grep -i "/<ticket>$"`. Reuse it if found; otherwise create `projects/active/<ticket>/` using the key as-extracted. Report path: `projects/active/<ticket>/reviews/<YYYY-MM-DD>-gauntlet-<artifact-type>.md` (`mkdir -p` the `reviews/` subdir; date from `date +%Y-%m-%d`).
 - **No ticket** (ad-hoc doc, unticketed local diff): `scratch/gauntlet-<YYYYMMDD-HHMMSS>/report.md` (`date +%Y%m%d-%H%M%S`).
-- **Collision:** if the dated path already exists, append `-2`, `-3`, … A re-review against an advanced head is its own party run with its own report — see step 11.
+- **Collision:** if the dated path already exists, append `-2`, `-3`, … A re-review against an advanced head is its own party run with its own report — see step 10.
 
 The runtime already recorded what was reviewed: the artifact type is in the report header, and the snapshot digest and the pinned commit for a `code-pr` are in the party record at `recordPath`. Do not re-derive the reviewed ref.
 
@@ -200,21 +200,7 @@ Skip the `go-live-review` row when step 5 already settled it — the operator an
 
 **Never dispatch a gap automatically.** Offer it and wait for the operator. A gap the operator declines is a known, recorded limit on this run's coverage: do not describe the run as complete coverage, and do not fold a follow-up's findings back into the runtime's report — that report is closed.
 
-## 10. Record dispositions
-
-Ask only after the operator has actually seen the findings — through the step 8 chat summary or the report file itself. Never ask for a disposition on something they have not been shown.
-
-The findings to ask about are the ones `party-report` counted in `lanes[].findings`; name each by its id and its one-line claim, read from that lane's `<runDir>/result.json`, so the operator is judging something concrete. Ask once — a single batch for the whole run — for a disposition on each: `accepted`, `rejected`, or `not-useful`, with an optional short note. If they decline, record nothing and say nothing further about it. A run that reported no findings prompts for nothing.
-
-Each lane is its own run and is triaged separately. For each lane the operator dispositioned, write that lane's entries into that lane's own run directory — a JSON array, one object per finding, `{"findingId": "<id>", "userDisposition": "accepted|rejected|not-useful"}`, adding a `"note"` key only when the operator actually gave one — then submit:
-
-```
-node "${CLAUDE_PLUGIN_ROOT}/runtime/bin/cli.mjs" triage --run <that lane's runId> --entries <that lane's runDir>/triage-entries.json
-```
-
-**Never cross-submit.** A finding id belongs to the lane run that produced it; submitting one lane's entries against another lane's `runId` is wrong even where the command accepts it. One call per lane, and never one call per finding — the sidecar is rewritten per call, so concurrent calls against one run would silently drop entries. If a call exits non-zero, surface the error and correct the file; do not fall back to one call per finding.
-
-## 11. Re-reviewing an advanced head
+## 10. Re-reviewing an advanced head
 
 A party run is frozen to the artifact it snapshotted, and its report is written once. When the head has moved since the last review, that is **a new party run** — start again at step 2. There is no append-to-the-old-report path.
 
