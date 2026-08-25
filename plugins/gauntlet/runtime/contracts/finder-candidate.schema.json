@@ -2,13 +2,14 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "jcsl:finder-candidate@1",
   "type": "object",
-  "required": ["lens", "location", "claim", "evidence", "severity"],
+  "required": ["lens", "location", "claim", "evidence", "severity", "category"],
   "properties": {
     "lens": {"enum": ["Hidden Assumptions", "Failure Scenarios", "Blast Radius", "Missed Integration"]},
     "location": {"type": "string", "minLength": 1},
     "claim": {"type": "string", "minLength": 1},
     "evidence": {"type": "string", "minLength": 1},
-    "severity": {"enum": ["High", "Medium", "Low"]}
+    "severity": {"enum": ["High", "Medium", "Low"]},
+    "category": {"enum": ["security", "correctness", "data-loss", "maintainability", "style", "accuracy", "other"]}
   },
   "additionalProperties": false
 }

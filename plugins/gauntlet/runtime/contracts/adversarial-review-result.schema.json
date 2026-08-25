@@ -69,7 +69,7 @@
       "properties": {
         "id": {"type": "string"}, "lens": {"type": "string"}, "location": {"type": "string"},
         "claim": {"type": "string"}, "evidence": {"type": "string"},
-        "severity": {"enum": ["High", "Medium", "Low"]}, "category": {"type": "string"},
+        "severity": {"enum": ["High", "Medium", "Low"]}, "category": {"enum": ["security", "correctness", "data-loss", "maintainability", "style", "accuracy", "other"]},
         "confidence": {"type": "number", "minimum": 0, "maximum": 100},
         "recommendation": {"type": "string"}, "disposition": {"enum": ["survives"]},
         "boundary": {"enum": ["in-bundle", "cross-boundary", "component-ref", "unclassified"]},

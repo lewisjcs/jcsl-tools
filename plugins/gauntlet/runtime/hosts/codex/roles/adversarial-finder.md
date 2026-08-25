@@ -20,6 +20,7 @@ Reply with EXACTLY one bare JSON array and nothing else: no prose before or afte
 - `claim`: non-empty string
 - `evidence`: non-empty string
 - `severity`: one of `"High"`, `"Medium"`, `"Low"`
+- `category`: one of `"security"`, `"correctness"`, `"data-loss"`, `"maintainability"`, `"style"`, `"accuracy"`, `"other"`
 
 An empty array `[]` is a valid reply when no candidate survives your lenses. A reply that is not a bare JSON array is rejected and consumes the single retry.
 
@@ -79,6 +80,22 @@ points at. Never expect or request the whole tree in your prompt.
 - **Medium** — degraded behavior under edge cases, partial failures,
   recoverable but visible
 - **Low** — theoretical risk, unlikely in current usage, defense-in-depth gap
+
+## Category rubric
+
+`lens` records where you were looking; `category` records what the defect
+would break. Answer both for every candidate. Only the first three
+categories can make a finding a required change, so choose them on the
+harm, never on the lens:
+
+- **security** — an attacker gains access, privilege, or information
+- **correctness** — wrong result, wrong state, crash, or an unhandled path
+- **data-loss** — data is dropped, overwritten, or corrupted
+- **maintainability** — harder to change safely; duplication, bypassed
+  abstraction, missed reuse
+- **style** — naming, layout, convention
+- **accuracy** — a comment, doc, or message says something untrue
+- **other** — none of the above
 
 ## High-severity evidence self-check
 
@@ -313,6 +330,22 @@ points at. Never expect or request the whole tree in your prompt.
   recoverable but visible
 - **Low** — theoretical risk, unlikely in current usage, defense-in-depth gap
 
+## Category rubric
+
+`lens` records where you were looking; `category` records what the defect
+would break. Answer both for every candidate. Only the first three
+categories can make a finding a required change, so choose them on the
+harm, never on the lens:
+
+- **security** — an attacker gains access, privilege, or information
+- **correctness** — wrong result, wrong state, crash, or an unhandled path
+- **data-loss** — data is dropped, overwritten, or corrupted
+- **maintainability** — harder to change safely; duplication, bypassed
+  abstraction, missed reuse
+- **style** — naming, layout, convention
+- **accuracy** — a comment, doc, or message says something untrue
+- **other** — none of the above
+
 ## High-severity evidence self-check
 
 Before emitting any finding at `severity: High`, verify the `evidence` field
@@ -510,6 +543,22 @@ points at. Never expect or request the whole tree in your prompt.
 - **Medium** — degraded behavior under edge cases, partial failures,
   recoverable but visible
 - **Low** — theoretical risk, unlikely in current usage, defense-in-depth gap
+
+## Category rubric
+
+`lens` records where you were looking; `category` records what the defect
+would break. Answer both for every candidate. Only the first three
+categories can make a finding a required change, so choose them on the
+harm, never on the lens:
+
+- **security** — an attacker gains access, privilege, or information
+- **correctness** — wrong result, wrong state, crash, or an unhandled path
+- **data-loss** — data is dropped, overwritten, or corrupted
+- **maintainability** — harder to change safely; duplication, bypassed
+  abstraction, missed reuse
+- **style** — naming, layout, convention
+- **accuracy** — a comment, doc, or message says something untrue
+- **other** — none of the above
 
 ## High-severity evidence self-check
 

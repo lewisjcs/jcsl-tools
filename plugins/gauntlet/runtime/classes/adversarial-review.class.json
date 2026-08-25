@@ -542,7 +542,15 @@
                 ]
               },
               "category": {
-                "type": "string"
+                "enum": [
+                  "security",
+                  "correctness",
+                  "data-loss",
+                  "maintainability",
+                  "style",
+                  "accuracy",
+                  "other"
+                ]
               },
               "confidence": {
                 "type": "number",
@@ -644,7 +652,7 @@
           "profiles/adversarial-review/doc-text/lenses.md",
           "bindings/claude-code.json"
         ],
-        "sourceHash": "4713801b2e3868adb33e207592d32f3a7517325fce49b8cc68b461c6dc4814b1"
+        "sourceHash": "acf58de476ef0d63da8ff672b1c903a43e58a7d86c45034deba2d81c8c2f5ea3"
       }
     },
     "codex": {
@@ -664,7 +672,7 @@
           "profiles/adversarial-review/doc-text/lenses.md",
           "bindings/codex.json"
         ],
-        "sourceHash": "61cc3743f72c32e486ea96acd9b96ac11b7088fede5bf901189784f5a311ee1c"
+        "sourceHash": "c73a1a8f1b1dc1d27238b9d1d68f679d803ae8131be1588dcac9db9b624b75d9"
       }
     }
   },

@@ -8584,7 +8584,7 @@ function candidateListBoundary(candidateFence) {
 }
 function renderCandidateList(candidates) {
   return canonicalJson(
-    candidates.map(({ id, lens, location, claim, evidence, severity }) => ({ id, lens, location, claim, evidence, severity }))
+    candidates.map(({ id, lens, location, claim, evidence, severity, category }) => ({ id, lens, location, claim, evidence, severity, category }))
   );
 }
 function buildFinderPromptBody(state) {
@@ -10042,7 +10042,7 @@ function adjudicateV1({ candidates, verdicts, bundle, policy }) {
       claim: candidate.claim,
       evidence: candidate.evidence,
       severity,
-      category: candidate.lens,
+      category: candidate.category,
       confidence: verdict.confidence,
       recommendation: candidate.claim,
       boundary: classifyLocation(bundle, candidate.location),
@@ -10116,7 +10116,7 @@ function adjudicateV2({ candidates, verdicts, bundle, policy }) {
       claim: candidate.claim,
       evidence: candidate.evidence,
       severity,
-      category: candidate.lens,
+      category: candidate.category,
       confidence: verdict.confidence,
       recommendation: candidate.claim,
       boundary: classifyLocation(bundle, candidate.location),
@@ -11357,40 +11357,42 @@ function cqaRows(result) {
     detail: finding.claim
   }));
 }
-var PARTY_REPORT_CONFIG = Object.freeze({
-  title: (record) => `Party review \u2014 ${record.artifact.artifactId}`,
-  laneLabels: Object.freeze({
-    [CLASS_KEY]: "adversarial-review",
-    [CODE_QUALITY_CLASS_KEY]: "code-quality-audit"
-  }),
-  resultShapes: Object.freeze({
-    [ADVERSARIAL_RESULT_CONTRACT_ID]: Object.freeze({
-      rows: adversarialRows,
-      blockers: adversarialBlockers,
-      belowTheLine: adversarialBelowTheLine,
-      calibrationLine
+function partyReportConfigFor(laneFailureReasons) {
+  return Object.freeze({
+    title: (record) => `Party review \u2014 ${record.artifact.artifactId}`,
+    laneLabels: Object.freeze({
+      [CLASS_KEY]: "adversarial-review",
+      [CODE_QUALITY_CLASS_KEY]: "code-quality-audit"
     }),
-    [AUDIT_RESULT_CONTRACT_ID2]: Object.freeze({
-      rows: cqaRows,
-      // A code-quality-audit finding has no severity field and can never
-      // be a blocker — this is not a filter over its findings, it is the
-      // absence of one, preserving "CQA never auto-critical" structurally.
-      blockers: () => [],
-      // Single-stage audit, no adjudication demotion: nothing is ever
-      // below the line.
-      belowTheLine: () => [],
-      calibrationLine
-    })
-  }),
-  laneFailureBlocker: (classKey) => ({
-    label: `${classKey} lane failure \u2014 the lane did not produce a result`,
-    recommendation: "Rerun the lane on a Node >= 22 host before trusting this report."
-  }),
-  // No leading "- " here: statblock's renderGaps (report.mjs) already
-  // prefixes each gap line with its own "- " — a leading dash here would
-  // double the bullet.
-  gapLine: (gap) => `**${gap.lane}** \u2014 ${gap.reason}${gap.trigger ? ` (trigger: ${gap.trigger})` : ""}`
-});
+    resultShapes: Object.freeze({
+      [ADVERSARIAL_RESULT_CONTRACT_ID]: Object.freeze({
+        rows: adversarialRows,
+        blockers: adversarialBlockers,
+        belowTheLine: adversarialBelowTheLine,
+        calibrationLine
+      }),
+      [AUDIT_RESULT_CONTRACT_ID2]: Object.freeze({
+        rows: cqaRows,
+        // A code-quality-audit finding has no severity field and can never
+        // be a blocker — this is not a filter over its findings, it is the
+        // absence of one, preserving "CQA never auto-critical" structurally.
+        blockers: () => [],
+        // Single-stage audit, no adjudication demotion: nothing is ever
+        // below the line.
+        belowTheLine: () => [],
+        calibrationLine
+      })
+    }),
+    laneFailureBlocker: (classKey) => ({
+      label: `${classKey} lane failure \u2014 the lane did not produce a result`,
+      recommendation: `${laneFailureReasons[classKey] ?? "The lane reached a terminal status without writing result.json"}. Rerun the lane before trusting this report.`
+    }),
+    // No leading "- " here: statblock's renderGaps (report.mjs) already
+    // prefixes each gap line with its own "- " — a leading dash here would
+    // double the bullet.
+    gapLine: (gap) => `**${gap.lane}** \u2014 ${gap.reason}${gap.trigger ? ` (trigger: ${gap.trigger})` : ""}`
+  });
+}
 function laneResultsFor(record, readsByRunId) {
   return Object.freeze(record.laneRuns.map((laneRun) => ({
     classKey: laneRun.classKey,
@@ -11469,7 +11471,11 @@ function classKeyForClassId(classId) {
   return classKey;
 }
 var DEFAULT_LOADOUT_ID = "cli-default";
-var NUMERIC_MEASUREMENT_KEYS = ["tokens", "cost", "turns", "latency"];
+var USAGE_MEASUREMENT_SOURCES = Object.freeze({
+  tokens: ["inputTokens", "cacheWriteTokens", "cacheReadTokens", "outputTokens"],
+  turns: ["turns"],
+  latency: ["latencySeconds"]
+});
 function readJsonFile(filePath, readFailedCode) {
   let raw;
   try {
@@ -11533,8 +11539,8 @@ function buildRoles(classKey, profile) {
 }
 function mergeHostMeta(history) {
   const merged = { modelBinding: {} };
-  for (const key of NUMERIC_MEASUREMENT_KEYS) {
-    const values = history.map((entry) => entry.hostMeta?.[key]).filter((v) => Number.isFinite(v));
+  for (const [key, usageFields] of Object.entries(USAGE_MEASUREMENT_SOURCES)) {
+    const values = history.flatMap((entry) => usageFields.map((field) => entry.hostMeta?.usage?.[field])).filter((v) => Number.isFinite(v));
     if (values.length > 0) {
       merged[key] = values.reduce((a, b) => a + b, 0);
     }
@@ -12087,6 +12093,7 @@ function cmdPartyReport(flags) {
     const laneRuns = [];
     const costLanes = [];
     const resultsByRunId = {};
+    const laneFailureReasons = {};
     for (const laneRun of record.laneRuns) {
       assertValidRunId(laneRun.runId);
       const lanePaths = runPaths(runsStoreRoot, laneRun.runId);
@@ -12102,10 +12109,12 @@ function cmdPartyReport(flags) {
       }
       let terminal = false;
       let status = null;
+      let gap = null;
       if (existsSync3(lanePaths.state)) {
         const { runtimeState, action } = loadStateFile(lanePaths.state);
         terminal = action.terminal === true;
         status = runtimeState.status;
+        gap = runtimeState.gap ?? null;
       }
       if (!terminal) {
         throw new CliError(
@@ -12117,6 +12126,9 @@ function cmdPartyReport(flags) {
       const executionStatus = status === "gap" || !hasResult ? "incomplete" : "complete";
       const result = executionStatus === "complete" ? readJsonFile(lanePaths.result, "CLI_PARTY_LANE_RESULT_UNREADABLE") : null;
       resultsByRunId[laneRun.runId] = result;
+      if (result === null && gap !== null) {
+        laneFailureReasons[laneRun.classKey] = `${gap.stage} stage gapped: ${gap.reason}`;
+      }
       laneRuns.push({
         classKey: laneRun.classKey,
         runId: laneRun.runId,
@@ -12132,10 +12144,11 @@ function cmdPartyReport(flags) {
       costLanes.push({ classKey: laneRun.classKey, envelopes });
     }
     const cost = computeCostSummary(costLanes, priceTable);
-    const blockers = computePartyBlockers(PARTY_REPORT_CONFIG, laneRuns, resultsByRunId);
+    const reportConfig = partyReportConfigFor(laneFailureReasons);
+    const blockers = computePartyBlockers(reportConfig, laneRuns, resultsByRunId);
     const draftRecord = { ...record, phase: "reported", laneRuns, cost };
     const laneResults = laneResultsFor(draftRecord, resultsByRunId);
-    const reportMarkdown = renderPartyReport(PARTY_REPORT_CONFIG, { record: draftRecord, laneResults });
+    const reportMarkdown = renderPartyReport(reportConfig, { record: draftRecord, laneResults });
     const reportSha256 = sha256Utf8(reportMarkdown);
     const reportedAt = (/* @__PURE__ */ new Date()).toISOString();
     const isWorktreePinned = record.artifact.pinned.mode === "worktree";
