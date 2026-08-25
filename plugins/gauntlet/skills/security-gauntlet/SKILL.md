@@ -19,8 +19,6 @@ This skill is part of the gauntlet skill family. It is named `security-gauntlet`
 /security-gauntlet                       — Local mode (diff against base branch)
 ```
 
-The skill is also invoked by `/plan-gauntlet`, `/doc-gauntlet`, and `gauntlet` when those skills want a security pass over a non-code artifact (a plan, a doc, a skill).
-
 **When NOT to use:** General code review (use `/gauntlet` for multi-skill review or `/code-quality-audit` for convention-only audit). Adversarial pressure-testing of structural assumptions (use `/adversarial-review`). Generic security pass on git changes without calibration (use Claude Code's built-in `/security-review`). Code or content that has not changed (security review is diff-scoped or change-scoped, not full-codebase audit).
 
 ## Invocation Context Detection
