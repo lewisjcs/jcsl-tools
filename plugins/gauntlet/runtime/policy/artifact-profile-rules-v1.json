@@ -1,45 +1,164 @@
 {
   "kind": "artifact-profile-rules",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "detection": {
-    "planPathSuffixes": [".plan.md"],
-    "planPathSegments": ["plans"],
-    "planHeadings": ["Goal", "Steps"],
+    "planPathSuffixes": [
+      ".plan.md"
+    ],
+    "planPathSegments": [
+      "plans"
+    ],
+    "planHeadings": [
+      "Goal",
+      "Steps"
+    ],
     "earsPattern": "^\\s*(When|While|Where|If)\\b.*\\bshall\\b",
-    "skillFileNames": ["SKILL.md"],
-    "skillFrontmatterKeys": ["name", "description"],
-    "directivePathSegments": ["knowledge", "prompts", "references", "reference", "rules"],
-    "directiveExcludedSegments": ["scripts", "bin", "fixtures"]
+    "skillFileNames": [
+      "SKILL.md"
+    ],
+    "skillFrontmatterKeys": [
+      "name",
+      "description"
+    ],
+    "directivePathSegments": [
+      "knowledge",
+      "prompts",
+      "references",
+      "reference",
+      "rules"
+    ],
+    "directiveExcludedSegments": [
+      "scripts",
+      "bin",
+      "fixtures"
+    ]
   },
   "mechanicalOnly": {
-    "documentationSuffixes": [".md", ".mdx", ".markdown", ".txt", ".rst"],
-    "lockfileBasenames": ["package-lock.json", "yarn.lock", "pnpm-lock.yaml", "npm-shrinkwrap.json", "Cargo.lock", "Gemfile.lock", "poetry.lock", "go.sum"],
+    "documentationSuffixes": [
+      ".md",
+      ".mdx",
+      ".markdown",
+      ".txt",
+      ".rst"
+    ],
+    "lockfileBasenames": [
+      "package-lock.json",
+      "yarn.lock",
+      "pnpm-lock.yaml",
+      "npm-shrinkwrap.json",
+      "Cargo.lock",
+      "Gemfile.lock",
+      "poetry.lock",
+      "go.sum"
+    ],
     "manifestVersionOnly": {
-      "basenames": ["package.json"],
+      "basenames": [
+        "package.json"
+      ],
       "versionKeyPattern": "^\\s*\"version\"\\s*:"
     },
     "commentPrefixesByExtension": {
-      ".mjs": ["//", "/*", "*", "*/"],
-      ".js": ["//", "/*", "*", "*/"],
-      ".ts": ["//", "/*", "*", "*/"],
-      ".py": ["#"],
-      ".go": ["//"],
-      ".rs": ["//"],
-      ".java": ["//", "/*", "*", "*/"],
-      ".c": ["//", "/*", "*", "*/"],
-      ".h": ["//", "/*", "*", "*/"],
-      ".sh": ["#"],
-      ".yml": ["#"],
-      ".yaml": ["#"]
+      ".mjs": [
+        "//",
+        "/*",
+        "*",
+        "*/"
+      ],
+      ".js": [
+        "//",
+        "/*",
+        "*",
+        "*/"
+      ],
+      ".ts": [
+        "//",
+        "/*",
+        "*",
+        "*/"
+      ],
+      ".py": [
+        "#"
+      ],
+      ".go": [
+        "//"
+      ],
+      ".rs": [
+        "//"
+      ],
+      ".java": [
+        "//",
+        "/*",
+        "*",
+        "*/"
+      ],
+      ".c": [
+        "//",
+        "/*",
+        "*",
+        "*/"
+      ],
+      ".h": [
+        "//",
+        "/*",
+        "*",
+        "*/"
+      ],
+      ".sh": [
+        "#"
+      ],
+      ".yml": [
+        "#"
+      ],
+      ".yaml": [
+        "#"
+      ]
     }
   },
   "securitySignals": [
-    { "id": "auth-surface", "pathPattern": "(auth|session|token|oauth|jwt|password|credential)" },
-    { "id": "crypto", "pathPattern": "(crypt|cipher|kms|signing)" },
-    { "id": "secrets", "addedLinePattern": "(?i)(api[_-]?key|secret[_-]?key|BEGIN [A-Z ]*PRIVATE KEY)" },
-    { "id": "dependency-manifest", "basenames": ["package.json", "go.mod", "Cargo.toml", "requirements.txt", "Gemfile", "pom.xml"] },
-    { "id": "input-parsing", "addedLinePattern": "(JSON\\.parse|yaml\\.load|pickle\\.load|deserialize|unmarshal)" },
-    { "id": "network-surface", "addedLinePattern": "(createServer|\\.listen\\(|app\\.(get|post|put|delete)\\(|http\\.request)" }
+    {
+      "id": "auth-surface",
+      "pathPattern": "(auth|session|token|oauth|jwt|password|credential)"
+    },
+    {
+      "id": "crypto",
+      "pathPattern": "(crypt|cipher|kms|signing)"
+    },
+    {
+      "id": "secrets",
+      "addedLinePattern": "(?i)(api[_-]?key|secret[_-]?key|BEGIN [A-Z ]*PRIVATE KEY)"
+    },
+    {
+      "id": "dependency-manifest",
+      "basenames": [
+        "package.json",
+        "go.mod",
+        "Cargo.toml",
+        "requirements.txt",
+        "Gemfile",
+        "pom.xml"
+      ]
+    },
+    {
+      "id": "lockfile",
+      "basenames": [
+        "package-lock.json",
+        "yarn.lock",
+        "pnpm-lock.yaml",
+        "npm-shrinkwrap.json",
+        "Cargo.lock",
+        "Gemfile.lock",
+        "poetry.lock",
+        "go.sum"
+      ]
+    },
+    {
+      "id": "input-parsing",
+      "addedLinePattern": "(JSON\\.parse|yaml\\.load|pickle\\.load|deserialize|unmarshal)"
+    },
+    {
+      "id": "network-surface",
+      "addedLinePattern": "(createServer|\\.listen\\(|app\\.(get|post|put|delete)\\(|http\\.request)"
+    }
   ],
   "goLiveSignalIds": [
     "status_or_contract_change",
