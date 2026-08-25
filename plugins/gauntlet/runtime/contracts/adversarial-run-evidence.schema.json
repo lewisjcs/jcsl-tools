@@ -59,10 +59,11 @@
     "rawCandidates": {
       "type": "array",
       "items": {
-        "type": "object", "required": ["id", "lens", "location", "claim", "evidence", "severity"],
+        "type": "object", "required": ["id", "lens", "location", "claim", "evidence", "severity", "category"],
         "properties": {
           "id": {"type": "string", "pattern": "^F-[0-9]{3,}$"},
           "lens": {"enum": ["Hidden Assumptions", "Failure Scenarios", "Blast Radius", "Missed Integration"]},
+          "category": {"enum": ["security", "correctness", "data-loss", "maintainability", "style", "accuracy", "other"]},
           "location": {"type": "string", "minLength": 1},
           "claim": {"type": "string", "minLength": 1},
           "evidence": {"type": "string", "minLength": 1},

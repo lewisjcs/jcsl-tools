@@ -129,7 +129,7 @@ Some artifacts field no lanes at all: a skill file and an agent-instruction file
 node "${CLAUDE_PLUGIN_ROOT}/runtime/bin/cli.mjs" init --bundle <runDir>/bundle.json --family <family> --host claude-code --class <classKey> --out <runDir>/state.json
 # loop: next --state <runDir>/state.json → {dispatch action | terminal:true}
 #   Agent tool: subagent_type gauntlet:adversarial-finder | gauntlet:adversarial-validator | gauntlet:code-quality-auditor, prompt = action.promptBody verbatim
-#   write <runDir>/<role>-output-<attempt>.json (raw) and <runDir>/<role>-host-meta-<attempt>.json = {"modelBinding": {"<role>": {"model": "<resolved-model>"}}, "usage": {...when available}}
+#   write <runDir>/<role>-output-<attempt>.json (raw) and <runDir>/<role>-host-meta-<attempt>.json = {"modelBinding": {"<role>": {"model": "<agent file model: line>"}}, "usage": {...when available}}
 #   receipt --state <runDir>/state.json --action <actionId> --output <raw> --host-meta <meta>
 node ... result --state <runDir>/state.json --out <runDir>/result.json --evidence <runDir>/evidence.json
 ```
@@ -138,7 +138,7 @@ node ... result --state <runDir>/state.json --out <runDir>/result.json --evidenc
 
 **Which agent for which action.** On the `adversarial-review` lane, a `dispatch-finder` action goes to `subagent_type: gauntlet:adversarial-finder` and a `dispatch-validator` action to `gauntlet:adversarial-validator`. On the `code-quality-audit` lane, its single `dispatch-auditor` action goes to `gauntlet:code-quality-auditor`. Pass `action.promptBody` verbatim; never paste artifact content into a prompt yourself — the prompt already tells the agent to read the artifact from the run directory.
 
-**Host metadata on every receipt.** Always pass `--host-meta`. The role key matches the dispatch: `finder`, `validator`, or `auditor`. Record the model the dispatch actually ran on; where the dispatch also pins a reasoning effort, record it in the same object under `reasoningEffort`. Add a `usage` object (`inputTokens`, `cacheWriteTokens`, `cacheReadTokens`, `outputTokens`, `turns`, `latencySeconds`) when the host can measure it. A metric you cannot measure is left out — the runtime records it as a named omission rather than a guess, and a run with no `modelBinding` receipt produces an unverifiable evidence record.
+**Host metadata on every receipt.** Always pass `--host-meta`. The role key matches the dispatch: `finder`, `validator`, or `auditor`. Record the model the agent file pins — the `model:` frontmatter line of `${CLAUDE_PLUGIN_ROOT}/agents/<subagent>.md`; the Agent tool does not report which model ran, so the pinned value is the only measurable one. Where the dispatch also pins a reasoning effort, record it in the same object under `reasoningEffort`. Add a `usage` object (`inputTokens`, `cacheWriteTokens`, `cacheReadTokens`, `outputTokens`, `turns`, `latencySeconds`) when the host can measure it. A metric you cannot measure is left out — the runtime records it as a named omission rather than a guess, and a run with no `modelBinding` receipt produces an unverifiable evidence record.
 
 **Run `result` once `next` reports `terminal: true`**, at the exact paths above — `triage` (step 10) reads a lane's findings from `<runDir>/result.json`, so a result written anywhere else leaves the lane untriageable. A lane that ended in a gap is still terminal: run `result` anyway and move to the next lane. Do not retry it, do not substitute a lane, and do not stop the party — step 7's report renders a failed lane as a blocker on its own.
 

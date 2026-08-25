@@ -53,6 +53,22 @@ points at. Never expect or request the whole tree in your prompt.
   recoverable but visible
 - **Low** — theoretical risk, unlikely in current usage, defense-in-depth gap
 
+## Category rubric
+
+`lens` records where you were looking; `category` records what the defect
+would break. Answer both for every candidate. Only the first three
+categories can make a finding a required change, so choose them on the
+harm, never on the lens:
+
+- **security** — an attacker gains access, privilege, or information
+- **correctness** — wrong result, wrong state, crash, or an unhandled path
+- **data-loss** — data is dropped, overwritten, or corrupted
+- **maintainability** — harder to change safely; duplication, bypassed
+  abstraction, missed reuse
+- **style** — naming, layout, convention
+- **accuracy** — a comment, doc, or message says something untrue
+- **other** — none of the above
+
 ## High-severity evidence self-check
 
 Before emitting any finding at `severity: High`, verify the `evidence` field
