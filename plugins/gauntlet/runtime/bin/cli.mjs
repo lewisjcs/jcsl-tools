@@ -3258,8 +3258,8 @@ var require_utils = __commonJS({
       }
       return ind;
     }
-    function removeDotSegments(path10) {
-      let input = path10;
+    function removeDotSegments(path12) {
+      let input = path12;
       const output = [];
       let nextSlash = -1;
       let len = 0;
@@ -3664,8 +3664,8 @@ var require_schemes = __commonJS({
       }
       if (wsComponent.resourceName) {
         const queryIndex = wsComponent.resourceName.indexOf("?");
-        const path10 = queryIndex === -1 ? wsComponent.resourceName : wsComponent.resourceName.slice(0, queryIndex);
-        wsComponent.path = path10 && path10 !== "/" ? path10 : void 0;
+        const path12 = queryIndex === -1 ? wsComponent.resourceName : wsComponent.resourceName.slice(0, queryIndex);
+        wsComponent.path = path12 && path12 !== "/" ? path12 : void 0;
         wsComponent.query = queryIndex === -1 ? void 0 : wsComponent.resourceName.slice(queryIndex + 1);
         wsComponent.resourceName = void 0;
       }
@@ -7443,10 +7443,10 @@ var require__ = __commonJS({
 });
 
 // src/cli.mjs
-import { existsSync as existsSync3, readFileSync as readFileSync13, realpathSync as realpathSync3, statSync as statSync3 } from "node:fs";
-import { execFileSync as execFileSync2 } from "node:child_process";
+import { existsSync as existsSync5, readFileSync as readFileSync15, realpathSync as realpathSync3, statSync as statSync3 } from "node:fs";
+import { execFileSync as execFileSync3 } from "node:child_process";
 import { homedir } from "node:os";
-import path9 from "node:path";
+import path11 from "node:path";
 import { fileURLToPath as fileURLToPath3, pathToFileURL } from "node:url";
 
 // src/contracts.mjs
@@ -8316,7 +8316,8 @@ var SCHEMA_FILE_BY_CONTRACT_ID2 = {
   "jcsl:adversarial-run-evidence@1": "adversarial-run-evidence.schema.json",
   "jcsl:auditor-finding@1": "auditor-finding.schema.json",
   "jcsl:code-quality-audit-result@1": "code-quality-audit-result.schema.json",
-  "jcsl:code-quality-run-evidence@1": "code-quality-run-evidence.schema.json"
+  "jcsl:code-quality-run-evidence@1": "code-quality-run-evidence.schema.json",
+  "jcsl:party-origin@1": "party-origin.schema.json"
 };
 var SHA256_HEX_PATTERN2 = /^[0-9a-f]{64}$/;
 var ajv2 = new import__2.default({ allErrors: true, strictTypes: false });
@@ -8564,7 +8565,17 @@ function candidateListBoundary(candidateFence) {
 }
 function renderCandidateList(candidates) {
   return canonicalJson(
-    candidates.map(({ id, lens, location, claim, evidence, severity, category }) => ({ id, lens, location, claim, evidence, severity, category }))
+    candidates.map(({ id, lens, location, file, line, claim, evidence, severity, category }) => ({
+      id,
+      lens,
+      location,
+      ...file !== void 0 ? { file } : {},
+      ...line !== void 0 ? { line } : {},
+      claim,
+      evidence,
+      severity,
+      category
+    }))
   );
 }
 function buildFinderPromptBody(state) {
@@ -9059,12 +9070,12 @@ function isAudienceVisible(resourceAudience, consumerAudience) {
 function fail2(code, message, details) {
   throw new StatblockError(code, message, details);
 }
-function isContained(path10, root) {
-  const pathFromRoot = relative(root, path10);
+function isContained(path12, root) {
+  const pathFromRoot = relative(root, path12);
   return pathFromRoot === "" || !pathFromRoot.startsWith(`..${sep}`) && pathFromRoot !== ".." && !isAbsolute(pathFromRoot);
 }
-function isSafeRelativePath(path10) {
-  return typeof path10 === "string" && path10.length > 0 && !isAbsolute(path10) && !path10.split(/[\\/]/).includes("..");
+function isSafeRelativePath(path12) {
+  return typeof path12 === "string" && path12.length > 0 && !isAbsolute(path12) && !path12.split(/[\\/]/).includes("..");
 }
 function resolveRoot(source) {
   if (typeof source.root !== "string" || !isAbsolute(source.root)) {
@@ -9126,9 +9137,9 @@ function resolveManifestPath(root, manifestPath, source, type) {
   }
 }
 function parseManifest(root, manifestPath, source, type) {
-  const path10 = resolveManifestPath(root, manifestPath, source, type);
+  const path12 = resolveManifestPath(root, manifestPath, source, type);
   try {
-    return JSON.parse(readFileSync7(path10, "utf8"));
+    return JSON.parse(readFileSync7(path12, "utf8"));
   } catch {
     fail2("MANIFEST_PATH_INVALID", "Manifest file cannot be read and parsed", {
       sourceId: source.id,
@@ -9489,27 +9500,27 @@ function deepFreeze4(value) {
   }
   return value;
 }
-function isContained2(path10, root) {
-  const pathFromRoot = relative2(root, path10);
+function isContained2(path12, root) {
+  const pathFromRoot = relative2(root, path12);
   return pathFromRoot === "" || !pathFromRoot.startsWith(`..${sep2}`) && pathFromRoot !== ".." && !isAbsolute2(pathFromRoot);
 }
-function resolveSourceFile(root, path10, type) {
-  if (typeof root !== "string" || !isAbsolute2(root) || typeof path10 !== "string" || path10.length === 0 || isAbsolute2(path10)) {
-    fail5("HOST_ENTRYPOINT_MISSING", "Host source file is missing or invalid", { type, path: path10 });
+function resolveSourceFile(root, path12, type) {
+  if (typeof root !== "string" || !isAbsolute2(root) || typeof path12 !== "string" || path12.length === 0 || isAbsolute2(path12)) {
+    fail5("HOST_ENTRYPOINT_MISSING", "Host source file is missing or invalid", { type, path: path12 });
   }
-  const candidate = resolve2(root, path10);
+  const candidate = resolve2(root, path12);
   if (!isContained2(candidate, root)) {
-    fail5("HOST_ENTRYPOINT_MISSING", "Host source file escapes its catalog root", { type, path: path10 });
+    fail5("HOST_ENTRYPOINT_MISSING", "Host source file escapes its catalog root", { type, path: path12 });
   }
   try {
     const resolved = realpathSync2(candidate);
     if (!isContained2(resolved, root) || !statSync2(resolved).isFile()) {
-      fail5("HOST_ENTRYPOINT_MISSING", "Host source file is missing or invalid", { type, path: path10 });
+      fail5("HOST_ENTRYPOINT_MISSING", "Host source file is missing or invalid", { type, path: path12 });
     }
     return resolved;
   } catch (error) {
     if (error instanceof StatblockError) throw error;
-    fail5("HOST_ENTRYPOINT_MISSING", "Host source file is missing or invalid", { type, path: path10 });
+    fail5("HOST_ENTRYPOINT_MISSING", "Host source file is missing or invalid", { type, path: path12 });
   }
 }
 function capabilityStatusFor(manifest, capabilities) {
@@ -9570,8 +9581,8 @@ function cloneCapabilities(capabilities) {
 }
 function computeProjectionSourceHash(records) {
   const hash = createHash2("sha256");
-  for (const { path: path10, bytes } of records) {
-    hash.update(path10, "utf8");
+  for (const { path: path12, bytes } of records) {
+    hash.update(path12, "utf8");
     hash.update("\0", "utf8");
     hash.update(createHash2("sha256").update(bytes).digest("hex"), "utf8");
     hash.update("\n", "utf8");
@@ -9581,9 +9592,9 @@ function computeProjectionSourceHash(records) {
 function projectionFor(manifest, source, entrypoint) {
   if (entrypoint.projection === void 0) return void 0;
   const { canonicalSources, sourceHash } = entrypoint.projection;
-  const resolved = canonicalSources.map((path10) => resolveSourceFile(source.root, path10, "projection-source"));
-  const actualSourceHash = computeProjectionSourceHash(canonicalSources.map((path10, index) => ({
-    path: path10,
+  const resolved = canonicalSources.map((path12) => resolveSourceFile(source.root, path12, "projection-source"));
+  const actualSourceHash = computeProjectionSourceHash(canonicalSources.map((path12, index) => ({
+    path: path12,
     bytes: readFileSync8(resolved[index])
   })));
   if (actualSourceHash !== sourceHash) {
@@ -9690,7 +9701,7 @@ function createHostAdapter({
       }
       const absolutePath = resolveSourceFile(source.root, entrypoint.path, "entrypoint");
       const projection = projectionFor(manifest, source, entrypoint);
-      const references = invocation.loadout.references.map((path10) => resolveSourceFile(source.root, path10, "reference"));
+      const references = invocation.loadout.references.map((path12) => resolveSourceFile(source.root, path12, "reference"));
       const descriptor = {
         host: hostId,
         classId: manifest.id,
@@ -9907,6 +9918,12 @@ function validateRunOutcome({ repoRoot, result, evidencePath, classKey = CLASS_K
 }
 
 // src/adjudicate.mjs
+function structuredLocation(candidate) {
+  return {
+    ...candidate.file !== void 0 ? { file: candidate.file } : {},
+    ...candidate.line !== void 0 ? { line: candidate.line } : {}
+  };
+}
 function withCategoryProvenance(finding, candidate) {
   if (finding.category !== candidate.category) {
     return { ...finding, originalCategory: candidate.category };
@@ -10026,6 +10043,7 @@ function adjudicateV1({ candidates, verdicts, bundle, policy }) {
       id: candidate.id,
       lens: candidate.lens,
       location: candidate.location,
+      ...structuredLocation(candidate),
       claim: candidate.claim,
       evidence: candidate.evidence,
       severity,
@@ -10100,6 +10118,7 @@ function adjudicateV2({ candidates, verdicts, bundle, policy }) {
       id: candidate.id,
       lens: candidate.lens,
       location: candidate.location,
+      ...structuredLocation(candidate),
       claim: candidate.claim,
       evidence: candidate.evidence,
       severity,
@@ -10504,12 +10523,12 @@ function validatePartyContract(contractId, value) {
 }
 
 // node_modules/@lewisjcs/statblock/src/party/pathnames.mjs
-function basename(path10) {
-  const parts = path10.split("/");
+function basename(path12) {
+  const parts = path12.split("/");
   return parts[parts.length - 1];
 }
-function extname(path10) {
-  const base = basename(path10);
+function extname(path12) {
+  const base = basename(path12);
   const dotIndex = base.lastIndexOf(".");
   return dotIndex === -1 ? "" : base.slice(dotIndex);
 }
@@ -10537,13 +10556,13 @@ function extractFrontmatterBlock(text) {
 function hasAllFrontmatterKeys(block, keys) {
   return keys.every((key) => new RegExp(`^${key}\\s*:`, "m").test(block));
 }
-function isSkill(rules, path10, frontmatterBlock) {
-  if (rules.skillFileNames?.includes(basename(path10))) return true;
+function isSkill(rules, path12, frontmatterBlock) {
+  if (rules.skillFileNames?.includes(basename(path12))) return true;
   if (frontmatterBlock === null) return false;
   return hasAllFrontmatterKeys(frontmatterBlock, rules.skillFrontmatterKeys ?? []);
 }
-function isPlanByPath(rules, segments, path10) {
-  if (rules.planPathSuffixes?.some((suffix) => path10.endsWith(suffix))) return true;
+function isPlanByPath(rules, segments, path12) {
+  if (rules.planPathSuffixes?.some((suffix) => path12.endsWith(suffix))) return true;
   return rules.planPathSegments?.some((segment) => segments.includes(segment)) ?? false;
 }
 function isDirectiveByPath(rules, segments) {
@@ -10551,9 +10570,9 @@ function isDirectiveByPath(rules, segments) {
   const hasExcludedSegment = rules.directiveExcludedSegments?.some((segment) => segments.includes(segment)) ?? false;
   return hasDirectiveSegment && !hasExcludedSegment;
 }
-function isAgentInstructionPath(rules, path10) {
-  if (rules.skillFileNames?.includes(basename(path10))) return true;
-  return isDirectiveByPath(rules, path10.split("/"));
+function isAgentInstructionPath(rules, path12) {
+  if (rules.skillFileNames?.includes(basename(path12))) return true;
+  return isDirectiveByPath(rules, path12.split("/"));
 }
 function hasPlanHeading(text, planHeadings) {
   if (!text || !planHeadings) return false;
@@ -10567,7 +10586,7 @@ function hasEarsLine(text, earsPattern) {
   const pattern = new RegExp(earsPattern);
   return text.split("\n").some((line) => pattern.test(line));
 }
-function detectArtifactType(rules, { path: path10, text }) {
+function detectArtifactType(rules, { path: path12, text }) {
   if (isDiffShaped(text)) {
     return {
       ambiguity: {
@@ -10578,11 +10597,11 @@ function detectArtifactType(rules, { path: path10, text }) {
     };
   }
   const frontmatterBlock = extractFrontmatterBlock(text);
-  if (isSkill(rules, path10, frontmatterBlock)) {
+  if (isSkill(rules, path12, frontmatterBlock)) {
     return { artifactType: "skill" };
   }
-  const segments = path10.split("/");
-  if (isPlanByPath(rules, segments, path10)) {
+  const segments = path12.split("/");
+  if (isPlanByPath(rules, segments, path12)) {
     return { artifactType: "plan" };
   }
   const directiveHit = frontmatterBlock === null && isDirectiveByPath(rules, segments);
@@ -10762,10 +10781,10 @@ function computeCodeProfile(rules, input) {
   };
 }
 function computeTextProfile(rules, input) {
-  const { path: path10, text } = input;
+  const { path: path12, text } = input;
   let { artifactType } = input;
   if (!artifactType) {
-    const detected = detectArtifactType(rules.detection, { path: path10, text });
+    const detected = detectArtifactType(rules.detection, { path: path12, text });
     if (detected.ambiguity) {
       throw new PartyError("PARTY_PROFILE_AMBIGUOUS", detected.ambiguity.reason, { ambiguity: detected.ambiguity });
     }
@@ -11143,128 +11162,6 @@ function computeCostSummary(lanes, priceTable) {
   };
 }
 
-// node_modules/@lewisjcs/statblock/src/party/report.mjs
-function resolveShape(config, result) {
-  const shape = config.resultShapes[result.contractId];
-  if (!shape) {
-    throw new PartyError("PARTY_REPORT_SHAPE_UNKNOWN", `no resultShapes entry for contract: ${result.contractId}`, {
-      contractId: result.contractId
-    });
-  }
-  return shape;
-}
-function renderHeader2(config, record) {
-  const rows = [
-    ["Party run", record.partyRunId],
-    ["Artifact", `${record.artifact.artifactId} (${record.artifact.artifactType})`],
-    ["Phase", record.phase]
-  ];
-  const table = [
-    "| Field | Value |",
-    "| --- | --- |",
-    ...rows.map(([field, value]) => `| ${field} | ${value} |`)
-  ].join("\n");
-  return `# ${config.title(record)}
-
-${table}`;
-}
-function renderRoster(record, laneLabels) {
-  const fieldedLines = record.roster.fielded.map((entry) => `- ${laneLabels[entry.classKey]} \u2014 ${entry.reason}`);
-  const skippedLines = record.roster.skipped.map((entry) => `- ${entry.classKey} \u2014 skipped: ${entry.reason}`);
-  const lines = [...fieldedLines, ...skippedLines];
-  return ["## Roster", "", lines.length > 0 ? lines.join("\n") : "None."].join("\n");
-}
-function renderBlockerRow(blocker) {
-  return blocker.location ? `- **${blocker.label}** (${blocker.location}) \u2014 ${blocker.recommendation}` : `- **${blocker.label}** \u2014 ${blocker.recommendation}`;
-}
-function renderRequiredChanges(config, record, resultByClassKey) {
-  const failureBlockers = [];
-  const laneBlockers = [];
-  for (const laneRun of record.laneRuns) {
-    const result = resultByClassKey.get(laneRun.classKey);
-    if (result === null) {
-      failureBlockers.push(config.laneFailureBlocker(laneRun.classKey));
-      continue;
-    }
-    const shape = resolveShape(config, result);
-    laneBlockers.push(...shape.blockers(result));
-  }
-  const rows = [...failureBlockers, ...laneBlockers].map(renderBlockerRow);
-  return ["## Required changes", "", rows.length > 0 ? rows.join("\n") : "None."].join("\n");
-}
-function renderFindingsRow(row) {
-  return `- **[${row.severity}] ${row.label}** (${row.location}) \u2014 ${row.detail}`;
-}
-function renderBelowTheLine2(shape, result) {
-  const entries = shape.belowTheLine(result);
-  if (entries.length === 0) return [];
-  return [
-    "",
-    "<details>",
-    "<summary>Below the line</summary>",
-    "",
-    ...entries.map((entry) => `- ${entry.label}: ${entry.demotionReason}`),
-    "",
-    "</details>"
-  ];
-}
-function renderFindingsSection(config, laneRun, laneLabels, result) {
-  const header = `## Findings \u2014 ${laneLabels[laneRun.classKey]}`;
-  if (result === null) {
-    return [header, "", "\u26A0 lane failed \u2014 no result recorded."].join("\n");
-  }
-  const shape = resolveShape(config, result);
-  const rows = shape.rows(result);
-  const rowLines = rows.length > 0 ? rows.map(renderFindingsRow) : ["None."];
-  return [
-    header,
-    "",
-    shape.calibrationLine(result),
-    "",
-    ...rowLines,
-    ...renderBelowTheLine2(shape, result)
-  ].join("\n");
-}
-function renderGaps(config, record) {
-  const lines = record.roster.gaps.length > 0 ? record.roster.gaps.map((gap) => `- ${config.gapLine(gap)}`) : ["None."];
-  return ["## Gaps \u2014 applicable, not yet admitted", "", ...lines].join("\n");
-}
-function renderCostLine(record) {
-  if (record.phase === "formed") {
-    return "cost: unavailable (record not yet reported)";
-  }
-  const { totals, priceTableVersion, omissions } = record.cost;
-  const line = `cost: booked $${totals.bookedUsd.toFixed(4)} \xB7 full-flow $${totals.fullFlowUsd.toFixed(4)} (basis: full-flow-api-equivalent, price table ${priceTableVersion})`;
-  return [line, ...omissions.map((omission) => `omission: ${omission}`)].join("\n");
-}
-function calibrationCell(config, result) {
-  if (result === null) return "\u2014";
-  return resolveShape(config, result).calibrationLine(result);
-}
-function renderReviewedBy(config, record, laneLabels, resultByClassKey) {
-  const fieldedRows = record.roster.fielded.map((entry) => {
-    const result = resultByClassKey.get(entry.classKey);
-    const status = result === null ? "\u26A0 failed" : "\u2713 complete";
-    return `| ${laneLabels[entry.classKey]} | ${status} | ${calibrationCell(config, result)} |`;
-  });
-  const skippedRows = record.roster.skipped.map((entry) => `| ${entry.classKey} | skipped \u2014 ${entry.reason} | \u2014 |`);
-  const table = ["| Lane | Status | Calibration |", "| --- | --- | --- |", ...fieldedRows, ...skippedRows].join("\n");
-  return ["## Reviewed by", "", table, "", renderCostLine(record)].join("\n");
-}
-function renderPartyReport(config, { record, laneResults }) {
-  const resultByClassKey = new Map(laneResults.map((laneResult) => [laneResult.classKey, laneResult.result]));
-  const laneLabels = config.laneLabels;
-  const sections = [
-    renderHeader2(config, record),
-    renderRoster(record, laneLabels),
-    renderRequiredChanges(config, record, resultByClassKey),
-    ...record.laneRuns.map((laneRun) => renderFindingsSection(config, laneRun, laneLabels, resultByClassKey.get(laneRun.classKey))),
-    renderGaps(config, record),
-    renderReviewedBy(config, record, laneLabels, resultByClassKey)
-  ];
-  return sections.join("\n\n");
-}
-
 // src/party-policy.mjs
 import { readFileSync as readFileSync12 } from "node:fs";
 import path8 from "node:path";
@@ -11307,6 +11204,164 @@ function loadPartyPolicy(repoRoot) {
     throw new CliError("CLI_PARTY_POLICY_INVALID", `party policy validation failed: ${problems.join("; ")}`);
   }
   return Object.freeze(loaded);
+}
+
+// src/party-origin.mjs
+import { existsSync as existsSync3, mkdirSync as mkdirSync3, readFileSync as readFileSync13 } from "node:fs";
+import path9 from "node:path";
+var ORIGIN_CONTRACT_ID = "jcsl:party-origin@1";
+var AUTHORSHIPS = Object.freeze(["self", "other"]);
+var GITHUB_PR_URL = /^https:\/\/github\.com\/([A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?\/(?!\.\.?(?:\/|$))[A-Za-z0-9_.-]+)\/pull\/([1-9][0-9]*)$/;
+var FULL_SHA = /^[0-9a-f]{40}$/;
+function partySidecarPaths(paths) {
+  return Object.freeze({
+    origin: path9.join(paths.dir, "origin.json"),
+    post: path9.join(paths.dir, "post.json"),
+    prComment: path9.join(paths.dir, "pr-comment.md")
+  });
+}
+function parseOriginUrl(url) {
+  const match = typeof url === "string" ? GITHUB_PR_URL.exec(url) : null;
+  if (!match) {
+    throw new CliError("CLI_ORIGIN_URL_INVALID", `--origin-url must be https://github.com/<owner>/<repo>/pull/<n>; got "${url}"`);
+  }
+  return { provider: "github", repo: match[1], number: Number(match[2]), url };
+}
+function validateOriginInputs({ url, baseRef, baseSha, author }) {
+  const parsed = parseOriginUrl(url);
+  if (typeof baseRef !== "string" || baseRef.length === 0) {
+    throw new CliError("CLI_ORIGIN_BASE_REF_INVALID", "--base-ref must be a non-empty branch name");
+  }
+  if (!FULL_SHA.test(baseSha)) {
+    throw new CliError("CLI_ORIGIN_SHA_INVALID", `--base-sha must be a full 40-hex commit sha; got "${baseSha}"`);
+  }
+  if (!AUTHORSHIPS.includes(author)) {
+    throw new CliError("CLI_ORIGIN_AUTHOR_INVALID", `--author must be one of ${AUTHORSHIPS.join(", ")}; got "${author}"`);
+  }
+  return parsed;
+}
+function buildOrigin({ url, baseRef, baseSha, headSha, author }) {
+  const parsed = validateOriginInputs({ url, baseRef, baseSha, author });
+  if (!FULL_SHA.test(headSha)) {
+    throw new CliError("CLI_ORIGIN_SHA_INVALID", `head sha must be a full 40-hex commit sha; got "${headSha}"`);
+  }
+  return Object.freeze({ contractId: ORIGIN_CONTRACT_ID, ...parsed, baseRef, baseSha, headSha, author });
+}
+function writeOrigin(paths, origin) {
+  mkdirSync3(paths.dir, { recursive: true });
+  writeFileAtomic(partySidecarPaths(paths).origin, `${JSON.stringify(origin, null, 2)}
+`);
+}
+function readOrigin(paths) {
+  const filePath = partySidecarPaths(paths).origin;
+  if (!existsSync3(filePath)) return null;
+  let parsed;
+  try {
+    parsed = JSON.parse(readFileSync13(filePath, "utf8"));
+  } catch (err) {
+    throw new CliError("CLI_ORIGIN_INVALID", `failed to read "${filePath}": ${err.message}`);
+  }
+  const { valid, issues } = validateContract(ORIGIN_CONTRACT_ID, parsed);
+  if (!valid) {
+    throw new CliError("CLI_ORIGIN_INVALID", `"${filePath}" failed ${ORIGIN_CONTRACT_ID} validation: ${JSON.stringify(issues)}`);
+  }
+  return parsed;
+}
+
+// src/party-post.mjs
+import { existsSync as existsSync4, readFileSync as readFileSync14 } from "node:fs";
+import { execFileSync as execFileSync2 } from "node:child_process";
+import path10 from "node:path";
+var MARKER_PREFIX = "<!-- gauntlet:v1 ";
+var GAUNTLET_LABEL = "reviewed-by-gauntlet";
+var RECEIPT_STATUSES = /* @__PURE__ */ new Set(["pending", "posted"]);
+function reviewEventFor({ author, blockers }) {
+  if (author === "self") return null;
+  return blockers > 0 ? "REQUEST_CHANGES" : "COMMENT";
+}
+function findMarkerComment(comments, login) {
+  return comments.find((c) => c.user?.login === login && typeof c.body === "string" && c.body.includes(MARKER_PREFIX)) ?? null;
+}
+function readReceipts(sidecarPath) {
+  if (!existsSync4(sidecarPath)) return [];
+  let parsed;
+  try {
+    parsed = JSON.parse(readFileSync14(sidecarPath, "utf8"));
+  } catch (err) {
+    throw new CliError("CLI_POST_RECEIPTS_MALFORMED", `failed to parse "${sidecarPath}": ${err.message}`);
+  }
+  if (!Array.isArray(parsed) || parsed.some((r) => typeof r !== "object" || r === null || !RECEIPT_STATUSES.has(r.status))) {
+    throw new CliError("CLI_POST_RECEIPTS_MALFORMED", `expected "${sidecarPath}" to hold an array of {status: pending|posted, \u2026} receipts`);
+  }
+  return parsed;
+}
+function appendReceipt(sidecarPath, receipt) {
+  const log = [...readReceipts(sidecarPath), receipt];
+  writeFileAtomic(sidecarPath, `${JSON.stringify(log, null, 2)}
+`);
+  return receipt;
+}
+function assertNoPendingReceipt(receipts) {
+  const pending = receipts.at(-1)?.status === "pending" ? receipts.at(-1) : null;
+  if (pending) {
+    throw new CliError("CLI_POST_PENDING", `a post started at ${pending.at} (${pending.mode}, comment ${pending.commentId ?? "new"}) never recorded a result; inspect the pull request and post.json before posting again`);
+  }
+}
+function ghApi(args, { inputPath } = {}) {
+  const argv = ["api", ...args, ...inputPath ? ["--input", inputPath] : []];
+  try {
+    const stdout = execFileSync2("gh", argv, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+    return stdout.trim() === "" ? null : JSON.parse(stdout);
+  } catch (err) {
+    const stderr = err.stderr ? String(err.stderr).trim() : err.message;
+    throw new CliError("CLI_POST_GH_FAILED", `gh ${argv.join(" ")} failed: ${stderr}`);
+  }
+}
+function requireReplyId(reply, what) {
+  if (reply === null || typeof reply !== "object" || typeof reply.id !== "number") {
+    throw new CliError("CLI_POST_GH_FAILED", `gh answered the ${what} call with ${JSON.stringify(reply) ?? "nothing"}; expected an object carrying a numeric id`);
+  }
+  return reply;
+}
+function requireLogin(reply) {
+  if (reply === null || typeof reply !== "object" || typeof reply.login !== "string" || reply.login === "") {
+    throw new CliError("CLI_POST_GH_FAILED", `gh answered the authenticated-user call with ${JSON.stringify(reply) ?? "nothing"}; expected an object carrying a non-empty string login`);
+  }
+  return reply.login;
+}
+function reviewBody({ ref, counts }) {
+  const advisory = counts.concerns + counts.nits;
+  return `The Gauntlet reviewed \`${ref}\`: ${counts.blockers} blocker${counts.blockers === 1 ? "" : "s"}, ${advisory} advisory. Details are in the review comment.`;
+}
+function postComment({ origin, body, partyRunId, ref, counts, receiptsPath, scratchDir, now, gh = ghApi }) {
+  assertNoPendingReceipt(readReceipts(receiptsPath));
+  const at = new Date(now).toISOString();
+  const bodySha256 = sha256Utf8(body);
+  const issueBase = `repos/${origin.repo}/issues/${origin.number}`;
+  const login = requireLogin(gh(["user"]));
+  const comments = gh(["--paginate", `${issueBase}/comments`]) ?? [];
+  if (!Array.isArray(comments)) {
+    throw new CliError("CLI_POST_GH_FAILED", `gh answered the comment list call with ${JSON.stringify(comments)}; expected an array of comments`);
+  }
+  const existing = findMarkerComment(comments, login);
+  const mode = existing ? "edit" : "create";
+  appendReceipt(receiptsPath, { status: "pending", at, partyRunId, ref, bodySha256, mode, commentId: existing?.id ?? null });
+  const commentInput = path10.join(scratchDir, "post-comment.json");
+  writeFileAtomic(commentInput, JSON.stringify({ body }));
+  const comment = requireReplyId(existing ? gh(["-X", "PATCH", `repos/${origin.repo}/issues/comments/${existing.id}`], { inputPath: commentInput }) : gh(["-X", "POST", `${issueBase}/comments`], { inputPath: commentInput }), mode === "edit" ? "comment edit" : "comment create");
+  const event = reviewEventFor({ author: origin.author, blockers: counts.blockers });
+  let reviewId = null;
+  if (event !== null) {
+    const reviewInput = path10.join(scratchDir, "post-review.json");
+    writeFileAtomic(reviewInput, JSON.stringify({ event, body: reviewBody({ ref, counts }) }));
+    reviewId = requireReplyId(gh(["-X", "POST", `repos/${origin.repo}/pulls/${origin.number}/reviews`], { inputPath: reviewInput }), "review").id;
+  }
+  const labelInput = path10.join(scratchDir, "post-label.json");
+  writeFileAtomic(labelInput, JSON.stringify({ labels: [GAUNTLET_LABEL] }));
+  gh(["-X", "POST", `${issueBase}/labels`], { inputPath: labelInput });
+  const posted = { status: "posted", at: new Date(now).toISOString(), partyRunId, ref, bodySha256, mode, commentId: comment.id, commentUrl: comment.html_url, reviewId, event, label: GAUNTLET_LABEL };
+  appendReceipt(receiptsPath, posted);
+  return { mode, commentId: comment.id, commentUrl: comment.html_url, reviewId, event, label: GAUNTLET_LABEL };
 }
 
 // src/party-report.mjs
@@ -11403,6 +11458,375 @@ function laneResultsFor(record, readsByRunId) {
   })));
 }
 
+// src/party-render.mjs
+var SECURITY_GAP_LANE = "security-gauntlet";
+var LANE_FAILURE_SUBLENS = "lane-failure";
+function formatUtc(iso) {
+  const d = new Date(iso);
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())} UTC`;
+}
+function formatDuration(seconds) {
+  const s = Math.max(0, Math.round(seconds));
+  if (s < 60) return `${s}s`;
+  if (s < 3600) return `${Math.floor(s / 60)}m ${s % 60}s`;
+  return `${Math.floor(s / 3600)}h ${Math.floor(s % 3600 / 60)}m`;
+}
+function shortRef(record) {
+  if (record.artifact.pinned.mode === "worktree") return record.artifact.pinned.sha.slice(0, 7);
+  return `${record.artifact.artifactId}@${record.artifact.snapshotSha256.slice(0, 7)}`;
+}
+function escapeCell(text) {
+  return String(text).replace(/\r?\n/g, " ").replace(/\|/g, "\\|");
+}
+function formatInt(n) {
+  return n.toLocaleString("en-US");
+}
+function adversarialTier(finding) {
+  if (isAdversarialBlocker(finding)) return "blocker";
+  return finding.severity === "Low" ? "nit" : "concern";
+}
+function cqaTier(finding) {
+  return finding.level === "violation" ? "concern" : "nit";
+}
+var TIER_ORDER = Object.freeze({ blocker: 0, concern: 1, nit: 2 });
+function keyFor(partyRunId, lane, id) {
+  return `${partyRunId}:${lane}:${id}`;
+}
+var ADVERSARIAL_SEVERITY_WEIGHT2 = Object.freeze({ High: 3, Medium: 2, Low: 1 });
+var CQA_LEVEL_WEIGHT2 = Object.freeze({ violation: 3, warning: 2, gap: 1 });
+function compareAdversarial(a, b) {
+  const weightDiff = ADVERSARIAL_SEVERITY_WEIGHT2[b.severity] - ADVERSARIAL_SEVERITY_WEIGHT2[a.severity];
+  return weightDiff !== 0 ? weightDiff : b.confidence - a.confidence;
+}
+function compareCqa(a, b) {
+  const weightDiff = CQA_LEVEL_WEIGHT2[b.level] - CQA_LEVEL_WEIGHT2[a.level];
+  if (weightDiff !== 0) return weightDiff;
+  return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+}
+function rowsForLane(partyRunId, laneRun, result, config) {
+  if (result === null) {
+    const blocker = config.laneFailureBlocker(laneRun.classKey);
+    return [{
+      key: keyFor(partyRunId, laneRun.classKey, LANE_FAILURE_SUBLENS),
+      id: LANE_FAILURE_SUBLENS,
+      tier: "blocker",
+      lane: laneRun.classKey,
+      sublens: LANE_FAILURE_SUBLENS,
+      claim: blocker.label,
+      recommendation: blocker.recommendation,
+      file: void 0,
+      line: void 0,
+      location: void 0,
+      confidence: void 0,
+      laneFailure: true
+    }];
+  }
+  const isCqa = laneRun.classKey === CODE_QUALITY_CLASS_KEY;
+  return [...result.findings].sort(isCqa ? compareCqa : compareAdversarial).map((finding) => ({
+    key: keyFor(partyRunId, laneRun.classKey, finding.id),
+    id: finding.id,
+    tier: isCqa ? cqaTier(finding) : adversarialTier(finding),
+    lane: laneRun.classKey,
+    sublens: isCqa ? finding.layer : finding.lens,
+    claim: finding.claim,
+    recommendation: finding.recommendation,
+    file: finding.file,
+    line: finding.line,
+    location: finding.location,
+    confidence: isCqa ? void 0 : finding.confidence,
+    laneFailure: false
+  }));
+}
+function securityFor(record, laneResults) {
+  const adversarial = laneResults.find((l) => l.classKey === CLASS_KEY);
+  const ran = adversarial !== void 0 && adversarial.result !== null;
+  const findings = ran ? adversarial.result.findings.filter((f) => f.category === "security").length : 0;
+  const gapEntry = record.roster.gaps.find((g) => g.lane === SECURITY_GAP_LANE);
+  return { ran, findings, gap: gapEntry ? gapEntry.trigger : null };
+}
+function usageFor(record, evidenceByClassKey) {
+  return record.laneRuns.map(({ classKey }) => {
+    const m = evidenceByClassKey[classKey]?.measurements;
+    const pick = (name) => m?.[name]?.availability === "measured" ? m[name].value : null;
+    return { classKey, tokens: pick("tokens"), turns: pick("turns"), latency: pick("latency") };
+  });
+}
+function ledgerFor(classKey, result, evidence) {
+  if (classKey !== CLASS_KEY || result === null || !evidence) return null;
+  return buildLedger(result, evidence);
+}
+function buildReportModel({ record, laneResults, laneFailureReasons, origin, evidenceByClassKey }) {
+  const config = partyReportConfigFor(laneFailureReasons);
+  const resultByClassKey = new Map(laneResults.map((l) => [l.classKey, l.result]));
+  const findings = record.laneRuns.flatMap((laneRun) => rowsForLane(record.partyRunId, laneRun, resultByClassKey.get(laneRun.classKey) ?? null, config)).sort((a, b) => TIER_ORDER[a.tier] - TIER_ORDER[b.tier] || Number(b.laneFailure) - Number(a.laneFailure));
+  const counts = { blockers: 0, concerns: 0, nits: 0 };
+  for (const f of findings) counts[`${f.tier}s`] += 1;
+  const laneSections = record.laneRuns.map((laneRun) => {
+    const result = resultByClassKey.get(laneRun.classKey) ?? null;
+    const shape = result === null ? null : config.resultShapes[result.contractId];
+    return {
+      classKey: laneRun.classKey,
+      label: config.laneLabels[laneRun.classKey],
+      failed: result === null,
+      failureReason: result === null ? config.laneFailureBlocker(laneRun.classKey).recommendation : null,
+      calibration: result === null ? null : result.calibrationStatus,
+      rows: result === null ? [] : shape.rows(result),
+      belowTheLine: result === null ? [] : shape.belowTheLine(result),
+      ledger: ledgerFor(laneRun.classKey, result, evidenceByClassKey[laneRun.classKey] ?? null)
+    };
+  });
+  const createdMs = Date.parse(record.createdAt);
+  const reportedMs = Date.parse(record.reportedAt);
+  return Object.freeze({
+    partyRunId: record.partyRunId,
+    revision: 1,
+    ref: shortRef(record),
+    reviewedAt: record.reportedAt,
+    durationSeconds: (reportedMs - createdMs) / 1e3,
+    artifact: { artifactId: record.artifact.artifactId, artifactType: record.artifact.artifactType },
+    origin,
+    roster: {
+      fielded: record.roster.fielded.map((e) => ({
+        classKey: e.classKey,
+        label: config.laneLabels[e.classKey] ?? e.classKey,
+        status: (resultByClassKey.get(e.classKey) ?? null) === null ? "failed" : "complete",
+        reason: e.reason
+      })),
+      skipped: record.roster.skipped.map((e) => ({ classKey: e.classKey, reason: e.reason })),
+      gaps: record.roster.gaps.map((g) => ({ lane: g.lane, reason: g.reason, trigger: g.trigger }))
+    },
+    findings,
+    counts,
+    security: securityFor(record, laneResults),
+    goLive: null,
+    laneSections,
+    cost: record.cost,
+    usage: usageFor(record, evidenceByClassKey),
+    config
+  });
+}
+var TIER_GLYPH = Object.freeze({ blocker: "\u{1F6D1}", concern: "\u26A0\uFE0F", nit: "\u{1F4A1}" });
+function verdictLine(counts) {
+  const advisory = counts.concerns + counts.nits;
+  if (counts.blockers > 0) return `\u{1F6D1} ${counts.blockers} Blocker${counts.blockers === 1 ? "" : "s"} \xB7 ${advisory} advisory`;
+  return advisory > 0 ? `\u{1F6E1}\uFE0F Clean \xB7 ${advisory} advisory` : "\u{1F6E1}\uFE0F Clean";
+}
+function securityCell(security) {
+  if (security.gap !== null) return `not run \u2014 ${security.gap}`;
+  if (!security.ran) return "not run \u2014 no signal";
+  return security.findings > 0 ? String(security.findings) : "clean \u2713";
+}
+function lanesCell(roster) {
+  const fielded = roster.fielded.map((e) => e.label);
+  const notRun = [
+    ...roster.skipped.map((e) => `<sub>${escapeCell(e.classKey)} \u2014 skipped: ${escapeCell(e.reason)}</sub>`),
+    ...roster.gaps.map((g) => `<sub>${escapeCell(g.lane)} \u2014 not run: ${escapeCell(g.reason)}</sub>`)
+  ];
+  return [...fielded, ...notRun].join(" \xB7 ");
+}
+function locationCell(f) {
+  if (f.laneFailure) return "\u2014";
+  if (f.file !== void 0) return `\`${escapeCell(f.line !== void 0 ? `${f.file}:${f.line}` : f.file)}\``;
+  return `\`${escapeCell(f.location)}\``;
+}
+function blockerCallout(f) {
+  const where = f.laneFailure || f.file === void 0 ? "" : ` \u2014 \`${f.line !== void 0 ? `${f.file}:${f.line}` : f.file}\``;
+  const fix = f.laneFailure ? ` \u2014 ${f.recommendation}` : `. **Fix:** ${f.recommendation}.`;
+  return `> [!WARNING]
+> **${f.claim}**${where}${fix}`;
+}
+function machineBlock(model) {
+  const findings = model.findings.map((f) => ({
+    key: f.key,
+    severity: f.tier,
+    ...f.file !== void 0 ? { file: f.file } : {},
+    ...f.line !== void 0 ? { line: f.line } : {},
+    lane: f.lane,
+    sublens: f.sublens,
+    ...f.confidence !== void 0 ? { confidence: f.confidence } : {},
+    claim: f.claim,
+    recommendation: f.recommendation
+  }));
+  const payload = {
+    tool: "gauntlet",
+    schema: "v2",
+    run_id: model.partyRunId,
+    ref: model.ref,
+    revision: model.revision,
+    verdict: { ...model.counts },
+    security: { ran: model.security.ran, findings: model.security.findings },
+    findings
+  };
+  return ["<details>", "<summary>\u{1F916} Machine-readable findings (for agents)</summary>", "", "```json", JSON.stringify(payload, null, 2), "```", "</details>"].join("\n");
+}
+function renderPrComment(model) {
+  const out = [
+    `## \u2694\uFE0F The Gauntlet \u2014 ${verdictLine(model.counts)}`,
+    "<sub>\u{1F916} AI-powered \xB7 *your code, through the lanes*</sub>",
+    "",
+    `\u2705 Reviewed \`${model.ref}\` at ${formatUtc(model.reviewedAt)}`,
+    "",
+    "| | |",
+    "|---|---|",
+    `| \u{1F6D1} Blockers | **${model.counts.blockers}** |`,
+    `| \u26A0\uFE0F Concerns | ${model.counts.concerns} |`,
+    `| \u{1F4A1} Nits | ${model.counts.nits} |`,
+    `| \u{1F512} Security | ${securityCell(model.security)} |`,
+    `| \u{1F9EA} Lanes | ${lanesCell(model.roster)} |`
+  ];
+  const blockers = model.findings.filter((f) => f.tier === "blocker");
+  for (const b of blockers) out.push("", blockerCallout(b));
+  if (model.findings.length === 0) {
+    out.push("", "Cleared all lanes \u2014 no findings.");
+  } else {
+    out.push("", "### Findings", "| | Lens | Finding | Location |", "|---|---|---|---|");
+    for (const f of model.findings) {
+      out.push(`| ${TIER_GLYPH[f.tier]} | ${escapeCell(`${f.lane} / ${f.sublens}`)} | ${escapeCell(f.claim)} | ${locationCell(f)} |`);
+    }
+  }
+  out.push(
+    "",
+    machineBlock(model),
+    "",
+    `<sub>The Gauntlet \xB7 an AI review harness built by Josh C.S. Lewis \xB7 run \`${model.partyRunId}\` \xB7 ${model.roster.fielded.length} lanes \xB7 ${formatDuration(model.durationSeconds)}</sub>`,
+    `<!-- gauntlet:v1 party=${model.partyRunId} ref=${model.ref} -->`
+  );
+  return `${out.join("\n")}
+`;
+}
+function oneLine(text) {
+  const firstSentence = String(text).split(/(?<=[.!?])\s/)[0].trim().replace(/[.!?]+$/, "");
+  return firstSentence.length > 160 ? `${firstSentence.slice(0, 157)}\u2026` : firstSentence;
+}
+var FATE_LABEL = Object.freeze({ disproved: "disproved", gated: "survived but gated", "below-the-line": "below the line", survived: "survived" });
+function buildLedger(result, evidence) {
+  const verdictById = new Map(evidence.validatorDispositions.map((v) => [v.findingId, v]));
+  const survived = new Set(result.findings.map((f) => f.id));
+  const below = new Set((result.belowTheLine ?? []).map((f) => f.id));
+  return evidence.rawCandidates.map((candidate) => {
+    const verdict = verdictById.get(candidate.id) ?? null;
+    let fate;
+    if (verdict === null || verdict.verdict === "disproved") fate = "disproved";
+    else if (survived.has(candidate.id)) fate = "survived";
+    else if (below.has(candidate.id)) fate = "below-the-line";
+    else fate = "gated";
+    return {
+      id: candidate.id,
+      lens: candidate.lens,
+      claim: candidate.claim,
+      verdict: verdict === null ? "no verdict" : verdict.verdict,
+      confidence: verdict === null ? null : verdict.confidence,
+      fate,
+      reason: verdict === null ? "the Validator returned no verdict for this id" : oneLine(verdict.evidence)
+    };
+  });
+}
+function renderLedger(section) {
+  if (section.ledger === null) return [];
+  const tally = { disproved: 0, gated: 0, "below-the-line": 0, survived: 0 };
+  for (const row of section.ledger) tally[row.fate] += 1;
+  const summary = `${section.ledger.length} candidates: ${tally.disproved} disproved \xB7 ${tally.gated} survived but gated \xB7 ${tally["below-the-line"]} below the line \xB7 ${tally.survived} survived`;
+  return [
+    "",
+    "<details>",
+    `<summary>Candidate ledger \u2014 ${section.label} (${summary})</summary>`,
+    "",
+    "| Id | Lens | Claim | Verdict | Confidence | Fate | Reason |",
+    "|---|---|---|---|---|---|---|",
+    ...section.ledger.map((r) => `| ${r.id} | ${escapeCell(r.lens)} | ${escapeCell(r.claim)} | ${r.verdict} | ${r.confidence ?? "\u2014"} | ${FATE_LABEL[r.fate]} | ${escapeCell(r.reason)} |`),
+    "",
+    "</details>"
+  ];
+}
+function renderFileHeader(model) {
+  const rows = [
+    ["Party run", model.partyRunId],
+    ["Artifact", `${model.artifact.artifactId} (${model.artifact.artifactType})`],
+    ["Phase", "reported"],
+    ["Reviewed", `${model.ref} at ${formatUtc(model.reviewedAt)}`],
+    ...model.origin ? [["Origin", `${model.origin.repo}#${model.origin.number} (${model.origin.author})`]] : []
+  ];
+  return [`# Party review \u2014 ${model.artifact.artifactId}`, "", "| Field | Value |", "| --- | --- |", ...rows.map(([k, v]) => `| ${k} | ${v} |`)].join("\n");
+}
+function renderFileRoster(model) {
+  const lines = [
+    ...model.roster.fielded.map((e) => `- ${e.label} \u2014 ${e.reason}`),
+    ...model.roster.skipped.map((e) => `- ${e.classKey} \u2014 skipped: ${e.reason}`)
+  ];
+  return ["## Roster", "", lines.length > 0 ? lines.join("\n") : "None."].join("\n");
+}
+function renderRequiredChanges(model) {
+  const rows = model.findings.filter((f) => f.tier === "blocker").map((f) => f.laneFailure || f.location === void 0 ? `- **${f.claim}** \u2014 ${f.recommendation}` : `- **${f.claim}** (${f.location}) \u2014 ${f.recommendation}`);
+  return ["## Required changes", "", rows.length > 0 ? rows.join("\n") : "None."].join("\n");
+}
+function renderLaneSection(section) {
+  const header = `## Findings \u2014 ${section.label}`;
+  if (section.failed) return [header, "", "\u26A0 lane failed \u2014 no result recorded."].join("\n");
+  const rowLines = section.rows.length > 0 ? section.rows.map((row) => `- **[${row.severity}] ${row.label}** (${row.location}) \u2014 ${row.detail}`) : ["None."];
+  const below = section.belowTheLine.length === 0 ? [] : [
+    "",
+    "<details>",
+    "<summary>Below the line</summary>",
+    "",
+    ...section.belowTheLine.map((e) => `- ${e.label}: ${e.demotionReason}`),
+    "",
+    "</details>"
+  ];
+  return [header, "", ...rowLines, ...below, ...renderLedger(section)].join("\n");
+}
+function renderFileGaps(model) {
+  const lines = model.roster.gaps.length > 0 ? model.roster.gaps.map((g) => `- ${model.config.gapLine(g)}`) : ["None."];
+  return ["## Gaps \u2014 applicable, not yet admitted", "", ...lines].join("\n");
+}
+function renderUsageLine(model) {
+  const part = (u) => [
+    u.tokens === null ? "tokens unavailable" : `${formatInt(u.tokens)} tokens`,
+    u.turns === null ? "turns unavailable" : `${formatInt(u.turns)} turns`,
+    u.latency === null ? "latency unavailable" : `${formatInt(Math.round(u.latency))} s`
+  ].join(" \xB7 ");
+  return `usage: ${model.usage.map((u) => `${u.classKey} \u2014 ${part(u)}`).join("; ")}`;
+}
+function renderOmissionLines(omissions) {
+  const byAction = /* @__PURE__ */ new Map();
+  const other = [];
+  for (const omission of omissions) {
+    const match = /^([A-Za-z]+)-unavailable:(.+)$/.exec(omission);
+    if (!match) {
+      other.push(omission);
+      continue;
+    }
+    if (!byAction.has(match[2])) byAction.set(match[2], []);
+    byAction.get(match[2]).push(match[1]);
+  }
+  return [
+    ...[...byAction.entries()].map(([actionId, metrics]) => `omission: ${actionId} \u2014 ${metrics.join(", ")} unavailable`),
+    ...other.map((o) => `omission: ${o}`)
+  ];
+}
+function renderReviewedBy(model) {
+  const fielded = model.roster.fielded.map((e) => {
+    const section = model.laneSections.find((s) => s.classKey === e.classKey);
+    const status = e.status === "failed" ? "\u26A0 failed" : "\u2713 complete";
+    const calibration = section && !section.failed ? `calibration: ${section.calibration}` : "\u2014";
+    return `| ${e.label} | ${status} | ${calibration} |`;
+  });
+  const skipped = model.roster.skipped.map((e) => `| ${e.classKey} | skipped \u2014 ${e.reason} | \u2014 |`);
+  const { totals, priceTableVersion, omissions } = model.cost;
+  const costLine = `cost: booked $${totals.bookedUsd.toFixed(4)} \xB7 full-flow $${totals.fullFlowUsd.toFixed(4)} (basis: full-flow-api-equivalent, price table ${priceTableVersion})`;
+  return ["## Reviewed by", "", "| Lane | Status | Calibration |", "| --- | --- | --- |", ...fielded, ...skipped, "", costLine, renderUsageLine(model), ...renderOmissionLines(omissions)].join("\n");
+}
+function renderReportFile(model) {
+  return [
+    renderFileHeader(model),
+    renderFileRoster(model),
+    renderRequiredChanges(model),
+    ...model.laneSections.map(renderLaneSection),
+    renderFileGaps(model),
+    renderReviewedBy(model)
+  ].join("\n\n");
+}
+
 // src/render.mjs
 var AUDIT_RESULT_CONTRACT_ID3 = "jcsl:code-quality-audit-result@1";
 var RENDER_CONFIG = Object.freeze({
@@ -11449,10 +11873,10 @@ function renderRun2({ events, result }) {
 }
 
 // src/cli.mjs
-var __dirname3 = path9.dirname(fileURLToPath3(import.meta.url));
-var REPO_ROOT2 = path9.join(__dirname3, "..");
+var __dirname3 = path11.dirname(fileURLToPath3(import.meta.url));
+var REPO_ROOT2 = path11.join(__dirname3, "..");
 var GAUNTLET_REPO_ROOT = process.env.GAUNTLET_REPO_ROOT ?? REPO_ROOT2;
-var POLICY_PATH = path9.join(REPO_ROOT2, "policy", "adjudication-v2.json");
+var POLICY_PATH = path11.join(REPO_ROOT2, "policy", "adjudication-v2.json");
 function runsStoreFlag(flags) {
   return flags.store ?? process.env.GAUNTLET_STORE;
 }
@@ -11488,7 +11912,7 @@ function receiptMeasurement(usage, { fields, fallback }) {
 function readJsonFile(filePath, readFailedCode) {
   let raw;
   try {
-    raw = readFileSync13(filePath, "utf8");
+    raw = readFileSync15(filePath, "utf8");
   } catch (err) {
     throw new CliError(readFailedCode, `failed to read "${filePath}": ${err.message}`);
   }
@@ -11518,7 +11942,7 @@ function loadStateFile(statePath) {
   return { wrapper, runtimeState: wrapper.runtimeState, action };
 }
 function readRepoFile(relPath) {
-  return readFileSync13(path9.join(REPO_ROOT2, relPath), "utf8");
+  return readFileSync15(path11.join(REPO_ROOT2, relPath), "utf8");
 }
 function computeRoleSourceHash(personaRelPath, lensRelPath) {
   const persona = readRepoFile(personaRelPath);
@@ -11565,11 +11989,11 @@ function mergeHostMeta(history) {
   return merged;
 }
 function runDirForFile(filePath) {
-  const dir = path9.dirname(path9.resolve(filePath));
-  if (!RUN_ID_PATTERN.test(path9.basename(dir))) {
+  const dir = path11.dirname(path11.resolve(filePath));
+  if (!RUN_ID_PATTERN.test(path11.basename(dir))) {
     return null;
   }
-  return existsSync3(path9.join(dir, "bundle.json")) ? dir : null;
+  return existsSync5(path11.join(dir, "bundle.json")) ? dir : null;
 }
 function appendEvents(runDir, entries) {
   try {
@@ -11652,8 +12076,8 @@ var BUNDLE_REQUIRED_FLAGS = ["family", "primary"];
 var BUNDLE_OPTIONAL_FLAGS = ["path", "id", "repo-root", "out", "store"];
 var WORKING_TREE_DIRTY_CAVEAT = "working-tree-dirty: reviewedCommit does not cover uncommitted changes";
 function captureGitBinding(repoRootFlag) {
-  const repoRoot = path9.resolve(repoRootFlag);
-  const git = (...args) => execFileSync2("git", ["-C", repoRoot, ...args], { encoding: "utf8" });
+  const repoRoot = path11.resolve(repoRootFlag);
+  const git = (...args) => execFileSync3("git", ["-C", repoRoot, ...args], { encoding: "utf8" });
   let reviewedCommit;
   let porcelain;
   try {
@@ -11717,11 +12141,11 @@ function cmdBundle(flags) {
   }
   let content;
   try {
-    content = readFileSync13(flags.primary, "utf8");
+    content = readFileSync15(flags.primary, "utf8");
   } catch (err) {
     throw new CliError("CLI_PRIMARY_READ_FAILED", `failed to read --primary file "${flags.primary}": ${err.message}`);
   }
-  const slug = flags.id ?? slugFromFileName(path9.basename(flags.primary));
+  const slug = flags.id ?? slugFromFileName(path11.basename(flags.primary));
   const binding = flags["repo-root"] !== void 0 ? captureGitBinding(flags["repo-root"]) : {};
   const bundle = buildBundle({
     artifactId: `jcsl:artifact:${slug}`,
@@ -11751,7 +12175,7 @@ function cmdBundle(flags) {
     }
     throw err;
   }
-  const { runId, dir, paths, serialized } = stageBundleRun(storeRoot, bundle, content, path9.extname(flags.primary));
+  const { runId, dir, paths, serialized } = stageBundleRun(storeRoot, bundle, content, path11.extname(flags.primary));
   if (flags.out !== void 0) {
     writeFileAtomic(flags.out, serialized);
   }
@@ -11773,6 +12197,10 @@ var PARTY_FORM_OPTIONAL_FLAGS = [
   "body",
   "repo-root",
   "reviewed-commit",
+  "origin-url",
+  "base-ref",
+  "base-sha",
+  "author",
   "golive-signal",
   "go-live",
   "no-go-live",
@@ -11782,10 +12210,11 @@ var PARTY_FORM_OPTIONAL_FLAGS = [
   "party-store",
   "store"
 ];
+var PARTY_ORIGIN_FLAGS = ["origin-url", "base-ref", "base-sha", "author"];
 var PARTY_ARTIFACT_TYPES = ["code-pr", "code-local", "plan", "doc", "skill", "directive"];
 function readPartyInputFile(filePath) {
   try {
-    return readFileSync13(filePath, "utf8");
+    return readFileSync15(filePath, "utf8");
   } catch (err) {
     throw new CliError("CLI_PARTY_INPUT_UNREADABLE", `failed to read "${filePath}": ${err.message}`);
   }
@@ -11830,6 +12259,22 @@ function cmdPartyForm(flags) {
       "CLI_REVIEWED_COMMIT_REQUIRED",
       "--type code-pr requires both --repo-root and --reviewed-commit"
     );
+  }
+  const originFlagsGiven = PARTY_ORIGIN_FLAGS.filter((name) => flags[name] !== void 0);
+  if (originFlagsGiven.length > 0 && originFlagsGiven.length < PARTY_ORIGIN_FLAGS.length) {
+    throw new CliError("CLI_USAGE", `origin flags are all-or-nothing: ${PARTY_ORIGIN_FLAGS.map((n) => `--${n}`).join(", ")}; got only ${originFlagsGiven.map((n) => `--${n}`).join(", ")}`);
+  }
+  const hasOrigin = originFlagsGiven.length === PARTY_ORIGIN_FLAGS.length;
+  if (hasOrigin && artifactType !== "code-pr") {
+    throw new CliError("CLI_USAGE", "origin flags (--origin-url \u2026) are only valid with --type code-pr");
+  }
+  if (hasOrigin) {
+    validateOriginInputs({
+      url: flags["origin-url"],
+      baseRef: flags["base-ref"],
+      baseSha: flags["base-sha"],
+      author: flags.author
+    });
   }
   const isCode = artifactType === "code-pr" || artifactType === "code-local";
   const goLiveSignals = flags["golive-signal"] ?? [];
@@ -11899,7 +12344,7 @@ function cmdPartyForm(flags) {
         gaps: roster.gaps.map((gap) => gap.lane)
       }
     }];
-    const fileName = path9.basename(flags.path ?? flags.primary);
+    const fileName = path11.basename(flags.path ?? flags.primary);
     const componentId = slugFromFileName(fileName);
     const { snapshotSha256, staged } = stageSnapshot(paths, [
       { id: componentId, fileName, content: primaryContent }
@@ -11916,12 +12361,12 @@ function cmdPartyForm(flags) {
     });
     let hint;
     if (hintsContent !== void 0) {
-      hint = recordHint(paths, { fileName: path9.basename(flags.hints), content: hintsContent });
+      hint = recordHint(paths, { fileName: path11.basename(flags.hints), content: hintsContent });
     }
     let pinned;
     let worktree = null;
     if (artifactType === "code-pr") {
-      const repoRoot = path9.resolve(flags["repo-root"]);
+      const repoRoot = path11.resolve(flags["repo-root"]);
       const { sha } = stagePinnedWorktree({
         repoRoot,
         commit: flags["reviewed-commit"],
@@ -11958,7 +12403,7 @@ function cmdPartyForm(flags) {
           ],
           ...artifactType === "code-pr" ? { reviewedCommit: pinned.sha, repoRoot: paths.worktreeDir } : {}
         });
-        const { runId, dir: runDir } = stageBundleRun(runsStoreRoot, bundle, primaryContent, path9.extname(fileName));
+        const { runId, dir: runDir } = stageBundleRun(runsStoreRoot, bundle, primaryContent, path11.extname(fileName));
         laneRuns.push({ classKey: lane.classKey, runId, bundleSha256: bundle.artifactSha256, executionStatus: null });
         lanesOut.push({ classKey: lane.classKey, runId, runDir, family: lane.family });
         partyEvents.push({ kind: "lane-run-linked", data: { classKey: lane.classKey, runId } });
@@ -11980,6 +12425,17 @@ function cmdPartyForm(flags) {
         laneRuns
       });
       writeFileAtomic(paths.record, JSON.stringify(record, null, 2));
+      let origin = null;
+      if (hasOrigin) {
+        origin = buildOrigin({
+          url: flags["origin-url"],
+          baseRef: flags["base-ref"],
+          baseSha: flags["base-sha"],
+          headSha: pinned.sha,
+          author: flags.author
+        });
+        writeOrigin(paths, origin);
+      }
       appendEventsAfterPrimaryWrite(paths.dir, partyEvents);
       process.stdout.write(`${JSON.stringify({
         partyRunId,
@@ -12002,6 +12458,7 @@ function cmdPartyForm(flags) {
         goLivePrompt: roster.goLivePrompt,
         lanes: lanesOut,
         worktree,
+        origin: origin === null ? null : { repo: origin.repo, number: origin.number, author: origin.author },
         events: paths.events
       })}
 `);
@@ -12026,7 +12483,8 @@ function cmdPartyForm(flags) {
   }
 }
 var PARTY_REPORT_REQUIRED_FLAGS = ["party"];
-var PARTY_REPORT_OPTIONAL_FLAGS = ["party-store", "store", "keep-worktree"];
+var PARTY_REPORT_OPTIONAL_FLAGS = ["party-store", "store", "keep-worktree", "format"];
+var PARTY_REPORT_FORMATS = ["report", "pr-comment"];
 function assertValidPartyRunId(partyRunId) {
   if (!RUN_ID_PATTERN.test(partyRunId)) {
     throw new CliError("CLI_USAGE", `--party must be a minted party run id (<YYYYMMDD>T<HHMMSS>Z-<hex>, optionally -N); got "${partyRunId}"`);
@@ -12056,42 +12514,129 @@ function computePartyBlockers(config, laneRuns, resultsByRunId) {
   }
   return [...failureBlockers, ...laneBlockers];
 }
-function cmdPartyReport(flags) {
-  requireFlags(flags, PARTY_REPORT_REQUIRED_FLAGS);
-  rejectUnknownFlags(flags, [...PARTY_REPORT_REQUIRED_FLAGS, ...PARTY_REPORT_OPTIONAL_FLAGS]);
-  assertValidPartyRunId(flags.party);
-  let partyRoot;
-  let runsStoreRoot;
+function resolvePartyStores(flags) {
   try {
-    partyRoot = resolveStoreRoot({
-      flag: flags["party-store"],
-      env: process.env,
-      home: homedir(),
-      stateSubpath: ["gauntlet", "parties"]
-    });
-    runsStoreRoot = resolveStoreRoot({
-      flag: runsStoreFlag(flags),
-      env: process.env,
-      home: homedir(),
-      stateSubpath: ["gauntlet", "runs"]
-    });
+    return {
+      partyRoot: resolveStoreRoot({
+        flag: flags["party-store"],
+        env: process.env,
+        home: homedir(),
+        stateSubpath: ["gauntlet", "parties"]
+      }),
+      runsStoreRoot: resolveStoreRoot({
+        flag: runsStoreFlag(flags),
+        env: process.env,
+        home: homedir(),
+        stateSubpath: ["gauntlet", "runs"]
+      })
+    };
   } catch (err) {
     if (err instanceof StoreError) {
       throw new CliError(err.code, err.message);
     }
     throw err;
   }
-  const paths = partyPaths(partyRoot, flags.party);
-  if (!existsSync3(paths.dir) || !existsSync3(paths.record)) {
-    throw new CliError("CLI_PARTY_RUN_NOT_FOUND", `no party run "${flags.party}" under party store root "${partyRoot}"`);
+}
+function loadPartyRecord(paths, partyRunId, partyRoot) {
+  if (!existsSync5(paths.dir) || !existsSync5(paths.record)) {
+    throw new CliError("CLI_PARTY_RUN_NOT_FOUND", `no party run "${partyRunId}" under party store root "${partyRoot}"`);
   }
   const record = readJsonFile(paths.record, "CLI_PARTY_RECORD_UNREADABLE");
-  const { valid: recordValid, issues: recordIssues } = validatePartyContract("jcsl:party-record@1", record);
-  if (!recordValid) {
+  const { valid, issues } = validatePartyContract("jcsl:party-record@1", record);
+  if (!valid) {
     throw new CliError(
       "CLI_PARTY_RECORD_INVALID",
-      `party record "${paths.record}" failed jcsl:party-record@1 validation: ${JSON.stringify(recordIssues)}`
+      `party record "${paths.record}" failed jcsl:party-record@1 validation: ${JSON.stringify(issues)}`
     );
+  }
+  return record;
+}
+function collectLanes(record, runsStoreRoot) {
+  const laneRuns = [];
+  const costLanes = [];
+  const resultsByRunId = {};
+  const laneFailureReasons = {};
+  const evidenceByClassKey = {};
+  for (const laneRun of record.laneRuns) {
+    assertValidRunId(laneRun.runId);
+    const lanePaths = runPaths(runsStoreRoot, laneRun.runId);
+    if (!existsSync5(lanePaths.dir)) {
+      throw new CliError("CLI_PARTY_LANE_MISSING", `lane "${laneRun.classKey}" run directory is gone: no "${lanePaths.dir}"`);
+    }
+    const bundle = readJsonFile(lanePaths.bundle, "CLI_PARTY_LANE_BUNDLE_UNREADABLE");
+    if (bundle.artifactSha256 !== laneRun.bundleSha256) {
+      throw new CliError(
+        "CLI_PARTY_LANE_DIGEST_MISMATCH",
+        `lane "${laneRun.classKey}" run "${laneRun.runId}" bundle.json digest ${bundle.artifactSha256} no longer matches the record's ${laneRun.bundleSha256}`
+      );
+    }
+    let terminal = false;
+    let status = null;
+    let gap = null;
+    if (existsSync5(lanePaths.state)) {
+      const { runtimeState, action } = loadStateFile(lanePaths.state);
+      terminal = action.terminal === true;
+      status = runtimeState.status;
+      gap = runtimeState.gap ?? null;
+    }
+    if (!terminal) {
+      throw new CliError(
+        "CLI_PARTY_LANE_UNFINISHED",
+        `lane "${laneRun.classKey}" run "${laneRun.runId}" has not reached a terminal status yet; finish it or let it gap first`
+      );
+    }
+    const hasResult = existsSync5(lanePaths.result);
+    const executionStatus = status === "gap" || !hasResult ? "incomplete" : "complete";
+    const result = executionStatus === "complete" ? readJsonFile(lanePaths.result, "CLI_PARTY_LANE_RESULT_UNREADABLE") : null;
+    resultsByRunId[laneRun.runId] = result;
+    evidenceByClassKey[laneRun.classKey] = result !== null && existsSync5(lanePaths.evidence) ? readJsonFile(lanePaths.evidence, "CLI_PARTY_LANE_EVIDENCE_UNREADABLE") : null;
+    if (result === null && gap !== null) {
+      laneFailureReasons[laneRun.classKey] = `${gap.stage} stage gapped: ${gap.reason}`;
+    }
+    laneRuns.push({
+      classKey: laneRun.classKey,
+      runId: laneRun.runId,
+      bundleSha256: laneRun.bundleSha256,
+      executionStatus,
+      findings: result !== null ? result.findings.length : 0,
+      belowTheLine: result !== null && laneRun.classKey !== CODE_QUALITY_CLASS_KEY ? result.belowTheLine.length : 0
+    });
+    const envelopes = collectRunEnvelopes(lanePaths.dir).map((envelope) => ({
+      ...envelope,
+      modelBinding: flattenEnvelopeModelBinding(envelope.modelBinding)
+    }));
+    costLanes.push({ classKey: laneRun.classKey, envelopes });
+  }
+  return { laneRuns, costLanes, resultsByRunId, laneFailureReasons, evidenceByClassKey };
+}
+function renderCommentFor({ record, paths, runsStoreRoot }) {
+  const { resultsByRunId, laneFailureReasons, evidenceByClassKey } = collectLanes(record, runsStoreRoot);
+  const laneResults = laneResultsFor(record, resultsByRunId);
+  const model = buildReportModel({
+    record,
+    laneResults,
+    laneFailureReasons,
+    origin: readOrigin(paths),
+    evidenceByClassKey
+  });
+  return { model, markdown: renderPrComment(model) };
+}
+function cmdPartyReport(flags) {
+  requireFlags(flags, PARTY_REPORT_REQUIRED_FLAGS);
+  rejectUnknownFlags(flags, [...PARTY_REPORT_REQUIRED_FLAGS, ...PARTY_REPORT_OPTIONAL_FLAGS]);
+  assertValidPartyRunId(flags.party);
+  const format = flags.format ?? "report";
+  if (!PARTY_REPORT_FORMATS.includes(format)) {
+    throw new CliError("CLI_USAGE", `--format must be one of ${PARTY_REPORT_FORMATS.join(", ")}; got "${format}"`);
+  }
+  const { partyRoot, runsStoreRoot } = resolvePartyStores(flags);
+  const paths = partyPaths(partyRoot, flags.party);
+  const record = loadPartyRecord(paths, flags.party, partyRoot);
+  if (format === "pr-comment") {
+    if (flags["keep-worktree"]) {
+      throw new CliError("CLI_USAGE", "--keep-worktree applies to --format report only");
+    }
+    return cmdPartyComment(flags, { record, paths, runsStoreRoot });
   }
   if (record.phase === "reported") {
     throw new CliError(
@@ -12101,67 +12646,28 @@ function cmdPartyReport(flags) {
   }
   try {
     const { priceTable } = loadPartyPolicy(REPO_ROOT2);
-    const laneRuns = [];
-    const costLanes = [];
-    const resultsByRunId = {};
-    const laneFailureReasons = {};
-    for (const laneRun of record.laneRuns) {
-      assertValidRunId(laneRun.runId);
-      const lanePaths = runPaths(runsStoreRoot, laneRun.runId);
-      if (!existsSync3(lanePaths.dir)) {
-        throw new CliError("CLI_PARTY_LANE_MISSING", `lane "${laneRun.classKey}" run directory is gone: no "${lanePaths.dir}"`);
-      }
-      const bundle = readJsonFile(lanePaths.bundle, "CLI_PARTY_LANE_BUNDLE_UNREADABLE");
-      if (bundle.artifactSha256 !== laneRun.bundleSha256) {
-        throw new CliError(
-          "CLI_PARTY_LANE_DIGEST_MISMATCH",
-          `lane "${laneRun.classKey}" run "${laneRun.runId}" bundle.json digest ${bundle.artifactSha256} no longer matches the record's ${laneRun.bundleSha256}`
-        );
-      }
-      let terminal = false;
-      let status = null;
-      let gap = null;
-      if (existsSync3(lanePaths.state)) {
-        const { runtimeState, action } = loadStateFile(lanePaths.state);
-        terminal = action.terminal === true;
-        status = runtimeState.status;
-        gap = runtimeState.gap ?? null;
-      }
-      if (!terminal) {
-        throw new CliError(
-          "CLI_PARTY_LANE_UNFINISHED",
-          `lane "${laneRun.classKey}" run "${laneRun.runId}" has not reached a terminal status yet; finish it or let it gap first`
-        );
-      }
-      const hasResult = existsSync3(lanePaths.result);
-      const executionStatus = status === "gap" || !hasResult ? "incomplete" : "complete";
-      const result = executionStatus === "complete" ? readJsonFile(lanePaths.result, "CLI_PARTY_LANE_RESULT_UNREADABLE") : null;
-      resultsByRunId[laneRun.runId] = result;
-      if (result === null && gap !== null) {
-        laneFailureReasons[laneRun.classKey] = `${gap.stage} stage gapped: ${gap.reason}`;
-      }
-      laneRuns.push({
-        classKey: laneRun.classKey,
-        runId: laneRun.runId,
-        bundleSha256: laneRun.bundleSha256,
-        executionStatus,
-        findings: result !== null ? result.findings.length : 0,
-        belowTheLine: result !== null && laneRun.classKey !== CODE_QUALITY_CLASS_KEY ? result.belowTheLine.length : 0
-      });
-      const envelopes = collectRunEnvelopes(lanePaths.dir).map((envelope) => ({
-        ...envelope,
-        modelBinding: flattenEnvelopeModelBinding(envelope.modelBinding)
-      }));
-      costLanes.push({ classKey: laneRun.classKey, envelopes });
-    }
+    const {
+      laneRuns,
+      costLanes,
+      resultsByRunId,
+      laneFailureReasons,
+      evidenceByClassKey
+    } = collectLanes(record, runsStoreRoot);
     const cost = computeCostSummary(costLanes, priceTable);
     const reportConfig = partyReportConfigFor(laneFailureReasons);
     const blockers = computePartyBlockers(reportConfig, laneRuns, resultsByRunId);
-    const draftRecord = { ...record, phase: "reported", laneRuns, cost };
-    const laneResults = laneResultsFor(draftRecord, resultsByRunId);
-    const reportMarkdown = renderPartyReport(reportConfig, { record: draftRecord, laneResults });
-    const reportSha256 = sha256Utf8(reportMarkdown);
     const reportedAt = (/* @__PURE__ */ new Date()).toISOString();
+    const draftRecord = { ...record, phase: "reported", laneRuns, cost, reportedAt };
+    const laneResults = laneResultsFor(draftRecord, resultsByRunId);
+    const model = buildReportModel({
+      record: draftRecord,
+      laneResults,
+      laneFailureReasons,
+      origin: readOrigin(paths),
+      evidenceByClassKey
+    });
+    const reportMarkdown = renderReportFile(model);
+    const reportSha256 = sha256Utf8(reportMarkdown);
     const isWorktreePinned = record.artifact.pinned.mode === "worktree";
     let worktreeRemoved;
     if (isWorktreePinned) {
@@ -12216,6 +12722,71 @@ function cmdPartyReport(flags) {
     throw err;
   }
 }
+function cmdPartyComment(flags, { record, paths, runsStoreRoot }) {
+  if (record.phase !== "reported") {
+    throw new CliError(
+      "CLI_PARTY_NOT_REPORTED",
+      `party run "${flags.party}" has not been reported yet; run party-report first, then render the comment`
+    );
+  }
+  try {
+    const { model, markdown } = renderCommentFor({ record, paths, runsStoreRoot });
+    const commentPath = partySidecarPaths(paths).prComment;
+    writeFileAtomic(commentPath, markdown);
+    process.stdout.write(`${JSON.stringify({
+      partyRunId: flags.party,
+      commentPath,
+      ref: model.ref,
+      verdict: model.counts,
+      security: model.security,
+      hasOrigin: model.origin !== null
+    })}
+`);
+  } catch (err) {
+    if (err instanceof PartyError) {
+      throw new CliError(err.code, err.message);
+    }
+    throw err;
+  }
+}
+var POST_REQUIRED_FLAGS = ["party"];
+var POST_OPTIONAL_FLAGS = ["party-store", "store"];
+function cmdPost(flags) {
+  requireFlags(flags, POST_REQUIRED_FLAGS);
+  rejectUnknownFlags(flags, [...POST_REQUIRED_FLAGS, ...POST_OPTIONAL_FLAGS]);
+  assertValidPartyRunId(flags.party);
+  const { partyRoot, runsStoreRoot } = resolvePartyStores(flags);
+  const paths = partyPaths(partyRoot, flags.party);
+  const record = loadPartyRecord(paths, flags.party, partyRoot);
+  if (record.phase !== "reported") {
+    throw new CliError("CLI_PARTY_NOT_REPORTED", `party run "${flags.party}" has not been reported yet; nothing to post`);
+  }
+  const origin = readOrigin(paths);
+  if (origin === null) {
+    throw new CliError("CLI_POST_ORIGIN_MISSING", `party run "${flags.party}" has no origin.json; only a party formed with --origin-url can be posted`);
+  }
+  const sidecars = partySidecarPaths(paths);
+  assertNoPendingReceipt(readReceipts(sidecars.post));
+  try {
+    const { model, markdown } = renderCommentFor({ record, paths, runsStoreRoot });
+    writeFileAtomic(sidecars.prComment, markdown);
+    const outcome = postComment({
+      origin,
+      body: markdown,
+      partyRunId: flags.party,
+      ref: model.ref,
+      counts: model.counts,
+      receiptsPath: sidecars.post,
+      scratchDir: paths.dir,
+      now: Date.now()
+    });
+    process.stdout.write(`${JSON.stringify({ partyRunId: flags.party, ...outcome })}
+`);
+  } catch (err) {
+    if (err instanceof PartyError) throw new CliError(err.code, err.message);
+    throw err;
+  }
+}
 function cmdInit(flags) {
   requireFlags(flags, INIT_REQUIRED_FLAGS);
   rejectUnknownFlags(flags, [...INIT_REQUIRED_FLAGS, ...INIT_OPTIONAL_FLAGS]);
@@ -12264,7 +12835,7 @@ function cmdInit(flags) {
   const policy = classKey === CODE_QUALITY_CLASS_KEY ? null : readJsonFile(POLICY_PATH, "CLI_POLICY_READ_FAILED");
   let state;
   try {
-    state = createRun2({ bundle, loadout, host, policy, roles, profile, classId: CLASS_ID_BY_KEY[classKey], artifactPath: path9.resolve(flags.bundle) });
+    state = createRun2({ bundle, loadout, host, policy, roles, profile, classId: CLASS_ID_BY_KEY[classKey], artifactPath: path11.resolve(flags.bundle) });
   } catch (err) {
     throw new CliError("CLI_ADMISSION_FAILED", `createRun failed: ${err.message}`);
   }
@@ -12303,7 +12874,7 @@ function cmdReceipt(flags) {
   const { wrapper, runtimeState } = loadStateFile(flags.state);
   let rawOutput;
   try {
-    rawOutput = readFileSync13(flags.output, "utf8");
+    rawOutput = readFileSync15(flags.output, "utf8");
   } catch (err) {
     throw new CliError("CLI_OUTPUT_READ_FAILED", `failed to read --output file "${flags.output}": ${err.message}`);
   }
@@ -12362,7 +12933,7 @@ function cmdReceipt(flags) {
   }));
   emitEventsAfterPrimaryWrite(runDirForFile(flags.state), [...ledgerEvents, pendingEventFrom(nextState)], flags.state);
   writeEnvelopeAfterPrimaryWrite(
-    path9.join(path9.dirname(flags.state), envelopeBasename(pendingBefore.actionId)),
+    path11.join(path11.dirname(flags.state), envelopeBasename(pendingBefore.actionId)),
     envelope
   );
   for (const issue of issues) {
@@ -12433,7 +13004,7 @@ function cmdResult(flags) {
       outcomeEvents = validateRunOutcome({
         repoRoot: GAUNTLET_REPO_ROOT,
         result,
-        evidencePath: path9.resolve(flags.evidence),
+        evidencePath: path11.resolve(flags.evidence),
         classKey
       }).events;
     } catch (err) {
@@ -12509,10 +13080,10 @@ function cmdTriage(flags) {
       stateSubpath: ["gauntlet", "runs"]
     });
     const paths = runPaths(storeRoot, flags.run);
-    if (!existsSync3(paths.dir)) {
+    if (!existsSync5(paths.dir)) {
       throw new CliError("TRIAGE_RUN_NOT_FOUND", `no run "${flags.run}" under store root "${storeRoot}"`);
     }
-    if (!existsSync3(paths.result)) {
+    if (!existsSync5(paths.result)) {
       throw new CliError(
         "TRIAGE_RUN_INCOMPLETE",
         `run "${flags.run}" has no result.json, so it reported no findings to judge`
@@ -12555,7 +13126,7 @@ function cmdAddressRate(flags) {
     });
     let runIds;
     if (flags.run !== void 0) {
-      if (!existsSync3(runPaths(storeRoot, flags.run).dir)) {
+      if (!existsSync5(runPaths(storeRoot, flags.run).dir)) {
         throw new CliError("TRIAGE_RUN_NOT_FOUND", `no run "${flags.run}" under store root "${storeRoot}"`);
       }
       runIds = [flags.run];
@@ -12564,7 +13135,7 @@ function cmdAddressRate(flags) {
     }
     const runs = runIds.map((runId) => {
       const paths = runPaths(storeRoot, runId);
-      const result = existsSync3(paths.result) ? readJsonFile(paths.result, "TRIAGE_RESULT_UNREADABLE") : null;
+      const result = existsSync5(paths.result) ? readJsonFile(paths.result, "TRIAGE_RESULT_UNREADABLE") : null;
       return {
         runId,
         findings: result ? (result.findings ?? []).map((finding) => finding.id) : null,
@@ -12605,10 +13176,10 @@ async function cmdShow(flags) {
     throw new CliError("CLI_RUN_NOT_FOUND", `--run "${flags.run}" is not a run id`);
   }
   const paths = runPaths(storeRoot, flags.run);
-  if (!existsSync3(paths.dir)) {
+  if (!existsSync5(paths.dir)) {
     throw new CliError("CLI_RUN_NOT_FOUND", `no stored run "${flags.run}" under "${storeRoot}"`);
   }
-  const readResult = () => existsSync3(paths.result) ? JSON.parse(readFileSync13(paths.result, "utf8")) : null;
+  const readResult = () => existsSync5(paths.result) ? JSON.parse(readFileSync15(paths.result, "utf8")) : null;
   if (flags.follow === void 0) {
     process.stdout.write(`${renderRun2({ events: readRunEvents(paths.dir), result: readResult() })}
 `);
@@ -12656,7 +13227,8 @@ var SUBCOMMANDS = {
   "address-rate": cmdAddressRate,
   show: cmdShow,
   "party-form": cmdPartyForm,
-  "party-report": cmdPartyReport
+  "party-report": cmdPartyReport,
+  post: cmdPost
 };
 var BOOLEAN_FLAGS = /* @__PURE__ */ new Set(["follow", "go-live", "no-go-live", "keep-worktree"]);
 var REPEATABLE_FLAGS = /* @__PURE__ */ new Set(["golive-signal", "force-lane", "skip-lane"]);
@@ -12697,7 +13269,7 @@ async function main() {
   const [, , subcommand, ...rest] = process.argv;
   const handler = subcommand && SUBCOMMANDS[subcommand];
   if (!handler) {
-    fail6("CLI_USAGE", "usage: gauntlet-runtime <bundle|init|next|receipt|result|list|triage|address-rate|show|party-form|party-report> [--flag value ...]");
+    fail6("CLI_USAGE", "usage: gauntlet-runtime <bundle|init|next|receipt|result|list|triage|address-rate|show|party-form|party-report|post> [--flag value ...]");
     return;
   }
   try {

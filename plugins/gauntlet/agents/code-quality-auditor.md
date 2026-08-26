@@ -29,6 +29,8 @@ Reply with EXACTLY one bare JSON array and nothing else: no prose before or afte
 - `layer`: one of `"compliance"`, `"staleness"`, `"gaps"`, `"test-integrity"`
 - `rule`: non-empty string — the rulebook anchor this finding cites
 - `location`: non-empty string
+- `file`: repo-relative path the finding points at (the post-diff path for a changed file); include it for every code finding, omit it only when the artifact has no file (a plan or doc)
+- `line`: integer line number in `file`, counted from 1; omit it when you do not know it — never write `0`
 - `claim`: non-empty string
 - `evidence`: non-empty string
 - `level`: one of `"violation"`, `"warning"`, `"gap"`
@@ -893,7 +895,8 @@ without its own guard test landing first.
   `test-integrity`/`assertion-rewriting`.
 - `location` uses this family's location format: `file:line` — the post-diff
   path for changed files, or the repo-relative reviewed-tree path for
-  cross-boundary findings.
+  cross-boundary findings. `file` and `line` carry the same two halves as
+  separate fields.
 - `level` follows the persona's guide (`violation`/`warning`/`gap`); when in
   doubt between `violation` and `warning`, choose `warning`.
 - A layer that produces no findings is a clean pass for that layer, not an

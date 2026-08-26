@@ -75,7 +75,8 @@
         "boundary": {"enum": ["in-bundle", "cross-boundary", "component-ref", "unclassified"]},
         "originalSeverity": {"enum": ["High", "Medium", "Low"]},
         "originalCategory": {"enum": ["security", "correctness", "data-loss", "maintainability", "style", "accuracy", "other"]},
-        "adjudicationNotes": {"type": "array", "items": {"type": "string", "minLength": 1}}
+        "adjudicationNotes": {"type": "array", "items": {"type": "string", "minLength": 1}},
+        "file": {"type": "string", "minLength": 1}, "line": {"type": "integer", "minimum": 1}
       }, "additionalProperties": false
     }
   },

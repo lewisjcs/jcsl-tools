@@ -608,6 +608,14 @@
                   "type": "string",
                   "minLength": 1
                 }
+              },
+              "file": {
+                "type": "string",
+                "minLength": 1
+              },
+              "line": {
+                "type": "integer",
+                "minimum": 1
               }
             },
             "additionalProperties": false
@@ -674,7 +682,7 @@
           "profiles/adversarial-review/doc-text/lenses.md",
           "bindings/claude-code.json"
         ],
-        "sourceHash": "e25e65b51fd8201edb95e9ed0c47fc260f5dfdf2f1663b22d60d7a722ea4af9c"
+        "sourceHash": "7c04e3d2efb1f08b0bff5b4593ddea372efb3e129bf2129085b52b02169e3ca4"
       }
     },
     "codex": {
@@ -694,7 +702,7 @@
           "profiles/adversarial-review/doc-text/lenses.md",
           "bindings/codex.json"
         ],
-        "sourceHash": "889d04cbeb9aff46a3d806bd6c1e59389ca0e4c24020d0106b5e6cac563190db"
+        "sourceHash": "15eaade9575e8296497c727dcd59aa15feaec4e9a95f50a3b2fbd00ab72033eb"
       }
     }
   },

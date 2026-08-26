@@ -9,7 +9,9 @@
     "claim": {"type": "string", "minLength": 1},
     "evidence": {"type": "string", "minLength": 1},
     "severity": {"enum": ["High", "Medium", "Low"]},
-    "category": {"enum": ["security", "correctness", "data-loss", "maintainability", "style", "accuracy", "other"]}
+    "category": {"enum": ["security", "correctness", "data-loss", "maintainability", "style", "accuracy", "other"]},
+    "file": {"type": "string", "minLength": 1},
+    "line": {"type": "integer", "minimum": 1}
   },
   "additionalProperties": false
 }
