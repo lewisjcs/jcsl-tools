@@ -65,7 +65,9 @@
         "claim": { "type": "string", "minLength": 1 },
         "evidence": { "type": "string", "minLength": 1 },
         "level": { "enum": ["violation", "warning", "gap"] },
-        "recommendation": { "type": "string", "minLength": 1 }
+        "recommendation": { "type": "string", "minLength": 1 },
+        "file": { "type": "string", "minLength": 1 },
+        "line": { "type": "integer", "minimum": 1 }
       }, "additionalProperties": false
     }
   },

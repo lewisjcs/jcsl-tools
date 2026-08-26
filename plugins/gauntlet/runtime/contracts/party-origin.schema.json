@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "jcsl:party-origin@1",
+  "type": "object",
+  "required": ["contractId", "provider", "repo", "number", "url", "baseRef", "baseSha", "headSha", "author"],
+  "properties": {
+    "contractId": {"const": "jcsl:party-origin@1"},
+    "provider": {"const": "github"},
+    "repo": {"type": "string", "pattern": "^[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?/(?!\\.\\.?(?:/|$))[A-Za-z0-9_.-]+$"},
+    "number": {"type": "integer", "minimum": 1},
+    "url": {"type": "string", "pattern": "^https://github\\.com/[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?/(?!\\.\\.?(?:/|$))[A-Za-z0-9_.-]+/pull/[1-9][0-9]*$"},
+    "baseRef": {"type": "string", "minLength": 1},
+    "baseSha": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "headSha": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "author": {"enum": ["self", "other"]}
+  },
+  "additionalProperties": false
+}

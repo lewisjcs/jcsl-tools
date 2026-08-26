@@ -758,7 +758,8 @@ without its own guard test landing first.
   `test-integrity`/`assertion-rewriting`.
 - `location` uses this family's location format: `file:line` — the post-diff
   path for changed files, or the repo-relative reviewed-tree path for
-  cross-boundary findings.
+  cross-boundary findings. `file` and `line` carry the same two halves as
+  separate fields.
 - `level` follows the persona's guide (`violation`/`warning`/`gap`); when in
   doubt between `violation` and `warning`, choose `warning`.
 - A layer that produces no findings is a clean pass for that layer, not an

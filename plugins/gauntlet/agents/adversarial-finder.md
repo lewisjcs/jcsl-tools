@@ -28,6 +28,8 @@ Reply with EXACTLY one bare JSON array and nothing else: no prose before or afte
 
 - `lens`: one of `"Hidden Assumptions"`, `"Failure Scenarios"`, `"Blast Radius"`, `"Missed Integration"`
 - `location`: non-empty string
+- `file`: repo-relative path the finding points at (the post-diff path for a changed file); include it for every code finding, omit it only when the artifact has no file (a plan or doc)
+- `line`: integer line number in `file`, counted from 1; omit it when you do not know it — never write `0`
 - `claim`: non-empty string
 - `evidence`: non-empty string
 - `severity`: one of `"High"`, `"Medium"`, `"Low"`
