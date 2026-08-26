@@ -40,14 +40,15 @@ The runtime's `--primary` takes a path to one file on disk — never a pull-requ
 
 ```
 gh pr diff <n> > "$STAGE/pr.diff"
-gh pr view <n> --json body,headRefOid
+gh pr view <n> --json body,headRefOid,baseRefName,baseRefOid,url,author
+gh api user --jq .login
 ```
 
-Write the `body` value to `"$STAGE/pr-body.md"`.
+Write the `body` value to `"$STAGE/pr-body.md"`. Set `AUTHOR=self` when `author.login` equals the `gh api user` login, else `AUTHOR=other`.
 
 **Resolve the repository root explicitly.** `--repo-root` and `--reviewed-commit` are both hard requirements for `--type code-pr` — without them the runtime refuses with `CLI_REVIEWED_COMMIT_REQUIRED` — and it pins its review worktree from that root. `gh pr diff` and `gh pr view` resolve against the current directory, so start there: `git rev-parse --show-toplevel`. For a pull-request URL, confirm that root is actually the right clone — check that one of its remotes matches the URL's `<org>/<repo>` (`git -C <repo-root> remote -v`). If none matches, stop and ask the operator for the path to the clone. That question is a refusal in all but name; it is a legitimate pause, listed with the others below.
 
-The head commit must also exist locally, since the runtime pins the review to it in its own git worktree: check with `git -C <repo-root> cat-file -e <headRefOid>^{commit}` and, if it is absent, fetch it (`git -C <repo-root> fetch origin <headRefOid>`). Then form the party with `--primary "$STAGE/pr.diff" --type code-pr --repo-root <repo-root> --reviewed-commit <headRefOid> --body "$STAGE/pr-body.md"`.
+The head commit must also exist locally, since the runtime pins the review to it in its own git worktree: check with `git -C <repo-root> cat-file -e <headRefOid>^{commit}` and, if it is absent, fetch it (`git -C <repo-root> fetch origin <headRefOid>`). Then form the party with `--primary "$STAGE/pr.diff" --type code-pr --repo-root <repo-root> --reviewed-commit <headRefOid> --body "$STAGE/pr-body.md" --origin-url <url> --base-ref <baseRefName> --base-sha <baseRefOid> --author $AUTHOR`.
 
 **No argument.** Review the current branch against the trunk:
 
@@ -85,8 +86,8 @@ This step reports signals; it decides nothing. Whether the signals lead to a go-
 Compose one call. Detection, the roster, and the artifact snapshot are all the runtime's decisions:
 
 ```
-node "${CLAUDE_PLUGIN_ROOT}/runtime/bin/cli.mjs" party-form --primary <artifact-file> [--path <logical-path>] [--type <code-pr|code-local|plan|doc|skill|directive>] [--body <pr-body-file>] [--repo-root <dir> --reviewed-commit <sha>] [--golive-signal <id>]... [--go-live|--no-go-live] [--force-lane <class>]... [--skip-lane <class>]...
-# stdout: {partyRunId, partyDir, profile, roster:{fielded, skipped, gaps, overrides}, goLivePrompt, lanes:[{classKey, runId, runDir, family}], worktree, events}
+node "${CLAUDE_PLUGIN_ROOT}/runtime/bin/cli.mjs" party-form --primary <artifact-file> [--path <logical-path>] [--type <code-pr|code-local|plan|doc|skill|directive>] [--body <pr-body-file>] [--repo-root <dir> --reviewed-commit <sha>] [--origin-url <url> --base-ref <ref> --base-sha <sha> --author <self|other>] [--golive-signal <id>]... [--go-live|--no-go-live] [--force-lane <class>]... [--skip-lane <class>]...
+# stdout: {partyRunId, partyDir, profile, roster:{fielded, skipped, gaps, overrides}, goLivePrompt, lanes:[{classKey, runId, runDir, family}], origin, worktree, events}
 ```
 
 Forward the operator's lane overrides untouched: `--force-lane <class>` and `--skip-lane <class>` are both repeatable, and the runtime validates each against its roster pool — forcing a Class onto a family it does not support is a typed refusal. Never add an override the operator did not ask for. Pass `--go-live` or `--no-go-live` straight through when the operator gave one, and never re-derive what they do to the roster — this applies to every artifact type, not just `code-pr` and `code-local`.
@@ -179,7 +180,9 @@ Confirm the copy landed — `wc -l <path>` returns at least 1 — before naming 
 2. Every blocker verbatim if there are any — a ship / do-not-ship call should not need the operator to open a file.
 3. The report path, the cost line (`bookedUsd`, `fullFlowUsd`, and any `omissions`), and a one-line note that the full findings are in the file.
 
-**The postable comment.** `report-template.md` holds the teammate-facing comment. Render it **only when the operator asks** for something to post, and load the template at that point, not before. The bright line: the report file's own vocabulary never appears on a teammate-facing surface; only the postable comment is postable. Posting is an outward-facing action and needs the operator's say-so on each occasion.
+**The postable comment.** When the operator asks for something to post, run `node "${CLAUDE_PLUGIN_ROOT}/runtime/bin/cli.mjs" party-report --party <partyRunId> --format pr-comment` and show the operator the `commentPath` it prints. The runtime renders the whole comment — banner, box score, blocker callouts, findings table, machine-readable block, marker, footer — do not edit, re-word, or re-count it. For a non-pull-request artifact the operator pastes that file into the ticket.
+
+**Posting to the pull request** is an outward-facing action. Ask the operator: `Post this comment to <repo>#<number>? [y/N]` — and only on `y` run `node "${CLAUDE_PLUGIN_ROOT}/runtime/bin/cli.mjs" post --party <partyRunId>`. The runtime edits the existing Gauntlet comment on that pull request if there is one, files a review event on a pull request the operator did not author (`REQUEST_CHANGES` with blockers, `COMMENT` without), and writes receipts to `post.json`. A refusal (`CLI_POST_PENDING`, `CLI_POST_GH_FAILED`, `CLI_POST_ORIGIN_MISSING`) is surfaced verbatim, never retried. `post` is only ever run at the operator's say-so, each time.
 
 ## 9. Offer the gaps
 
@@ -210,4 +213,4 @@ What carries over is the discipline around the previous review, not its machiner
 - **Verify every author "fixed" claim against the code — claims can be wrong.** Read the actual test or handler the claim rests on; confirm the new test exercises the path it names rather than a sibling, and that the tested handler even calls the changed function. Reconcile any commit SHA the author cites against the current head: a rebase re-identifies the same commit, so a matching commit *subject* under a different SHA is the same content, not new work. Trust the thread for *intent*, the diff for *reality*.
 - **Separate the author's changes from rebase artifacts.** Files pulled in by a rebase onto a newer base are not this change's work and do not belong in the verdict.
 - **State the transition in the chat summary** — for example, `2 of 3 prior findings resolved; 1 new low-severity finding`.
-- **Updating a posted comment is an outward-facing action.** Approval to post the first comment does not authorize editing it on a later run. Ask before updating the existing `gauntlet:v1` comment or posting a new one. Iterate freely in the report file; the posted comment is the gated surface.
+- **Posting on a re-review is still an outward-facing action.** Approval to post the first comment does not authorize the next one. Run step 8's question again; `post` updates the existing Gauntlet comment in place.
