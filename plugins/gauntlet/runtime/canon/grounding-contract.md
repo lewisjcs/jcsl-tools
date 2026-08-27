@@ -34,6 +34,13 @@ If you reach roughly 15 navigation calls you are likely crawling rather than
 reviewing — switch any remaining shell-based search to the `Grep`/`Glob`/
 `Read` capabilities and emit findings from what you have.
 
+Never modify the tree under review. It may be the operator's live working
+tree, with uncommitted work in it. Run the repo's tests, type checker, and
+linter as the tree stands; do not `git stash`, `checkout`, or `reset`, and
+do not edit, comment out, or otherwise mutate a file to see what a test does
+without it. A check you would need such a change to perform is not
+performed — say so in the finding instead of guessing its result.
+
 ## Evidence hierarchy
 
 When grounding or disproving a claim, prefer stronger evidence classes over

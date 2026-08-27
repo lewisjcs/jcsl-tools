@@ -116,6 +116,13 @@ If you reach roughly 15 navigation calls you are likely crawling rather than
 reviewing — switch any remaining shell-based search to the `Grep`/`Glob`/
 `Read` capabilities and emit findings from what you have.
 
+Never modify the tree under review. It may be the operator's live working
+tree, with uncommitted work in it. Run the repo's tests, type checker, and
+linter as the tree stands; do not `git stash`, `checkout`, or `reset`, and
+do not edit, comment out, or otherwise mutate a file to see what a test does
+without it. A check you would need such a change to perform is not
+performed — say so in the finding instead of guessing its result.
+
 ## Evidence hierarchy
 
 When grounding or disproving a claim, prefer stronger evidence classes over
@@ -979,7 +986,7 @@ Before claiming a change is correct:
 1. **Enumerate every guard, fallback, or try/catch you added or kept.** For each, name the specific system constraint (type contract, framework guarantee, prior validation) that proves the guarded condition can or cannot occur. If you cannot name one, the guard is defensive — remove it or justify it inline as a comment with the threat scenario.
 2. **For removed guards or fallbacks:** identify at least one call site that exercises the previously-guarded path. Confirm the path still behaves correctly without the guard. If no caller exercises the path, the guard was dead code.
 3. **Run the language's static type checker, compile check, or linter** that the repo uses (e.g. `tsc --noEmit`, `mypy`, `cargo clippy`, `go vet`, `ruff check`). Confirm zero new errors.
-4. **Run the affected tests.** Confirm tests pass *because the new code runs*, not because a fallback kicks in. If a test still passes when the new code is commented out, the test isn't covering the change.
+4. **Run the affected tests.** Confirm tests pass *because the new code runs*, not because a fallback kicks in. Ask whether the test would still pass without the new code — reason from the assertion and the code path, not by editing the tree; if it would, the test isn't covering the change.
 5. **For pattern-matching claims:** cite at least one existing file in the repo using the same pattern. If you cannot find one, the change is introducing a new pattern — flag it explicitly.
 
 If any verification step cannot be completed, state which one and why before claiming the change is correct.
