@@ -79,6 +79,26 @@ confirming <X> in <other system>, unreachable from this artifact"). Reserve
 confidence on a `disproved` verdict requires in-reach evidence, not a
 plausible external assumption.
 
+## Anchor-grounding rule
+
+A claim about how code behaves must be anchored on the code that behaves that
+way. When a candidate's only anchor — its `location`, and its `file` if it has
+one — is a `.md` file while the claim is about code behaviour, the candidate
+is not grounded: a document describes behaviour, it does not exhibit it, and
+the document can be wrong about the code without the code being wrong.
+
+Rule: mark such a candidate `disproved`, and say so in `evidence` ("the only
+anchor is <path>, a document describing the behaviour; the code that exhibits
+it is not cited"). Read the code first — if you find the same defect in the
+source and the candidate is right about it, that is a candidate the Finder
+anchored badly, and the honest verdict is still `disproved` on the claim as
+filed.
+
+This is not a rule against findings about documents. When the document IS the
+subject — it contradicts itself, it states something the code does not do, it
+tells a reader to do the wrong thing — the `.md` anchor is the correct one and
+the candidate stands or falls on its own merits.
+
 ## False-positive rules
 
 Before evaluating findings, read `references/code-quality-standards.md`.
@@ -319,6 +339,26 @@ confirming <X> in <other system>, unreachable from this artifact"). Reserve
 confidence on a `disproved` verdict requires in-reach evidence, not a
 plausible external assumption.
 
+## Anchor-grounding rule
+
+A claim about how code behaves must be anchored on the code that behaves that
+way. When a candidate's only anchor — its `location`, and its `file` if it has
+one — is a `.md` file while the claim is about code behaviour, the candidate
+is not grounded: a document describes behaviour, it does not exhibit it, and
+the document can be wrong about the code without the code being wrong.
+
+Rule: mark such a candidate `disproved`, and say so in `evidence` ("the only
+anchor is <path>, a document describing the behaviour; the code that exhibits
+it is not cited"). Read the code first — if you find the same defect in the
+source and the candidate is right about it, that is a candidate the Finder
+anchored badly, and the honest verdict is still `disproved` on the claim as
+filed.
+
+This is not a rule against findings about documents. When the document IS the
+subject — it contradicts itself, it states something the code does not do, it
+tells a reader to do the wrong thing — the `.md` anchor is the correct one and
+the candidate stands or falls on its own merits.
+
 ## False-positive rules
 
 Before evaluating findings, read `references/code-quality-standards.md`.
@@ -519,6 +559,26 @@ confirming <X> in <other system>, unreachable from this artifact"). Reserve
 `disproved` for findings you ruled out with evidence you actually read. High
 confidence on a `disproved` verdict requires in-reach evidence, not a
 plausible external assumption.
+
+## Anchor-grounding rule
+
+A claim about how code behaves must be anchored on the code that behaves that
+way. When a candidate's only anchor — its `location`, and its `file` if it has
+one — is a `.md` file while the claim is about code behaviour, the candidate
+is not grounded: a document describes behaviour, it does not exhibit it, and
+the document can be wrong about the code without the code being wrong.
+
+Rule: mark such a candidate `disproved`, and say so in `evidence` ("the only
+anchor is <path>, a document describing the behaviour; the code that exhibits
+it is not cited"). Read the code first — if you find the same defect in the
+source and the candidate is right about it, that is a candidate the Finder
+anchored badly, and the honest verdict is still `disproved` on the claim as
+filed.
+
+This is not a rule against findings about documents. When the document IS the
+subject — it contradicts itself, it states something the code does not do, it
+tells a reader to do the wrong thing — the `.md` anchor is the correct one and
+the candidate stands or falls on its own merits.
 
 ## False-positive rules
 

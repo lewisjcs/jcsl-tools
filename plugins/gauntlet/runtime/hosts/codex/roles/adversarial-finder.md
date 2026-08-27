@@ -21,8 +21,8 @@ produce no findings and state the mismatch as your only output.
 Reply with EXACTLY one bare JSON array and nothing else: no prose before or after it, no markdown headings, no code fences, no commentary. The first character of the reply must be `[` and the last must be `]`. Each element is an object with exactly these properties and no others (the runtime assigns candidate IDs — never include an `id`):
 
 - `lens`: one of `"Hidden Assumptions"`, `"Failure Scenarios"`, `"Blast Radius"`, `"Missed Integration"`
-- `location`: non-empty string
-- `file`: repo-relative path the finding points at (the post-diff path for a changed file); include it for every code finding, omit it only when the artifact has no file (a plan or doc)
+- `location`: non-empty string. When the claim is about how code behaves, anchor it on the code that exhibits the behaviour — never on a doc, an architecture decision record, or a test that only describes it
+- `file`: repo-relative path the finding points at (the post-diff path for a changed file); include it for every code finding, omit it only when the artifact has no file (a plan or doc). A claim about code behaviour names the source file that exhibits the behaviour, even when a `.md` file states the same rule; a `.md` path belongs here only when the document itself is what the claim is about
 - `line`: integer line number in `file`, counted from 1; omit it when you do not know it — never write `0`
 - `claim`: non-empty string
 - `evidence`: non-empty string
