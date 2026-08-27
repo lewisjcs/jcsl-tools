@@ -1,6 +1,6 @@
 {
   "schemaVersion": "jcsl:gauntlet-claude-payload@1",
   "sourceRepo": "lewisjcs/gauntlet",
-  "sourceCommit": "2acccad3c905e4a246c27833eecc4d4c214d59bf",
-  "payloadHash": "ac671ed341a21cfc5a9ac24a06263168a27f0c717b7ddc95a21b1f92ee2d8cb3"
+  "sourceCommit": "3e4c44afe11ba5c18f6dc9642c342d20ed8b2aa8",
+  "payloadHash": "c01544eda8ea667b203d015817b0dba45ae8acbf2b848d3d713e8258786647cf"
 }
