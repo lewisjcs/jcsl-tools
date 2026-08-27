@@ -11276,11 +11276,11 @@ var MARKER_PREFIX = "<!-- gauntlet:v1 ";
 var GAUNTLET_LABEL = "reviewed-by-gauntlet";
 var RECEIPT_STATUSES = /* @__PURE__ */ new Set(["pending", "posted"]);
 function reviewEventFor({ author, blockers }) {
-  if (author === "self") return null;
+  if (author === "self") return "COMMENT";
   return blockers > 0 ? "REQUEST_CHANGES" : "COMMENT";
 }
-function findMarkerComment(comments, login) {
-  return comments.find((c) => c.user?.login === login && typeof c.body === "string" && c.body.includes(MARKER_PREFIX)) ?? null;
+function findMarkerReview(reviews, login) {
+  return reviews.find((r) => r.user?.login === login && typeof r.body === "string" && r.body.includes(MARKER_PREFIX)) ?? null;
 }
 function readReceipts(sidecarPath) {
   if (!existsSync4(sidecarPath)) return [];
@@ -11304,7 +11304,7 @@ function appendReceipt(sidecarPath, receipt) {
 function assertNoPendingReceipt(receipts) {
   const pending = receipts.at(-1)?.status === "pending" ? receipts.at(-1) : null;
   if (pending) {
-    throw new CliError("CLI_POST_PENDING", `a post started at ${pending.at} (${pending.mode}, comment ${pending.commentId ?? "new"}) never recorded a result; inspect the pull request and post.json before posting again`);
+    throw new CliError("CLI_POST_PENDING", `a post started at ${pending.at} (${pending.mode}, review ${pending.reviewId ?? "new"}) never recorded a result; inspect the pull request and post.json before posting again`);
   }
 }
 function ghApi(args, { inputPath } = {}) {
@@ -11329,39 +11329,30 @@ function requireLogin(reply) {
   }
   return reply.login;
 }
-function reviewBody({ ref, counts }) {
-  const advisory = counts.concerns + counts.nits;
-  return `The Gauntlet reviewed \`${ref}\`: ${counts.blockers} blocker${counts.blockers === 1 ? "" : "s"}, ${advisory} advisory. Details are in the review comment.`;
-}
 function postComment({ origin, body, partyRunId, ref, counts, receiptsPath, scratchDir, now, gh = ghApi }) {
   assertNoPendingReceipt(readReceipts(receiptsPath));
   const at = new Date(now).toISOString();
   const bodySha256 = sha256Utf8(body);
+  const pullBase = `repos/${origin.repo}/pulls/${origin.number}`;
   const issueBase = `repos/${origin.repo}/issues/${origin.number}`;
   const login = requireLogin(gh(["user"]));
-  const comments = gh(["--paginate", `${issueBase}/comments`]) ?? [];
-  if (!Array.isArray(comments)) {
-    throw new CliError("CLI_POST_GH_FAILED", `gh answered the comment list call with ${JSON.stringify(comments)}; expected an array of comments`);
+  const reviews = gh(["--paginate", `${pullBase}/reviews`]) ?? [];
+  if (!Array.isArray(reviews)) {
+    throw new CliError("CLI_POST_GH_FAILED", `gh answered the review list call with ${JSON.stringify(reviews)}; expected an array of reviews`);
   }
-  const existing = findMarkerComment(comments, login);
+  const existing = findMarkerReview(reviews, login);
   const mode = existing ? "edit" : "create";
-  appendReceipt(receiptsPath, { status: "pending", at, partyRunId, ref, bodySha256, mode, commentId: existing?.id ?? null });
-  const commentInput = path10.join(scratchDir, "post-comment.json");
-  writeFileAtomic(commentInput, JSON.stringify({ body }));
-  const comment = requireReplyId(existing ? gh(["-X", "PATCH", `repos/${origin.repo}/issues/comments/${existing.id}`], { inputPath: commentInput }) : gh(["-X", "POST", `${issueBase}/comments`], { inputPath: commentInput }), mode === "edit" ? "comment edit" : "comment create");
   const event = reviewEventFor({ author: origin.author, blockers: counts.blockers });
-  let reviewId = null;
-  if (event !== null) {
-    const reviewInput = path10.join(scratchDir, "post-review.json");
-    writeFileAtomic(reviewInput, JSON.stringify({ event, body: reviewBody({ ref, counts }) }));
-    reviewId = requireReplyId(gh(["-X", "POST", `repos/${origin.repo}/pulls/${origin.number}/reviews`], { inputPath: reviewInput }), "review").id;
-  }
+  appendReceipt(receiptsPath, { status: "pending", at, partyRunId, ref, bodySha256, mode, reviewId: existing?.id ?? null });
+  const reviewInput = path10.join(scratchDir, "post-review.json");
+  writeFileAtomic(reviewInput, JSON.stringify(existing ? { body } : { event, body }));
+  const review = requireReplyId(existing ? gh(["-X", "PUT", `${pullBase}/reviews/${existing.id}`], { inputPath: reviewInput }) : gh(["-X", "POST", `${pullBase}/reviews`], { inputPath: reviewInput }), mode === "edit" ? "review update" : "review create");
   const labelInput = path10.join(scratchDir, "post-label.json");
   writeFileAtomic(labelInput, JSON.stringify({ labels: [GAUNTLET_LABEL] }));
   gh(["-X", "POST", `${issueBase}/labels`], { inputPath: labelInput });
-  const posted = { status: "posted", at: new Date(now).toISOString(), partyRunId, ref, bodySha256, mode, commentId: comment.id, commentUrl: comment.html_url, reviewId, event, label: GAUNTLET_LABEL };
-  appendReceipt(receiptsPath, posted);
-  return { mode, commentId: comment.id, commentUrl: comment.html_url, reviewId, event, label: GAUNTLET_LABEL };
+  const outcome = { mode, reviewId: review.id, reviewUrl: review.html_url, event, label: GAUNTLET_LABEL };
+  appendReceipt(receiptsPath, { status: "posted", at: new Date(now).toISOString(), partyRunId, ref, bodySha256, ...outcome });
+  return outcome;
 }
 
 // src/party-report.mjs
@@ -11539,9 +11530,9 @@ function rowsForLane(partyRunId, laneRun, result, config) {
   }));
 }
 function securityFor(record, laneResults) {
-  const adversarial = laneResults.find((l) => l.classKey === CLASS_KEY);
-  const ran = adversarial !== void 0 && adversarial.result !== null;
-  const findings = ran ? adversarial.result.findings.filter((f) => f.category === "security").length : 0;
+  const lane = laneResults.find((l) => l.classKey === SECURITY_GAP_LANE);
+  const ran = lane !== void 0 && lane.result !== null;
+  const findings = ran ? lane.result.findings.length : 0;
   const gapEntry = record.roster.gaps.find((g) => g.lane === SECURITY_GAP_LANE);
   return { ran, findings, gap: gapEntry ? gapEntry.trigger : null };
 }
@@ -11613,9 +11604,8 @@ function verdictLine(counts) {
   return advisory > 0 ? `\u{1F6E1}\uFE0F Clean \xB7 ${advisory} advisory` : "\u{1F6E1}\uFE0F Clean";
 }
 function securityCell(security) {
-  if (security.gap !== null) return `not run \u2014 ${security.gap}`;
-  if (!security.ran) return "not run \u2014 no signal";
-  return security.findings > 0 ? String(security.findings) : "clean \u2713";
+  if (security.ran) return security.findings > 0 ? String(security.findings) : "clean \u2713";
+  return security.gap !== null ? `not run \u2014 ${security.gap}` : "not run";
 }
 function lanesCell(roster) {
   const fielded = roster.fielded.map((e) => e.label);
@@ -11631,7 +11621,8 @@ function locationCell(f) {
   return `\`${escapeCell(f.location)}\``;
 }
 function blockerCallout(f) {
-  const where = f.laneFailure || f.file === void 0 ? "" : ` \u2014 \`${f.line !== void 0 ? `${f.file}:${f.line}` : f.file}\``;
+  const anchor = f.file !== void 0 ? f.line !== void 0 ? `${f.file}:${f.line}` : f.file : f.location;
+  const where = f.laneFailure ? "" : ` \u2014 \`${escapeCell(anchor)}\``;
   const fix = f.laneFailure ? ` \u2014 ${f.recommendation}` : `. **Fix:** ${f.recommendation}.`;
   return `> [!WARNING]
 > **${f.claim}**${where}${fix}`;
@@ -11655,10 +11646,12 @@ function machineBlock(model) {
     ref: model.ref,
     revision: model.revision,
     verdict: { ...model.counts },
+    // `ran` and `findings` are the security-gauntlet lane's, not the
+    // adversarial lane's security-category count — same meaning as the 🔒 row.
     security: { ran: model.security.ran, findings: model.security.findings },
     findings
   };
-  return ["<details>", "<summary>\u{1F916} Machine-readable findings (for agents)</summary>", "", "```json", JSON.stringify(payload, null, 2), "```", "</details>"].join("\n");
+  return ["<details>", "<summary>\u{1F916} Machine-readable findings (for agents)</summary>", "", "````json", JSON.stringify(payload, null, 2), "````", "</details>"].join("\n");
 }
 function renderPrComment(model) {
   const out = [
@@ -11690,7 +11683,7 @@ function renderPrComment(model) {
     machineBlock(model),
     "",
     `<sub>The Gauntlet \xB7 an AI review harness built by Josh C.S. Lewis \xB7 run \`${model.partyRunId}\` \xB7 ${model.roster.fielded.length} lanes \xB7 ${formatDuration(model.durationSeconds)}</sub>`,
-    `<!-- gauntlet:v1 party=${model.partyRunId} ref=${model.ref} -->`
+    `${MARKER_PREFIX}party=${model.partyRunId} ref=${model.ref} -->`
   );
   return `${out.join("\n")}
 `;
@@ -12551,6 +12544,28 @@ function loadPartyRecord(paths, partyRunId, partyRoot) {
   }
   return record;
 }
+var EVIDENCE_CONTRACT_ID_BY_CLASS_KEY = Object.freeze({
+  [CLASS_KEY]: "jcsl:adversarial-run-evidence@1",
+  [CODE_QUALITY_CLASS_KEY]: "jcsl:code-quality-run-evidence@1"
+});
+function readLaneEvidence(evidencePath, { classKey, runId }) {
+  const evidence = readJsonFile(evidencePath, "CLI_PARTY_LANE_EVIDENCE_UNREADABLE");
+  const contractId = EVIDENCE_CONTRACT_ID_BY_CLASS_KEY[classKey];
+  if (contractId === void 0) {
+    throw new CliError(
+      "CLI_PARTY_LANE_EVIDENCE_INVALID",
+      `lane "${classKey}" (run ${runId}) has no evidence contract registered`
+    );
+  }
+  const { valid, issues } = validateContract(contractId, evidence);
+  if (!valid) {
+    throw new CliError(
+      "CLI_PARTY_LANE_EVIDENCE_INVALID",
+      `lane "${classKey}" (run ${runId}) evidence "${evidencePath}" failed ${contractId} validation: ${JSON.stringify(issues)}`
+    );
+  }
+  return evidence;
+}
 function collectLanes(record, runsStoreRoot) {
   const laneRuns = [];
   const costLanes = [];
@@ -12589,7 +12604,7 @@ function collectLanes(record, runsStoreRoot) {
     const executionStatus = status === "gap" || !hasResult ? "incomplete" : "complete";
     const result = executionStatus === "complete" ? readJsonFile(lanePaths.result, "CLI_PARTY_LANE_RESULT_UNREADABLE") : null;
     resultsByRunId[laneRun.runId] = result;
-    evidenceByClassKey[laneRun.classKey] = result !== null && existsSync5(lanePaths.evidence) ? readJsonFile(lanePaths.evidence, "CLI_PARTY_LANE_EVIDENCE_UNREADABLE") : null;
+    evidenceByClassKey[laneRun.classKey] = result !== null && existsSync5(lanePaths.evidence) ? readLaneEvidence(lanePaths.evidence, laneRun) : null;
     if (result === null && gap !== null) {
       laneFailureReasons[laneRun.classKey] = `${gap.stage} stage gapped: ${gap.reason}`;
     }
