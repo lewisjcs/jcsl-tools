@@ -1,50 +1,42 @@
 {
   "kind": "class",
   "schemaVersion": "1.0-kernel",
-  "id": "jcsl:gauntlet:adversarial-review",
-  "version": "2.0.0",
+  "id": "jcsl:gauntlet:revision-review",
+  "version": "1.0.0",
   "audience": "personal",
   "identity": {
-    "name": "Adversarial Review",
-    "tagline": "Opposed Finder and Validator roles pressure-test a reviewable artifact under a deterministic runtime.",
-    "promise": "Pressure-test a reviewable artifact for grounded hidden assumptions, credible failure scenarios, and consequential blast radius while actively filtering speculative accusations.",
+    "name": "Revision Review",
+    "tagline": "A single verifier role settles the fate of every open prior finding against the new tree.",
+    "promise": "Rule each prior finding resolved, persisting, or withdrawn, each with a reason and a citation the reader can check.",
     "constraints": [
-      "Finder and Validator run in fresh, isolated dispatches with no shared context between them.",
-      "A deterministic runtime, never a host, decides stage order, retries, and adjudication.",
-      "A second Validator pass is off by default and only re-examines existing candidates for precision."
+      "The verifier runs in a fresh, isolated dispatch and receives the range-diff, the thread, and the prior findings by reference into the run directory, never embedded in the prompt.",
+      "A deterministic runtime, never a host, decides stage order, retries, and when the run is terminal.",
+      "The Class is deliberately single-role: each verdict is a check of one named claim against a pinned tree, verifiable by inspection, so no adversarial stage exists.",
+      "The verifier never searches for new problems; new findings are the other lanes' work over the same range-diff."
     ],
     "taboos": [
-      "Does not adjudicate findings itself -- adjudication is the runtime's job, not a host's.",
-      "Does not skip a stage or infer a result before the runtime reports terminal.",
-      "Does not invent, drop, or re-label a candidate or verdict ID."
+      "Does not mark a finding resolved on the author's word — only on what the new tree shows.",
+      "Does not mark a finding withdrawn without a thread reply to point at.",
+      "Does not omit, add, or re-key a prior finding.",
+      "Does not modify the tree under review."
     ]
   },
-  "functionRole": "adversarial-review",
+  "functionRole": "revision-review",
   "members": {
     "skills": [
-      "hosts/claude-code/skills/adversarial-review/SKILL.md",
-      "hosts/codex/skills/adversarial-review/SKILL.md"
+      "hosts/claude-code/skills/revision-review/SKILL.md",
+      "hosts/codex/skills/revision-review/SKILL.md"
     ],
     "agents": [
-      "hosts/claude-code/agents/adversarial-finder.md",
-      "hosts/claude-code/agents/adversarial-validator.md",
-      "hosts/codex/roles/adversarial-finder.md",
-      "hosts/codex/roles/adversarial-validator.md"
+      "hosts/claude-code/agents/revision-verifier.md",
+      "hosts/codex/roles/revision-verifier.md"
     ],
     "references": [
-      "canon/finder-persona.md",
+      "canon/revision-verifier-persona.md",
+      "canon/revision-review-protocol.md",
       "canon/grounding-contract.md",
-      "canon/runtime-protocol.md",
-      "canon/validator-persona.md",
-      "policy/adjudication-v1.json",
-      "policy/adjudication-v2.json",
-      "profiles/adversarial-review/code-diff/lenses.md",
-      "profiles/adversarial-review/code-diff/profile.json",
-      "profiles/adversarial-review/doc-text/lenses.md",
-      "profiles/adversarial-review/doc-text/profile.json",
-      "profiles/adversarial-review/plan-text/lenses.md",
-      "profiles/adversarial-review/plan-text/profile.json",
-      "references/code-quality-standards.md"
+      "profiles/revision-review/code-diff/profile.json",
+      "profiles/revision-review/code-diff/lenses.md"
     ]
   },
   "availableFeats": [],
@@ -261,10 +253,10 @@
       }
     },
     "output": {
-      "id": "jcsl:adversarial-review-result@1",
+      "id": "jcsl:revision-review-result@1",
       "schema": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "$id": "jcsl:adversarial-review-result@1",
+        "$id": "jcsl:revision-review-result@1",
         "type": "object",
         "required": [
           "contractId",
@@ -277,16 +269,15 @@
           "calibrationStatus",
           "coverage",
           "outcome",
-          "rawCandidateCount",
-          "validatorDispositions",
           "findings",
+          "verdicts",
           "failures",
           "measurements"
         ],
         "properties": {
           "contractId": {
             "type": "string",
-            "const": "jcsl:adversarial-review-result@1",
+            "const": "jcsl:revision-review-result@1",
             "pattern": "^[a-z][a-z0-9-]*(?::[a-z][a-z0-9-]*)+(?:@[1-9][0-9]*)?$"
           },
           "classId": {
@@ -391,66 +382,18 @@
           },
           "outcome": {
             "enum": [
-              "clean",
               "findings",
               "failed"
             ]
           },
-          "rawCandidateCount": {
-            "type": "integer",
-            "minimum": 0
-          },
-          "validatorDispositions": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "required": [
-                "findingId",
-                "verdict",
-                "confidence"
-              ],
-              "properties": {
-                "findingId": {
-                  "type": "string"
-                },
-                "verdict": {
-                  "enum": [
-                    "survives",
-                    "disproved"
-                  ]
-                },
-                "confidence": {
-                  "type": "number",
-                  "minimum": 0,
-                  "maximum": 100
-                },
-                "category": {
-                  "enum": [
-                    "security",
-                    "correctness",
-                    "data-loss",
-                    "maintainability",
-                    "style",
-                    "accuracy",
-                    "other"
-                  ]
-                }
-              },
-              "additionalProperties": false
-            }
-          },
           "findings": {
             "type": "array",
-            "minItems": 0,
-            "items": {
-              "$ref": "#/$defs/finding"
-            }
+            "maxItems": 0
           },
-          "belowTheLine": {
+          "verdicts": {
             "type": "array",
-            "minItems": 0,
             "items": {
-              "$ref": "#/$defs/finding"
+              "$ref": "#/$defs/verdict"
             }
           },
           "failures": {
@@ -515,149 +458,36 @@
           }
         },
         "$defs": {
-          "finding": {
+          "verdict": {
             "type": "object",
             "required": [
-              "id",
-              "lens",
-              "location",
-              "claim",
-              "evidence",
-              "severity",
-              "category",
-              "confidence",
-              "recommendation",
-              "disposition"
+              "key",
+              "status",
+              "reason",
+              "anchor"
             ],
             "properties": {
-              "id": {
-                "type": "string"
+              "key": {
+                "type": "string",
+                "pattern": "^[0-9]{8}T[0-9]{6}Z-[0-9a-f]{6}:[a-z][a-z0-9-]*:[A-Z]-[0-9]{3}$"
               },
-              "lens": {
-                "type": "string"
-              },
-              "location": {
-                "type": "string"
-              },
-              "claim": {
-                "type": "string"
-              },
-              "evidence": {
-                "type": "string"
-              },
-              "severity": {
+              "status": {
                 "enum": [
-                  "High",
-                  "Medium",
-                  "Low"
+                  "resolved",
+                  "persisting",
+                  "withdrawn"
                 ]
               },
-              "category": {
-                "enum": [
-                  "security",
-                  "correctness",
-                  "data-loss",
-                  "maintainability",
-                  "style",
-                  "accuracy",
-                  "other"
-                ]
-              },
-              "confidence": {
-                "type": "number",
-                "minimum": 0,
-                "maximum": 100
-              },
-              "recommendation": {
-                "type": "string"
-              },
-              "disposition": {
-                "enum": [
-                  "survives"
-                ]
-              },
-              "boundary": {
-                "enum": [
-                  "in-bundle",
-                  "cross-boundary",
-                  "component-ref",
-                  "unclassified"
-                ]
-              },
-              "originalSeverity": {
-                "enum": [
-                  "High",
-                  "Medium",
-                  "Low"
-                ]
-              },
-              "originalCategory": {
-                "enum": [
-                  "security",
-                  "correctness",
-                  "data-loss",
-                  "maintainability",
-                  "style",
-                  "accuracy",
-                  "other"
-                ]
-              },
-              "adjudicationNotes": {
-                "type": "array",
-                "items": {
-                  "type": "string",
-                  "minLength": 1
-                }
-              },
-              "file": {
+              "reason": {
                 "type": "string",
                 "minLength": 1
               },
-              "line": {
-                "type": "integer",
-                "minimum": 1
+              "anchor": {
+                "type": "string",
+                "minLength": 1
               }
             },
             "additionalProperties": false
-          }
-        },
-        "if": {
-          "type": "object",
-          "properties": {
-            "outcome": {
-              "const": "clean"
-            }
-          }
-        },
-        "then": {
-          "type": "object",
-          "properties": {
-            "executionStatus": {
-              "const": "complete"
-            },
-            "calibrationStatus": {
-              "const": "calibrated"
-            },
-            "coverage": {
-              "type": "object",
-              "properties": {
-                "status": {
-                  "const": "complete"
-                }
-              }
-            },
-            "host": {
-              "type": "object",
-              "properties": {
-                "bindingStatus": {
-                  "const": "honored"
-                }
-              }
-            },
-            "belowTheLine": {
-              "type": "array",
-              "maxItems": 0
-            }
           }
         },
         "additionalProperties": false
@@ -667,48 +497,37 @@
   "entrypoints": {
     "claude-code": {
       "kind": "skill",
-      "path": "hosts/claude-code/skills/adversarial-review/SKILL.md",
+      "path": "hosts/claude-code/skills/revision-review/SKILL.md",
       "projection": {
         "canonicalSources": [
-          "canon/finder-persona.md",
+          "canon/revision-verifier-persona.md",
           "canon/grounding-contract.md",
-          "canon/runtime-protocol.md",
-          "canon/validator-persona.md",
-          "profiles/adversarial-review/code-diff/profile.json",
-          "profiles/adversarial-review/code-diff/lenses.md",
-          "profiles/adversarial-review/plan-text/profile.json",
-          "profiles/adversarial-review/plan-text/lenses.md",
-          "profiles/adversarial-review/doc-text/profile.json",
-          "profiles/adversarial-review/doc-text/lenses.md",
+          "canon/revision-review-protocol.md",
+          "profiles/revision-review/code-diff/profile.json",
+          "profiles/revision-review/code-diff/lenses.md",
           "bindings/claude-code.json"
         ],
-        "sourceHash": "05c0bc986dcac4a4806b97649b8b2af0ccc0becbecf8da5548e52eaf76c0a23a"
+        "sourceHash": "e7b0ac1c17588d15b412bbdf060bb84d3675831549891be657f33b56cc05b476"
       }
     },
     "codex": {
       "kind": "skill",
-      "path": "hosts/codex/skills/adversarial-review/SKILL.md",
+      "path": "hosts/codex/skills/revision-review/SKILL.md",
       "projection": {
         "canonicalSources": [
-          "canon/finder-persona.md",
+          "canon/revision-verifier-persona.md",
           "canon/grounding-contract.md",
-          "canon/runtime-protocol.md",
-          "canon/validator-persona.md",
-          "profiles/adversarial-review/code-diff/profile.json",
-          "profiles/adversarial-review/code-diff/lenses.md",
-          "profiles/adversarial-review/plan-text/profile.json",
-          "profiles/adversarial-review/plan-text/lenses.md",
-          "profiles/adversarial-review/doc-text/profile.json",
-          "profiles/adversarial-review/doc-text/lenses.md",
+          "canon/revision-review-protocol.md",
+          "profiles/revision-review/code-diff/profile.json",
+          "profiles/revision-review/code-diff/lenses.md",
           "bindings/codex.json"
         ],
-        "sourceHash": "1d824bdb600d7c6e11f4647b46d5a814ffd76906f7743d44ec0fe87344a4a634"
+        "sourceHash": "4ce76292bebb9a69de2357967febba31e0ea7d8bc5572b973edf5840c47dffcf"
       }
     }
   },
   "modelRequirements": [
-    "independent-judgment",
-    "adversarial-adjudication"
+    "independent-judgment"
   ],
   "capabilities": {
     "isolated-dispatch": "required"

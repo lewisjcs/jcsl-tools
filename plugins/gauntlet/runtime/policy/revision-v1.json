@@ -1,0 +1,6 @@
+{
+  "kind": "revision-policy",
+  "version": "1.1.0",
+  "match": ["lane", "sublens", "file"],
+  "proximity": { "lines": 40 }
+}

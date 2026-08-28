@@ -1,6 +1,6 @@
 {
   "kind": "roster-policy",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "pool": [
     {
       "classKey": "adversarial-review",
@@ -17,9 +17,92 @@
       "families": [
         "code-diff"
       ]
+    },
+    {
+      "classKey": "revision-review",
+      "classId": "jcsl:gauntlet:revision-review",
+      "families": [
+        "code-diff"
+      ]
     }
   ],
   "rows": [
+    {
+      "rowId": "code-behavioral-revision",
+      "match": {
+        "family": "code-diff",
+        "mechanicalOnly": false,
+        "revision": true
+      },
+      "field": [
+        {
+          "classKey": "revision-review",
+          "reason": "revision of a posted review — prior findings need a fate"
+        },
+        {
+          "classKey": "adversarial-review",
+          "reason": "behavioral code diff — adversarial surface"
+        },
+        {
+          "classKey": "code-quality-audit",
+          "reason": "code diff — rulebook audit applies"
+        }
+      ],
+      "skip": [],
+      "gaps": [
+        {
+          "lane": "security-gauntlet",
+          "when": "security-signal",
+          "reason": "applicable, not yet admitted — run its skill manually"
+        },
+        {
+          "lane": "go-live-review",
+          "when": "golive-flag",
+          "reason": "applicable, not yet admitted — run its skill manually"
+        }
+      ]
+    },
+    {
+      "rowId": "code-mechanical-revision",
+      "match": {
+        "family": "code-diff",
+        "mechanicalOnly": true,
+        "revision": true
+      },
+      "field": [
+        {
+          "classKey": "revision-review",
+          "reason": "revision of a posted review — prior findings need a fate"
+        },
+        {
+          "classKey": "code-quality-audit",
+          "reason": "code diff — rulebook audit applies"
+        }
+      ],
+      "skip": [
+        {
+          "classKey": "adversarial-review",
+          "reason": "mechanical-only diff — no behavioral surface to attack"
+        }
+      ],
+      "gaps": [
+        {
+          "lane": "security-gauntlet",
+          "when": "security-signal",
+          "reason": "applicable, not yet admitted — run its skill manually"
+        },
+        {
+          "lane": "go-live-review",
+          "when": "golive-flag",
+          "reason": "applicable, not yet admitted — run its skill manually"
+        },
+        {
+          "lane": "doc-review",
+          "when": "doc-only",
+          "reason": "applicable, not yet admitted — run its skill manually"
+        }
+      ]
+    },
     {
       "rowId": "code-behavioral",
       "match": {
