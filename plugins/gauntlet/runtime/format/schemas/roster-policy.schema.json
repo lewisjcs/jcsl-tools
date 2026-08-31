@@ -35,7 +35,8 @@
             "properties": {
               "family": { "type": "string" },
               "mechanicalOnly": { "type": "boolean" },
-              "artifactType": { "type": "string" }
+              "artifactType": { "type": "string" },
+              "revision": { "type": "boolean" }
             },
             "additionalProperties": false
           },

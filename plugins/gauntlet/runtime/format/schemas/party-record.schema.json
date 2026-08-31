@@ -38,13 +38,14 @@
     },
     "profile": {
       "type": "object",
-      "required": ["rulesVersion", "artifactType", "family", "mechanicalOnly", "docOnly", "sizeBytes", "signals"],
+      "required": ["rulesVersion", "artifactType", "family", "mechanicalOnly", "docOnly", "revision", "sizeBytes", "signals"],
       "properties": {
         "rulesVersion": { "$ref": "#/$defs/semver" },
         "artifactType": { "$ref": "#/$defs/artifactType" },
         "family": { "enum": ["code-diff", "plan-text", "doc-text", null] },
         "mechanicalOnly": { "type": ["boolean", "null"] },
         "docOnly": { "type": ["boolean", "null"] },
+        "revision": { "type": "boolean" },
         "sizeBytes": { "type": "integer", "minimum": 0 },
         "signals": {
           "type": "object",
