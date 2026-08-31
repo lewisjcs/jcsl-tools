@@ -8109,6 +8109,11 @@ roster gaps: ${d.gaps.join(", ")}` : line;
   "worktree-pinned": (config, d) => `worktree: ${d.sha.slice(0, 12)}`,
   "lane-run-linked": (config, d) => `lane run: ${d.classKey} ${d.runId}`,
   "party-report-written": (config, d) => `report: ${d.blockers} blockers`,
+  "revision-linked": (config, d) => {
+    const mode = d.fallbackReason ? `${d.mode} \u2014 ${d.fallbackReason}` : d.mode;
+    return `revision ${d.number} of ${d.priorPartyRunId} (${mode}, prior ${d.priorSha.slice(0, 12)})`;
+  },
+  "origin-recorded": (config, d) => `origin: ${d.repo}#${d.number} (${d.author})`,
   "invocation-validated": (config, d) => `invocation-validated ${config.roleShortName(d.role)} \u2014 ${d.modelRequirement}`,
   "host-bound": (config, d) => {
     const modelStr = typeof d.model === "string" ? d.model : `${d.model.model}@${d.model.reasoningEffort}`;
@@ -10924,7 +10929,7 @@ function computeGoLiveSignal(rules, input) {
   };
 }
 function computeCodeProfile(rules, input) {
-  const { artifactType, diffText } = input;
+  const { artifactType, diffText, revision } = input;
   const files = parseUnifiedDiff(diffText);
   const { mechanicalOnly, docOnly } = classifyMechanicalOnly(rules, files);
   return {
@@ -10933,6 +10938,7 @@ function computeCodeProfile(rules, input) {
     family: FAMILY_BY_ARTIFACT_TYPE[artifactType],
     mechanicalOnly,
     docOnly,
+    revision: revision === true,
     sizeBytes: Buffer.byteLength(diffText),
     signals: {
       goLive: computeGoLiveSignal(rules, input),
@@ -10960,6 +10966,7 @@ function computeTextProfile(rules, input) {
     family: FAMILY_BY_ARTIFACT_TYPE[artifactType],
     mechanicalOnly: null,
     docOnly: null,
+    revision: false,
     sizeBytes: Buffer.byteLength(text),
     signals: {
       goLive: computeGoLiveSignal(rules, input),

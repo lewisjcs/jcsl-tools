@@ -29,7 +29,9 @@
         "snapshot-staged",
         "worktree-pinned",
         "lane-run-linked",
-        "party-report-written"
+        "party-report-written",
+        "revision-linked",
+        "origin-recorded"
       ]
     },
     "data": { "type": "object" }
