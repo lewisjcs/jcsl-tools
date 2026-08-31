@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "jcsl:party-revision@1",
+  "type": "object",
+  "required": ["contractId", "number", "priorPartyRunId", "priorSha", "priorBaseSha", "mode", "fallbackReason", "dedup", "rows"],
+  "properties": {
+    "contractId": { "const": "jcsl:party-revision@1" },
+    "number": { "type": "integer", "minimum": 2 },
+    "priorPartyRunId": { "type": "string", "pattern": "^[0-9]{8}T[0-9]{6}Z-[0-9a-f]{6}$" },
+    "priorSha": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "priorBaseSha": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "mode": { "enum": ["narrow", "full"] },
+    "fallbackReason": { "type": ["string", "null"] },
+    "dedup": { "type": "object", "required": ["policyVersion", "match", "proximity"], "properties": { "policyVersion": { "type": "string" }, "match": { "type": "array", "items": { "enum": ["lane", "sublens", "file"] } }, "proximity": { "type": "object", "required": ["lines"], "properties": { "lines": { "type": "integer", "minimum": 1 } }, "additionalProperties": false } }, "additionalProperties": false },
+    "rows": { "type": "array", "items": { "$ref": "#/$defs/row" } }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "row": {
+      "type": "object",
+      "required": ["key", "tier", "lane", "sublens", "claim", "recommendation", "status", "reason"],
+      "properties": {
+        "key": { "type": "string", "minLength": 1 },
+        "tier": { "enum": ["blocker", "concern", "nit"] },
+        "lane": { "type": "string", "minLength": 1 },
+        "sublens": { "type": "string", "minLength": 1 },
+        "claim": { "type": "string", "minLength": 1 },
+        "recommendation": { "type": "string", "minLength": 1 },
+        "file": { "type": "string", "minLength": 1 },
+        "line": { "type": "integer", "minimum": 1 },
+        "location": { "type": "string" },
+        "confidence": { "type": "number" },
+        "status": { "enum": ["pending", "resolved", "persisting", "withdrawn"] },
+        "reason": { "type": ["string", "null"] }
+      },
+      "additionalProperties": false
+    }
+  }
+}

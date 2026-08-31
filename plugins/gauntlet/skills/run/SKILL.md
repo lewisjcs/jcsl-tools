@@ -1,7 +1,7 @@
 ---
 name: gauntlet
 description: Use when running the full review Party over one artifact — a pull request, a local diff, a plan, a doc, a skill, or an agent-instruction file. The canonical PR-review surface — "review this PR" routes here. Trigger phrases include "review this PR", "review PR <number>", "review the PR", "review this", "run the gauntlet", "do a full review", "fully review", or any natural-language variation requesting a full review of an artifact. When NOT to use: for a single-lane review invoke the corresponding sibling directly (security-gauntlet, code-quality-audit, adversarial-review, plan-review, doc-review, skill-audit, directive-review).
-argument-hint: "[<pr-url> | <path>] [--type <type>] [--go-live] [--no-go-live] [--force-lane <class>] [--skip-lane <class>]"
+argument-hint: "[<pr-url> | <path>] [--type <type>] [--full] [--go-live] [--no-go-live] [--force-lane <class>] [--skip-lane <class>]"
 ---
 
 # Gauntlet
@@ -46,9 +46,19 @@ gh api user --jq .login
 
 Write the `body` value to `"$STAGE/pr-body.md"`. Set `AUTHOR=self` when `author.login` equals the `gh api user` login, else `AUTHOR=other`.
 
+Then fetch the thread — every issue comment, inline review comment, and review on the pull request:
+
+```
+gh api --paginate repos/<owner>/<repo>/issues/<n>/comments
+gh api --paginate repos/<owner>/<repo>/pulls/<n>/comments
+gh api --paginate repos/<owner>/<repo>/pulls/<n>/reviews
+```
+
+Write the three results as one JSON object `{issueComments, reviewComments, reviews}` to `"$STAGE/thread.json"` and pass `--thread "$STAGE/thread.json"` beside the origin flags. An empty thread is still written and passed. Pass `--full` only when the operator asked for a full re-review. The runtime decides whether this party revises an earlier posted one; never pre-judge it.
+
 **Resolve the repository root explicitly.** `--repo-root` and `--reviewed-commit` are both hard requirements for `--type code-pr` — without them the runtime refuses with `CLI_REVIEWED_COMMIT_REQUIRED` — and it pins its review worktree from that root. `gh pr diff` and `gh pr view` resolve against the current directory, so start there: `git rev-parse --show-toplevel`. For a pull-request URL, confirm that root is actually the right clone — check that one of its remotes matches the URL's `<org>/<repo>` (`git -C <repo-root> remote -v`). If none matches, stop and ask the operator for the path to the clone. That question is a refusal in all but name; it is a legitimate pause, listed with the others below.
 
-The head commit must also exist locally, since the runtime pins the review to it in its own git worktree: check with `git -C <repo-root> cat-file -e <headRefOid>^{commit}` and, if it is absent, fetch it (`git -C <repo-root> fetch origin <headRefOid>`). Then form the party with `--primary "$STAGE/pr.diff" --type code-pr --repo-root <repo-root> --reviewed-commit <headRefOid> --body "$STAGE/pr-body.md" --origin-url <url> --base-ref <baseRefName> --base-sha <baseRefOid> --author $AUTHOR`.
+The head commit must also exist locally, since the runtime pins the review to it in its own git worktree: check with `git -C <repo-root> cat-file -e <headRefOid>^{commit}` and, if it is absent, fetch it (`git -C <repo-root> fetch origin <headRefOid>`). Then form the party with `--primary "$STAGE/pr.diff" --type code-pr --repo-root <repo-root> --reviewed-commit <headRefOid> --body "$STAGE/pr-body.md" --origin-url <url> --base-ref <baseRefName> --base-sha <baseRefOid> --author $AUTHOR --thread "$STAGE/thread.json"`.
 
 **No argument.** Review the current branch against the trunk:
 
@@ -86,8 +96,8 @@ This step reports signals; it decides nothing. Whether the signals lead to a go-
 Compose one call. Detection, the roster, and the artifact snapshot are all the runtime's decisions:
 
 ```
-node "${CLAUDE_PLUGIN_ROOT}/runtime/bin/cli.mjs" party-form --primary <artifact-file> [--path <logical-path>] [--type <code-pr|code-local|plan|doc|skill|directive>] [--body <pr-body-file>] [--repo-root <dir> --reviewed-commit <sha>] [--origin-url <url> --base-ref <ref> --base-sha <sha> --author <self|other>] [--golive-signal <id>]... [--go-live|--no-go-live] [--force-lane <class>]... [--skip-lane <class>]...
-# stdout: {partyRunId, partyDir, profile, roster:{fielded, skipped, gaps, overrides}, goLivePrompt, lanes:[{classKey, runId, runDir, family}], origin, worktree, events}
+node "${CLAUDE_PLUGIN_ROOT}/runtime/bin/cli.mjs" party-form --primary <artifact-file> [--path <logical-path>] [--type <code-pr|code-local|plan|doc|skill|directive>] [--body <pr-body-file>] [--repo-root <dir> --reviewed-commit <sha>] [--origin-url <url> --base-ref <ref> --base-sha <sha> --author <self|other>] [--thread <thread-file>] [--full] [--golive-signal <id>]... [--go-live|--no-go-live] [--force-lane <class>]... [--skip-lane <class>]...
+# stdout: {partyRunId, partyDir, profile, roster:{fielded, skipped, gaps, overrides}, goLivePrompt, lanes:[{classKey, runId, runDir, family}], origin, worktree, revision, events}
 ```
 
 Forward the operator's lane overrides untouched: `--force-lane <class>` and `--skip-lane <class>` are both repeatable, and the runtime validates each against its roster pool — forcing a Class onto a family it does not support is a typed refusal. Never add an override the operator did not ask for. Pass `--go-live` or `--no-go-live` straight through when the operator gave one, and never re-derive what they do to the roster — this applies to every artifact type, not just `code-pr` and `code-local`.
@@ -101,6 +111,8 @@ Roster (<roster.rowId>): fielded <classKey>… · skipped <classKey> (<reason>)�
 ```
 
 Name every fielded lane, every skipped lane with the runtime's reason, and every gap with its reason. Write `none` for an empty group. Do not editorialize, re-order, or drop a group — the skipped and gap entries are what tell the operator which coverage this run does *not* have.
+
+When `revision` is not null, the runtime linked this party to an earlier posted one. Add a line under the roster: `revision <number> of <priorPartyRunId> · narrow|full`, and when the mode is `full` without the operator asking for it, append the runtime's `fallbackReason`. In `narrow` mode the verifier lane reads a range-diff against the prior head and the other lanes read the pull-request diff scoped to the files the push touched (`revision.files`); do not re-derive or second-guess the mode.
 
 ## 5. The go-live question
 
@@ -129,7 +141,7 @@ Some artifacts field no lanes at all: a skill file and an agent-instruction file
 ```
 node "${CLAUDE_PLUGIN_ROOT}/runtime/bin/cli.mjs" init --bundle <runDir>/bundle.json --family <family> --host claude-code --class <classKey> --out <runDir>/state.json
 # loop: next --state <runDir>/state.json → {dispatch action | terminal:true}
-#   Agent tool: subagent_type gauntlet:adversarial-finder | gauntlet:adversarial-validator | gauntlet:code-quality-auditor, prompt = action.promptBody verbatim
+#   Agent tool: subagent_type gauntlet:adversarial-finder | gauntlet:adversarial-validator | gauntlet:code-quality-auditor | gauntlet:revision-verifier, prompt = action.promptBody verbatim
 #   write <runDir>/<role>-output-<attempt>.json (raw) and <runDir>/<role>-host-meta-<attempt>.json = {"modelBinding": {"<role>": {"model": "<agent file model: line>"}}, "usage": {"inputTokens", "cacheWriteTokens", "cacheReadTokens", "turns": <summed from the dispatch transcript, see below>, "latencySeconds": <wall seconds>}}
 #   receipt --state <runDir>/state.json --action <actionId> --output <raw> --host-meta <meta>
 node ... result --state <runDir>/state.json --out <runDir>/result.json --evidence <runDir>/evidence.json
@@ -137,9 +149,9 @@ node ... result --state <runDir>/state.json --out <runDir>/result.json --evidenc
 
 **`--family` takes the prefixed form.** `init` wants the value `bundle.json` records as `artifactFamily` — `jcsl:artifact-family:code-diff`, not the bare `code-diff` that the lane's `family` field carries. Read it off `<runDir>/bundle.json`. Passing the bare id is a hard refusal, not a warning.
 
-**Which agent for which action.** On the `adversarial-review` lane, a `dispatch-finder` action goes to `subagent_type: gauntlet:adversarial-finder` and a `dispatch-validator` action to `gauntlet:adversarial-validator`. On the `code-quality-audit` lane, its single `dispatch-auditor` action goes to `gauntlet:code-quality-auditor`. Pass `action.promptBody` verbatim; never paste artifact content into a prompt yourself — the prompt already tells the agent to read the artifact from the run directory.
+**Which agent for which action.** On the `adversarial-review` lane, a `dispatch-finder` action goes to `subagent_type: gauntlet:adversarial-finder` and a `dispatch-validator` action to `gauntlet:adversarial-validator`. On the `code-quality-audit` lane, its single `dispatch-auditor` action goes to `gauntlet:code-quality-auditor`. On the `revision-review` lane, its single `dispatch-verifier` action goes to `gauntlet:revision-verifier`. Pass `action.promptBody` verbatim; never paste artifact content into a prompt yourself — the prompt already tells the agent to read the artifact from the run directory.
 
-**Host metadata on every receipt.** Always pass `--host-meta`. The role key matches the dispatch: `finder`, `validator`, or `auditor`. Record the model the agent file pins — the `model:` frontmatter line of `${CLAUDE_PLUGIN_ROOT}/agents/<subagent>.md`; the Agent tool does not report which model ran, so the pinned value is the only measurable one. Where the dispatch also pins a reasoning effort, record it in the same object under `reasoningEffort`. Add a `usage` object (`inputTokens`, `cacheWriteTokens`, `cacheReadTokens`, `turns`, `latencySeconds`) — no `outputTokens`, see below. The Agent tool's own result reports one unsplit token total, which the pricer cannot use; the real split is in the dispatch's transcript. Each Agent call writes `<config-dir>/projects/<project-slug>/<session-id>/subagents/agent-<agentId>.jsonl`, where `agentId` is the id the Agent tool result names — read the split from there:
+**Host metadata on every receipt.** Always pass `--host-meta`. The role key matches the dispatch: `finder`, `validator`, `auditor`, or `verifier`. Record the model the agent file pins — the `model:` frontmatter line of `${CLAUDE_PLUGIN_ROOT}/agents/<subagent>.md`; the Agent tool does not report which model ran, so the pinned value is the only measurable one. Where the dispatch also pins a reasoning effort, record it in the same object under `reasoningEffort`. Add a `usage` object (`inputTokens`, `cacheWriteTokens`, `cacheReadTokens`, `turns`, `latencySeconds`) — no `outputTokens`, see below. The Agent tool's own result reports one unsplit token total, which the pricer cannot use; the real split is in the dispatch's transcript. Each Agent call writes `<config-dir>/projects/<project-slug>/<session-id>/subagents/agent-<agentId>.jsonl`, where `agentId` is the id the Agent tool result names — read the split from there:
 
 ```
 jq -s '[.[] | select(.type=="assistant")] | group_by(.message.id) | map(last)
@@ -186,10 +198,11 @@ Confirm the copy landed — `wc -l <path>` returns at least 1 — before naming 
 1. The verdict line: the blocker count from `party-report`, or `no blockers`.
 2. Every blocker verbatim if there are any — a ship / do-not-ship call should not need the operator to open a file.
 3. The report path, the cost line (`bookedUsd`, `fullFlowUsd`, and any `omissions`), and a one-line note that the full findings are in the file.
+4. On a revision, the transition, read off `party-report`'s `revision.statuses` — for example `2 of 3 prior findings resolved · 1 persisting · 1 new`. The counts in the verdict line cover open rows only (`persisting`, `new`, `unverified`); resolved and withdrawn rows stay in the report, closed.
 
 **The postable comment.** When the operator asks for something to post, run `node "${CLAUDE_PLUGIN_ROOT}/runtime/bin/cli.mjs" party-report --party <partyRunId> --format pr-comment` and show the operator the `commentPath` it prints. The runtime renders the whole comment — banner, box score, blocker callouts, findings table, machine-readable block, marker, footer — do not edit, re-word, or re-count it. For a non-pull-request artifact the operator pastes that file into the ticket.
 
-**Posting to the pull request** is an outward-facing action. Ask the operator: `Post this comment to <repo>#<number>? [y/N]` — and only on `y` run `node "${CLAUDE_PLUGIN_ROOT}/runtime/bin/cli.mjs" post --party <partyRunId>`. The runtime files or updates one pull-request review whose body is the comment — `REQUEST_CHANGES` with blockers, `COMMENT` without, and always `COMMENT` on a pull request the operator authored — and writes receipts to `post.json`. Updating an existing review keeps the event it was filed with; only the body changes. A refusal (`CLI_POST_PENDING`, `CLI_POST_GH_FAILED`, `CLI_POST_ORIGIN_MISSING`, `CLI_POST_RECEIPTS_MALFORMED`) is surfaced verbatim, never retried. `post` is only ever run at the operator's say-so, each time.
+**Posting to the pull request** is an outward-facing action. Ask the operator: `Post this comment to <repo>#<number>? [y/N]` — and only on `y` run `node "${CLAUDE_PLUGIN_ROOT}/runtime/bin/cli.mjs" post --party <partyRunId>`. The runtime files or updates one pull-request review whose body is the comment — `REQUEST_CHANGES` with blockers, `COMMENT` without, and always `COMMENT` on a pull request the operator authored — and writes receipts to `post.json`. On a revision the runtime updates the standing review in place when its event is unchanged. When the event must change — blockers cleared, or blockers appeared — it dismisses a standing `REQUEST_CHANGES` review (a `COMMENT` review has nothing to dismiss), replaces that review's body with a one-line superseded note, and files a new review with the new event. Before asking, say which of the two will happen: compare the prior party's last `post.json` receipt event with the verdict `party-report` just printed. Either way the receipt's `event` is the event the live review carries. A refusal (`CLI_POST_PENDING`, `CLI_POST_GH_FAILED`, `CLI_POST_ORIGIN_MISSING`, `CLI_POST_RECEIPTS_MALFORMED`) is surfaced verbatim, never retried. `post` is only ever run at the operator's say-so, each time.
 
 ## 9. Offer the gaps
 
@@ -212,12 +225,12 @@ Skip the `go-live-review` row when step 5 already settled it — the operator an
 
 ## 10. Re-reviewing an advanced head
 
-A party run is frozen to the artifact it snapshotted, and its report is written once. When the head has moved since the last review, that is **a new party run** — start again at step 2. There is no append-to-the-old-report path.
+A party run is frozen to the artifact it snapshotted, and its report is written once. When the head has moved since the last review, that is **a new party run** — start again at step 2 and form it exactly as there, with the same origin flags plus `--thread`. There is no append-to-the-old-report path.
 
-What carries over is the discipline around the previous review, not its machinery:
+The runtime does the linking: it finds the party it last posted for this pull request, fields the `revision-review` lane to rule on the fate of every open prior finding (`resolved`, `persisting`, `withdrawn`, or `unverified` — the verifier reads the thread, the range-diff, and the tree), folds duplicates into persisting rows by its dedup policy, and reviews only the delta unless `--full` was passed. A head the prior party already reviewed is refused (`CLI_REVISION_SAME_SHA`); surface it. Do not verify the author's "fixed" claims by hand and do not separate rebase artifacts yourself — the verifier lane and narrow mode do that, and the report says what they found.
 
-- **Read the pull-request thread first, before diffing or judging.** Pull issue comments (`gh api .../issues/<n>/comments`), inline review comments (`.../pulls/<n>/comments`), and reviews (`.../pulls/<n>/reviews`). The author often replies disposing each finding, and may give a rationale that moots one. Re-reviewing without those replies re-litigates settled points.
-- **Verify every author "fixed" claim against the code — claims can be wrong.** Read the actual test or handler the claim rests on; confirm the new test exercises the path it names rather than a sibling, and that the tested handler even calls the changed function. Reconcile any commit SHA the author cites against the current head: a rebase re-identifies the same commit, so a matching commit *subject* under a different SHA is the same content, not new work. Trust the thread for *intent*, the diff for *reality*.
-- **Separate the author's changes from rebase artifacts.** Files pulled in by a rebase onto a newer base are not this change's work and do not belong in the verdict.
-- **State the transition in the chat summary** — for example, `2 of 3 prior findings resolved; 1 new low-severity finding`.
-- **Posting on a re-review is still an outward-facing action.** Approval to post the first comment does not authorize the next one. Run step 8's question again; `post` updates the body of the review it filed before, and that review's event stays what it was.
+What carries over is the discipline around the previous review:
+
+- **Trust the thread for *intent*, the diff for *reality*** when reading the report. A `withdrawn` row names the reply it rests on; a `persisting` row names where the finding still lives.
+- **State the transition in the chat summary** — step 8's `revision.statuses` line.
+- **Posting on a re-review is still an outward-facing action.** Approval to post the first comment does not authorize the next one. Run step 8's question again, saying first whether `post` will edit the standing review in place or refile it with a new event.

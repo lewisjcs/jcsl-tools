@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "jcsl:revision-verdict@1",
+  "type": "object",
+  "required": ["key", "status", "reason", "anchor"],
+  "properties": {
+    "key": { "type": "string", "pattern": "^[0-9]{8}T[0-9]{6}Z-[0-9a-f]{6}:[a-z][a-z0-9-]*:[A-Z]-[0-9]{3}$" },
+    "status": { "enum": ["resolved", "persisting", "withdrawn"] },
+    "reason": { "type": "string", "minLength": 1 },
+    "anchor": { "type": "string", "minLength": 1 }
+  },
+  "additionalProperties": false,
+  "if": { "properties": { "status": { "const": "persisting" } } },
+  "then": { "properties": { "anchor": { "type": "string", "pattern": "^.+:[0-9]+$" } } }
+}

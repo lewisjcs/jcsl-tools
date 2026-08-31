@@ -1,0 +1,8 @@
+{
+  "family": "code-diff",
+  "version": "1.0.0",
+  "status": "experimental",
+  "marker": "Artifact type: code-diff",
+  "lensFile": "profiles/revision-review/code-diff/lenses.md",
+  "locationFormats": ["file:line in the revised tree (post-diff path) for a resolved verdict; file:line in the finding's own file for a persisting verdict; `thread: <author> <timestamp>` for a withdrawn verdict"]
+}

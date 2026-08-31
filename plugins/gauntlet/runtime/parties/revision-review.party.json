@@ -1,0 +1,12 @@
+{
+  "kind": "party",
+  "schemaVersion": "1.0-kernel",
+  "id": "jcsl:gauntlet:revision-review-party",
+  "version": "1.0.0",
+  "audience": "personal",
+  "mission": "Settle the fate of every open prior finding against the revised artifact and return a typed verdict per key.",
+  "eligibleClassIds": ["jcsl:gauntlet:revision-review"],
+  "requiredRoles": ["revision-review"],
+  "contract": { "inputContractId": "jcsl:reviewable-artifact@1", "outputContractId": "jcsl:revision-review-result@1" },
+  "handoffs": []
+}
