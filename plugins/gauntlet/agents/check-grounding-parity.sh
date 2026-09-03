@@ -353,26 +353,35 @@ fi
 echo "OK: skills/code-quality-standards/SKILL.md carries the canon standards body verbatim ($canon_bullet_count canon 'When NOT to use' bullet(s) + $ref_block_lines-line body block)."
 
 # ---------------------------------------------------------------------------
-# DISPATCH-RESOLUTION check: every `gauntlet:<name>` Skill dispatch string
-# named in skills/run/*.md must resolve to a real skill directory
-# (plugins/gauntlet/skills/<name>/SKILL.md). A dispatch string is only as
-# good as the skill it names — a rename or archive move on one side that
-# isn't mirrored in run/SKILL.md's dispatch strings is a latent runtime
-# failure this guard catches mechanically, before a real run hits it.
+# DISPATCH-RESOLUTION check: every skill the run skill can dispatch must
+# resolve to a real skill directory (plugins/gauntlet/skills/<name>/SKILL.md).
+# Two sources feed the set: the literal `Skill: gauntlet:<name>` strings in
+# skills/run/*.md, and every gap lane the packaged roster policy can report
+# (runtime/policy/roster-policy-v1.json `gaps[].lane`), because run/SKILL.md
+# offers a gap lane `<lane>` as `Skill: gauntlet:<lane>` by rule rather than
+# by table. A dispatch is only as good as the skill it names — a rename or
+# archive move on one side that isn't mirrored on the other is a latent
+# runtime failure this guard catches mechanically, before a real run hits it.
 #
 # This assertion runs LAST so a resolution failure never masks (or gets
 # masked by) a real parity regression above.
 # ---------------------------------------------------------------------------
 
 SKILLS_RUN_DIR="$AGENTS_DIR/../skills/run"
+ROSTER_POLICY="$AGENTS_DIR/../runtime/policy/roster-policy-v1.json"
+
+if [[ ! -f "$ROSTER_POLICY" ]]; then
+  echo "FAIL: dispatch-resolution check — roster policy not found at runtime/policy/roster-policy-v1.json; the gap-lane source moved, update this check."
+  exit 1
+fi
 
 skill_prefixed_names="$(grep -hoE 'Skill:[[:space:]]*gauntlet:[a-zA-Z0-9_-]+' "$SKILLS_RUN_DIR"/*.md 2>/dev/null | sed -E 's/^Skill:[[:space:]]*gauntlet://' || true)"
-dispatch_of_names="$(grep -hoE 'dispatch of `gauntlet:[a-zA-Z0-9_-]+`' "$SKILLS_RUN_DIR"/*.md 2>/dev/null | sed -E 's/^dispatch of `gauntlet:([a-zA-Z0-9_-]+)`$/\1/' || true)"
-dispatch_names="$(printf '%s\n%s\n' "$skill_prefixed_names" "$dispatch_of_names" | sed '/^$/d' | sort -u)"
+gap_lane_names="$(grep -oE '"lane":[[:space:]]*"[a-zA-Z0-9_-]+"' "$ROSTER_POLICY" | sed -E 's/^"lane":[[:space:]]*"([a-zA-Z0-9_-]+)"$/\1/' || true)"
+dispatch_names="$(printf '%s\n%s\n' "$skill_prefixed_names" "$gap_lane_names" | sed '/^$/d' | sort -u)"
 
 dispatch_name_count="$(printf '%s\n' "$dispatch_names" | sed '/^$/d' | wc -l | tr -d ' ')"
 if [[ "$dispatch_name_count" -lt 3 ]]; then
-  echo "FAIL: dispatch-resolution check found only $dispatch_name_count gauntlet:<name> dispatch string(s) in skills/run/*.md (expected at least 3) — the extraction pattern no longer matches how dispatch strings are written; update the pattern rather than trusting a vacuous pass."
+  echo "FAIL: dispatch-resolution check found only $dispatch_name_count dispatchable skill name(s) across skills/run/*.md and the roster policy's gap lanes (expected at least 3) — an extraction pattern no longer matches how those are written; update the pattern rather than trusting a vacuous pass."
   exit 1
 fi
 
@@ -385,11 +394,11 @@ while IFS= read -r name; do
 done <<< "$dispatch_names"
 
 if [[ ${#missing_skills[@]} -gt 0 ]]; then
-  echo "FAIL: dispatch-resolution check — ${#missing_skills[@]} gauntlet:<name> dispatch string(s) in skills/run/*.md do not resolve to skills/<name>/SKILL.md:"
+  echo "FAIL: dispatch-resolution check — ${#missing_skills[@]} dispatchable skill name(s) (run/SKILL.md dispatch strings + roster-policy gap lanes) do not resolve to skills/<name>/SKILL.md:"
   for name in "${missing_skills[@]}"; do
-    echo "  MISSING: skills/$name/SKILL.md — this dispatch string names a skill that does not exist; fix the dispatch string or add the skill"
+    echo "  MISSING: skills/$name/SKILL.md — a dispatch string or a roster-policy gap lane names a skill that does not exist; fix the name or add the skill"
   done
   exit 1
 fi
 
-echo "OK: every gauntlet:<name> dispatch string in skills/run/*.md resolves to skills/<name>/SKILL.md."
+echo "OK: every dispatchable skill name (run/SKILL.md dispatch strings + roster-policy gap lanes) resolves to skills/<name>/SKILL.md."
