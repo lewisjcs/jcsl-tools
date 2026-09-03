@@ -140,18 +140,20 @@ Some artifacts field no lanes at all: a skill file and an agent-instruction file
 
 ```
 node "${CLAUDE_PLUGIN_ROOT}/runtime/bin/cli.mjs" init --bundle <runDir>/bundle.json --family <family> --host claude-code --class <classKey> --out <runDir>/state.json
-# loop: next --state <runDir>/state.json → {dispatch action | terminal:true}
-#   Agent tool: subagent_type gauntlet:adversarial-finder | gauntlet:adversarial-validator | gauntlet:code-quality-auditor | gauntlet:revision-verifier, prompt = action.promptBody verbatim
-#   write <runDir>/<role>-output-<attempt>.json (raw) and <runDir>/<role>-host-meta-<attempt>.json = {"modelBinding": {"<role>": {"model": "<agent file model: line>"}}, "usage": {"inputTokens", "cacheWriteTokens", "cacheReadTokens", "turns": <summed from the dispatch transcript, see below>, "latencySeconds": <wall seconds>}}
-#   receipt --state <runDir>/state.json --action <actionId> --output <raw> --host-meta <meta>
+# stdout: {issues, next, hostBinding} — next is the pending action or {terminal: true}; hostBinding is {agent, model} or null once terminal
+# loop while next.terminal is not true:
+#   Agent tool: subagent_type = hostBinding.agent, prompt = next.promptBody verbatim
+#   role key = next.kind with the leading "dispatch-" removed (finder, validator, auditor, verifier, …)
+#   write <runDir>/<role>-output-<attempt>.json (raw) and <runDir>/<role>-host-meta-<attempt>.json = {"modelBinding": {"<role>": {"model": hostBinding.model}}, "usage": {"inputTokens", "cacheWriteTokens", "cacheReadTokens", "turns": <summed from the dispatch transcript, see below>, "latencySeconds": <wall seconds>}}
+#   receipt --state <runDir>/state.json --action next.actionId --output <raw> --host-meta <meta>   → prints the same {issues, next, hostBinding} shape
 node ... result --state <runDir>/state.json --out <runDir>/result.json --evidence <runDir>/evidence.json
 ```
 
 **`--family` takes the prefixed form.** `init` wants the value `bundle.json` records as `artifactFamily` — `jcsl:artifact-family:code-diff`, not the bare `code-diff` that the lane's `family` field carries. Read it off `<runDir>/bundle.json`. Passing the bare id is a hard refusal, not a warning.
 
-**Which agent for which action.** On the `adversarial-review` lane, a `dispatch-finder` action goes to `subagent_type: gauntlet:adversarial-finder` and a `dispatch-validator` action to `gauntlet:adversarial-validator`. On the `code-quality-audit` lane, its single `dispatch-auditor` action goes to `gauntlet:code-quality-auditor`. On the `revision-review` lane, its single `dispatch-verifier` action goes to `gauntlet:revision-verifier`. Pass `action.promptBody` verbatim; never paste artifact content into a prompt yourself — the prompt already tells the agent to read the artifact from the run directory.
+**Which agent for which action.** The runtime names it: every `init`, `next`, and `receipt` reply carries `hostBinding.agent`, the `subagent_type` to dispatch, and `hostBinding.model`, the model that agent is bound to. Dispatch to exactly that agent and pass `next.promptBody` verbatim; never paste artifact content into a prompt yourself — the prompt already tells the agent to read the artifact from the run directory — and never pick an agent from memory: a lane you have not seen before is just a lane whose binding you read off the reply.
 
-**Host metadata on every receipt.** Always pass `--host-meta`. The role key matches the dispatch: `finder`, `validator`, `auditor`, or `verifier`. Record the model the agent file pins — the `model:` frontmatter line of `${CLAUDE_PLUGIN_ROOT}/agents/<subagent>.md`; the Agent tool does not report which model ran, so the pinned value is the only measurable one. Where the dispatch also pins a reasoning effort, record it in the same object under `reasoningEffort`. Add a `usage` object (`inputTokens`, `cacheWriteTokens`, `cacheReadTokens`, `turns`, `latencySeconds`) — no `outputTokens`, see below. The Agent tool's own result reports one unsplit token total, which the pricer cannot use; the real split is in the dispatch's transcript. Each Agent call writes `<config-dir>/projects/<project-slug>/<session-id>/subagents/agent-<agentId>.jsonl`, where `agentId` is the id the Agent tool result names — read the split from there:
+**Host metadata on every receipt.** Always pass `--host-meta`. The role key is `next.kind` without its `dispatch-` prefix. Record `hostBinding.model` as the model — it is the same value the agent file pins, read from the bindings the runtime loaded; the Agent tool does not report which model ran, so the pinned value is the only measurable one. Where the dispatch also pins a reasoning effort, record it in the same object under `reasoningEffort`. Add a `usage` object (`inputTokens`, `cacheWriteTokens`, `cacheReadTokens`, `turns`, `latencySeconds`) — no `outputTokens`, see below. The Agent tool's own result reports one unsplit token total, which the pricer cannot use; the real split is in the dispatch's transcript. Each Agent call writes `<config-dir>/projects/<project-slug>/<session-id>/subagents/agent-<agentId>.jsonl`, where `agentId` is the id the Agent tool result names — read the split from there:
 
 ```
 jq -s '[.[] | select(.type=="assistant")] | group_by(.message.id) | map(last)
