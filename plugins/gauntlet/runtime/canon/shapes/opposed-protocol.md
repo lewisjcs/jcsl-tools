@@ -1,6 +1,6 @@
-# Runtime protocol
+# Opposed-pair protocol
 
-The Adversarial Review Class runs as a sequence of stages driven by a
+A Class of the opposed-pair shape runs as a sequence of stages driven by a
 deterministic runtime — an executable reducer and validator, not a model. The
 runtime, not any host, decides what happens next; a host only performs the
 dispatch a runtime action requests and returns what it observed.
@@ -11,11 +11,11 @@ dispatch a runtime action requests and returns what it observed.
    artifact bundle, computes and freezes its digests, and selects the
    artifact-family profile for this run.
 2. **Dispatch Finder.** The runtime emits a dispatch-finder action carrying
-   the Finder persona's identity and instruction-source hash, the artifact
-   digest, the selected profile, the model requirement, and the expected
-   output contract. A host performs the dispatch — in a fresh, isolated
-   context carrying only the artifact view and profile the action specifies
-   — and returns a stage receipt with the raw output.
+   the identity of the finder role's persona and its instruction-source hash,
+   the artifact digest, the selected profile, the model requirement, and the
+   expected output contract. A host performs the dispatch — in a fresh,
+   isolated context carrying only the artifact view and profile the action
+   specifies — and returns a stage receipt with the raw output.
 3. **Validate the Finder receipt.** The runtime parses and validates the
    candidate list against its contract and assigns each candidate a
    deterministic ID (`F-001`, `F-002`, ...). An output that wraps the
@@ -32,8 +32,8 @@ dispatch a runtime action requests and returns what it observed.
    dispatch entirely — there is nothing to adjudicate — and proceeds directly
    to typed-result construction.
 5. **Dispatch Validator.** When there is at least one candidate, the runtime
-   emits a dispatch-validator action carrying the Validator persona's
-   identity, the identical artifact digest, and the Finder's candidates
+   emits a dispatch-validator action carrying the identity of the validator
+   role's persona, the identical artifact digest, and the Finder's candidates
    verbatim with their assigned IDs. A host performs the dispatch in a fresh,
    isolated context and returns a stage receipt.
 6. **Validate the Validator receipt.** The runtime requires exactly one
@@ -44,7 +44,10 @@ dispatch a runtime action requests and returns what it observed.
    the dispatch once, and only once, appending the rejection reason (for a
    cardinality failure, the exact candidate IDs still owed a verdict) to the
    retried prompt. If the retried dispatch also fails, the runtime records a
-   typed gap for the Validator stage rather than retrying further.
+   typed gap for the Validator stage rather than retrying further. Each
+   verdict names the check that killed the candidate (`killedBy`:
+   `reachability`, `control`, `empirical`, `trust-model`, or `none` for a
+   survivor); a verdict without one is malformed.
 7. **Adjudicate.** The runtime joins candidates and verdicts by ID and
    applies the versioned adjudication policy mechanically: drop `disproved`
    results, deduplicate, apply the High-severity grounding check, then gate
@@ -128,7 +131,7 @@ opinion.
 
 ## Overlays and output schemas
 
-The Finder and Validator personas are family-neutral: the lenses, severity
+The finder and validator personas are family-neutral: the lenses, severity
 rubric, and disproof strategies apply to every artifact family this Class
 supports. What counts as a finding under a lens, the `location` format, and
 family-specific disproof refinements come from the artifact-family profile

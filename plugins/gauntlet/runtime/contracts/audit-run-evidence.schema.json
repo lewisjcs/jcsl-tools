@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "jcsl:code-quality-run-evidence@1",
+  "$id": "jcsl:audit-run-evidence@1",
   "type": "object",
   "required": [
     "contractId", "classId", "classVersion", "loadoutId", "host",
@@ -9,7 +9,7 @@
     "outcome", "calibrationStatus", "audience"
   ],
   "properties": {
-    "contractId": {"const": "jcsl:code-quality-run-evidence@1"},
+    "contractId": {"const": "jcsl:audit-run-evidence@1"},
     "classId": {"type": "string", "pattern": "^[a-z][a-z0-9-]*(?::[a-z][a-z0-9-]*)+$"},
     "classVersion": {"type": "string", "pattern": "^[0-9]+[.][0-9]+[.][0-9]+$"},
     "loadoutId": {"type": "string", "pattern": "^[a-z][a-z0-9-]*$"},
@@ -61,12 +61,12 @@
       "items": {
         "type": "object", "required": ["layer", "rule", "location", "claim", "evidence", "level", "recommendation"],
         "properties": {
-          "layer": { "enum": ["compliance", "staleness", "gaps", "test-integrity"] },
+          "layer": { "type": "string", "minLength": 1 },
           "rule": { "type": "string", "minLength": 1 },
           "location": { "type": "string", "minLength": 1 },
           "claim": { "type": "string", "minLength": 1 },
           "evidence": { "type": "string", "minLength": 1 },
-          "level": { "enum": ["violation", "warning", "gap"] },
+          "level": { "type": "string", "minLength": 1 },
           "recommendation": { "type": "string", "minLength": 1 },
           "file": { "type": "string", "minLength": 1 },
           "line": { "type": "integer", "minimum": 1 }

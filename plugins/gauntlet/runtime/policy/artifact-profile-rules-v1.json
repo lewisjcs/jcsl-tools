@@ -1,6 +1,7 @@
 {
   "kind": "artifact-profile-rules",
-  "version": "1.1.0",
+  "version": "1.2.0",
+  "calibrationStatus": "uncalibrated",
   "detection": {
     "planPathSuffixes": [
       ".plan.md"
@@ -130,7 +131,6 @@
     {
       "id": "dependency-manifest",
       "basenames": [
-        "package.json",
         "go.mod",
         "Cargo.toml",
         "requirements.txt",
@@ -141,15 +141,21 @@
     {
       "id": "lockfile",
       "basenames": [
-        "package-lock.json",
         "yarn.lock",
         "pnpm-lock.yaml",
-        "npm-shrinkwrap.json",
         "Cargo.lock",
         "Gemfile.lock",
         "poetry.lock",
         "go.sum"
       ]
+    },
+    {
+      "id": "dependency-change",
+      "lockfileCheck": true
+    },
+    {
+      "id": "pr-text",
+      "textPattern": "(?i)\\b(security|vulnerability|cve|auth|permission|secret|sanitis(e|ation)|fail-closed|guard)\\b"
     },
     {
       "id": "input-parsing",

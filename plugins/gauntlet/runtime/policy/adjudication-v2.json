@@ -39,5 +39,9 @@
   "observedIncumbentAnchors": {
     "validatorDisproofHighConfidence": 85,
     "note": "Recorded, not mechanically enforced: the incumbent instructed the Validator to reserve confidence above this value on a disproved verdict for directly-verified claims."
+  },
+  "killedBy": {
+    "recorded": true,
+    "note": "Carried from the verdict into validatorDispositions on the result and evidence records; adjudication never branches on it."
   }
 }

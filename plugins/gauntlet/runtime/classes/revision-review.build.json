@@ -1,0 +1,25 @@
+{
+  "kind": "class-build",
+  "classId": "jcsl:gauntlet:revision-review",
+  "classKey": "revision-review",
+  "shape": "verify",
+  "roles": {
+    "verifier": { "roleId": "jcsl:gauntlet:revision-verifier", "persona": "canon/revision-verifier-persona.md", "modelRequirement": "independent-judgment" }
+  },
+  "families": ["code-diff"],
+  "references": [],
+  "inputs": {
+    "primary": "range-diff",
+    "supporting": [
+      { "id": "thread", "required": false },
+      { "id": "prior-findings", "required": true }
+    ]
+  },
+  "requires": ["revision-link"],
+  "descriptions": {
+    "skill": "Runtime-driven revision review — a single verifier role settles the fate of every open prior finding against the revised artifact under a deterministic runtime. Dispatched by /gauntlet on a re-review of a posted pull request; not invoked directly. Requires Node >= 22.",
+    "roles": {
+      "verifier": "Revision verifier that rules each prior gauntlet finding resolved, persisting, or withdrawn against the revised tree and the pull-request thread, citing where it looked. Runs only inside the revision-review skill's runtime-driven handshake, in a fresh isolated dispatch — never invoked standalone."
+    }
+  }
+}

@@ -47,7 +47,8 @@
               "required": ["classKey", "reason"],
               "properties": {
                 "classKey": { "$ref": "#/$defs/nonEmptyString" },
-                "reason": { "$ref": "#/$defs/nonEmptyString" }
+                "reason": { "$ref": "#/$defs/nonEmptyString" },
+                "when": { "enum": ["always", "security-signal", "golive-flag", "doc-only"] }
               },
               "additionalProperties": false
             }

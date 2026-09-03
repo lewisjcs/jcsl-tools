@@ -1,4 +1,4 @@
-# Code-quality audit protocol
+# Audit protocol
 
 The runtime — never a host — decides what happens next in an audit run.
 
@@ -47,6 +47,6 @@ produce no findings and state the mismatch as your only output.
 
 ## Calibration honesty
 
-This Class is `experimental` until a calibration slice assigns it calibrated
-status. An experimental run never reports the `clean` outcome — an empty
-findings list still reports `findings` with a zero count.
+A Class of this shape is `experimental` until a calibration slice assigns it
+calibrated status. An experimental run never reports the `clean` outcome —
+an empty findings list still reports `findings` with a zero count.

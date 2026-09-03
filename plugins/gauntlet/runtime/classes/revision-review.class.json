@@ -33,7 +33,7 @@
     ],
     "references": [
       "canon/revision-verifier-persona.md",
-      "canon/revision-review-protocol.md",
+      "canon/shapes/verify-protocol.md",
       "canon/grounding-contract.md",
       "profiles/revision-review/code-diff/profile.json",
       "profiles/revision-review/code-diff/lenses.md"
@@ -253,10 +253,10 @@
       }
     },
     "output": {
-      "id": "jcsl:revision-review-result@1",
+      "id": "jcsl:verify-result@1",
       "schema": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "$id": "jcsl:revision-review-result@1",
+        "$id": "jcsl:verify-result@1",
         "type": "object",
         "required": [
           "contractId",
@@ -277,7 +277,7 @@
         "properties": {
           "contractId": {
             "type": "string",
-            "const": "jcsl:revision-review-result@1",
+            "const": "jcsl:verify-result@1",
             "pattern": "^[a-z][a-z0-9-]*(?::[a-z][a-z0-9-]*)+(?:@[1-9][0-9]*)?$"
           },
           "classId": {
@@ -502,12 +502,12 @@
         "canonicalSources": [
           "canon/revision-verifier-persona.md",
           "canon/grounding-contract.md",
-          "canon/revision-review-protocol.md",
+          "canon/shapes/verify-protocol.md",
           "profiles/revision-review/code-diff/profile.json",
           "profiles/revision-review/code-diff/lenses.md",
           "bindings/claude-code.json"
         ],
-        "sourceHash": "e7b0ac1c17588d15b412bbdf060bb84d3675831549891be657f33b56cc05b476"
+        "sourceHash": "392fa727db2ffda453d45085775352ac633d717d62caab557d0a29dea93c5c31"
       }
     },
     "codex": {
@@ -517,12 +517,12 @@
         "canonicalSources": [
           "canon/revision-verifier-persona.md",
           "canon/grounding-contract.md",
-          "canon/revision-review-protocol.md",
+          "canon/shapes/verify-protocol.md",
           "profiles/revision-review/code-diff/profile.json",
           "profiles/revision-review/code-diff/lenses.md",
           "bindings/codex.json"
         ],
-        "sourceHash": "4ce76292bebb9a69de2357967febba31e0ea7d8bc5572b973edf5840c47dffcf"
+        "sourceHash": "e62a714196098675df8830cdd32b5b373099ecec8ddcc540cce8d0c93a9b3f4c"
       }
     }
   },

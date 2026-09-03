@@ -119,7 +119,8 @@
             "properties": {
               "classKey": { "$ref": "#/$defs/nonEmptyString" },
               "reason": { "$ref": "#/$defs/nonEmptyString" },
-              "via": { "enum": ["policy", "override"] }
+              "via": { "enum": ["policy", "override"] },
+              "trigger": { "$ref": "#/$defs/nonEmptyString" }
             },
             "additionalProperties": false
           }

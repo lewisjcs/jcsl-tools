@@ -9,7 +9,7 @@
   "requiredRoles": ["adversarial-review"],
   "contract": {
     "inputContractId": "jcsl:reviewable-artifact@1",
-    "outputContractId": "jcsl:adversarial-review-result@1"
+    "outputContractId": "jcsl:opposed-review-result@1"
   },
   "handoffs": []
 }

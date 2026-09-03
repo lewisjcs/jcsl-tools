@@ -1,0 +1,8 @@
+{
+  "jcsl:adversarial-review-result@1": "jcsl:opposed-review-result@1",
+  "jcsl:adversarial-run-evidence@1": "jcsl:opposed-run-evidence@1",
+  "jcsl:code-quality-audit-result@1": "jcsl:audit-result@1",
+  "jcsl:code-quality-run-evidence@1": "jcsl:audit-run-evidence@1",
+  "jcsl:revision-review-result@1": "jcsl:verify-result@1",
+  "jcsl:revision-run-evidence@1": "jcsl:verify-run-evidence@1"
+}
