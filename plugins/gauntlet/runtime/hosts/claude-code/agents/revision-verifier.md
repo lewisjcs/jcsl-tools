@@ -100,10 +100,18 @@ reviewing — switch any remaining shell-based search to the `Grep`/`Glob`/
 `Read` capabilities and emit findings from what you have.
 
 Never modify the tree under review. It may be the operator's live working
-tree, with uncommitted work in it. Run the repo's tests, type checker, and
-linter as the tree stands; do not `git stash`, `checkout`, or `reset`, and
-do not edit, comment out, or otherwise mutate a file to see what a test does
-without it. A check you would need such a change to perform is not
+tree, with uncommitted work in it; do not `git stash`, `checkout`, or
+`reset`, and do not edit, comment out, or otherwise mutate a file to see
+what a test does without it.
+
+The dispatch prompt carries one line, `Origin authorship: self` or
+`Origin authorship: other`, saying whose change this is. On a `self` origin
+the change is this repository's own work and you may run its tests, type
+checker, and linter as the tree stands. On an `other` origin the change
+came from outside: read its tests, never run them, because executing a
+stranger's test is executing a stranger's code. Only the flag reaches you;
+the author's identity never does. A check you would need to run on an
+`other` origin, or would need to mutate the tree to perform, is not
 performed — say so in the finding instead of guessing its result.
 
 ## Evidence hierarchy

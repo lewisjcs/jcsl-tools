@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "jcsl:gauntlet-lane-link@1",
+  "type": "object",
+  "required": ["contractId", "partyRunId", "classKey", "family", "originAuthorship"],
+  "properties": {
+    "contractId": { "const": "jcsl:gauntlet-lane-link@1" },
+    "partyRunId": { "type": "string", "minLength": 1 },
+    "classKey": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+    "family": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+    "originAuthorship": { "enum": ["self", "other"] }
+  },
+  "additionalProperties": false
+}

@@ -26,16 +26,16 @@ Perform each dispatch as a fresh `codex exec` subprocess — never by continuing
 
 Each subprocess starts with no shared history: no shared conversation with this session, and no visibility into the other role's dispatch. It is not otherwise isolated — it inherits the invoking Codex home's hooks, skills, MCP servers, personality, and AGENTS.md, and no flag on the dispatch commands above suppresses that inheritance. If the dispatch command fails to start with an app-server `Operation not permitted` error, that is this session's sandbox denying the spawn, not a defect in the dispatch: request escalation and retry the exact command unchanged — approval lifts this session's sandbox around the spawn while the child still runs `--sandbox read-only`, so escalation does not widen what the review may touch. Expect one approval per dispatch, and once the first dispatch has needed escalation, request it up front for the rest instead of failing first. If the `--output-last-message` file is absent after the command exits, the dispatch failed; surface that as a failure and never treat it as an empty result. Otherwise, pass the captured `"$RUN_DIR/<actionId>-raw.json"` to `receipt --output` unmodified — never retype, reformat, or trim it. Record in that receipt's host-meta file the model and reasoning effort the command line above just ran, under the evidence contract's exact key names — `model` and `reasoningEffort`, never the English word "effort" — nested as `{"modelBinding": {"<role>": {"model": "<model-id>", "reasoningEffort": "<effort>"}}}`; the values are part of the command, not an assumption.
 
-Class `jcsl:gauntlet:adversarial-review@2.0.0` — adversarial code/plan/doc review. Two opposed roles (`jcsl:gauntlet:adversarial-finder`, `jcsl:gauntlet:adversarial-validator`) run in fresh, isolated dispatches under a deterministic runtime.
+Class `jcsl:gauntlet:adversarial-review@2.0.0` — Runtime-driven adversarial review (Find, Validate, Adjudicate under a deterministic runtime). Two opposed roles (`jcsl:gauntlet:adversarial-finder`, `jcsl:gauntlet:adversarial-validator`) run in fresh, isolated dispatches under a deterministic runtime.
 
 ## Driving the runtime
 
 This skill's job is narrow: drive the `gauntlet-runtime` CLI through its full handshake and perform exactly the dispatch each pending action requests. The runtime — not this skill — decides what happens next; a host only performs the dispatch a runtime action requests and returns what it observed.
 
 1. **`bundle`** admits the artifact and creates the run directory. Its stdout carries `runId` and `runDir` — retain both for the rest of the run: every later command writes into `runDir`, and the disposition step needs `runId`.
-2. **`init`** admits the run and prints the first pending action: `node "${CODEX_HOME:-$HOME/.codex}/runtime/bin/cli.mjs" init --bundle <bundle.json> --family <artifactFamily> --host <claude-code|codex> --out <runDir>/state.json`.
+2. **`init`** admits the run and prints the first pending action: `node "${CODEX_HOME:-$HOME/.codex}/runtime/bin/cli.mjs" init --class adversarial-review --bundle <bundle.json> --family <artifactFamily> --host <claude-code|codex> --out <runDir>/state.json`.
 To watch the run: `node "${CODEX_HOME:-$HOME/.codex}/runtime/bin/cli.mjs" show --run <runId> --follow` in a second terminal.
-3. **`next`** reports the current pending action, or `{"terminal": true}` once the run has reached `adjudicating` or `gap`: `node "${CODEX_HOME:-$HOME/.codex}/runtime/bin/cli.mjs" next --state <runDir>/state.json`.
+3. **`next`** prints `{issues, next, hostBinding}`: `next` is the pending action, or `{"terminal": true}` once the run has reached `adjudicating` or `gap`; `hostBinding` names the host agent to dispatch and the model it is bound to — dispatch to exactly that agent: `node "${CODEX_HOME:-$HOME/.codex}/runtime/bin/cli.mjs" next --state <runDir>/state.json`.
 4. Perform the dispatch the pending action requests — in a fresh, isolated context carrying only the artifact view and profile the action specifies — and capture the raw output.
 5. **`receipt`** reports what was observed; repeat from step 3 until `next` reports `terminal: true`: `node "${CODEX_HOME:-$HOME/.codex}/runtime/bin/cli.mjs" receipt --state <runDir>/state.json --action <actionId> --output <raw-output-file> --host-meta <host-meta.json>`. Always pass `--host-meta` on every dispatch receipt: write a JSON file recording the model the dispatch actually ran on, keyed by role — `{"modelBinding": {"finder": {"model": "<model-id>"}}}` for a dispatch-finder receipt, `{"modelBinding": {"validator": {"model": "<model-id>"}}}` for a dispatch-validator receipt. Where the dispatch also pins a reasoning effort, record it in the same object under the key `reasoningEffort` — `{"model": "<model-id>", "reasoningEffort": "<effort>"}`; the host mechanics section above names the exact keys this host must record. The runtime merges these into `evidence.modelBinding`; a run with no modelBinding receipts produces an unverifiable evidence record. When the host wrapper can measure them, add a `usage` object (`inputTokens`, `cacheWriteTokens`, `cacheReadTokens`, `outputTokens`, `turns`, `latencySeconds`) — the runtime sums these into `evidence.measurements` — and a `toolCalls` array (`{tool, target, resultBytes}` per call); metrics you cannot measure are simply omitted — the runtime records them as named omissions.
 6. **`result`** produces the typed review result and evidence record once the run is terminal: `node "${CODEX_HOME:-$HOME/.codex}/runtime/bin/cli.mjs" result --state <runDir>/state.json --out <runDir>/result.json --evidence <runDir>/evidence.json`. These paths are not cosmetic: `triage` reads a run's reported findings from `<runDir>/result.json`, so a result written anywhere else leaves the run untriageable.
@@ -56,9 +56,9 @@ A host never reorders, collapses, or skips a stage; never decides whether a seco
 
 ## Runtime protocol (canon, verbatim)
 
-# Runtime protocol
+# Opposed-pair protocol
 
-The Adversarial Review Class runs as a sequence of stages driven by a
+A Class of the opposed-pair shape runs as a sequence of stages driven by a
 deterministic runtime — an executable reducer and validator, not a model. The
 runtime, not any host, decides what happens next; a host only performs the
 dispatch a runtime action requests and returns what it observed.
@@ -69,11 +69,11 @@ dispatch a runtime action requests and returns what it observed.
    artifact bundle, computes and freezes its digests, and selects the
    artifact-family profile for this run.
 2. **Dispatch Finder.** The runtime emits a dispatch-finder action carrying
-   the Finder persona's identity and instruction-source hash, the artifact
-   digest, the selected profile, the model requirement, and the expected
-   output contract. A host performs the dispatch — in a fresh, isolated
-   context carrying only the artifact view and profile the action specifies
-   — and returns a stage receipt with the raw output.
+   the identity of the finder role's persona and its instruction-source hash,
+   the artifact digest, the selected profile, the model requirement, and the
+   expected output contract. A host performs the dispatch — in a fresh,
+   isolated context carrying only the artifact view and profile the action
+   specifies — and returns a stage receipt with the raw output.
 3. **Validate the Finder receipt.** The runtime parses and validates the
    candidate list against its contract and assigns each candidate a
    deterministic ID (`F-001`, `F-002`, ...). An output that wraps the
@@ -90,8 +90,8 @@ dispatch a runtime action requests and returns what it observed.
    dispatch entirely — there is nothing to adjudicate — and proceeds directly
    to typed-result construction.
 5. **Dispatch Validator.** When there is at least one candidate, the runtime
-   emits a dispatch-validator action carrying the Validator persona's
-   identity, the identical artifact digest, and the Finder's candidates
+   emits a dispatch-validator action carrying the identity of the validator
+   role's persona, the identical artifact digest, and the Finder's candidates
    verbatim with their assigned IDs. A host performs the dispatch in a fresh,
    isolated context and returns a stage receipt.
 6. **Validate the Validator receipt.** The runtime requires exactly one
@@ -102,7 +102,10 @@ dispatch a runtime action requests and returns what it observed.
    the dispatch once, and only once, appending the rejection reason (for a
    cardinality failure, the exact candidate IDs still owed a verdict) to the
    retried prompt. If the retried dispatch also fails, the runtime records a
-   typed gap for the Validator stage rather than retrying further.
+   typed gap for the Validator stage rather than retrying further. Each
+   verdict names the check that killed the candidate (`killedBy`:
+   `reachability`, `control`, `empirical`, `trust-model`, or `none` for a
+   survivor); a verdict without one is malformed.
 7. **Adjudicate.** The runtime joins candidates and verdicts by ID and
    applies the versioned adjudication policy mechanically: drop `disproved`
    results, deduplicate, apply the High-severity grounding check, then gate
@@ -186,7 +189,7 @@ opinion.
 
 ## Overlays and output schemas
 
-The Finder and Validator personas are family-neutral: the lenses, severity
+The finder and validator personas are family-neutral: the lenses, severity
 rubric, and disproof strategies apply to every artifact family this Class
 supports. What counts as a finding under a lens, the `location` format, and
 family-specific disproof refinements come from the artifact-family profile

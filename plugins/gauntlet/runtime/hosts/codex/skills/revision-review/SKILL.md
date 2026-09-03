@@ -26,7 +26,7 @@ Perform the dispatch as a fresh `codex exec` subprocess — never by continuing 
 
 The subprocess starts with no shared history: no shared conversation with this session, and no memory of any earlier attempt's dispatch. It is not otherwise isolated — it inherits the invoking Codex home's hooks, skills, MCP servers, personality, and AGENTS.md, and no flag on the dispatch command above suppresses that inheritance. If the dispatch command fails to start with an app-server `Operation not permitted` error, that is this session's sandbox denying the spawn, not a defect in the dispatch: request escalation and retry the exact command unchanged — approval lifts this session's sandbox around the spawn while the child still runs `--sandbox read-only`, so escalation does not widen what the review may touch. If the `--output-last-message` file is absent after the command exits, the dispatch failed; surface that as a failure and never treat it as an empty result. Otherwise, pass the captured `"$RUN_DIR/<actionId>-raw.json"` to `receipt --output` unmodified — never retype, reformat, or trim it. Record in that receipt's host-meta file the model and reasoning effort the command line above just ran, under the evidence contract's exact key names — `model` and `reasoningEffort`, never the English word "effort" — nested as `{"modelBinding": {"verifier": {"model": "<model-id>", "reasoningEffort": "<effort>"}}}`; the values are part of the command, not an assumption.
 
-Class `jcsl:gauntlet:revision-review@1.0.0` — single-role revision review. One role (`jcsl:gauntlet:revision-verifier`) runs in a fresh, isolated dispatch under a deterministic runtime.
+Class `jcsl:gauntlet:revision-review@1.0.0` — Runtime-driven revision review — a single verifier role settles the fate of every open prior finding against the revised artifact under a deterministic runtime. One role (`jcsl:gauntlet:revision-verifier`) runs in a fresh, isolated dispatch under a deterministic runtime.
 
 ## Driving the runtime
 
@@ -35,10 +35,10 @@ This skill's job is narrow: drive the `gauntlet-runtime` CLI through its full ha
 1. **`bundle`** admits the artifact and creates the run directory. Its stdout carries `runId` and `runDir` — retain both for the rest of the run: every later command writes into `runDir`.
 2. **`init`** admits the run and prints the first pending action: `node "${CODEX_HOME:-$HOME/.codex}/runtime/bin/cli.mjs" init --class revision-review --bundle <bundle.json> --family <artifactFamily> --host <claude-code|codex> --out <runDir>/state.json`.
 To watch the run: `node "${CODEX_HOME:-$HOME/.codex}/runtime/bin/cli.mjs" show --run <runId> --follow` in a second terminal.
-3. **`next`** reports the current pending action, or `{"terminal": true}` once the run has reached `verified` or `gap`: `node "${CODEX_HOME:-$HOME/.codex}/runtime/bin/cli.mjs" next --state <runDir>/state.json`.
+3. **`next`** prints `{issues, next, hostBinding}`: `next` is the pending action, or `{"terminal": true}` once the run has reached `verified` or `gap`; `hostBinding` names the host agent to dispatch and the model it is bound to — dispatch to exactly that agent: `node "${CODEX_HOME:-$HOME/.codex}/runtime/bin/cli.mjs" next --state <runDir>/state.json`.
 4. Perform the single `dispatch-verifier` action the pending action requests — in a fresh, isolated context carrying only the artifact view and profile the action specifies — and capture the raw output. The dispatch prompt directs the verifier to read the artifact bundle from the run directory by reference; never paste or embed artifact content into the dispatch prompt yourself.
 5. **`receipt`** reports what was observed; repeat from step 3 until `next` reports `terminal: true`: `node "${CODEX_HOME:-$HOME/.codex}/runtime/bin/cli.mjs" receipt --state <runDir>/state.json --action <actionId> --output <raw-output-file> --host-meta <host-meta.json>`. Always pass `--host-meta` on every dispatch receipt: write a JSON file recording the model the dispatch actually ran on — `{"modelBinding": {"verifier": {"model": "<model-id>"}}}`. Where the dispatch also pins a reasoning effort, record it in the same object under the key `reasoningEffort` — `{"model": "<model-id>", "reasoningEffort": "<effort>"}`; the host mechanics section above names the exact keys this host must record. The runtime merges these into `evidence.modelBinding`; a run with no modelBinding receipt produces an unverifiable evidence record. When the host wrapper can measure them, add a `usage` object (`inputTokens`, `cacheWriteTokens`, `cacheReadTokens`, `outputTokens`, `turns`, `latencySeconds`) — the runtime sums these into `evidence.measurements` — and a `toolCalls` array (`{tool, target, resultBytes}` per call); metrics you cannot measure are simply omitted — the runtime records them as named omissions.
-6. **`result`** produces the typed revision-review result and evidence record once the run is terminal: `node "${CODEX_HOME:-$HOME/.codex}/runtime/bin/cli.mjs" result --state <runDir>/state.json --out <runDir>/result.json --evidence <runDir>/evidence.json`.
+6. **`result`** produces the typed verify result and evidence record once the run is terminal: `node "${CODEX_HOME:-$HOME/.codex}/runtime/bin/cli.mjs" result --state <runDir>/state.json --out <runDir>/result.json --evidence <runDir>/evidence.json`.
 
 ## Presenting the result
 
@@ -50,7 +50,7 @@ Never skip, reorder, or collapse runtime steps. Never edit, filter, or re-label 
 
 ## Runtime protocol (canon, verbatim)
 
-# Revision-review protocol
+# Verify protocol
 
 The runtime — never a host — decides what happens next in a verification run.
 
@@ -108,7 +108,9 @@ objects — one per `prior-findings` key, no more, no fewer.
 
 ## Calibration honesty
 
-This Class is `experimental` until a calibration slice assigns it calibrated
-status. The result contract has no `clean` outcome; an empty findings list
-still reports `findings` with a zero count.
+A Class of this shape is `experimental` until a calibration slice assigns it
+calibrated status. The result contract has no `clean` outcome. The verdicts
+are the result's payload — the resolved/persisting/withdrawn character of
+each ruling carries the honesty — while `findings` is pinned empty for this
+Class and always reports a zero count.
 

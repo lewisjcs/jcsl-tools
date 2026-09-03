@@ -2,13 +2,18 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "jcsl:validator-verdict@1",
   "type": "object",
-  "required": ["findingId", "verdict", "evidence", "confidence"],
+  "required": ["findingId", "verdict", "evidence", "confidence", "killedBy"],
   "properties": {
     "findingId": {"type": "string", "pattern": "^F-[0-9]{3,}$"},
     "verdict": {"enum": ["survives", "disproved"]},
     "evidence": {"type": "string", "minLength": 1},
     "confidence": {"type": "number", "minimum": 0, "maximum": 100},
-    "category": {"enum": ["security", "correctness", "data-loss", "maintainability", "style", "accuracy", "other"]}
+    "category": {"enum": ["security", "correctness", "data-loss", "maintainability", "style", "accuracy", "other"]},
+    "killedBy": {"enum": ["reachability", "control", "empirical", "trust-model", "none"]}
   },
-  "additionalProperties": false
+  "additionalProperties": false,
+  "allOf": [
+    { "if": { "properties": { "verdict": { "const": "survives" } } }, "then": { "properties": { "killedBy": { "const": "none" } } } },
+    { "if": { "properties": { "verdict": { "const": "disproved" } } }, "then": { "properties": { "killedBy": { "enum": ["reachability", "control", "empirical", "trust-model"] } } } }
+  ]
 }

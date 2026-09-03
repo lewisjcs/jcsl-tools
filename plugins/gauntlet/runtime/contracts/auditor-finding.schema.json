@@ -4,12 +4,12 @@
   "type": "object",
   "required": ["layer", "rule", "location", "claim", "evidence", "level", "recommendation"],
   "properties": {
-    "layer": { "enum": ["compliance", "staleness", "gaps", "test-integrity"] },
+    "layer": { "type": "string", "minLength": 1 },
     "rule": { "type": "string", "minLength": 1 },
     "location": { "type": "string", "minLength": 1 },
     "claim": { "type": "string", "minLength": 1 },
     "evidence": { "type": "string", "minLength": 1 },
-    "level": { "enum": ["violation", "warning", "gap"] },
+    "level": { "type": "string", "minLength": 1 },
     "recommendation": { "type": "string", "minLength": 1 },
     "file": { "type": "string", "minLength": 1 },
     "line": { "type": "integer", "minimum": 1 }

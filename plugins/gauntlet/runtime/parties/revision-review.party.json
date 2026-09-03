@@ -7,6 +7,6 @@
   "mission": "Settle the fate of every open prior finding against the revised artifact and return a typed verdict per key.",
   "eligibleClassIds": ["jcsl:gauntlet:revision-review"],
   "requiredRoles": ["revision-review"],
-  "contract": { "inputContractId": "jcsl:reviewable-artifact@1", "outputContractId": "jcsl:revision-review-result@1" },
+  "contract": { "inputContractId": "jcsl:reviewable-artifact@1", "outputContractId": "jcsl:verify-result@1" },
   "handoffs": []
 }

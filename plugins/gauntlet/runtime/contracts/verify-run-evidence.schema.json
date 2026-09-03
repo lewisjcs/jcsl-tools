@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "jcsl:revision-run-evidence@1",
+  "$id": "jcsl:verify-run-evidence@1",
   "type": "object",
   "required": [
     "contractId", "classId", "classVersion", "loadoutId", "host",
@@ -9,7 +9,7 @@
     "outcome", "calibrationStatus", "audience"
   ],
   "properties": {
-    "contractId": {"const": "jcsl:revision-run-evidence@1"},
+    "contractId": {"const": "jcsl:verify-run-evidence@1"},
     "classId": {"type": "string", "pattern": "^[a-z][a-z0-9-]*(?::[a-z][a-z0-9-]*)+$"},
     "classVersion": {"type": "string", "pattern": "^[0-9]+[.][0-9]+[.][0-9]+$"},
     "loadoutId": {"type": "string", "pattern": "^[a-z][a-z0-9-]*$"},

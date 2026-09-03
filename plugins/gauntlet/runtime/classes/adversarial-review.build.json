@@ -1,0 +1,21 @@
+{
+  "kind": "class-build",
+  "classId": "jcsl:gauntlet:adversarial-review",
+  "classKey": "adversarial-review",
+  "shape": "opposed",
+  "roles": {
+    "finder": { "roleId": "jcsl:gauntlet:adversarial-finder", "persona": "canon/finder-persona.md", "modelRequirement": "independent-judgment" },
+    "validator": { "roleId": "jcsl:gauntlet:adversarial-validator", "persona": "canon/validator-persona.md", "modelRequirement": "adversarial-adjudication" }
+  },
+  "families": ["code-diff", "plan-text", "doc-text"],
+  "references": ["references/code-quality-standards.md"],
+  "inputs": { "primary": "artifact", "supporting": [] },
+  "requires": [],
+  "descriptions": {
+    "skill": "Runtime-driven adversarial review (Find, Validate, Adjudicate under a deterministic runtime). Use when pressure-testing a code change, plan, or doc for hidden assumptions, failure modes, and structural risks that standard review misses. Trigger phrases include \"adversarial review\", \"pressure test this\", \"how could this break\", \"what am I missing\", \"stress test this code\", \"break this\", \"find the flaws\". Requires Node >= 22.",
+    "roles": {
+      "finder": "Hostile systems engineer that pressure-tests an artifact (code diff, plan, or doc) to surface hidden assumptions, failure modes, and blast radius. Runs only inside the adversarial-review skill's runtime-driven handshake, in a fresh isolated dispatch — never invoked standalone.",
+      "validator": "Defense attorney that tries to disprove candidate findings from the adversarial-finder role, filtering false positives per the shared grounding contract and the code-quality-standards reference. Runs only inside the adversarial-review skill's runtime-driven handshake, in a fresh isolated dispatch — never invoked standalone."
+    }
+  }
+}

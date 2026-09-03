@@ -40,11 +40,11 @@ The runtime's `--primary` takes a path to one file on disk — never a pull-requ
 
 ```
 gh pr diff <n> > "$STAGE/pr.diff"
-gh pr view <n> --json body,headRefOid,baseRefName,baseRefOid,url,author
+gh pr view <n> --json title,body,headRefOid,baseRefName,baseRefOid,url,author
 gh api user --jq .login
 ```
 
-Write the `body` value to `"$STAGE/pr-body.md"`. Set `AUTHOR=self` when `author.login` equals the `gh api user` login, else `AUTHOR=other`.
+Write the `title` value to `"$STAGE/pr-title.md"` and the `body` value to `"$STAGE/pr-body.md"`. Set `AUTHOR=self` when `author.login` equals the `gh api user` login, else `AUTHOR=other`.
 
 Then fetch the thread — every issue comment, inline review comment, and review on the pull request:
 
@@ -58,7 +58,7 @@ Write the three results as one JSON object `{issueComments, reviewComments, revi
 
 **Resolve the repository root explicitly.** `--repo-root` and `--reviewed-commit` are both hard requirements for `--type code-pr` — without them the runtime refuses with `CLI_REVIEWED_COMMIT_REQUIRED` — and it pins its review worktree from that root. `gh pr diff` and `gh pr view` resolve against the current directory, so start there: `git rev-parse --show-toplevel`. For a pull-request URL, confirm that root is actually the right clone — check that one of its remotes matches the URL's `<org>/<repo>` (`git -C <repo-root> remote -v`). If none matches, stop and ask the operator for the path to the clone. That question is a refusal in all but name; it is a legitimate pause, listed with the others below.
 
-The head commit must also exist locally, since the runtime pins the review to it in its own git worktree: check with `git -C <repo-root> cat-file -e <headRefOid>^{commit}` and, if it is absent, fetch it (`git -C <repo-root> fetch origin <headRefOid>`). Then form the party with `--primary "$STAGE/pr.diff" --type code-pr --repo-root <repo-root> --reviewed-commit <headRefOid> --body "$STAGE/pr-body.md" --origin-url <url> --base-ref <baseRefName> --base-sha <baseRefOid> --author $AUTHOR --thread "$STAGE/thread.json"`.
+The head commit must also exist locally, since the runtime pins the review to it in its own git worktree: check with `git -C <repo-root> cat-file -e <headRefOid>^{commit}` and, if it is absent, fetch it (`git -C <repo-root> fetch origin <headRefOid>`). Then form the party with `--primary "$STAGE/pr.diff" --type code-pr --repo-root <repo-root> --reviewed-commit <headRefOid> --title "$STAGE/pr-title.md" --body "$STAGE/pr-body.md" --origin-url <url> --base-ref <baseRefName> --base-sha <baseRefOid> --author $AUTHOR --thread "$STAGE/thread.json"`.
 
 **No argument.** Review the current branch against the trunk:
 
@@ -96,9 +96,11 @@ This step reports signals; it decides nothing. Whether the signals lead to a go-
 Compose one call. Detection, the roster, and the artifact snapshot are all the runtime's decisions:
 
 ```
-node "${CLAUDE_PLUGIN_ROOT}/runtime/bin/cli.mjs" party-form --primary <artifact-file> [--path <logical-path>] [--type <code-pr|code-local|plan|doc|skill|directive>] [--body <pr-body-file>] [--repo-root <dir> --reviewed-commit <sha>] [--origin-url <url> --base-ref <ref> --base-sha <sha> --author <self|other>] [--thread <thread-file>] [--full] [--golive-signal <id>]... [--go-live|--no-go-live] [--force-lane <class>]... [--skip-lane <class>]...
+node "${CLAUDE_PLUGIN_ROOT}/runtime/bin/cli.mjs" party-form --primary <artifact-file> [--path <logical-path>] [--type <code-pr|code-local|plan|doc|skill|directive>] [--body <pr-body-file>] [--title <pr-title-file>] [--trust-context <single-user-tool|agent-tool|multi-caller-service>] [--repo-root <dir> --reviewed-commit <sha>] [--origin-url <url> --base-ref <ref> --base-sha <sha> --author <self|other>] [--thread <thread-file>] [--full] [--golive-signal <id>]... [--go-live|--no-go-live] [--force-lane <class>]... [--skip-lane <class>]...
 # stdout: {partyRunId, partyDir, profile, roster:{fielded, skipped, gaps, overrides}, goLivePrompt, lanes:[{classKey, runId, runDir, family}], origin, worktree, revision, events}
 ```
+
+For a pull request, pass the title and body files step 2 wrote as `--title` and `--body`. They are fielding inputs only: the runtime matches them against its signal set and never delivers them to a role. Pass `--trust-context` only when the operator or the repository's configuration states one; otherwise leave it to the runtime's default.
 
 Forward the operator's lane overrides untouched: `--force-lane <class>` and `--skip-lane <class>` are both repeatable, and the runtime validates each against its roster pool — forcing a Class onto a family it does not support is a typed refusal. Never add an override the operator did not ask for. Pass `--go-live` or `--no-go-live` straight through when the operator gave one, and never re-derive what they do to the roster — this applies to every artifact type, not just `code-pr` and `code-local`.
 
@@ -140,18 +142,20 @@ Some artifacts field no lanes at all: a skill file and an agent-instruction file
 
 ```
 node "${CLAUDE_PLUGIN_ROOT}/runtime/bin/cli.mjs" init --bundle <runDir>/bundle.json --family <family> --host claude-code --class <classKey> --out <runDir>/state.json
-# loop: next --state <runDir>/state.json → {dispatch action | terminal:true}
-#   Agent tool: subagent_type gauntlet:adversarial-finder | gauntlet:adversarial-validator | gauntlet:code-quality-auditor | gauntlet:revision-verifier, prompt = action.promptBody verbatim
-#   write <runDir>/<role>-output-<attempt>.json (raw) and <runDir>/<role>-host-meta-<attempt>.json = {"modelBinding": {"<role>": {"model": "<agent file model: line>"}}, "usage": {"inputTokens", "cacheWriteTokens", "cacheReadTokens", "turns": <summed from the dispatch transcript, see below>, "latencySeconds": <wall seconds>}}
-#   receipt --state <runDir>/state.json --action <actionId> --output <raw> --host-meta <meta>
+# stdout: {issues, next, hostBinding} — next is the pending action or {terminal: true}; hostBinding is {agent, model} or null once terminal
+# loop while next.terminal is not true:
+#   Agent tool: subagent_type = hostBinding.agent, prompt = next.promptBody verbatim
+#   role key = next.kind with the leading "dispatch-" removed (finder, validator, auditor, verifier, …)
+#   write <runDir>/<role>-output-<attempt>.json (raw) and <runDir>/<role>-host-meta-<attempt>.json = {"modelBinding": {"<role>": {"model": hostBinding.model}}, "usage": {"inputTokens", "cacheWriteTokens", "cacheReadTokens", "turns": <summed from the dispatch transcript, see below>, "latencySeconds": <wall seconds>}}
+#   receipt --state <runDir>/state.json --action next.actionId --output <raw> --host-meta <meta>   → prints the same {issues, next, hostBinding} shape
 node ... result --state <runDir>/state.json --out <runDir>/result.json --evidence <runDir>/evidence.json
 ```
 
 **`--family` takes the prefixed form.** `init` wants the value `bundle.json` records as `artifactFamily` — `jcsl:artifact-family:code-diff`, not the bare `code-diff` that the lane's `family` field carries. Read it off `<runDir>/bundle.json`. Passing the bare id is a hard refusal, not a warning.
 
-**Which agent for which action.** On the `adversarial-review` lane, a `dispatch-finder` action goes to `subagent_type: gauntlet:adversarial-finder` and a `dispatch-validator` action to `gauntlet:adversarial-validator`. On the `code-quality-audit` lane, its single `dispatch-auditor` action goes to `gauntlet:code-quality-auditor`. On the `revision-review` lane, its single `dispatch-verifier` action goes to `gauntlet:revision-verifier`. Pass `action.promptBody` verbatim; never paste artifact content into a prompt yourself — the prompt already tells the agent to read the artifact from the run directory.
+**Which agent for which action.** The runtime names it: every `init`, `next`, and `receipt` reply carries `hostBinding.agent`, the `subagent_type` to dispatch, and `hostBinding.model`, the model that agent is bound to. Dispatch to exactly that agent and pass `next.promptBody` verbatim; never paste artifact content into a prompt yourself — the prompt already tells the agent to read the artifact from the run directory — and never pick an agent from memory: a lane you have not seen before is just a lane whose binding you read off the reply.
 
-**Host metadata on every receipt.** Always pass `--host-meta`. The role key matches the dispatch: `finder`, `validator`, `auditor`, or `verifier`. Record the model the agent file pins — the `model:` frontmatter line of `${CLAUDE_PLUGIN_ROOT}/agents/<subagent>.md`; the Agent tool does not report which model ran, so the pinned value is the only measurable one. Where the dispatch also pins a reasoning effort, record it in the same object under `reasoningEffort`. Add a `usage` object (`inputTokens`, `cacheWriteTokens`, `cacheReadTokens`, `turns`, `latencySeconds`) — no `outputTokens`, see below. The Agent tool's own result reports one unsplit token total, which the pricer cannot use; the real split is in the dispatch's transcript. Each Agent call writes `<config-dir>/projects/<project-slug>/<session-id>/subagents/agent-<agentId>.jsonl`, where `agentId` is the id the Agent tool result names — read the split from there:
+**Host metadata on every receipt.** Always pass `--host-meta`. The role key is `next.kind` without its `dispatch-` prefix. Record `hostBinding.model` as the model — it is the same value the agent file pins, read from the bindings the runtime loaded; the Agent tool does not report which model ran, so the pinned value is the only measurable one. Where the dispatch also pins a reasoning effort, record it in the same object under `reasoningEffort`. Add a `usage` object (`inputTokens`, `cacheWriteTokens`, `cacheReadTokens`, `turns`, `latencySeconds`) — no `outputTokens`, see below. The Agent tool's own result reports one unsplit token total, which the pricer cannot use; the real split is in the dispatch's transcript. Each Agent call writes `<config-dir>/projects/<project-slug>/<session-id>/subagents/agent-<agentId>.jsonl`, where `agentId` is the id the Agent tool result names — read the split from there:
 
 ```
 jq -s '[.[] | select(.type=="assistant")] | group_by(.message.id) | map(last)
@@ -208,18 +212,7 @@ Confirm the copy landed — `wc -l <path>` returns at least 1 — before naming 
 
 A gap is a review lane that applies to this artifact but that the runtime does not yet run. `party-report` returns them as `gaps`; each carries a `lane` and the runtime's `reason`.
 
-List every gap verbatim — lane and reason, no paraphrase — then offer each as a follow-up the operator can choose to run against the same artifact:
-
-Skip the `go-live-review` row when step 5 already settled it — the operator answered the question there, or passed `--go-live` / `--no-go-live`. Still list the gap; do not offer it twice.
-
-| Gap lane | Follow-up |
-|---|---|
-| `security-gauntlet` | `Skill: gauntlet:security-gauntlet` |
-| `plan-review` | `Skill: gauntlet:plan-review` |
-| `doc-review` | `Skill: gauntlet:doc-review` |
-| `skill-audit` | `Skill: gauntlet:skill-audit` |
-| `directive-review` | `Skill: gauntlet:directive-review` |
-| `go-live-review` | `Skill: gauntlet:go-live-review` |
+List every gap verbatim — lane and reason, no paraphrase — then offer each as a follow-up the operator can choose to run against the same artifact: the follow-up for a gap lane `<lane>` is `Skill: gauntlet:<lane>`. Skip the `go-live-review` offer when step 5 already settled it — the operator answered the question there, or passed `--go-live` / `--no-go-live`; still list the gap, do not offer it twice. If `Skill: gauntlet:<lane>` does not exist as a sibling skill (the sibling-name check in step 1 lists them), say so beside the gap instead of inventing a follow-up.
 
 **Never dispatch a gap automatically.** Offer it and wait for the operator. A gap the operator declines is a known, recorded limit on this run's coverage: do not describe the run as complete coverage, and do not fold a follow-up's findings back into the runtime's report — that report is closed.
 

@@ -63,10 +63,22 @@
           "basenames": {
             "type": "array",
             "items": { "$ref": "#/$defs/nonEmptyString" }
+          },
+          "textPattern": {
+            "$comment": "Matched against pull-request title and body supplied as profile input; evidence never quotes the text.",
+            "type": "string"
+          },
+          "lockfileCheck": {
+            "$comment": "Routes the signal through the kernel's deterministic dependency-change check instead of a pattern.",
+            "const": true
           }
         },
         "additionalProperties": false
       }
+    },
+    "calibrationStatus": {
+      "$comment": "Property of the signal set, not of any Class: a consumer's report renders an [uncalibrated] marker while this is absent or 'uncalibrated'.",
+      "enum": ["uncalibrated", "calibrated"]
     },
     "goLiveSignalIds": {
       "type": "array",

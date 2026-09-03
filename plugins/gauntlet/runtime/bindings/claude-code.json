@@ -1,8 +1,8 @@
 {
-  "jcsl:gauntlet:adversarial-finder": "claude-sonnet-5",
-  "jcsl:gauntlet:adversarial-validator": "claude-sonnet-5",
-  "jcsl:gauntlet:code-quality-auditor": "claude-sonnet-5",
-  "jcsl:gauntlet:revision-verifier": "claude-sonnet-5",
+  "jcsl:gauntlet:adversarial-finder": { "model": "claude-sonnet-5", "agent": "gauntlet:adversarial-finder" },
+  "jcsl:gauntlet:adversarial-validator": { "model": "claude-sonnet-5", "agent": "gauntlet:adversarial-validator" },
+  "jcsl:gauntlet:code-quality-auditor": { "model": "claude-sonnet-5", "agent": "gauntlet:code-quality-auditor" },
+  "jcsl:gauntlet:revision-verifier": { "model": "claude-sonnet-5", "agent": "gauntlet:revision-verifier" },
   "runtimeInvocation": "node \"${CLAUDE_PLUGIN_ROOT}/runtime/bin/cli.mjs\"",
   "status": "incumbent-parity-start"
 }

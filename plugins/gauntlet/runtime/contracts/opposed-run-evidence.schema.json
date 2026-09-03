@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "jcsl:adversarial-run-evidence@1",
+  "$id": "jcsl:opposed-run-evidence@1",
   "type": "object",
   "required": [
     "contractId", "classId", "classVersion", "loadoutId", "host",
@@ -9,7 +9,7 @@
     "outcome", "calibrationStatus", "audience"
   ],
   "properties": {
-    "contractId": {"const": "jcsl:adversarial-run-evidence@1"},
+    "contractId": {"const": "jcsl:opposed-run-evidence@1"},
     "classId": {"type": "string", "pattern": "^[a-z][a-z0-9-]*(?::[a-z][a-z0-9-]*)+$"},
     "classVersion": {"type": "string", "pattern": "^[0-9]+[.][0-9]+[.][0-9]+$"},
     "loadoutId": {"type": "string", "pattern": "^[a-z][a-z0-9-]*$"},
@@ -62,7 +62,7 @@
         "type": "object", "required": ["id", "lens", "location", "claim", "evidence", "severity", "category"],
         "properties": {
           "id": {"type": "string", "pattern": "^F-[0-9]{3,}$"},
-          "lens": {"enum": ["Hidden Assumptions", "Failure Scenarios", "Blast Radius", "Missed Integration"]},
+          "lens": {"type": "string", "minLength": 1},
           "category": {"enum": ["security", "correctness", "data-loss", "maintainability", "style", "accuracy", "other"]},
           "location": {"type": "string", "minLength": 1},
           "claim": {"type": "string", "minLength": 1},
@@ -82,7 +82,8 @@
           "verdict": {"enum": ["survives", "disproved"]},
           "evidence": {"type": "string", "minLength": 1},
           "confidence": {"type": "number", "minimum": 0, "maximum": 100},
-          "category": {"enum": ["security", "correctness", "data-loss", "maintainability", "style", "accuracy", "other"]}
+          "category": {"enum": ["security", "correctness", "data-loss", "maintainability", "style", "accuracy", "other"]},
+          "killedBy": {"enum": ["reachability", "control", "empirical", "trust-model", "none"]}
         }, "additionalProperties": false
       }
     },

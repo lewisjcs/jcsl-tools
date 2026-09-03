@@ -9,7 +9,7 @@
   "requiredRoles": ["code-quality-audit"],
   "contract": {
     "inputContractId": "jcsl:reviewable-artifact@1",
-    "outputContractId": "jcsl:code-quality-audit-result@1"
+    "outputContractId": "jcsl:audit-result@1"
   },
   "handoffs": []
 }

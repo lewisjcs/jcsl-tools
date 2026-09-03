@@ -1,4 +1,4 @@
-# Revision-review protocol
+# Verify protocol
 
 The runtime — never a host — decides what happens next in a verification run.
 
@@ -56,6 +56,8 @@ objects — one per `prior-findings` key, no more, no fewer.
 
 ## Calibration honesty
 
-This Class is `experimental` until a calibration slice assigns it calibrated
-status. The result contract has no `clean` outcome; an empty findings list
-still reports `findings` with a zero count.
+A Class of this shape is `experimental` until a calibration slice assigns it
+calibrated status. The result contract has no `clean` outcome. The verdicts
+are the result's payload — the resolved/persisting/withdrawn character of
+each ruling carries the honesty — while `findings` is pinned empty for this
+Class and always reports a zero count.

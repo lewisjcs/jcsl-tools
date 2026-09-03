@@ -1,0 +1,20 @@
+{
+  "kind": "class-build",
+  "classId": "jcsl:gauntlet:code-quality-audit",
+  "classKey": "code-quality-audit",
+  "shape": "audit",
+  "roles": {
+    "auditor": { "roleId": "jcsl:gauntlet:code-quality-auditor", "persona": "canon/code-quality-auditor-persona.md", "modelRequirement": "independent-judgment" }
+  },
+  "families": ["code-diff"],
+  "references": ["references/code-quality-standards.md"],
+  "inputs": { "primary": "artifact", "supporting": [] },
+  "requires": [],
+  "levels": ["violation", "warning", "gap"],
+  "descriptions": {
+    "skill": "Runtime-driven code-quality audit — a single auditor role reviews a code artifact against a written rulebook (compliance rules, staleness signals, gap heuristics, test-integrity checks) under a deterministic runtime. Use when auditing code for quality, reviewing a diff against code-quality-standards, checking conventions on a PR, or \"audit code quality\". Also use after writing or modifying code to verify it meets the team's defensive-code-anti-pattern rules. Dispatched by /gauntlet for code-pr and code-local artifacts. Requires Node >= 22.",
+    "roles": {
+      "auditor": "Code-quality auditor that reviews a code artifact against a written rulebook — compliance rules, staleness signals, gap heuristics, and test-integrity checks — reporting rule-anchored findings with warnings-and-gaps character. Runs only inside the code-quality-audit skill's runtime-driven handshake, in a fresh isolated dispatch — never invoked standalone."
+    }
+  }
+}

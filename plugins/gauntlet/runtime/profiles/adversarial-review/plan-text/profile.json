@@ -8,5 +8,6 @@
     "Step N (\"...\") — cite the plan's own step numbering and a short quote",
     "Goal section (...)",
     "Test strategy section (paragraph M)"
-  ]
+  ],
+  "lenses": ["Hidden Assumptions", "Failure Scenarios", "Blast Radius", "Missed Integration"]
 }

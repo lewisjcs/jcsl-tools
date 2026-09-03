@@ -34,7 +34,7 @@
     "references": [
       "canon/finder-persona.md",
       "canon/grounding-contract.md",
-      "canon/runtime-protocol.md",
+      "canon/shapes/opposed-protocol.md",
       "canon/validator-persona.md",
       "policy/adjudication-v1.json",
       "policy/adjudication-v2.json",
@@ -261,10 +261,10 @@
       }
     },
     "output": {
-      "id": "jcsl:adversarial-review-result@1",
+      "id": "jcsl:opposed-review-result@1",
       "schema": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "$id": "jcsl:adversarial-review-result@1",
+        "$id": "jcsl:opposed-review-result@1",
         "type": "object",
         "required": [
           "contractId",
@@ -286,7 +286,7 @@
         "properties": {
           "contractId": {
             "type": "string",
-            "const": "jcsl:adversarial-review-result@1",
+            "const": "jcsl:opposed-review-result@1",
             "pattern": "^[a-z][a-z0-9-]*(?::[a-z][a-z0-9-]*)+(?:@[1-9][0-9]*)?$"
           },
           "classId": {
@@ -433,6 +433,15 @@
                     "style",
                     "accuracy",
                     "other"
+                  ]
+                },
+                "killedBy": {
+                  "enum": [
+                    "reachability",
+                    "control",
+                    "empirical",
+                    "trust-model",
+                    "none"
                   ]
                 }
               },
@@ -671,18 +680,19 @@
       "projection": {
         "canonicalSources": [
           "canon/finder-persona.md",
-          "canon/grounding-contract.md",
-          "canon/runtime-protocol.md",
           "canon/validator-persona.md",
+          "canon/grounding-contract.md",
+          "canon/shapes/opposed-protocol.md",
           "profiles/adversarial-review/code-diff/profile.json",
           "profiles/adversarial-review/code-diff/lenses.md",
           "profiles/adversarial-review/plan-text/profile.json",
           "profiles/adversarial-review/plan-text/lenses.md",
           "profiles/adversarial-review/doc-text/profile.json",
           "profiles/adversarial-review/doc-text/lenses.md",
+          "references/code-quality-standards.md",
           "bindings/claude-code.json"
         ],
-        "sourceHash": "05c0bc986dcac4a4806b97649b8b2af0ccc0becbecf8da5548e52eaf76c0a23a"
+        "sourceHash": "879fcfaf8c9765521f94e74f2b6a13e9f79b5f173ceb820416dbda5d9cacb27d"
       }
     },
     "codex": {
@@ -691,18 +701,19 @@
       "projection": {
         "canonicalSources": [
           "canon/finder-persona.md",
-          "canon/grounding-contract.md",
-          "canon/runtime-protocol.md",
           "canon/validator-persona.md",
+          "canon/grounding-contract.md",
+          "canon/shapes/opposed-protocol.md",
           "profiles/adversarial-review/code-diff/profile.json",
           "profiles/adversarial-review/code-diff/lenses.md",
           "profiles/adversarial-review/plan-text/profile.json",
           "profiles/adversarial-review/plan-text/lenses.md",
           "profiles/adversarial-review/doc-text/profile.json",
           "profiles/adversarial-review/doc-text/lenses.md",
+          "references/code-quality-standards.md",
           "bindings/codex.json"
         ],
-        "sourceHash": "1d824bdb600d7c6e11f4647b46d5a814ffd76906f7743d44ec0fe87344a4a634"
+        "sourceHash": "32ee2a48ad2dd0d38b4eef03814d84766ebaccf7524fa4dee4aa43efbb2725c7"
       }
     }
   },

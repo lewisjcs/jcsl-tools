@@ -4,5 +4,6 @@
   "status": "incumbent-candidate",
   "marker": "Artifact type: doc-text",
   "lensFile": "profiles/adversarial-review/doc-text/lenses.md",
-  "locationFormats": ["<Section> section, paragraph N — match the doc's actual heading text, case-sensitive"]
+  "locationFormats": ["<Section> section, paragraph N — match the doc's actual heading text, case-sensitive"],
+  "lenses": ["Hidden Assumptions", "Failure Scenarios", "Blast Radius", "Missed Integration"]
 }

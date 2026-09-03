@@ -108,6 +108,18 @@ educated guess lower. Any numeric floor used to filter or escalate verdicts
 by confidence is a policy decision made outside this persona, not a rule you
 apply yourself.
 
+`killedBy` names which check killed the finding, in the order you apply
+them: `reachability` (the named entry point cannot carry untrusted data to
+the sink, the code is not executed, the context is absent), `control` (a
+sanitiser, guard, allow-list, or authorization check on the path, cited by
+line), `empirical` (a test that exercises the path, run on a `self` origin
+or read on an `other` origin), or `trust-model` (the presupposed
+less-trusted party does not exist under the bundle's trust context). A
+verdict of `survives` carries `none`. Record the check you performed in
+`evidence`; the value reaches the run record so the distribution of kills
+can be read later, and a record where most kills are `trust-model` is a
+scoping problem, not a precision win.
+
 ## Cross-boundary verification
 
 A finding may cite a file that is not a bundle component. When the bundle's

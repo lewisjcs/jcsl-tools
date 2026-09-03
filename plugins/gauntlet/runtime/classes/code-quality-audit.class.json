@@ -31,7 +31,7 @@
     ],
     "references": [
       "canon/code-quality-auditor-persona.md",
-      "canon/code-quality-audit-protocol.md",
+      "canon/shapes/audit-protocol.md",
       "canon/grounding-contract.md",
       "profiles/code-quality-audit/code-diff/profile.json",
       "profiles/code-quality-audit/code-diff/lenses.md",
@@ -252,10 +252,10 @@
       }
     },
     "output": {
-      "id": "jcsl:code-quality-audit-result@1",
+      "id": "jcsl:audit-result@1",
       "schema": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "$id": "jcsl:code-quality-audit-result@1",
+        "$id": "jcsl:audit-result@1",
         "type": "object",
         "required": [
           "contractId",
@@ -276,7 +276,7 @@
         "properties": {
           "contractId": {
             "type": "string",
-            "const": "jcsl:code-quality-audit-result@1",
+            "const": "jcsl:audit-result@1",
             "pattern": "^[a-z][a-z0-9-]*(?::[a-z][a-z0-9-]*)+(?:@[1-9][0-9]*)?$"
           },
           "classId": {
@@ -477,12 +477,8 @@
                 "pattern": "^A-[0-9]{3}$"
               },
               "layer": {
-                "enum": [
-                  "compliance",
-                  "staleness",
-                  "gaps",
-                  "test-integrity"
-                ]
+                "type": "string",
+                "minLength": 1
               },
               "rule": {
                 "type": "string",
@@ -501,11 +497,8 @@
                 "minLength": 1
               },
               "level": {
-                "enum": [
-                  "violation",
-                  "warning",
-                  "gap"
-                ]
+                "type": "string",
+                "minLength": 1
               },
               "recommendation": {
                 "type": "string",
@@ -570,13 +563,13 @@
         "canonicalSources": [
           "canon/code-quality-auditor-persona.md",
           "canon/grounding-contract.md",
-          "canon/code-quality-audit-protocol.md",
+          "canon/shapes/audit-protocol.md",
           "profiles/code-quality-audit/code-diff/profile.json",
           "profiles/code-quality-audit/code-diff/lenses.md",
           "references/code-quality-standards.md",
           "bindings/claude-code.json"
         ],
-        "sourceHash": "fb291353aa4d946e3e4523ba128ead45d4996174dcbb5f1fb170490ef90a8e84"
+        "sourceHash": "e30e3fe31d447a4f7e62d5e51ecb496be68426a0888e867ce972ba75e938d1eb"
       }
     },
     "codex": {
@@ -586,13 +579,13 @@
         "canonicalSources": [
           "canon/code-quality-auditor-persona.md",
           "canon/grounding-contract.md",
-          "canon/code-quality-audit-protocol.md",
+          "canon/shapes/audit-protocol.md",
           "profiles/code-quality-audit/code-diff/profile.json",
           "profiles/code-quality-audit/code-diff/lenses.md",
           "references/code-quality-standards.md",
           "bindings/codex.json"
         ],
-        "sourceHash": "139f9219bee55c0e404f1ff64b0256cd153a85e3db9034ecd86009f28aaa6f0f"
+        "sourceHash": "4db438659f9e10231491ba18daac0a7f180740d0cf9d0f1fa9bb7baf4ac405e1"
       }
     }
   },

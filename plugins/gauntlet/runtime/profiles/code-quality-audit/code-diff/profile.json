@@ -4,5 +4,6 @@
   "status": "experimental",
   "marker": "Artifact type: code-diff",
   "lensFile": "profiles/code-quality-audit/code-diff/lenses.md",
-  "locationFormats": ["file:line (post-diff path for changed files; repo-relative reviewed-tree path for cross-boundary findings)"]
+  "locationFormats": ["file:line (post-diff path for changed files; repo-relative reviewed-tree path for cross-boundary findings)"],
+  "lenses": ["compliance", "staleness", "gaps", "test-integrity"]
 }
