@@ -40,11 +40,11 @@ The runtime's `--primary` takes a path to one file on disk — never a pull-requ
 
 ```
 gh pr diff <n> > "$STAGE/pr.diff"
-gh pr view <n> --json body,headRefOid,baseRefName,baseRefOid,url,author
+gh pr view <n> --json title,body,headRefOid,baseRefName,baseRefOid,url,author
 gh api user --jq .login
 ```
 
-Write the `body` value to `"$STAGE/pr-body.md"`. Set `AUTHOR=self` when `author.login` equals the `gh api user` login, else `AUTHOR=other`.
+Write the `title` value to `"$STAGE/pr-title.md"` and the `body` value to `"$STAGE/pr-body.md"`. Set `AUTHOR=self` when `author.login` equals the `gh api user` login, else `AUTHOR=other`.
 
 Then fetch the thread — every issue comment, inline review comment, and review on the pull request:
 
@@ -58,7 +58,7 @@ Write the three results as one JSON object `{issueComments, reviewComments, revi
 
 **Resolve the repository root explicitly.** `--repo-root` and `--reviewed-commit` are both hard requirements for `--type code-pr` — without them the runtime refuses with `CLI_REVIEWED_COMMIT_REQUIRED` — and it pins its review worktree from that root. `gh pr diff` and `gh pr view` resolve against the current directory, so start there: `git rev-parse --show-toplevel`. For a pull-request URL, confirm that root is actually the right clone — check that one of its remotes matches the URL's `<org>/<repo>` (`git -C <repo-root> remote -v`). If none matches, stop and ask the operator for the path to the clone. That question is a refusal in all but name; it is a legitimate pause, listed with the others below.
 
-The head commit must also exist locally, since the runtime pins the review to it in its own git worktree: check with `git -C <repo-root> cat-file -e <headRefOid>^{commit}` and, if it is absent, fetch it (`git -C <repo-root> fetch origin <headRefOid>`). Then form the party with `--primary "$STAGE/pr.diff" --type code-pr --repo-root <repo-root> --reviewed-commit <headRefOid> --body "$STAGE/pr-body.md" --origin-url <url> --base-ref <baseRefName> --base-sha <baseRefOid> --author $AUTHOR --thread "$STAGE/thread.json"`.
+The head commit must also exist locally, since the runtime pins the review to it in its own git worktree: check with `git -C <repo-root> cat-file -e <headRefOid>^{commit}` and, if it is absent, fetch it (`git -C <repo-root> fetch origin <headRefOid>`). Then form the party with `--primary "$STAGE/pr.diff" --type code-pr --repo-root <repo-root> --reviewed-commit <headRefOid> --title "$STAGE/pr-title.md" --body "$STAGE/pr-body.md" --origin-url <url> --base-ref <baseRefName> --base-sha <baseRefOid> --author $AUTHOR --thread "$STAGE/thread.json"`.
 
 **No argument.** Review the current branch against the trunk:
 
@@ -96,9 +96,11 @@ This step reports signals; it decides nothing. Whether the signals lead to a go-
 Compose one call. Detection, the roster, and the artifact snapshot are all the runtime's decisions:
 
 ```
-node "${CLAUDE_PLUGIN_ROOT}/runtime/bin/cli.mjs" party-form --primary <artifact-file> [--path <logical-path>] [--type <code-pr|code-local|plan|doc|skill|directive>] [--body <pr-body-file>] [--repo-root <dir> --reviewed-commit <sha>] [--origin-url <url> --base-ref <ref> --base-sha <sha> --author <self|other>] [--thread <thread-file>] [--full] [--golive-signal <id>]... [--go-live|--no-go-live] [--force-lane <class>]... [--skip-lane <class>]...
+node "${CLAUDE_PLUGIN_ROOT}/runtime/bin/cli.mjs" party-form --primary <artifact-file> [--path <logical-path>] [--type <code-pr|code-local|plan|doc|skill|directive>] [--body <pr-body-file>] [--title <pr-title-file>] [--trust-context <single-user-tool|agent-tool|multi-caller-service>] [--repo-root <dir> --reviewed-commit <sha>] [--origin-url <url> --base-ref <ref> --base-sha <sha> --author <self|other>] [--thread <thread-file>] [--full] [--golive-signal <id>]... [--go-live|--no-go-live] [--force-lane <class>]... [--skip-lane <class>]...
 # stdout: {partyRunId, partyDir, profile, roster:{fielded, skipped, gaps, overrides}, goLivePrompt, lanes:[{classKey, runId, runDir, family}], origin, worktree, revision, events}
 ```
+
+For a pull request, pass the title and body files step 2 wrote as `--title` and `--body`. They are fielding inputs only: the runtime matches them against its signal set and never delivers them to a role. Pass `--trust-context` only when the operator or the repository's configuration states one; otherwise leave it to the runtime's default.
 
 Forward the operator's lane overrides untouched: `--force-lane <class>` and `--skip-lane <class>` are both repeatable, and the runtime validates each against its roster pool — forcing a Class onto a family it does not support is a typed refusal. Never add an override the operator did not ask for. Pass `--go-live` or `--no-go-live` straight through when the operator gave one, and never re-derive what they do to the roster — this applies to every artifact type, not just `code-pr` and `code-local`.
 
@@ -210,18 +212,7 @@ Confirm the copy landed — `wc -l <path>` returns at least 1 — before naming 
 
 A gap is a review lane that applies to this artifact but that the runtime does not yet run. `party-report` returns them as `gaps`; each carries a `lane` and the runtime's `reason`.
 
-List every gap verbatim — lane and reason, no paraphrase — then offer each as a follow-up the operator can choose to run against the same artifact:
-
-Skip the `go-live-review` row when step 5 already settled it — the operator answered the question there, or passed `--go-live` / `--no-go-live`. Still list the gap; do not offer it twice.
-
-| Gap lane | Follow-up |
-|---|---|
-| `security-gauntlet` | `Skill: gauntlet:security-gauntlet` |
-| `plan-review` | `Skill: gauntlet:plan-review` |
-| `doc-review` | `Skill: gauntlet:doc-review` |
-| `skill-audit` | `Skill: gauntlet:skill-audit` |
-| `directive-review` | `Skill: gauntlet:directive-review` |
-| `go-live-review` | `Skill: gauntlet:go-live-review` |
+List every gap verbatim — lane and reason, no paraphrase — then offer each as a follow-up the operator can choose to run against the same artifact: the follow-up for a gap lane `<lane>` is `Skill: gauntlet:<lane>`. Skip the `go-live-review` offer when step 5 already settled it — the operator answered the question there, or passed `--go-live` / `--no-go-live`; still list the gap, do not offer it twice. If `Skill: gauntlet:<lane>` does not exist as a sibling skill (the sibling-name check in step 1 lists them), say so beside the gap instead of inventing a follow-up.
 
 **Never dispatch a gap automatically.** Offer it and wait for the operator. A gap the operator declines is a known, recorded limit on this run's coverage: do not describe the run as complete coverage, and do not fold a follow-up's findings back into the runtime's report — that report is closed.
 
