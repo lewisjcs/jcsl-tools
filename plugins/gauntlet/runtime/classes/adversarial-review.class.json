@@ -441,6 +441,9 @@
                     "control",
                     "empirical",
                     "trust-model",
+                    "guarantee",
+                    "convention",
+                    "grounding",
                     "none"
                   ]
                 }
@@ -692,7 +695,7 @@
           "references/code-quality-standards.md",
           "bindings/claude-code.json"
         ],
-        "sourceHash": "879fcfaf8c9765521f94e74f2b6a13e9f79b5f173ceb820416dbda5d9cacb27d"
+        "sourceHash": "cf434d491fe392bf324ff04cdd657c5a3cfde4a58d4ff423163e0ed054d99d3c"
       }
     },
     "codex": {
@@ -713,7 +716,7 @@
           "references/code-quality-standards.md",
           "bindings/codex.json"
         ],
-        "sourceHash": "32ee2a48ad2dd0d38b4eef03814d84766ebaccf7524fa4dee4aa43efbb2725c7"
+        "sourceHash": "ff01cb835be7c6dbdc2633c577df34f4a14c4fb968069dff42b1802353636c3f"
       }
     }
   },

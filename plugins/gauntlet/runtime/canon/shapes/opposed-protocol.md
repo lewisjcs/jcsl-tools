@@ -44,10 +44,11 @@ dispatch a runtime action requests and returns what it observed.
    the dispatch once, and only once, appending the rejection reason (for a
    cardinality failure, the exact candidate IDs still owed a verdict) to the
    retried prompt. If the retried dispatch also fails, the runtime records a
-   typed gap for the Validator stage rather than retrying further. Each
-   verdict names the check that killed the candidate (`killedBy`:
-   `reachability`, `control`, `empirical`, `trust-model`, or `none` for a
-   survivor); a verdict without one is malformed.
+   typed gap for the Validator stage rather than retrying further.
+   Each disproof names the strategy that killed the candidate (`killedBy`:
+   `guarantee`, `control`, `reachability`, `empirical`, `trust-model`,
+   `convention`, or `grounding`); a survivor omits the field. A disproof
+   without one is malformed.
 7. **Adjudicate.** The runtime joins candidates and verdicts by ID and
    applies the versioned adjudication policy mechanically: drop `disproved`
    results, deduplicate, apply the High-severity grounding check, then gate

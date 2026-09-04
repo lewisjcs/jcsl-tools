@@ -37,7 +37,7 @@
       "type": "array",
       "items": {
         "type": "object", "required": ["findingId", "verdict", "confidence"],
-        "properties": {"findingId": {"type": "string"}, "verdict": {"enum": ["survives", "disproved"]}, "confidence": {"type": "number", "minimum": 0, "maximum": 100}, "category": {"enum": ["security", "correctness", "data-loss", "maintainability", "style", "accuracy", "other"]}, "killedBy": {"enum": ["reachability", "control", "empirical", "trust-model", "none"]}},
+        "properties": {"findingId": {"type": "string"}, "verdict": {"enum": ["survives", "disproved"]}, "confidence": {"type": "number", "minimum": 0, "maximum": 100}, "category": {"enum": ["security", "correctness", "data-loss", "maintainability", "style", "accuracy", "other"]}, "killedBy": {"enum": ["reachability", "control", "empirical", "trust-model", "guarantee", "convention", "grounding", "none"]}},
         "additionalProperties": false
       }
     },

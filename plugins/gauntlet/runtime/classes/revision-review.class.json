@@ -507,7 +507,7 @@
           "profiles/revision-review/code-diff/lenses.md",
           "bindings/claude-code.json"
         ],
-        "sourceHash": "392fa727db2ffda453d45085775352ac633d717d62caab557d0a29dea93c5c31"
+        "sourceHash": "6167ba4bf922812d9644a44a9a639a0baa75ad42d4c8153abbe05a8447a7f760"
       }
     },
     "codex": {
@@ -522,7 +522,7 @@
           "profiles/revision-review/code-diff/lenses.md",
           "bindings/codex.json"
         ],
-        "sourceHash": "e62a714196098675df8830cdd32b5b373099ecec8ddcc540cce8d0c93a9b3f4c"
+        "sourceHash": "9c3c9311b41da3fe127b2169896619db2a99f02b64e0f9b669609b8726ac9dcf"
       }
     }
   },
