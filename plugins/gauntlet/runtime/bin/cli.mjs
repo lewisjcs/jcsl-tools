@@ -8329,6 +8329,7 @@ var SCHEMA_FILE_BY_CONTRACT_ID2 = {
   "jcsl:verify-result@1": "verify-result.schema.json",
   "jcsl:verify-run-evidence@1": "verify-run-evidence.schema.json",
   "jcsl:gauntlet-class-build@1": "class-build.schema.json",
+  "jcsl:gauntlet-class-bindings@1": "class-bindings.schema.json",
   "jcsl:gauntlet-lane-link@1": "lane-link.schema.json"
 };
 var SHA256_HEX_PATTERN2 = /^[0-9a-f]{64}$/;
@@ -10407,7 +10408,11 @@ var VALIDATOR_OUTPUT_CONTRACT_SECTION = [
   "- `evidence`: non-empty string",
   "- `confidence`: number from 0 to 100",
   '- `category` (optional): one of `"security"`, `"correctness"`, `"data-loss"`, `"maintainability"`, `"style"`, `"accuracy"`, `"other"` \u2014 set it when you judge the candidate a different kind of problem than the Finder labeled it; omit it when you agree',
-  '- `killedBy`: one of `"reachability"`, `"control"`, `"empirical"`, `"trust-model"`, or `"none"` \u2014 `"none"` if and only if `verdict` is `"survives"`',
+  '- `killedBy` (on a `"disproved"` verdict only): one of `"guarantee"`, `"control"`, `"reachability"`, `"empirical"`, `"trust-model"`, `"convention"`, `"grounding"` \u2014 the strategy that killed it; omit the property on a `"survives"` verdict',
+  "",
+  "Two well-formed elements, one of each verdict, showing the exact shape (values are illustrative):",
+  "",
+  '[{"findingId":"F-001","verdict":"disproved","evidence":"the guard at src/x.mjs:12 rejects an empty list before the loop runs","confidence":85,"killedBy":"control"},{"findingId":"F-002","verdict":"survives","evidence":"no test exercises the retry path; read src/y.mjs:40-58","confidence":70}]',
   "",
   "A reply that is not a bare JSON array is rejected and consumes the single retry; so does a reply that misses, invents, or duplicates a `findingId`."
 ].join("\n");
@@ -10896,14 +10901,15 @@ function roleHostName(roleId) {
 function roleLabel(hostName) {
   return hostName.split("-").map((word) => word[0].toUpperCase() + word.slice(1)).join(" ");
 }
+var BINDINGS_CONTRACT_ID = "jcsl:gauntlet-class-bindings@1";
 function readBindings(repoRoot, host) {
   const rel = `bindings/${host}.json`;
-  const { runtimeInvocation, status, ...roles } = readJson(repoRoot, rel, "CLASS_BINDINGS_UNREADABLE", { host });
-  for (const [roleId, value] of Object.entries(roles)) {
-    if (typeof value?.model !== "string" || typeof value?.agent !== "string") {
-      throw new ClassLoadError("CLASS_BINDINGS_INVALID", `bindings/${host}.json entry "${roleId}" must be {model, agent[, reasoningEffort]}`, { host, roleId, path: rel });
-    }
+  const file = readJson(repoRoot, rel, "CLASS_BINDINGS_UNREADABLE", { host });
+  const { valid, issues } = validateContract(BINDINGS_CONTRACT_ID, file);
+  if (!valid) {
+    throw new ClassLoadError("CLASS_BINDINGS_INVALID", `${rel} failed ${BINDINGS_CONTRACT_ID} validation: ${JSON.stringify(issues)}`, { host, path: rel, issues });
   }
+  const { runtimeInvocation, status, ...roles } = file;
   return Object.freeze({ roles: Object.freeze(roles), runtimeInvocation, status });
 }
 function adapterModelBindings(bindingsFile, host, roleIds) {
@@ -10999,6 +11005,14 @@ function loadClasses(repoRoot) {
   const catalog = createCatalog({ sources: [{ id: "gauntlet-repo", audience: "personal", root: repoRoot, classManifestPaths, partyManifestPaths }] });
   const bindings = Object.freeze(Object.fromEntries(HOSTS.map((host) => [host, readBindings(repoRoot, host)])));
   const list = classManifestPaths.map((manifestPath) => buildRecord({ repoRoot, catalog, manifestPath, bindings }));
+  const declaredRoleIds = new Set(list.flatMap((r) => Object.values(r.roles).map((role) => role.roleId)));
+  for (const host of HOSTS) {
+    for (const roleId of Object.keys(bindings[host].roles)) {
+      if (!declaredRoleIds.has(roleId)) {
+        throw new ClassLoadError("CLASS_BINDINGS_UNKNOWN_ROLE", `bindings/${host}.json binds "${roleId}", which no loaded Class declares`, { host, roleId, path: `bindings/${host}.json` });
+      }
+    }
+  }
   return Object.freeze({
     repoRoot,
     catalog,
@@ -12891,6 +12905,17 @@ function readRevision(paths) {
   return parsed;
 }
 
+// src/supporting-inputs.mjs
+var SUPPORTING_MEDIA_TYPES = Object.freeze({
+  thread: "application/json",
+  "prior-findings": "application/json",
+  "trust-context": "text/plain"
+});
+var SUPPORTING_INPUT_IDS = Object.freeze(Object.keys(SUPPORTING_MEDIA_TYPES));
+function supportingSources({ thread, priorFindings, trustContext }) {
+  return Object.freeze({ thread, "prior-findings": priorFindings, "trust-context": trustContext });
+}
+
 // src/render.mjs
 import { fileURLToPath as fileURLToPath2 } from "node:url";
 import path11 from "node:path";
@@ -13355,7 +13380,6 @@ function linkRevision({ flags, parsedOrigin, partyRoot, runsStoreRoot, repoRoot,
     files: delta.mode === "narrow" ? delta.files : []
   };
 }
-var SUPPORTING_MEDIA_TYPES = Object.freeze({ thread: "application/json", "prior-findings": "application/json", "trust-context": "text/plain" });
 function supportingComponentsFor(record, sources) {
   return record.build.inputs.supporting.flatMap(({ id, required }) => {
     const content = sources[id];
@@ -13490,7 +13514,7 @@ function cmdPartyForm(flags) {
     const componentId = slugFromFileName(fileName);
     const narrow = link?.revision.mode === "narrow";
     const priorFindingsContent = link !== null ? priorFindingsComponentContent(link.revision.rows) : void 0;
-    const laneSources = { thread: threadContent, "prior-findings": priorFindingsContent, "trust-context": trustContext };
+    const laneSources = supportingSources({ thread: threadContent, priorFindings: priorFindingsContent, trustContext });
     const laneRecords = [];
     for (const lane of roster.fielded) {
       const record = classes().byKey[lane.classKey];
@@ -13783,15 +13807,10 @@ function loadPartyRecord(paths, partyRunId, partyRoot) {
   }
   return record;
 }
-function readLaneEvidence(evidencePath, { classKey, runId }) {
+function readLaneEvidence(evidencePath, { laneRecord, runId }) {
   const evidence = readJsonFile(evidencePath, "CLI_PARTY_LANE_EVIDENCE_UNREADABLE");
-  const expected = classes().byKey[classKey]?.shape.evidenceContractId;
-  if (expected === void 0) {
-    throw new CliError(
-      "CLI_PARTY_LANE_EVIDENCE_INVALID",
-      `lane "${classKey}" (run ${runId}) has no evidence contract registered`
-    );
-  }
+  const expected = laneRecord.shape.evidenceContractId;
+  const classKey = laneRecord.classKey;
   const contractId = typeof evidence?.contractId === "string" && canonicalContractId(evidence.contractId) === expected ? evidence.contractId : expected;
   const { valid, issues } = validateContract(contractId, evidence);
   if (!valid) {
@@ -13842,7 +13861,7 @@ function collectLanes(record, runsStoreRoot) {
     const executionStatus = status === "gap" || !hasResult ? "incomplete" : "complete";
     const result = executionStatus === "complete" ? readJsonFile(lanePaths.result, "CLI_PARTY_LANE_RESULT_UNREADABLE") : null;
     resultsByRunId[laneRun.runId] = result;
-    evidenceByClassKey[laneRun.classKey] = result !== null && existsSync7(lanePaths.evidence) ? readLaneEvidence(lanePaths.evidence, laneRun) : null;
+    evidenceByClassKey[laneRun.classKey] = result !== null && existsSync7(lanePaths.evidence) ? readLaneEvidence(lanePaths.evidence, { laneRecord, runId: laneRun.runId }) : null;
     if (result === null && gap !== null) {
       laneFailureReasons[laneRun.classKey] = `${gap.stage} stage gapped: ${gap.reason}`;
     }

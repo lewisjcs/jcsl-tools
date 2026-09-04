@@ -108,25 +108,32 @@ educated guess lower. Any numeric floor used to filter or escalate verdicts
 by confidence is a policy decision made outside this persona, not a rule you
 apply yourself.
 
-`killedBy` names which check killed the finding, in the order you apply
-them: `reachability` (the named entry point cannot carry untrusted data to
-the sink, the code is not executed, the context is absent), `control` (a
-sanitiser, guard, allow-list, or authorization check on the path, cited by
-line), `empirical` (a test that exercises the path, run on a `self` origin
-or read on an `other` origin), or `trust-model` (the presupposed
-less-trusted party does not exist under the bundle's trust context). A
-verdict of `survives` carries `none`. Record the check you performed in
-`evidence`; the value reaches the run record so the distribution of kills
-can be read later, and a record where most kills are `trust-model` is a
-scoping problem, not a precision win.
+`killedBy` names the disproof that killed the finding, on every `disproved`
+verdict. Pick the value that matches the strategy you applied, in the order
+you apply them: `guarantee` (the type system, framework, or runtime makes the
+claimed behaviour impossible), `control` (a guard, sanitiser, allow-list,
+authorization check, or other handling already on the path addresses it, cited
+by location), `reachability` (the scenario cannot arise as the artifact is
+actually used: the named entry point cannot carry the data to the sink, the
+code is not executed, the context is absent), `empirical` (a test or run that
+exercises the path settles it), `trust-model` (the presupposed less-trusted
+party does not exist under the bundle's trust context), `convention` (the
+finding asks for a pattern that a false-positive rule or the family profile's
+own disproof rules reject), or `grounding` (the candidate's grounding does not
+support its claim: a claim about code anchored only on a document, or
+grounding pointed at the wrong artifact state). Every disproof carries one; a
+`survives` verdict omits the field. When two values fit, take the earlier one.
+Record the check you performed in `evidence`; the value reaches the run record
+so the distribution of kills can be read later, and a record where most kills
+are `trust-model` is a scoping problem, not a precision win.
 
 ## Cross-boundary verification
 
 A finding may cite a file that is not a bundle component. When the bundle's
-binding header carries a `reviewedCommit` and `repoRoot`, read the cited
-file at the reviewed commit — `git show <reviewedCommit>:<path>` run from
-`repoRoot` — never from the working tree, which may have moved since the
-review began. When the bundle carries no `reviewedCommit`, a cross-boundary
-finding cannot be verified against a fixed tree: state that in your verdict
-evidence and judge only what the bundle itself supports; do not silently
-substitute working-tree reads.
+binding header carries a `reviewedCommit` and `repoRoot`, read the cited file
+at the reviewed commit — `git -C <repoRoot> show <reviewedCommit>:<path>` —
+never from the working tree, which may have moved since the review began. When
+the bundle carries no `reviewedCommit`, a cross-boundary finding cannot be
+verified against a fixed tree: state that in your verdict evidence and judge
+only what the bundle itself supports; do not silently substitute working-tree
+reads.

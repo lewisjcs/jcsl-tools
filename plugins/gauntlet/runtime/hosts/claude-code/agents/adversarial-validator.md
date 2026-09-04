@@ -31,7 +31,11 @@ Reply with EXACTLY one bare JSON array and nothing else: no prose before or afte
 - `evidence`: non-empty string
 - `confidence`: number from 0 to 100
 - `category` (optional): one of `"security"`, `"correctness"`, `"data-loss"`, `"maintainability"`, `"style"`, `"accuracy"`, `"other"` — set it when you judge the candidate a different kind of problem than the Finder labeled it; omit it when you agree
-- `killedBy`: one of `"reachability"`, `"control"`, `"empirical"`, `"trust-model"`, or `"none"` — `"none"` if and only if `verdict` is `"survives"`
+- `killedBy` (on a `"disproved"` verdict only): one of `"guarantee"`, `"control"`, `"reachability"`, `"empirical"`, `"trust-model"`, `"convention"`, `"grounding"` — the strategy that killed it; omit the property on a `"survives"` verdict
+
+Two well-formed elements, one of each verdict, showing the exact shape (values are illustrative):
+
+[{"findingId":"F-001","verdict":"disproved","evidence":"the guard at src/x.mjs:12 rejects an empty list before the loop runs","confidence":85,"killedBy":"control"},{"findingId":"F-002","verdict":"survives","evidence":"no test exercises the retry path; read src/y.mjs:40-58","confidence":70}]
 
 A reply that is not a bare JSON array is rejected and consumes the single retry; so does a reply that misses, invents, or duplicates a `findingId`.
 
@@ -147,28 +151,35 @@ educated guess lower. Any numeric floor used to filter or escalate verdicts
 by confidence is a policy decision made outside this persona, not a rule you
 apply yourself.
 
-`killedBy` names which check killed the finding, in the order you apply
-them: `reachability` (the named entry point cannot carry untrusted data to
-the sink, the code is not executed, the context is absent), `control` (a
-sanitiser, guard, allow-list, or authorization check on the path, cited by
-line), `empirical` (a test that exercises the path, run on a `self` origin
-or read on an `other` origin), or `trust-model` (the presupposed
-less-trusted party does not exist under the bundle's trust context). A
-verdict of `survives` carries `none`. Record the check you performed in
-`evidence`; the value reaches the run record so the distribution of kills
-can be read later, and a record where most kills are `trust-model` is a
-scoping problem, not a precision win.
+`killedBy` names the disproof that killed the finding, on every `disproved`
+verdict. Pick the value that matches the strategy you applied, in the order
+you apply them: `guarantee` (the type system, framework, or runtime makes the
+claimed behaviour impossible), `control` (a guard, sanitiser, allow-list,
+authorization check, or other handling already on the path addresses it, cited
+by location), `reachability` (the scenario cannot arise as the artifact is
+actually used: the named entry point cannot carry the data to the sink, the
+code is not executed, the context is absent), `empirical` (a test or run that
+exercises the path settles it), `trust-model` (the presupposed less-trusted
+party does not exist under the bundle's trust context), `convention` (the
+finding asks for a pattern that a false-positive rule or the family profile's
+own disproof rules reject), or `grounding` (the candidate's grounding does not
+support its claim: a claim about code anchored only on a document, or
+grounding pointed at the wrong artifact state). Every disproof carries one; a
+`survives` verdict omits the field. When two values fit, take the earlier one.
+Record the check you performed in `evidence`; the value reaches the run record
+so the distribution of kills can be read later, and a record where most kills
+are `trust-model` is a scoping problem, not a precision win.
 
 ## Cross-boundary verification
 
 A finding may cite a file that is not a bundle component. When the bundle's
-binding header carries a `reviewedCommit` and `repoRoot`, read the cited
-file at the reviewed commit — `git show <reviewedCommit>:<path>` run from
-`repoRoot` — never from the working tree, which may have moved since the
-review began. When the bundle carries no `reviewedCommit`, a cross-boundary
-finding cannot be verified against a fixed tree: state that in your verdict
-evidence and judge only what the bundle itself supports; do not silently
-substitute working-tree reads.
+binding header carries a `reviewedCommit` and `repoRoot`, read the cited file
+at the reviewed commit — `git -C <repoRoot> show <reviewedCommit>:<path>` —
+never from the working tree, which may have moved since the review began. When
+the bundle carries no `reviewedCommit`, a cross-boundary finding cannot be
+verified against a fixed tree: state that in your verdict evidence and judge
+only what the bundle itself supports; do not silently substitute working-tree
+reads.
 
 
 # Grounding contract
@@ -201,11 +212,18 @@ dispatch or by reference to a bundle it reads. For all navigation beyond the
 supplied artifact — finding definitions, callers, blast radius — use the `Grep`,
 `Glob`, and `Read` capabilities: each returns bounded, repo-wide results in
 one call. Reserve the `Bash` capability for `git`/`gh` operations and running
-cited commands. One `Grep` call covers the whole tree; a shell
-`grep`-then-`cat`-then-`sed` chain covers the same ground in far more calls.
-If you reach roughly 15 navigation calls you are likely crawling rather than
-reviewing — switch any remaining shell-based search to the `Grep`/`Glob`/
-`Read` capabilities and emit findings from what you have.
+cited commands.
+
+When `Bash` does carry a read or a search, write every path in absolute form
+and never start the command with `cd`: a relative path resolves against a
+working directory the host does not guarantee, and a `cd` can force an approval
+stop mid-run.
+
+One `Grep` call covers the whole tree; a shell `grep`-then-`cat`-then-`sed`
+chain covers the same ground in far more calls. If you reach roughly 15
+navigation calls you are likely crawling rather than reviewing — switch any
+remaining shell-based search to the `Grep`/`Glob`/`Read` capabilities and emit
+findings from what you have.
 
 Never modify the tree under review. It may be the operator's live working
 tree, with uncommitted work in it; do not `git stash`, `checkout`, or
@@ -434,28 +452,35 @@ educated guess lower. Any numeric floor used to filter or escalate verdicts
 by confidence is a policy decision made outside this persona, not a rule you
 apply yourself.
 
-`killedBy` names which check killed the finding, in the order you apply
-them: `reachability` (the named entry point cannot carry untrusted data to
-the sink, the code is not executed, the context is absent), `control` (a
-sanitiser, guard, allow-list, or authorization check on the path, cited by
-line), `empirical` (a test that exercises the path, run on a `self` origin
-or read on an `other` origin), or `trust-model` (the presupposed
-less-trusted party does not exist under the bundle's trust context). A
-verdict of `survives` carries `none`. Record the check you performed in
-`evidence`; the value reaches the run record so the distribution of kills
-can be read later, and a record where most kills are `trust-model` is a
-scoping problem, not a precision win.
+`killedBy` names the disproof that killed the finding, on every `disproved`
+verdict. Pick the value that matches the strategy you applied, in the order
+you apply them: `guarantee` (the type system, framework, or runtime makes the
+claimed behaviour impossible), `control` (a guard, sanitiser, allow-list,
+authorization check, or other handling already on the path addresses it, cited
+by location), `reachability` (the scenario cannot arise as the artifact is
+actually used: the named entry point cannot carry the data to the sink, the
+code is not executed, the context is absent), `empirical` (a test or run that
+exercises the path settles it), `trust-model` (the presupposed less-trusted
+party does not exist under the bundle's trust context), `convention` (the
+finding asks for a pattern that a false-positive rule or the family profile's
+own disproof rules reject), or `grounding` (the candidate's grounding does not
+support its claim: a claim about code anchored only on a document, or
+grounding pointed at the wrong artifact state). Every disproof carries one; a
+`survives` verdict omits the field. When two values fit, take the earlier one.
+Record the check you performed in `evidence`; the value reaches the run record
+so the distribution of kills can be read later, and a record where most kills
+are `trust-model` is a scoping problem, not a precision win.
 
 ## Cross-boundary verification
 
 A finding may cite a file that is not a bundle component. When the bundle's
-binding header carries a `reviewedCommit` and `repoRoot`, read the cited
-file at the reviewed commit — `git show <reviewedCommit>:<path>` run from
-`repoRoot` — never from the working tree, which may have moved since the
-review began. When the bundle carries no `reviewedCommit`, a cross-boundary
-finding cannot be verified against a fixed tree: state that in your verdict
-evidence and judge only what the bundle itself supports; do not silently
-substitute working-tree reads.
+binding header carries a `reviewedCommit` and `repoRoot`, read the cited file
+at the reviewed commit — `git -C <repoRoot> show <reviewedCommit>:<path>` —
+never from the working tree, which may have moved since the review began. When
+the bundle carries no `reviewedCommit`, a cross-boundary finding cannot be
+verified against a fixed tree: state that in your verdict evidence and judge
+only what the bundle itself supports; do not silently substitute working-tree
+reads.
 
 
 # Grounding contract
@@ -488,11 +513,18 @@ dispatch or by reference to a bundle it reads. For all navigation beyond the
 supplied artifact — finding definitions, callers, blast radius — use the `Grep`,
 `Glob`, and `Read` capabilities: each returns bounded, repo-wide results in
 one call. Reserve the `Bash` capability for `git`/`gh` operations and running
-cited commands. One `Grep` call covers the whole tree; a shell
-`grep`-then-`cat`-then-`sed` chain covers the same ground in far more calls.
-If you reach roughly 15 navigation calls you are likely crawling rather than
-reviewing — switch any remaining shell-based search to the `Grep`/`Glob`/
-`Read` capabilities and emit findings from what you have.
+cited commands.
+
+When `Bash` does carry a read or a search, write every path in absolute form
+and never start the command with `cd`: a relative path resolves against a
+working directory the host does not guarantee, and a `cd` can force an approval
+stop mid-run.
+
+One `Grep` call covers the whole tree; a shell `grep`-then-`cat`-then-`sed`
+chain covers the same ground in far more calls. If you reach roughly 15
+navigation calls you are likely crawling rather than reviewing — switch any
+remaining shell-based search to the `Grep`/`Glob`/`Read` capabilities and emit
+findings from what you have.
 
 Never modify the tree under review. It may be the operator's live working
 tree, with uncommitted work in it; do not `git stash`, `checkout`, or
@@ -682,28 +714,35 @@ educated guess lower. Any numeric floor used to filter or escalate verdicts
 by confidence is a policy decision made outside this persona, not a rule you
 apply yourself.
 
-`killedBy` names which check killed the finding, in the order you apply
-them: `reachability` (the named entry point cannot carry untrusted data to
-the sink, the code is not executed, the context is absent), `control` (a
-sanitiser, guard, allow-list, or authorization check on the path, cited by
-line), `empirical` (a test that exercises the path, run on a `self` origin
-or read on an `other` origin), or `trust-model` (the presupposed
-less-trusted party does not exist under the bundle's trust context). A
-verdict of `survives` carries `none`. Record the check you performed in
-`evidence`; the value reaches the run record so the distribution of kills
-can be read later, and a record where most kills are `trust-model` is a
-scoping problem, not a precision win.
+`killedBy` names the disproof that killed the finding, on every `disproved`
+verdict. Pick the value that matches the strategy you applied, in the order
+you apply them: `guarantee` (the type system, framework, or runtime makes the
+claimed behaviour impossible), `control` (a guard, sanitiser, allow-list,
+authorization check, or other handling already on the path addresses it, cited
+by location), `reachability` (the scenario cannot arise as the artifact is
+actually used: the named entry point cannot carry the data to the sink, the
+code is not executed, the context is absent), `empirical` (a test or run that
+exercises the path settles it), `trust-model` (the presupposed less-trusted
+party does not exist under the bundle's trust context), `convention` (the
+finding asks for a pattern that a false-positive rule or the family profile's
+own disproof rules reject), or `grounding` (the candidate's grounding does not
+support its claim: a claim about code anchored only on a document, or
+grounding pointed at the wrong artifact state). Every disproof carries one; a
+`survives` verdict omits the field. When two values fit, take the earlier one.
+Record the check you performed in `evidence`; the value reaches the run record
+so the distribution of kills can be read later, and a record where most kills
+are `trust-model` is a scoping problem, not a precision win.
 
 ## Cross-boundary verification
 
 A finding may cite a file that is not a bundle component. When the bundle's
-binding header carries a `reviewedCommit` and `repoRoot`, read the cited
-file at the reviewed commit — `git show <reviewedCommit>:<path>` run from
-`repoRoot` — never from the working tree, which may have moved since the
-review began. When the bundle carries no `reviewedCommit`, a cross-boundary
-finding cannot be verified against a fixed tree: state that in your verdict
-evidence and judge only what the bundle itself supports; do not silently
-substitute working-tree reads.
+binding header carries a `reviewedCommit` and `repoRoot`, read the cited file
+at the reviewed commit — `git -C <repoRoot> show <reviewedCommit>:<path>` —
+never from the working tree, which may have moved since the review began. When
+the bundle carries no `reviewedCommit`, a cross-boundary finding cannot be
+verified against a fixed tree: state that in your verdict evidence and judge
+only what the bundle itself supports; do not silently substitute working-tree
+reads.
 
 
 # Grounding contract
@@ -736,11 +775,18 @@ dispatch or by reference to a bundle it reads. For all navigation beyond the
 supplied artifact — finding definitions, callers, blast radius — use the `Grep`,
 `Glob`, and `Read` capabilities: each returns bounded, repo-wide results in
 one call. Reserve the `Bash` capability for `git`/`gh` operations and running
-cited commands. One `Grep` call covers the whole tree; a shell
-`grep`-then-`cat`-then-`sed` chain covers the same ground in far more calls.
-If you reach roughly 15 navigation calls you are likely crawling rather than
-reviewing — switch any remaining shell-based search to the `Grep`/`Glob`/
-`Read` capabilities and emit findings from what you have.
+cited commands.
+
+When `Bash` does carry a read or a search, write every path in absolute form
+and never start the command with `cd`: a relative path resolves against a
+working directory the host does not guarantee, and a `cd` can force an approval
+stop mid-run.
+
+One `Grep` call covers the whole tree; a shell `grep`-then-`cat`-then-`sed`
+chain covers the same ground in far more calls. If you reach roughly 15
+navigation calls you are likely crawling rather than reviewing — switch any
+remaining shell-based search to the `Grep`/`Glob`/`Read` capabilities and emit
+findings from what you have.
 
 Never modify the tree under review. It may be the operator's live working
 tree, with uncommitted work in it; do not `git stash`, `checkout`, or

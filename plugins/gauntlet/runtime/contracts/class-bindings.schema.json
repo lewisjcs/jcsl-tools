@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "jcsl:gauntlet-class-bindings@1",
+  "title": "Class bindings file (bindings/<host>.json)",
+  "description": "Per-host model and agent bindings, keyed by role id, plus the host's runtime invocation and status. Role ids must be declared by a loaded Class; the loader refuses one that is not.",
+  "type": "object",
+  "required": ["runtimeInvocation", "status"],
+  "properties": {
+    "runtimeInvocation": { "type": "string", "minLength": 1 },
+    "status": { "type": "string", "minLength": 1 }
+  },
+  "patternProperties": {
+    "^jcsl:gauntlet:[a-z][a-z0-9-]*$": {
+      "type": "object",
+      "required": ["model", "agent"],
+      "properties": {
+        "model": { "type": "string", "minLength": 1 },
+        "agent": { "type": "string", "minLength": 1 },
+        "reasoningEffort": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
