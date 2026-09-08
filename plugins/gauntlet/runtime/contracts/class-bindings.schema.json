@@ -6,7 +6,11 @@
   "type": "object",
   "required": ["runtimeInvocation", "status"],
   "properties": {
-    "runtimeInvocation": { "type": "string", "minLength": 1 },
+    "runtimeInvocation": {
+      "type": "string",
+      "pattern": "^node \"\\$\\{[A-Z_][A-Z0-9_]*(:-[A-Za-z0-9_./$~-]*)?\\}[A-Za-z0-9_./-]+\"$",
+      "$comment": "Interpolated verbatim into generated host skills as the command that runs the runtime: one environment expansion (with an optional plain-text default) followed by a plain path, double-quoted, nothing else."
+    },
     "status": { "type": "string", "minLength": 1 }
   },
   "patternProperties": {

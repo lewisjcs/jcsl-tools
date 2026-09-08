@@ -1,0 +1,21 @@
+{
+  "kind": "class-build",
+  "classId": "jcsl:gauntlet:threat-review",
+  "classKey": "threat-review",
+  "shape": "opposed",
+  "roles": {
+    "finder": { "roleId": "jcsl:gauntlet:threat-finder", "persona": "canon/threat-finder-persona.md", "modelRequirement": "independent-judgment" },
+    "validator": { "roleId": "jcsl:gauntlet:threat-validator", "persona": "canon/threat-validator-persona.md", "modelRequirement": "adversarial-adjudication" }
+  },
+  "families": ["code-diff"],
+  "references": ["references/threat-disproof-playbook.md", "references/code-quality-standards.md"],
+  "inputs": { "primary": "artifact", "supporting": [{ "id": "trust-context", "required": true }] },
+  "requires": [],
+  "descriptions": {
+    "skill": "Runtime-driven threat review of a code diff (Find, Validate, Adjudicate under a deterministic runtime): traces what the change newly trusts, from entry point to sink, and reports paths a named less-trusted party could exploit. Use when reviewing a code change for exploitable paths, threat-modelling a diff, or checking whether a change widens what the code trusts. Fielded by the gauntlet on a security signal; run it directly to force the lane. Trigger phrases include \"threat review\", \"security review\", \"is this safe\", \"any security risks\", \"how could this be exploited\", \"secret leak\", \"auth bypass\". Requires Node >= 22.",
+    "roles": {
+      "finder": "Tracer that follows what a code diff newly trusts, from where data or authority enters to where the code acts on it, and reports each exploitable path as a finding. Runs only inside the threat-review skill's runtime-driven handshake, in a fresh isolated dispatch — never invoked standalone.",
+      "validator": "Kill-mandate skeptic that tries to disprove each threat-finder candidate through four ordered checks (reachability, a missed control, an empirical check, the trust model) and records which check killed it. Runs only inside the threat-review skill's runtime-driven handshake, in a fresh isolated dispatch — never invoked standalone."
+    }
+  }
+}

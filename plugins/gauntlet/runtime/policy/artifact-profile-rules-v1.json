@@ -1,6 +1,6 @@
 {
   "kind": "artifact-profile-rules",
-  "version": "1.2.0",
+  "version": "1.3.3",
   "calibrationStatus": "uncalibrated",
   "detection": {
     "planPathSuffixes": [
@@ -118,15 +118,15 @@
   "securitySignals": [
     {
       "id": "auth-surface",
-      "pathPattern": "(auth|session|token|oauth|jwt|password|credential)"
+      "pathPattern": "(?i)(^|[/_.-])(auth(?!or(?:s|ed|ing|ship)?(?![a-z]))|authn|authz|session|token|oauth|jwt|password|credential|permission|acl|sandbox)"
     },
     {
       "id": "crypto",
-      "pathPattern": "(crypt|cipher|kms|signing)"
+      "pathPattern": "(?i)(^|[/_.-])(crypt|cipher|kms|signing)"
     },
     {
       "id": "secrets",
-      "addedLinePattern": "(?i)(api[_-]?key|secret[_-]?key|BEGIN [A-Z ]*PRIVATE KEY)"
+      "addedLinePattern": "(?i)((api[_-]?key|secret[_-]?key|access[_-]?token|private[_-]?key|password|token)\\s*[:=]\\s*['\"][A-Za-z0-9_\\-/+=.]{12,}['\"]|\\b(ghp|gho|ghs|ghu)_[A-Za-z0-9]{30,}|\\bsk-[A-Za-z0-9_-]{20,}|\\bAKIA[0-9A-Z]{16}\\b|BEGIN [A-Z ]*PRIVATE KEY)"
     },
     {
       "id": "dependency-manifest",
@@ -135,7 +135,8 @@
         "Cargo.toml",
         "requirements.txt",
         "Gemfile",
-        "pom.xml"
+        "pom.xml",
+        "pyproject.toml"
       ]
     },
     {
@@ -155,15 +156,44 @@
     },
     {
       "id": "pr-text",
-      "textPattern": "(?i)\\b(security|vulnerability|cve|auth|permission|secret|sanitis(e|ation)|fail-closed|guard)\\b"
+      "textPattern": "(?i)\\b(security|vulnerab(le|ility)|cve-?\\d*|auth(?!or(?:s|ed|ing|ship)?\\b)[a-z]*|permission[s]?|secret[s]?|sanitis(e|ation)|sanitiz(e|ation)|fail-?closed|fail-?open|guard[s]?|inject(ion)?|xss|csrf|ssrf|traversal|privilege)\\b"
     },
     {
-      "id": "input-parsing",
-      "addedLinePattern": "(JSON\\.parse|yaml\\.load|pickle\\.load|deserialize|unmarshal)"
+      "id": "unsafe-deserialise",
+      "addedLinePattern": "(yaml\\.load\\(|yaml\\.unsafe_load\\(|pickle\\.loads?\\(|marshal\\.loads?\\(|\\bunserialize\\(|\\beval\\(|new Function\\(|vm\\.runIn|ObjectInputStream|readObject\\()"
     },
     {
       "id": "network-surface",
-      "addedLinePattern": "(createServer|\\.listen\\(|app\\.(get|post|put|delete)\\(|http\\.request)"
+      "addedLinePattern": "(createServer\\(|\\.listen\\(\\s*[^)\\s]|app\\.(get|post|put|delete|use)\\(\\s*(['\"]/|[A-Za-z_$])|http\\.request\\(|new WebSocket\\()"
+    },
+    {
+      "id": "process-exec",
+      "addedLinePattern": "(child_process|\\bexecSync\\(|\\bexecFileSync\\(|\\bspawnSync\\(|\\bspawn\\(|subprocess\\.(run|Popen|call|check_output|check_call)\\(|os\\.system\\(|os\\.popen\\(|\\bexec\\.Command\\()"
+    },
+    {
+      "id": "download-execute",
+      "addedLinePattern": "((curl|wget)[^|\\n]*\\|\\s*(sudo\\s+)?(sh|bash|zsh|python[0-9.]*|node)\\b|Invoke-WebRequest[^|\\n]*\\|\\s*iex|npx\\s+[^\\s]+@latest)"
+    },
+    {
+      "id": "ci-workflow",
+      "pathPattern": "(^|/)(\\.github/workflows/[^/]+\\.ya?ml|\\.gitlab-ci\\.ya?ml|\\.circleci/[^/]+|Jenkinsfile|\\.buildkite/[^/]+|bitbucket-pipelines\\.ya?ml)$"
+    },
+    {
+      "id": "container",
+      "pathPattern": "(^|/)(Dockerfile[^/]*|docker-compose[^/]*\\.ya?ml|compose\\.ya?ml|Containerfile)$"
+    },
+    {
+      "id": "agent-config",
+      "basenames": [".mcp.json", "plugin.json", "marketplace.json", "settings.json", "settings.local.json", "hooks.json"],
+      "pathPattern": "(^|/)hooks/[^/]+\\.(sh|bash|mjs|js|py)$"
+    },
+    {
+      "id": "agent-grant",
+      "addedLinePattern": "(\\b(tools|allowed-tools)\\s*:|\"(allowedTools|permissions|allow|deny|additionalDirectories|hooks)\"\\s*:|dangerouslyDisableSandbox|--dangerously-skip-permissions|bypassPermissions)"
+    },
+    {
+      "id": "forge-write",
+      "addedLinePattern": "(gh\\s+(pr|issue)\\s+(comment|review|create|merge|close|edit)|gh\\s+api[^\\n]*-X\\s*['\"]?(POST|PUT|PATCH|DELETE)|['\"]-X['\"],\\s*['\"](POST|PUT|PATCH|DELETE)['\"]|octokit\\.(rest\\.)?(pulls|issues|repos)\\.(create|update|delete|merge))"
     }
   ],
   "goLiveSignalIds": [

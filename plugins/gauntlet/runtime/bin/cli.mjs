@@ -7443,7 +7443,7 @@ var require__ = __commonJS({
 });
 
 // src/cli.mjs
-import { existsSync as existsSync7, readFileSync as readFileSync16, realpathSync as realpathSync3, statSync as statSync3 } from "node:fs";
+import { existsSync as existsSync8, readFileSync as readFileSync17, realpathSync as realpathSync3, statSync as statSync3 } from "node:fs";
 import { execFileSync as execFileSync4 } from "node:child_process";
 import { homedir } from "node:os";
 import path12 from "node:path";
@@ -8330,7 +8330,8 @@ var SCHEMA_FILE_BY_CONTRACT_ID2 = {
   "jcsl:verify-run-evidence@1": "verify-run-evidence.schema.json",
   "jcsl:gauntlet-class-build@1": "class-build.schema.json",
   "jcsl:gauntlet-class-bindings@1": "class-bindings.schema.json",
-  "jcsl:gauntlet-lane-link@1": "lane-link.schema.json"
+  "jcsl:gauntlet-lane-link@1": "lane-link.schema.json",
+  "jcsl:party-escape@1": "party-escape.schema.json"
 };
 var SHA256_HEX_PATTERN2 = /^[0-9a-f]{64}$/;
 var ajv2 = new import__2.default({ allErrors: true, strictTypes: false });
@@ -10094,6 +10095,7 @@ import { existsSync, mkdirSync as mkdirSync2, readFileSync as readFileSync9 } fr
 import path6 from "node:path";
 var ORIGIN_CONTRACT_ID = "jcsl:party-origin@1";
 var AUTHORSHIPS = Object.freeze(["self", "other"]);
+var VISIBILITIES = Object.freeze(["public", "private"]);
 var GITHUB_PR_URL = /^https:\/\/github\.com\/([A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?\/(?!\.\.?(?:\/|$))[A-Za-z0-9_.-]+)\/pull\/([1-9][0-9]*)$/;
 var FULL_SHA = /^[0-9a-f]{40}$/;
 function partySidecarPaths(paths) {
@@ -10101,7 +10103,8 @@ function partySidecarPaths(paths) {
     origin: path6.join(paths.dir, "origin.json"),
     post: path6.join(paths.dir, "post.json"),
     prComment: path6.join(paths.dir, "pr-comment.md"),
-    revision: path6.join(paths.dir, "revision.json")
+    revision: path6.join(paths.dir, "revision.json"),
+    escapes: path6.join(paths.dir, "escapes.json")
   });
 }
 function parseOriginUrl(url) {
@@ -10111,7 +10114,7 @@ function parseOriginUrl(url) {
   }
   return { provider: "github", repo: match[1], number: Number(match[2]), url };
 }
-function validateOriginInputs({ url, baseRef, baseSha, author }) {
+function validateOriginInputs({ url, baseRef, baseSha, author, visibility }) {
   const parsed = parseOriginUrl(url);
   if (typeof baseRef !== "string" || baseRef.length === 0) {
     throw new CliError("CLI_ORIGIN_BASE_REF_INVALID", "--base-ref must be a non-empty branch name");
@@ -10122,14 +10125,20 @@ function validateOriginInputs({ url, baseRef, baseSha, author }) {
   if (!AUTHORSHIPS.includes(author)) {
     throw new CliError("CLI_ORIGIN_AUTHOR_INVALID", `--author must be one of ${AUTHORSHIPS.join(", ")}; got "${author}"`);
   }
+  if (visibility !== void 0 && !VISIBILITIES.includes(visibility)) {
+    throw new CliError("CLI_ORIGIN_VISIBILITY_INVALID", `--visibility must be one of ${VISIBILITIES.join(", ")}; got "${visibility}"`);
+  }
   return parsed;
 }
-function buildOrigin({ url, baseRef, baseSha, headSha, author }) {
-  const parsed = validateOriginInputs({ url, baseRef, baseSha, author });
+function buildOrigin({ url, baseRef, baseSha, headSha, author, visibility }) {
+  const parsed = validateOriginInputs({ url, baseRef, baseSha, author, visibility });
   if (!FULL_SHA.test(headSha)) {
     throw new CliError("CLI_ORIGIN_SHA_INVALID", `head sha must be a full 40-hex commit sha; got "${headSha}"`);
   }
-  return Object.freeze({ contractId: ORIGIN_CONTRACT_ID, ...parsed, baseRef, baseSha, headSha, author });
+  return Object.freeze({ contractId: ORIGIN_CONTRACT_ID, ...parsed, baseRef, baseSha, headSha, author, ...visibility !== void 0 ? { visibility } : {} });
+}
+function isPublicOrigin(origin) {
+  return origin !== null && origin.visibility !== "private";
 }
 function writeOrigin(paths, origin) {
   mkdirSync2(paths.dir, { recursive: true });
@@ -10492,7 +10501,9 @@ var opposedShape = Object.freeze({
     },
     isBlocker: isAdversarialBlocker,
     verdictSection: false,
-    belowTheLineCount: (result) => (result.belowTheLine ?? []).length
+    belowTheLineCount: (result) => (result.belowTheLine ?? []).length,
+    // The finding contract requires `category`; a row of this shape missing it lost the field, it never lacked one.
+    findingsCarryCategory: true
   },
   projection: Object.freeze({
     activityNoun: "review",
@@ -10670,7 +10681,9 @@ var auditShape = Object.freeze({
     compare,
     isBlocker: () => false,
     verdictSection: false,
-    belowTheLineCount: () => 0
+    belowTheLineCount: () => 0,
+    // Audit findings never carry `category`; a missing field here is structural, not lost.
+    findingsCarryCategory: false
   },
   projection: Object.freeze({
     activityNoun: "audit",
@@ -10856,7 +10869,9 @@ var verifyShape = Object.freeze({
     compare: () => () => 0,
     isBlocker: () => false,
     verdictSection: true,
-    belowTheLineCount: () => 0
+    belowTheLineCount: () => 0,
+    // The verify shape emits no finding rows at all; there is no category to carry or lose.
+    findingsCarryCategory: false
   },
   projection: Object.freeze({
     activityNoun: "review",
@@ -12392,6 +12407,7 @@ function rowsForLane(partyRunId, laneRun, result, config, record) {
       tier,
       lane: laneRun.classKey,
       sublens,
+      category: finding.category,
       claim: finding.claim,
       recommendation: finding.recommendation,
       file: finding.file,
@@ -12425,6 +12441,13 @@ function markerFor(trigger, profile) {
   if (when === void 0) return void 0;
   const calibration = SIGNAL_CALIBRATION[when](profile);
   return calibration === "calibrated" ? void 0 : calibration;
+}
+function countsFor(findings, revision) {
+  const counts = { blockers: 0, concerns: 0, nits: 0 };
+  for (const f of findings) {
+    if (revision === null || OPEN_STATUSES.has(f.status)) counts[`${f.tier}s`] += 1;
+  }
+  return counts;
 }
 function buildReportModel({
   classes: classes2,
@@ -12504,10 +12527,7 @@ function buildReportModel({
   }
   fresh.sort((a, b) => TIER_ORDER[a.tier] - TIER_ORDER[b.tier] || Number(b.laneFailure) - Number(a.laneFailure));
   const findings = [...carried, ...fresh];
-  const counts = { blockers: 0, concerns: 0, nits: 0 };
-  for (const f of findings) {
-    if (revision === null || OPEN_STATUSES.has(f.status)) counts[`${f.tier}s`] += 1;
-  }
+  const counts = countsFor(findings, revision);
   const laneSections = record.laneRuns.map((laneRun) => {
     const classRecord = recordFor(laneRun.classKey);
     const result = resultByClassKey.get(laneRun.classKey) ?? null;
@@ -12557,6 +12577,14 @@ function buildReportModel({
     usage: usageFor(record, evidenceByClassKey),
     config
   });
+}
+function holdSecurityFindings(model, { origin, includeSecurity, classes: classes2 }) {
+  if (includeSecurity || !isPublicOrigin(origin)) return { model, held: { security: 0 } };
+  const kept = model.findings.filter((f) => f.category !== "security" && !(f.category === void 0 && classes2.byKey[f.lane]?.shape.report.findingsCarryCategory === true));
+  const security = model.findings.length - kept.length;
+  if (security === 0) return { model, held: { security: 0 } };
+  const revision = model.priorRef === null ? null : {};
+  return { model: { ...model, findings: kept, counts: countsFor(kept, revision), held: { security } }, held: { security } };
 }
 var TIER_GLYPH = Object.freeze({ blocker: "\u{1F6D1}", concern: "\u26A0\uFE0F", nit: "\u{1F4A1}" });
 var STATUS_CELL = Object.freeze({
@@ -12631,7 +12659,7 @@ function machineBlock(model) {
     revision: model.revision,
     ...model.mode !== null ? { mode: model.mode } : {},
     ...isRevision ? { prior_ref: model.priorRef } : {},
-    verdict: { ...model.counts },
+    verdict: { ...model.counts, ...model.held !== void 0 ? { held: model.held } : {} },
     findings
   };
   return ["<details>", "<summary>\u{1F916} Machine-readable findings (for agents)</summary>", "", "````json", JSON.stringify(payload, null, 2), "````", "</details>"].join("\n");
@@ -12657,10 +12685,15 @@ function renderPrComment(model) {
     `| \u{1F4A1} Nits | ${model.counts.nits} |`,
     `| \u{1F9EA} Lanes | ${lanesCell(model.roster)} |`
   );
+  if (model.held !== void 0 && model.held.security > 0) {
+    const n = model.held.security;
+    out.push("", `\u{1F512} ${n} security finding${n === 1 ? "" : "s"} held from this comment: the repository is public or its visibility is unrecorded. They are in the report file; pass --include-security to disclose them here.`);
+  }
   const blockers = model.findings.filter((f) => f.tier === "blocker" && (!isRevision || OPEN_STATUSES.has(f.status)));
   for (const b of blockers) out.push("", blockerCallout(b));
   if (model.findings.length === 0) {
-    out.push("", "Cleared all lanes \u2014 no findings.");
+    const held = model.held !== void 0 && model.held.security > 0;
+    out.push("", held ? "No findings outside the held set." : "Cleared all lanes \u2014 no findings.");
   } else {
     const header = isRevision ? "| | Lens | Finding | Location | Status |" : "| | Lens | Finding | Location |";
     const sep3 = isRevision ? "|---|---|---|---|---|" : "|---|---|---|---|";
@@ -12831,6 +12864,7 @@ function carriedRowsFrom(model) {
     ...f.line !== void 0 ? { line: f.line } : {},
     ...f.location !== void 0 ? { location: f.location } : {},
     ...f.confidence !== void 0 ? { confidence: f.confidence } : {},
+    ...f.category !== void 0 ? { category: f.category } : {},
     status: CLOSED.has(f.status) ? f.status : "pending",
     reason: CLOSED.has(f.status) ? f.reason : null
   }));
@@ -12903,6 +12937,48 @@ function readRevision(paths) {
     throw new CliError("CLI_REVISION_INVALID", `"${filePath}" failed ${REVISION_CONTRACT_ID} validation: ${JSON.stringify(issues)}`);
   }
   return parsed;
+}
+
+// src/party-escape.mjs
+import { existsSync as existsSync7, readFileSync as readFileSync16 } from "node:fs";
+var ESCAPE_CONTRACT_ID = "jcsl:party-escape@1";
+var FINDING_CATEGORIES = Object.freeze(["security", "correctness", "data-loss", "maintainability", "style", "accuracy", "other"]);
+var EscapeError = class extends Error {
+  constructor(code, message) {
+    super(message);
+    this.name = "EscapeError";
+    this.code = code;
+  }
+};
+var LANE_KEY = /^[a-z][a-z0-9-]*$/;
+function validateEscapeEntry({ lane, category, note, ref }) {
+  if (typeof lane !== "string" || !LANE_KEY.test(lane)) throw new EscapeError("ESCAPE_LANE_INVALID", `lane must be a Class key (${LANE_KEY}); got ${JSON.stringify(lane)}`);
+  if (!FINDING_CATEGORIES.includes(category)) throw new EscapeError("ESCAPE_CATEGORY_INVALID", `category must be one of ${FINDING_CATEGORIES.join(", ")}; got ${JSON.stringify(category)}`);
+  if (typeof note !== "string" || note.trim().length === 0) throw new EscapeError("ESCAPE_NOTE_INVALID", "note must be a non-empty string");
+  if (ref !== void 0 && (typeof ref !== "string" || ref.length === 0)) throw new EscapeError("ESCAPE_REF_INVALID", "ref, when given, must be a non-empty string");
+  return { lane, category, note: note.trim(), ...ref !== void 0 ? { ref } : {} };
+}
+function readEscapes(sidecarPath) {
+  if (!existsSync7(sidecarPath)) return [];
+  let parsed;
+  try {
+    parsed = JSON.parse(readFileSync16(sidecarPath, "utf8"));
+  } catch (err) {
+    throw new EscapeError("ESCAPE_SIDECAR_MALFORMED", `failed to read "${sidecarPath}": ${err.message}`);
+  }
+  if (!Array.isArray(parsed)) throw new EscapeError("ESCAPE_SIDECAR_MALFORMED", `expected "${sidecarPath}" to hold an array of escape entries`);
+  parsed.forEach((entry, index) => {
+    const { valid, issues } = validateContract(ESCAPE_CONTRACT_ID, entry);
+    if (!valid) throw new EscapeError("ESCAPE_SIDECAR_MALFORMED", `entry ${index} of "${sidecarPath}" failed ${ESCAPE_CONTRACT_ID}: ${JSON.stringify(issues)}`);
+  });
+  return parsed;
+}
+function appendEscape(sidecarPath, entry, nowMs) {
+  const stamped = { contractId: ESCAPE_CONTRACT_ID, at: new Date(nowMs).toISOString(), ...validateEscapeEntry(entry) };
+  const existing = readEscapes(sidecarPath);
+  writeFileAtomic(sidecarPath, `${JSON.stringify([...existing, stamped], null, 2)}
+`);
+  return stamped;
 }
 
 // src/supporting-inputs.mjs
@@ -13010,9 +13086,9 @@ function classes() {
   }
   return loadedClasses;
 }
-function recordForKey(classKey) {
+function recordForKey(classKey, flagName = "--class") {
   const record = classes().byKey[classKey];
-  if (!record) throw new CliError("CLI_INVALID_CLASS", `--class must be one of ${Object.keys(classes().byKey).join(", ")}; got "${classKey}"`);
+  if (!record) throw new CliError("CLI_INVALID_CLASS", `${flagName} must be one of ${Object.keys(classes().byKey).join(", ")}; got "${classKey}"`);
   return record;
 }
 function recordForClassId(classId) {
@@ -13035,7 +13111,7 @@ function receiptMeasurement(usage, { fields, fallback }) {
 function readJsonFile(filePath, readFailedCode) {
   let raw;
   try {
-    raw = readFileSync16(filePath, "utf8");
+    raw = readFileSync17(filePath, "utf8");
   } catch (err) {
     throw new CliError(readFailedCode, `failed to read "${filePath}": ${err.message}`);
   }
@@ -13065,7 +13141,7 @@ function loadStateFile(statePath) {
   return { wrapper, runtimeState: wrapper.runtimeState, action };
 }
 function readRepoFile(relPath) {
-  return readFileSync16(path12.join(GAUNTLET_REPO_ROOT, relPath), "utf8");
+  return readFileSync17(path12.join(GAUNTLET_REPO_ROOT, relPath), "utf8");
 }
 function computeRoleSourceHash(personaRelPath, lensRelPath) {
   const persona = readRepoFile(personaRelPath);
@@ -13102,7 +13178,7 @@ function runDirForFile(filePath) {
   if (!RUN_ID_PATTERN.test(path12.basename(dir))) {
     return null;
   }
-  return existsSync7(path12.join(dir, "bundle.json")) ? dir : null;
+  return existsSync8(path12.join(dir, "bundle.json")) ? dir : null;
 }
 function appendEvents(runDir, entries) {
   try {
@@ -13250,7 +13326,7 @@ function cmdBundle(flags) {
   }
   let content;
   try {
-    content = readFileSync16(flags.primary, "utf8");
+    content = readFileSync17(flags.primary, "utf8");
   } catch (err) {
     throw new CliError("CLI_PRIMARY_READ_FAILED", `failed to read --primary file "${flags.primary}": ${err.message}`);
   }
@@ -13311,6 +13387,7 @@ var PARTY_FORM_OPTIONAL_FLAGS = [
   "base-ref",
   "base-sha",
   "author",
+  "visibility",
   "golive-signal",
   "go-live",
   "no-go-live",
@@ -13328,7 +13405,7 @@ var PARTY_ARTIFACT_TYPES = ["code-pr", "code-local", "plan", "doc", "skill", "di
 var TRUST_CONTEXTS = ["single-user-tool", "agent-tool", "multi-caller-service"];
 function readPartyInputFile(filePath) {
   try {
-    return readFileSync16(filePath, "utf8");
+    return readFileSync17(filePath, "utf8");
   } catch (err) {
     throw new CliError("CLI_PARTY_INPUT_UNREADABLE", `failed to read "${filePath}": ${err.message}`);
   }
@@ -13448,11 +13525,15 @@ function cmdPartyForm(flags) {
   if (flags.thread !== void 0 && !hasOrigin) {
     throw new CliError("CLI_USAGE", "--thread is only valid with the origin flags (a pull-request party)");
   }
+  if (flags.visibility !== void 0 && !hasOrigin) {
+    throw new CliError("CLI_USAGE", "--visibility is only valid with the origin flags (a pull-request party)");
+  }
   const parsedOrigin = hasOrigin ? validateOriginInputs({
     url: flags["origin-url"],
     baseRef: flags["base-ref"],
     baseSha: flags["base-sha"],
-    author: flags.author
+    author: flags.author,
+    visibility: flags.visibility
   }) : null;
   const isCode = artifactType === "code-pr" || artifactType === "code-local";
   const goLiveSignals = flags["golive-signal"] ?? [];
@@ -13660,7 +13741,8 @@ function cmdPartyForm(flags) {
           baseRef: flags["base-ref"],
           baseSha: flags["base-sha"],
           headSha: pinned.sha,
-          author: flags.author
+          author: flags.author,
+          visibility: flags.visibility
         });
         writeOrigin(paths, origin);
         partyEvents.push({ kind: "origin-recorded", data: { repo: origin.repo, number: origin.number, author: origin.author } });
@@ -13735,7 +13817,7 @@ function cmdPartyForm(flags) {
   }
 }
 var PARTY_REPORT_REQUIRED_FLAGS = ["party"];
-var PARTY_REPORT_OPTIONAL_FLAGS = ["party-store", "store", "keep-worktree", "format"];
+var PARTY_REPORT_OPTIONAL_FLAGS = ["party-store", "store", "keep-worktree", "format", "include-security"];
 var PARTY_REPORT_FORMATS = ["report", "pr-comment"];
 function assertValidPartyRunId(partyRunId) {
   if (!RUN_ID_PATTERN.test(partyRunId)) {
@@ -13794,7 +13876,7 @@ function resolvePartyStores(flags) {
   }
 }
 function loadPartyRecord(paths, partyRunId, partyRoot) {
-  if (!existsSync7(paths.dir) || !existsSync7(paths.record)) {
+  if (!existsSync8(paths.dir) || !existsSync8(paths.record)) {
     throw new CliError("CLI_PARTY_RUN_NOT_FOUND", `no party run "${partyRunId}" under party store root "${partyRoot}"`);
   }
   const record = readJsonFile(paths.record, "CLI_PARTY_RECORD_UNREADABLE");
@@ -13832,7 +13914,7 @@ function collectLanes(record, runsStoreRoot) {
     if (laneRecord === void 0) throw unknownLaneClass(laneRun.classKey);
     assertValidRunId(laneRun.runId);
     const lanePaths = runPaths(runsStoreRoot, laneRun.runId);
-    if (!existsSync7(lanePaths.dir)) {
+    if (!existsSync8(lanePaths.dir)) {
       throw new CliError("CLI_PARTY_LANE_MISSING", `lane "${laneRun.classKey}" run directory is gone: no "${lanePaths.dir}"`);
     }
     const bundle = readJsonFile(lanePaths.bundle, "CLI_PARTY_LANE_BUNDLE_UNREADABLE");
@@ -13845,7 +13927,7 @@ function collectLanes(record, runsStoreRoot) {
     let terminal = false;
     let status = null;
     let gap = null;
-    if (existsSync7(lanePaths.state)) {
+    if (existsSync8(lanePaths.state)) {
       const { runtimeState, action } = loadStateFile(lanePaths.state);
       terminal = action.terminal === true;
       status = runtimeState.status;
@@ -13857,11 +13939,11 @@ function collectLanes(record, runsStoreRoot) {
         `lane "${laneRun.classKey}" run "${laneRun.runId}" has not reached a terminal status yet; finish it or let it gap first`
       );
     }
-    const hasResult = existsSync7(lanePaths.result);
+    const hasResult = existsSync8(lanePaths.result);
     const executionStatus = status === "gap" || !hasResult ? "incomplete" : "complete";
     const result = executionStatus === "complete" ? readJsonFile(lanePaths.result, "CLI_PARTY_LANE_RESULT_UNREADABLE") : null;
     resultsByRunId[laneRun.runId] = result;
-    evidenceByClassKey[laneRun.classKey] = result !== null && existsSync7(lanePaths.evidence) ? readLaneEvidence(lanePaths.evidence, { laneRecord, runId: laneRun.runId }) : null;
+    evidenceByClassKey[laneRun.classKey] = result !== null && existsSync8(lanePaths.evidence) ? readLaneEvidence(lanePaths.evidence, { laneRecord, runId: laneRun.runId }) : null;
     if (result === null && gap !== null) {
       laneFailureReasons[laneRun.classKey] = `${gap.stage} stage gapped: ${gap.reason}`;
     }
@@ -13884,19 +13966,21 @@ function collectLanes(record, runsStoreRoot) {
   }
   return { laneRuns, costLanes, resultsByRunId, laneFailureReasons, evidenceByClassKey };
 }
-function renderCommentFor({ record, paths, runsStoreRoot }) {
+function renderCommentFor({ record, paths, runsStoreRoot, includeSecurity }) {
   const { resultsByRunId, laneFailureReasons, evidenceByClassKey } = collectLanes(record, runsStoreRoot);
   const laneResults = laneResultsFor(record, resultsByRunId);
-  const model = buildReportModel({
+  const origin = readOrigin(paths);
+  const fullModel = buildReportModel({
     classes: classes(),
     record,
     laneResults,
     laneFailureReasons,
-    origin: readOrigin(paths),
+    origin,
     evidenceByClassKey,
     revision: readRevision(paths)
   });
-  return { model, markdown: renderPrComment(model) };
+  const { model, held } = holdSecurityFindings(fullModel, { origin, includeSecurity, classes: classes() });
+  return { model, held, markdown: renderPrComment(model) };
 }
 function cmdPartyReport(flags) {
   requireFlags(flags, PARTY_REPORT_REQUIRED_FLAGS);
@@ -13909,6 +13993,9 @@ function cmdPartyReport(flags) {
   const { partyRoot, runsStoreRoot } = resolvePartyStores(flags);
   const paths = partyPaths(partyRoot, flags.party);
   const record = loadPartyRecord(paths, flags.party, partyRoot);
+  if (flags["include-security"] === true && format !== "pr-comment") {
+    throw new CliError("CLI_USAGE", "--include-security applies to --format pr-comment only");
+  }
   if (format === "pr-comment") {
     if (flags["keep-worktree"]) {
       throw new CliError("CLI_USAGE", "--keep-worktree applies to --format report only");
@@ -14014,7 +14101,7 @@ function cmdPartyComment(flags, { record, paths, runsStoreRoot }) {
     );
   }
   try {
-    const { model, markdown } = renderCommentFor({ record, paths, runsStoreRoot });
+    const { model, held, markdown } = renderCommentFor({ record, paths, runsStoreRoot, includeSecurity: flags["include-security"] === true });
     const commentPath = partySidecarPaths(paths).prComment;
     writeFileAtomic(commentPath, markdown);
     process.stdout.write(`${JSON.stringify({
@@ -14022,7 +14109,8 @@ function cmdPartyComment(flags, { record, paths, runsStoreRoot }) {
       commentPath,
       ref: model.ref,
       verdict: model.counts,
-      hasOrigin: model.origin !== null
+      hasOrigin: model.origin !== null,
+      held
     })}
 `);
   } catch (err) {
@@ -14033,7 +14121,7 @@ function cmdPartyComment(flags, { record, paths, runsStoreRoot }) {
   }
 }
 var POST_REQUIRED_FLAGS = ["party"];
-var POST_OPTIONAL_FLAGS = ["party-store", "store"];
+var POST_OPTIONAL_FLAGS = ["party-store", "store", "include-security"];
 function cmdPost(flags) {
   requireFlags(flags, POST_REQUIRED_FLAGS);
   rejectUnknownFlags(flags, [...POST_REQUIRED_FLAGS, ...POST_OPTIONAL_FLAGS]);
@@ -14051,7 +14139,7 @@ function cmdPost(flags) {
   const sidecars = partySidecarPaths(paths);
   assertNoPendingReceipt(readReceipts(sidecars.post));
   try {
-    const { model, markdown } = renderCommentFor({ record, paths, runsStoreRoot });
+    const { model, held, markdown } = renderCommentFor({ record, paths, runsStoreRoot, includeSecurity: flags["include-security"] === true });
     writeFileAtomic(sidecars.prComment, markdown);
     const outcome = postComment({
       origin,
@@ -14064,16 +14152,38 @@ function cmdPost(flags) {
       now: Date.now(),
       revisionNumber: model.priorRef === null ? null : model.revision
     });
-    process.stdout.write(`${JSON.stringify({ partyRunId: flags.party, ...outcome })}
+    process.stdout.write(`${JSON.stringify({ partyRunId: flags.party, ...outcome, held })}
 `);
   } catch (err) {
     if (err instanceof PartyError) throw new CliError(err.code, err.message);
     throw err;
   }
 }
+var ESCAPE_REQUIRED_FLAGS = ["party", "lane", "category", "note"];
+var ESCAPE_OPTIONAL_FLAGS = ["ref", "party-store", "store"];
+function cmdEscape(flags) {
+  requireFlags(flags, ESCAPE_REQUIRED_FLAGS);
+  rejectUnknownFlags(flags, [...ESCAPE_REQUIRED_FLAGS, ...ESCAPE_OPTIONAL_FLAGS]);
+  assertValidPartyRunId(flags.party);
+  recordForKey(flags.lane, "--lane");
+  const { partyRoot } = resolvePartyStores(flags);
+  const paths = partyPaths(partyRoot, flags.party);
+  const record = loadPartyRecord(paths, flags.party, partyRoot);
+  if (record.phase !== "reported") {
+    throw new CliError("CLI_PARTY_NOT_REPORTED", `party run "${flags.party}" has not been reported yet; only a reported party can have escaped a defect`);
+  }
+  try {
+    const stamped = appendEscape(partySidecarPaths(paths).escapes, { lane: flags.lane, category: flags.category, note: flags.note, ref: flags.ref }, Date.now());
+    process.stdout.write(`${JSON.stringify(stamped)}
+`);
+  } catch (err) {
+    if (err instanceof EscapeError) throw new CliError(err.code, err.message);
+    throw err;
+  }
+}
 function readLaneLink(outDir) {
   const file = path12.join(outDir, "lane.json");
-  if (!existsSync7(file)) return null;
+  if (!existsSync8(file)) return null;
   const link = readJsonFile(file, "CLI_LANE_LINK_INVALID");
   const { valid, issues } = validateContract("jcsl:gauntlet-lane-link@1", link);
   if (!valid) {
@@ -14191,7 +14301,7 @@ function cmdReceipt(flags) {
   const { wrapper, runtimeState } = loadStateFile(flags.state);
   let rawOutput;
   try {
-    rawOutput = readFileSync16(flags.output, "utf8");
+    rawOutput = readFileSync17(flags.output, "utf8");
   } catch (err) {
     throw new CliError("CLI_OUTPUT_READ_FAILED", `failed to read --output file "${flags.output}": ${err.message}`);
   }
@@ -14368,10 +14478,10 @@ function cmdTriage(flags) {
       stateSubpath: ["gauntlet", "runs"]
     });
     const paths = runPaths(storeRoot, flags.run);
-    if (!existsSync7(paths.dir)) {
+    if (!existsSync8(paths.dir)) {
       throw new CliError("TRIAGE_RUN_NOT_FOUND", `no run "${flags.run}" under store root "${storeRoot}"`);
     }
-    if (!existsSync7(paths.result)) {
+    if (!existsSync8(paths.result)) {
       throw new CliError(
         "TRIAGE_RUN_INCOMPLETE",
         `run "${flags.run}" has no result.json, so it reported no findings to judge`
@@ -14414,7 +14524,7 @@ function cmdAddressRate(flags) {
     });
     let runIds;
     if (flags.run !== void 0) {
-      if (!existsSync7(runPaths(storeRoot, flags.run).dir)) {
+      if (!existsSync8(runPaths(storeRoot, flags.run).dir)) {
         throw new CliError("TRIAGE_RUN_NOT_FOUND", `no run "${flags.run}" under store root "${storeRoot}"`);
       }
       runIds = [flags.run];
@@ -14423,7 +14533,7 @@ function cmdAddressRate(flags) {
     }
     const runs = runIds.map((runId) => {
       const paths = runPaths(storeRoot, runId);
-      const result = existsSync7(paths.result) ? readJsonFile(paths.result, "TRIAGE_RESULT_UNREADABLE") : null;
+      const result = existsSync8(paths.result) ? readJsonFile(paths.result, "TRIAGE_RESULT_UNREADABLE") : null;
       return {
         runId,
         findings: result ? (result.findings ?? []).map((finding) => finding.id) : null,
@@ -14464,10 +14574,10 @@ async function cmdShow(flags) {
     throw new CliError("CLI_RUN_NOT_FOUND", `--run "${flags.run}" is not a run id`);
   }
   const paths = runPaths(storeRoot, flags.run);
-  if (!existsSync7(paths.dir)) {
+  if (!existsSync8(paths.dir)) {
     throw new CliError("CLI_RUN_NOT_FOUND", `no stored run "${flags.run}" under "${storeRoot}"`);
   }
-  const readResult = () => existsSync7(paths.result) ? JSON.parse(readFileSync16(paths.result, "utf8")) : null;
+  const readResult = () => existsSync8(paths.result) ? JSON.parse(readFileSync17(paths.result, "utf8")) : null;
   if (flags.follow === void 0) {
     process.stdout.write(`${renderRun2({ events: readRunEvents(paths.dir), result: readResult() })}
 `);
@@ -14516,9 +14626,10 @@ var SUBCOMMANDS = {
   show: cmdShow,
   "party-form": cmdPartyForm,
   "party-report": cmdPartyReport,
-  post: cmdPost
+  post: cmdPost,
+  escape: cmdEscape
 };
-var BOOLEAN_FLAGS = /* @__PURE__ */ new Set(["follow", "go-live", "no-go-live", "keep-worktree", "full"]);
+var BOOLEAN_FLAGS = /* @__PURE__ */ new Set(["follow", "go-live", "no-go-live", "keep-worktree", "full", "include-security"]);
 var REPEATABLE_FLAGS = /* @__PURE__ */ new Set(["golive-signal", "force-lane", "skip-lane"]);
 function parseFlags(args) {
   const flags = {};
@@ -14557,7 +14668,7 @@ async function main() {
   const [, , subcommand, ...rest] = process.argv;
   const handler = subcommand && SUBCOMMANDS[subcommand];
   if (!handler) {
-    fail6("CLI_USAGE", "usage: gauntlet-runtime <bundle|init|next|receipt|result|list|triage|address-rate|show|party-form|party-report|post> [--flag value ...]");
+    fail6("CLI_USAGE", "usage: gauntlet-runtime <bundle|init|next|receipt|result|list|triage|address-rate|show|party-form|party-report|post|escape> [--flag value ...]");
     return;
   }
   try {

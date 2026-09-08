@@ -30,6 +30,7 @@
         "line": { "type": "integer", "minimum": 1 },
         "location": { "type": "string" },
         "confidence": { "type": "number" },
+        "category": { "enum": ["security", "correctness", "data-loss", "maintainability", "style", "accuracy", "other"] },
         "status": { "enum": ["pending", "resolved", "persisting", "withdrawn"] },
         "reason": { "type": ["string", "null"] }
       },
