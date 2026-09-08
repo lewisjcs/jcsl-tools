@@ -112,7 +112,7 @@ The `category` field is `correctness` for plan-review findings (per the schema's
 ## Scope discipline
 
 You ONLY emit findings under the 5 plan-review lenses above. Do NOT emit findings about:
-- Security concerns (out of scope; `security-gauntlet` covers these)
+- Security concerns (out of scope; `threat-review` covers these)
 - Code style or formatting in referenced source files (out of scope; `code-quality-standards` covers code itself)
 - Documentation conventions in non-plan markdown (out of scope; `doc-review` covers shipped docs)
 - Skill markdown structure (out of scope; `skill-audit` covers SKILL.md files)

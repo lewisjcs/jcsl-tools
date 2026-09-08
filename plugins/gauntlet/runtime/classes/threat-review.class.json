@@ -1,42 +1,46 @@
 {
   "kind": "class",
   "schemaVersion": "1.0-kernel",
-  "id": "jcsl:gauntlet:revision-review",
+  "id": "jcsl:gauntlet:threat-review",
   "version": "1.0.0",
   "audience": "personal",
   "identity": {
-    "name": "Revision Review",
-    "tagline": "A single verifier role settles the fate of every open prior finding against the new tree.",
-    "promise": "Rule each prior finding resolved, persisting, or withdrawn, each with a reason and a citation the reader can check.",
+    "name": "Threat Review",
+    "tagline": "Opposed Finder and Validator roles trace what a code diff newly trusts and keep only the exploit paths the skeptic could not kill.",
+    "promise": "Report each path from an untrusted entry point to a sink that a named less-trusted party could exploit, with the entry, the steps, the sink, and the consequence, after a kill-mandate Validator has tried reachability, a missed control, an empirical check, and the trust model against it.",
     "constraints": [
-      "The verifier runs in a fresh, isolated dispatch and receives the range-diff, the thread, and the prior findings by reference into the run directory, never embedded in the prompt.",
-      "A deterministic runtime, never a host, decides stage order, retries, and when the run is terminal.",
-      "The Class is deliberately single-role: each verdict is a check of one named claim against a pinned tree, verifiable by inspection, so no adversarial stage exists.",
-      "The verifier never searches for new problems; new findings are the other lanes' work over the same range-diff."
+      "Finder and Validator run in fresh, isolated dispatches with no shared context between them.",
+      "A deterministic runtime, never a host, decides stage order, retries, and adjudication.",
+      "Fielded on a security signal, never by default; the report marks the signal set uncalibrated until it is measured.",
+      "On an other-authored origin the empirical check reads the author's tests and never runs them."
     ],
     "taboos": [
-      "Does not mark a finding resolved on the author's word — only on what the new tree shows.",
-      "Does not mark a finding withdrawn without a thread reply to point at.",
-      "Does not omit, add, or re-key a prior finding.",
-      "Does not modify the tree under review."
+      "Does not adjudicate findings itself; adjudication is the runtime's job, not a host's.",
+      "Does not read the pull-request title, body, thread, author identity, or fired signal ids; only the artifact bundle, the trust-context input, and the origin authorship flag reach a role.",
+      "Does not emit a finding without a traced path from entry point to sink."
     ]
   },
-  "functionRole": "revision-review",
+  "functionRole": "threat-review",
   "members": {
     "skills": [
-      "hosts/claude-code/skills/revision-review/SKILL.md",
-      "hosts/codex/skills/revision-review/SKILL.md"
+      "hosts/claude-code/skills/threat-review/SKILL.md",
+      "hosts/codex/skills/threat-review/SKILL.md"
     ],
     "agents": [
-      "hosts/claude-code/agents/revision-verifier.md",
-      "hosts/codex/roles/revision-verifier.md"
+      "hosts/claude-code/agents/threat-finder.md",
+      "hosts/codex/roles/threat-finder.md",
+      "hosts/claude-code/agents/threat-validator.md",
+      "hosts/codex/roles/threat-validator.md"
     ],
     "references": [
-      "canon/revision-verifier-persona.md",
-      "canon/shapes/verify-protocol.md",
+      "canon/threat-finder-persona.md",
+      "canon/threat-validator-persona.md",
       "canon/grounding-contract.md",
-      "profiles/revision-review/code-diff/profile.json",
-      "profiles/revision-review/code-diff/lenses.md"
+      "canon/shapes/opposed-protocol.md",
+      "profiles/threat-review/code-diff/profile.json",
+      "profiles/threat-review/code-diff/lenses.md",
+      "references/threat-disproof-playbook.md",
+      "references/code-quality-standards.md"
     ]
   },
   "availableFeats": [],
@@ -253,10 +257,10 @@
       }
     },
     "output": {
-      "id": "jcsl:verify-result@1",
+      "id": "jcsl:opposed-review-result@1",
       "schema": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "$id": "jcsl:verify-result@1",
+        "$id": "jcsl:opposed-review-result@1",
         "type": "object",
         "required": [
           "contractId",
@@ -269,15 +273,16 @@
           "calibrationStatus",
           "coverage",
           "outcome",
+          "rawCandidateCount",
+          "validatorDispositions",
           "findings",
-          "verdicts",
           "failures",
           "measurements"
         ],
         "properties": {
           "contractId": {
             "type": "string",
-            "const": "jcsl:verify-result@1",
+            "const": "jcsl:opposed-review-result@1",
             "pattern": "^[a-z][a-z0-9-]*(?::[a-z][a-z0-9-]*)+(?:@[1-9][0-9]*)?$"
           },
           "classId": {
@@ -382,18 +387,78 @@
           },
           "outcome": {
             "enum": [
+              "clean",
               "findings",
               "failed"
             ]
           },
-          "findings": {
-            "type": "array",
-            "maxItems": 0
+          "rawCandidateCount": {
+            "type": "integer",
+            "minimum": 0
           },
-          "verdicts": {
+          "validatorDispositions": {
             "type": "array",
             "items": {
-              "$ref": "#/$defs/verdict"
+              "type": "object",
+              "required": [
+                "findingId",
+                "verdict",
+                "confidence"
+              ],
+              "properties": {
+                "findingId": {
+                  "type": "string"
+                },
+                "verdict": {
+                  "enum": [
+                    "survives",
+                    "disproved"
+                  ]
+                },
+                "confidence": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 100
+                },
+                "category": {
+                  "enum": [
+                    "security",
+                    "correctness",
+                    "data-loss",
+                    "maintainability",
+                    "style",
+                    "accuracy",
+                    "other"
+                  ]
+                },
+                "killedBy": {
+                  "enum": [
+                    "reachability",
+                    "control",
+                    "empirical",
+                    "trust-model",
+                    "guarantee",
+                    "convention",
+                    "grounding",
+                    "none"
+                  ]
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "findings": {
+            "type": "array",
+            "minItems": 0,
+            "items": {
+              "$ref": "#/$defs/finding"
+            }
+          },
+          "belowTheLine": {
+            "type": "array",
+            "minItems": 0,
+            "items": {
+              "$ref": "#/$defs/finding"
             }
           },
           "failures": {
@@ -458,36 +523,149 @@
           }
         },
         "$defs": {
-          "verdict": {
+          "finding": {
             "type": "object",
             "required": [
-              "key",
-              "status",
-              "reason",
-              "anchor"
+              "id",
+              "lens",
+              "location",
+              "claim",
+              "evidence",
+              "severity",
+              "category",
+              "confidence",
+              "recommendation",
+              "disposition"
             ],
             "properties": {
-              "key": {
-                "type": "string",
-                "pattern": "^[0-9]{8}T[0-9]{6}Z-[0-9a-f]{6}:[a-z][a-z0-9-]*:[A-Z]-[0-9]{3}$"
+              "id": {
+                "type": "string"
               },
-              "status": {
+              "lens": {
+                "type": "string"
+              },
+              "location": {
+                "type": "string"
+              },
+              "claim": {
+                "type": "string"
+              },
+              "evidence": {
+                "type": "string"
+              },
+              "severity": {
                 "enum": [
-                  "resolved",
-                  "persisting",
-                  "withdrawn"
+                  "High",
+                  "Medium",
+                  "Low"
                 ]
               },
-              "reason": {
+              "category": {
+                "enum": [
+                  "security",
+                  "correctness",
+                  "data-loss",
+                  "maintainability",
+                  "style",
+                  "accuracy",
+                  "other"
+                ]
+              },
+              "confidence": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100
+              },
+              "recommendation": {
+                "type": "string"
+              },
+              "disposition": {
+                "enum": [
+                  "survives"
+                ]
+              },
+              "boundary": {
+                "enum": [
+                  "in-bundle",
+                  "cross-boundary",
+                  "component-ref",
+                  "unclassified"
+                ]
+              },
+              "originalSeverity": {
+                "enum": [
+                  "High",
+                  "Medium",
+                  "Low"
+                ]
+              },
+              "originalCategory": {
+                "enum": [
+                  "security",
+                  "correctness",
+                  "data-loss",
+                  "maintainability",
+                  "style",
+                  "accuracy",
+                  "other"
+                ]
+              },
+              "adjudicationNotes": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "file": {
                 "type": "string",
                 "minLength": 1
               },
-              "anchor": {
-                "type": "string",
-                "minLength": 1
+              "line": {
+                "type": "integer",
+                "minimum": 1
               }
             },
             "additionalProperties": false
+          }
+        },
+        "if": {
+          "type": "object",
+          "properties": {
+            "outcome": {
+              "const": "clean"
+            }
+          }
+        },
+        "then": {
+          "type": "object",
+          "properties": {
+            "executionStatus": {
+              "const": "complete"
+            },
+            "calibrationStatus": {
+              "const": "calibrated"
+            },
+            "coverage": {
+              "type": "object",
+              "properties": {
+                "status": {
+                  "const": "complete"
+                }
+              }
+            },
+            "host": {
+              "type": "object",
+              "properties": {
+                "bindingStatus": {
+                  "const": "honored"
+                }
+              }
+            },
+            "belowTheLine": {
+              "type": "array",
+              "maxItems": 0
+            }
           }
         },
         "additionalProperties": false
@@ -497,37 +675,44 @@
   "entrypoints": {
     "claude-code": {
       "kind": "skill",
-      "path": "hosts/claude-code/skills/revision-review/SKILL.md",
+      "path": "hosts/claude-code/skills/threat-review/SKILL.md",
       "projection": {
         "canonicalSources": [
-          "canon/revision-verifier-persona.md",
+          "canon/threat-finder-persona.md",
+          "canon/threat-validator-persona.md",
           "canon/grounding-contract.md",
-          "canon/shapes/verify-protocol.md",
-          "profiles/revision-review/code-diff/profile.json",
-          "profiles/revision-review/code-diff/lenses.md",
+          "canon/shapes/opposed-protocol.md",
+          "profiles/threat-review/code-diff/profile.json",
+          "profiles/threat-review/code-diff/lenses.md",
+          "references/threat-disproof-playbook.md",
+          "references/code-quality-standards.md",
           "bindings/claude-code.json"
         ],
-        "sourceHash": "ce4b2450ed836600fd048cacc65056f83d8bf925488a164b2064f34499b07b08"
+        "sourceHash": "58a4108f0a06f0257b5537809bcf5d9d1f24742369ff31150e224f934e8cf892"
       }
     },
     "codex": {
       "kind": "skill",
-      "path": "hosts/codex/skills/revision-review/SKILL.md",
+      "path": "hosts/codex/skills/threat-review/SKILL.md",
       "projection": {
         "canonicalSources": [
-          "canon/revision-verifier-persona.md",
+          "canon/threat-finder-persona.md",
+          "canon/threat-validator-persona.md",
           "canon/grounding-contract.md",
-          "canon/shapes/verify-protocol.md",
-          "profiles/revision-review/code-diff/profile.json",
-          "profiles/revision-review/code-diff/lenses.md",
+          "canon/shapes/opposed-protocol.md",
+          "profiles/threat-review/code-diff/profile.json",
+          "profiles/threat-review/code-diff/lenses.md",
+          "references/threat-disproof-playbook.md",
+          "references/code-quality-standards.md",
           "bindings/codex.json"
         ],
-        "sourceHash": "713790b862d10cbf3786df3202f5eed4b621f1c2c6eb85d7de9868bbb484cc60"
+        "sourceHash": "cff77ff21f005ac017c99a5aa596bf93c787097e25fd40197f851f4d35614134"
       }
     }
   },
   "modelRequirements": [
-    "independent-judgment"
+    "independent-judgment",
+    "adversarial-adjudication"
   ],
   "capabilities": {
     "isolated-dispatch": "required"

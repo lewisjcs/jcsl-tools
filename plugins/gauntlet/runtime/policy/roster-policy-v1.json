@@ -1,6 +1,6 @@
 {
   "kind": "roster-policy",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "pool": [
     {
       "classKey": "adversarial-review",
@@ -21,6 +21,13 @@
     {
       "classKey": "revision-review",
       "classId": "jcsl:gauntlet:revision-review",
+      "families": [
+        "code-diff"
+      ]
+    },
+    {
+      "classKey": "threat-review",
+      "classId": "jcsl:gauntlet:threat-review",
       "families": [
         "code-diff"
       ]
@@ -46,15 +53,15 @@
         {
           "classKey": "code-quality-audit",
           "reason": "code diff — rulebook audit applies"
+        },
+        {
+          "classKey": "threat-review",
+          "when": "security-signal",
+          "reason": "security signal fired — the change touches a trust surface"
         }
       ],
       "skip": [],
       "gaps": [
-        {
-          "lane": "security-gauntlet",
-          "when": "security-signal",
-          "reason": "applicable, not yet admitted — run its skill manually"
-        },
         {
           "lane": "go-live-review",
           "when": "golive-flag",
@@ -77,6 +84,11 @@
         {
           "classKey": "code-quality-audit",
           "reason": "code diff — rulebook audit applies"
+        },
+        {
+          "classKey": "threat-review",
+          "when": "security-signal",
+          "reason": "security signal fired — the change touches a trust surface"
         }
       ],
       "skip": [
@@ -86,11 +98,6 @@
         }
       ],
       "gaps": [
-        {
-          "lane": "security-gauntlet",
-          "when": "security-signal",
-          "reason": "applicable, not yet admitted — run its skill manually"
-        },
         {
           "lane": "go-live-review",
           "when": "golive-flag",
@@ -112,24 +119,24 @@
       "field": [
         {
           "classKey": "adversarial-review",
-          "reason": "behavioral code diff \u2014 adversarial surface"
+          "reason": "behavioral code diff — adversarial surface"
         },
         {
           "classKey": "code-quality-audit",
-          "reason": "code diff \u2014 rulebook audit applies"
+          "reason": "code diff — rulebook audit applies"
+        },
+        {
+          "classKey": "threat-review",
+          "when": "security-signal",
+          "reason": "security signal fired — the change touches a trust surface"
         }
       ],
       "skip": [],
       "gaps": [
         {
-          "lane": "security-gauntlet",
-          "when": "security-signal",
-          "reason": "applicable, not yet admitted \u2014 run its skill manually"
-        },
-        {
           "lane": "go-live-review",
           "when": "golive-flag",
-          "reason": "applicable, not yet admitted \u2014 run its skill manually"
+          "reason": "applicable, not yet admitted — run its skill manually"
         }
       ]
     },
@@ -142,25 +149,25 @@
       "field": [
         {
           "classKey": "code-quality-audit",
-          "reason": "code diff \u2014 rulebook audit applies"
+          "reason": "code diff — rulebook audit applies"
+        },
+        {
+          "classKey": "threat-review",
+          "when": "security-signal",
+          "reason": "security signal fired — the change touches a trust surface"
         }
       ],
       "skip": [
         {
           "classKey": "adversarial-review",
-          "reason": "mechanical-only diff \u2014 no behavioral surface to attack"
+          "reason": "mechanical-only diff — no behavioral surface to attack"
         }
       ],
       "gaps": [
         {
-          "lane": "security-gauntlet",
-          "when": "security-signal",
-          "reason": "applicable, not yet admitted \u2014 run its skill manually"
-        },
-        {
           "lane": "go-live-review",
           "when": "golive-flag",
-          "reason": "applicable, not yet admitted \u2014 run its skill manually"
+          "reason": "applicable, not yet admitted — run its skill manually"
         },
         {
           "lane": "doc-review",
@@ -177,7 +184,7 @@
       "field": [
         {
           "classKey": "adversarial-review",
-          "reason": "plan text \u2014 adversarial surface"
+          "reason": "plan text — adversarial surface"
         }
       ],
       "skip": [
@@ -190,7 +197,7 @@
         {
           "lane": "plan-review",
           "when": "always",
-          "reason": "applicable, not yet admitted \u2014 run its skill manually"
+          "reason": "applicable, not yet admitted — run its skill manually"
         }
       ]
     },
@@ -202,7 +209,7 @@
       "field": [
         {
           "classKey": "adversarial-review",
-          "reason": "doc text \u2014 adversarial surface"
+          "reason": "doc text — adversarial surface"
         }
       ],
       "skip": [
@@ -215,7 +222,7 @@
         {
           "lane": "doc-review",
           "when": "always",
-          "reason": "applicable, not yet admitted \u2014 run its skill manually"
+          "reason": "applicable, not yet admitted — run its skill manually"
         }
       ]
     },
@@ -239,7 +246,7 @@
         {
           "lane": "skill-audit",
           "when": "always",
-          "reason": "applicable, not yet admitted \u2014 run its skill manually"
+          "reason": "applicable, not yet admitted — run its skill manually"
         }
       ]
     },
@@ -263,7 +270,7 @@
         {
           "lane": "directive-review",
           "when": "always",
-          "reason": "applicable, not yet admitted \u2014 run its skill manually"
+          "reason": "applicable, not yet admitted — run its skill manually"
         }
       ]
     }

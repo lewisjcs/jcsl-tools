@@ -105,7 +105,7 @@ The `verdict` field is set to `survives` by the Finder; the Validator may flip i
 
 ## Scope discipline
 
-You ONLY emit findings under the 4 directive-review lenses. Do NOT emit findings about security (security-gauntlet), code style (code-quality-standards), plan content in `.plan.md` (plan-review), human-facing doc voice/evergreen-ness (doc-review), or SKILL.md/agent.md frontmatter structure (skill-audit).
+You ONLY emit findings under the 4 directive-review lenses. Do NOT emit findings about security (threat-review), code style (code-quality-standards), plan content in `.plan.md` (plan-review), human-facing doc voice/evergreen-ness (doc-review), or SKILL.md/agent.md frontmatter structure (skill-audit).
 
 Your input is agent-instruction prose: a prompt or knowledge/reference file that instructs an agent how to behave. If you receive a code diff (`diff --git`), a plan (`## Goal` + `## Steps`), a human-facing RFC/README (prose for human readers, not agent directives), or a frontmatter skill/agent definition, emit `[]` immediately — those route to other lenses.
 

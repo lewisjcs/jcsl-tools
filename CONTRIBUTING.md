@@ -5,7 +5,7 @@
 | Tool | Notes |
 |---|---|
 | Claude Code | The primary runtime — plugins here are markdown plus shell, Python, and JavaScript components; nothing compiles in this repo |
-| `node` (>= 22) | Required by gauntlet's runtime-driven skills (`adversarial-review`, `code-quality-audit`); their CLI ships pre-generated at `plugins/gauntlet/runtime/bin/cli.mjs` |
+| `node` (>= 22) | Required by gauntlet's runtime-driven skills (`adversarial-review`, `code-quality-audit`, `revision-review`, `threat-review`); their CLI ships pre-generated at `plugins/gauntlet/runtime/bin/cli.mjs` |
 | `jq` | Required by `context-economy`'s hooks (`telemetry-record.sh`, `handoff-nudge.sh`, `context-reset-nudge.sh`) |
 | `python3` | Required by `context-economy/hooks/cost-statusline.py` (stdlib only, no pip installs) |
 | `gh` (GitHub CLI) | Used by Kiln's Curator (PR creation) and Gauntlet (`code-pr` mode metadata) |

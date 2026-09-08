@@ -1,0 +1,17 @@
+{
+  "family": "code-diff",
+  "version": "1.0.0",
+  "status": "experimental",
+  "marker": "Artifact type: code-diff",
+  "lensFile": "profiles/threat-review/code-diff/lenses.md",
+  "locationFormats": ["file:line (post-diff path for changed files; repo-relative reviewed-tree path for cross-boundary findings); also emit file and line as separate fields"],
+  "lenses": [
+    "New input reaches a sink",
+    "Access decision changed or bypassed",
+    "Secrets and sensitive data flow",
+    "Cryptography and randomness",
+    "Dependencies, pipeline, and executed code",
+    "Fail-open under exceptional conditions",
+    "Agent surface"
+  ]
+}

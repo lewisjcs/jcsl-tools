@@ -1,0 +1,19 @@
+{
+  "kind": "party",
+  "schemaVersion": "1.0-kernel",
+  "id": "jcsl:gauntlet:threat-review-party",
+  "version": "1.0.0",
+  "audience": "personal",
+  "mission": "Run the threat-review Class solo over one reviewable artifact: trace what the change newly trusts and report the exploit paths that survived the Validator.",
+  "eligibleClassIds": [
+    "jcsl:gauntlet:threat-review"
+  ],
+  "requiredRoles": [
+    "threat-review"
+  ],
+  "contract": {
+    "inputContractId": "jcsl:reviewable-artifact@1",
+    "outputContractId": "jcsl:opposed-review-result@1"
+  },
+  "handoffs": []
+}

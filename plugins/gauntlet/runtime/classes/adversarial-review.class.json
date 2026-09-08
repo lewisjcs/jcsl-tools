@@ -695,7 +695,7 @@
           "references/code-quality-standards.md",
           "bindings/claude-code.json"
         ],
-        "sourceHash": "cf434d491fe392bf324ff04cdd657c5a3cfde4a58d4ff423163e0ed054d99d3c"
+        "sourceHash": "9650d215436b2e70120c539889cc3e22500c1bf53561379ef295227f5a13514f"
       }
     },
     "codex": {
@@ -716,7 +716,7 @@
           "references/code-quality-standards.md",
           "bindings/codex.json"
         ],
-        "sourceHash": "ff01cb835be7c6dbdc2633c577df34f4a14c4fb968069dff42b1802353636c3f"
+        "sourceHash": "c0db97e8fdae0f8f14e3b1370e67ff3ba35753d4134318c3456718d8133a8e1f"
       }
     }
   },

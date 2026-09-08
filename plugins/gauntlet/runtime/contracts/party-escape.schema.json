@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "jcsl:party-escape@1",
+  "type": "object",
+  "required": ["contractId", "at", "lane", "category", "note"],
+  "properties": {
+    "contractId": { "const": "jcsl:party-escape@1" },
+    "at": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?Z$" },
+    "lane": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+    "category": { "enum": ["security", "correctness", "data-loss", "maintainability", "style", "accuracy", "other"] },
+    "note": { "type": "string", "minLength": 1 },
+    "ref": { "type": "string", "minLength": 1 }
+  },
+  "additionalProperties": false
+}

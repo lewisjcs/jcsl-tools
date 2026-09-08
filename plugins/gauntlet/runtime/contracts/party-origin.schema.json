@@ -12,7 +12,8 @@
     "baseRef": {"type": "string", "minLength": 1},
     "baseSha": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
     "headSha": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
-    "author": {"enum": ["self", "other"]}
+    "author": {"enum": ["self", "other"]},
+    "visibility": {"enum": ["public", "private"]}
   },
   "additionalProperties": false
 }

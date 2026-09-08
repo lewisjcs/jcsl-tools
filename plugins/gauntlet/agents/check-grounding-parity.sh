@@ -1,11 +1,15 @@
 #!/usr/bin/env bash
 # check-grounding-parity.sh
 # Verifies that GROUNDING-CONTRACT:START / GROUNDING-CONTRACT:END sentinel block
-# is present and byte-identical across all 8 finder/validator agent files.
+# is present and byte-identical across all 6 finder/validator agent files.
 # adversarial-review's finder/validator pair runs as a runtime-driven Class and
 # carries no sentinel contract block, so it is not part of this checked set.
 # code-quality-audit's auditor likewise runs as a runtime-driven Class with no
-# sentinel contract block, and sits outside the checked 8-file set below.
+# sentinel contract block, and sits outside the checked 6-file set below.
+# threat-review's finder/validator pair likewise runs as a runtime-driven Class
+# with no sentinel contract block, and sits outside the checked 6-file set below.
+# revision-review's verifier likewise runs as a runtime-driven Class with no
+# sentinel contract block, and sits outside the checked 6-file set below.
 # Exit 0 = parity confirmed. Exit non-zero = failure with diff.
 
 set -euo pipefail
@@ -30,8 +34,6 @@ FILES=(
   "$AGENTS_DIR/doc-validator.md"
   "$AGENTS_DIR/plan-finder.md"
   "$AGENTS_DIR/plan-validator.md"
-  "$AGENTS_DIR/security-finder.md"
-  "$AGENTS_DIR/security-validator.md"
 )
 
 TMPDIR_WORK="$(mktemp -d)"
@@ -112,7 +114,6 @@ FINDER_FILES=(
   "$AGENTS_DIR/directive-finder.md"
   "$AGENTS_DIR/doc-finder.md"
   "$AGENTS_DIR/plan-finder.md"
-  "$AGENTS_DIR/security-finder.md"
 )
 
 finder_missing=()
@@ -185,7 +186,6 @@ VALIDATOR_FILES=(
   "$AGENTS_DIR/directive-validator.md"
   "$AGENTS_DIR/doc-validator.md"
   "$AGENTS_DIR/plan-validator.md"
-  "$AGENTS_DIR/security-validator.md"
 )
 
 validator_missing=()
@@ -262,7 +262,7 @@ echo "    SHA-256: $validator_unique_hashes"
 SKILLS_DIR="$(cd "$AGENTS_DIR/../skills" && pwd)"
 
 # Match `subagent_type: <name>-finder|validator` NOT preceded by `gauntlet:`.
-bare_dispatches="$(grep -rnE 'subagent_type:[[:space:]]*((adversarial|directive|doc|plan|security)-(finder|validator)|code-quality-auditor)' "$SKILLS_DIR" || true)"
+bare_dispatches="$(grep -rnE 'subagent_type:[[:space:]]*((adversarial|directive|doc|plan|threat)-(finder|validator)|code-quality-auditor|revision-verifier)' "$SKILLS_DIR" || true)"
 
 if [[ -n "$bare_dispatches" ]]; then
   echo "FAIL: bare (un-prefixed) agent dispatch found — must use the gauntlet: prefix:"
