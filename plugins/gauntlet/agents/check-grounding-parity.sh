@@ -8,6 +8,8 @@
 # sentinel contract block, and sits outside the checked 6-file set below.
 # threat-review's finder/validator pair likewise runs as a runtime-driven Class
 # with no sentinel contract block, and sits outside the checked 6-file set below.
+# revision-review's verifier likewise runs as a runtime-driven Class with no
+# sentinel contract block, and sits outside the checked 6-file set below.
 # Exit 0 = parity confirmed. Exit non-zero = failure with diff.
 
 set -euo pipefail
