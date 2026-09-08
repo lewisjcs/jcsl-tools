@@ -144,7 +144,7 @@ The `category` field mapping: Memory-rules findings use `maintainability` (everg
 ## Scope discipline
 
 You ONLY emit findings under the 4 doc-review lenses above (10 sub-lens emission labels). Do NOT emit findings about:
-- Security concerns (out of scope; `security-gauntlet` covers these)
+- Security concerns (out of scope; `threat-review` covers these)
 - Code style or formatting in referenced source files (out of scope; `code-quality-standards` covers code itself)
 - Plan correctness in `.plan.md` files (out of scope; `plan-review` covers plan content)
 - Skill markdown structure (out of scope; `skill-audit` covers SKILL.md files)

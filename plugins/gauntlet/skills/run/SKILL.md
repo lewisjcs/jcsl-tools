@@ -1,6 +1,6 @@
 ---
 name: gauntlet
-description: Use when running the full review Party over one artifact — a pull request, a local diff, a plan, a doc, a skill, or an agent-instruction file. The canonical PR-review surface — "review this PR" routes here. Trigger phrases include "review this PR", "review PR <number>", "review the PR", "review this", "run the gauntlet", "do a full review", "fully review", or any natural-language variation requesting a full review of an artifact. When NOT to use: for a single-lane review invoke the corresponding sibling directly (security-gauntlet, code-quality-audit, adversarial-review, plan-review, doc-review, skill-audit, directive-review).
+description: Use when running the full review Party over one artifact — a pull request, a local diff, a plan, a doc, a skill, or an agent-instruction file. The canonical PR-review surface — "review this PR" routes here. Trigger phrases include "review this PR", "review PR <number>", "review the PR", "review this", "run the gauntlet", "do a full review", "fully review", or any natural-language variation requesting a full review of an artifact. When NOT to use: for a single-lane review invoke the corresponding sibling directly (threat-review, code-quality-audit, adversarial-review, plan-review, doc-review, skill-audit, directive-review).
 argument-hint: "[<pr-url> | <path>] [--type <type>] [--full] [--go-live] [--no-go-live] [--force-lane <class>] [--skip-lane <class>]"
 ---
 
@@ -22,7 +22,7 @@ The skill's whole job is the eleven steps below, in order.
 
 One artifact per run. The runtime reviews one file per party run and refuses a directory (`CLI_PARTY_DIRECTORY_INPUT`) — to review several files, run the skill once per file.
 
-**When NOT to use:** a single-lane review (invoke `gauntlet:security-gauntlet`, `gauntlet:plan-review`, `gauntlet:doc-review`, `gauntlet:adversarial-review`, `gauntlet:code-quality-audit`, or `gauntlet:skill-audit` directly). Designing an artifact rather than checking one — brainstorm first; the gauntlet is the quality pass on the result.
+**When NOT to use:** a single-lane review (invoke `gauntlet:threat-review`, `gauntlet:plan-review`, `gauntlet:doc-review`, `gauntlet:adversarial-review`, `gauntlet:code-quality-audit`, or `gauntlet:skill-audit` directly). Designing an artifact rather than checking one — brainstorm first; the gauntlet is the quality pass on the result.
 
 ## 1. Preflight
 
@@ -42,9 +42,10 @@ The runtime's `--primary` takes a path to one file on disk — never a pull-requ
 gh pr diff <n> > "$STAGE/pr.diff"
 gh pr view <n> --json title,body,headRefOid,baseRefName,baseRefOid,url,author
 gh api user --jq .login
+gh repo view <owner>/<repo> --json visibility --jq .visibility
 ```
 
-Write the `title` value to `"$STAGE/pr-title.md"` and the `body` value to `"$STAGE/pr-body.md"`. Set `AUTHOR=self` when `author.login` equals the `gh api user` login, else `AUTHOR=other`.
+Write the `title` value to `"$STAGE/pr-title.md"` and the `body` value to `"$STAGE/pr-body.md"`. Set `AUTHOR=self` when `author.login` equals the `gh api user` login, else `AUTHOR=other`. Lower-case the `gh repo view` result to set `VISIBILITY` (`PUBLIC` → `public`, anything else → `private`): the runtime holds security findings from the posted comment on a public repository, so this is a fielding input the operator never edits.
 
 Then fetch the thread — every issue comment, inline review comment, and review on the pull request:
 
@@ -58,7 +59,7 @@ Write the three results as one JSON object `{issueComments, reviewComments, revi
 
 **Resolve the repository root explicitly.** `--repo-root` and `--reviewed-commit` are both hard requirements for `--type code-pr` — without them the runtime refuses with `CLI_REVIEWED_COMMIT_REQUIRED` — and it pins its review worktree from that root. `gh pr diff` and `gh pr view` resolve against the current directory, so start there: `git rev-parse --show-toplevel`. For a pull-request URL, confirm that root is actually the right clone — check that one of its remotes matches the URL's `<org>/<repo>` (`git -C <repo-root> remote -v`). If none matches, stop and ask the operator for the path to the clone. That question is a refusal in all but name; it is a legitimate pause, listed with the others below.
 
-The head commit must also exist locally, since the runtime pins the review to it in its own git worktree: check with `git -C <repo-root> cat-file -e <headRefOid>^{commit}` and, if it is absent, fetch it (`git -C <repo-root> fetch origin <headRefOid>`). Then form the party with `--primary "$STAGE/pr.diff" --type code-pr --repo-root <repo-root> --reviewed-commit <headRefOid> --title "$STAGE/pr-title.md" --body "$STAGE/pr-body.md" --origin-url <url> --base-ref <baseRefName> --base-sha <baseRefOid> --author $AUTHOR --thread "$STAGE/thread.json"`.
+The head commit must also exist locally, since the runtime pins the review to it in its own git worktree: check with `git -C <repo-root> cat-file -e <headRefOid>^{commit}` and, if it is absent, fetch it (`git -C <repo-root> fetch origin <headRefOid>`). Then form the party with `--primary "$STAGE/pr.diff" --type code-pr --repo-root <repo-root> --reviewed-commit <headRefOid> --title "$STAGE/pr-title.md" --body "$STAGE/pr-body.md" --origin-url <url> --base-ref <baseRefName> --base-sha <baseRefOid> --author $AUTHOR --visibility $VISIBILITY --thread "$STAGE/thread.json"`.
 
 **No argument.** Review the current branch against the trunk:
 
@@ -96,7 +97,7 @@ This step reports signals; it decides nothing. Whether the signals lead to a go-
 Compose one call. Detection, the roster, and the artifact snapshot are all the runtime's decisions:
 
 ```
-node "${CLAUDE_PLUGIN_ROOT}/runtime/bin/cli.mjs" party-form --primary <artifact-file> [--path <logical-path>] [--type <code-pr|code-local|plan|doc|skill|directive>] [--body <pr-body-file>] [--title <pr-title-file>] [--trust-context <single-user-tool|agent-tool|multi-caller-service>] [--repo-root <dir> --reviewed-commit <sha>] [--origin-url <url> --base-ref <ref> --base-sha <sha> --author <self|other>] [--thread <thread-file>] [--full] [--golive-signal <id>]... [--go-live|--no-go-live] [--force-lane <class>]... [--skip-lane <class>]...
+node "${CLAUDE_PLUGIN_ROOT}/runtime/bin/cli.mjs" party-form --primary <artifact-file> [--path <logical-path>] [--type <code-pr|code-local|plan|doc|skill|directive>] [--body <pr-body-file>] [--title <pr-title-file>] [--trust-context <single-user-tool|agent-tool|multi-caller-service>] [--repo-root <dir> --reviewed-commit <sha>] [--origin-url <url> --base-ref <ref> --base-sha <sha> --author <self|other> --visibility <public|private>] [--thread <thread-file>] [--full] [--golive-signal <id>]... [--go-live|--no-go-live] [--force-lane <class>]... [--skip-lane <class>]...
 # stdout: {partyRunId, partyDir, profile, roster:{fielded, skipped, gaps, overrides}, goLivePrompt, lanes:[{classKey, runId, runDir, family}], origin, worktree, revision, events}
 ```
 
@@ -204,9 +205,9 @@ Confirm the copy landed — `wc -l <path>` returns at least 1 — before naming 
 3. The report path, the cost line (`bookedUsd`, `fullFlowUsd`, and any `omissions`), and a one-line note that the full findings are in the file.
 4. On a revision, the transition, read off `party-report`'s `revision.statuses` — for example `2 of 3 prior findings resolved · 1 persisting · 1 new`. The counts in the verdict line cover open rows only (`persisting`, `new`, `unverified`); resolved and withdrawn rows stay in the report, closed.
 
-**The postable comment.** When the operator asks for something to post, run `node "${CLAUDE_PLUGIN_ROOT}/runtime/bin/cli.mjs" party-report --party <partyRunId> --format pr-comment` and show the operator the `commentPath` it prints. The runtime renders the whole comment — banner, box score, blocker callouts, findings table, machine-readable block, marker, footer — do not edit, re-word, or re-count it. For a non-pull-request artifact the operator pastes that file into the ticket.
+**The postable comment.** When the operator asks for something to post, run `node "${CLAUDE_PLUGIN_ROOT}/runtime/bin/cli.mjs" party-report --party <partyRunId> --format pr-comment` and show the operator the `commentPath` it prints. The stdout also carries `held`; when `held.security` is above zero, list those findings verbatim from the report file (they are the `security`-category rows of the `## Findings — <lane>` sections) under a `Held from the comment` heading in chat, say they were held because the repository is public, and offer `--include-security` as a separate, deliberate choice — never pass it without the operator saying so in that exchange. The runtime renders the whole comment — banner, box score, blocker callouts, findings table, machine-readable block, marker, footer — do not edit, re-word, or re-count it. For a non-pull-request artifact the operator pastes that file into the ticket.
 
-**Posting to the pull request** is an outward-facing action. Ask the operator: `Post this comment to <repo>#<number>? [y/N]` — and only on `y` run `node "${CLAUDE_PLUGIN_ROOT}/runtime/bin/cli.mjs" post --party <partyRunId>`. The runtime files or updates one pull-request review whose body is the comment — `REQUEST_CHANGES` with blockers, `COMMENT` without, and always `COMMENT` on a pull request the operator authored — and writes receipts to `post.json`. On a revision the runtime updates the standing review in place when its event is unchanged. When the event must change — blockers cleared, or blockers appeared — it dismisses a standing `REQUEST_CHANGES` review (a `COMMENT` review has nothing to dismiss), replaces that review's body with a one-line superseded note, and files a new review with the new event. Before asking, say which of the two will happen: compare the prior party's last `post.json` receipt event with the verdict `party-report` just printed. Either way the receipt's `event` is the event the live review carries. A refusal (`CLI_POST_PENDING`, `CLI_POST_GH_FAILED`, `CLI_POST_ORIGIN_MISSING`, `CLI_POST_RECEIPTS_MALFORMED`) is surfaced verbatim, never retried. `post` is only ever run at the operator's say-so, each time.
+**Posting to the pull request** is an outward-facing action. Ask the operator: `Post this comment to <repo>#<number>? [y/N]`, followed, only when `held.security` is above zero, by `Include the N held security findings? [y/N]`. On `y` to the first, run `node "${CLAUDE_PLUGIN_ROOT}/runtime/bin/cli.mjs" post --party <partyRunId>`, adding `--include-security` only when the second question also got a `y`; an `n` to the second runs `post` without it. Approval to include held findings on one post does not carry to the next — ask again every time `held.security` is above zero. The runtime files or updates one pull-request review whose body is the comment — `REQUEST_CHANGES` with blockers, `COMMENT` without, and always `COMMENT` on a pull request the operator authored — and writes receipts to `post.json`. On a revision the runtime updates the standing review in place when its event is unchanged. When the event must change — blockers cleared, or blockers appeared — it dismisses a standing `REQUEST_CHANGES` review (a `COMMENT` review has nothing to dismiss), replaces that review's body with a one-line superseded note, and files a new review with the new event. Before asking, say which of the two will happen: compare the prior party's last `post.json` receipt event with the verdict `party-report` just printed. Either way the receipt's `event` is the event the live review carries. A refusal (`CLI_POST_PENDING`, `CLI_POST_GH_FAILED`, `CLI_POST_ORIGIN_MISSING`, `CLI_POST_RECEIPTS_MALFORMED`) is surfaced verbatim, never retried. `post` is only ever run at the operator's say-so, each time.
 
 ## 9. Offer the gaps
 

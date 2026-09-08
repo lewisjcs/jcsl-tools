@@ -17,7 +17,7 @@ A go-live carries risk that does **not** live in the diff: whether the rollback 
 - The gauntlet's go-live pre-filter matched and you opted into this lane.
 - Someone asks "is this safe to merge / turn on", especially merging on an absent author's behalf.
 
-**When NOT to use:** routine code review (`/gauntlet`), security-only review (`/security-gauntlet`), or dark/flag-gated feature *construction* that ships nothing live (that is normal review — introducing a flag is not a go-live).
+**When NOT to use:** routine code review (`/gauntlet`), security-only review (`/threat-review`), or dark/flag-gated feature *construction* that ships nothing live (that is normal review — introducing a flag is not a go-live).
 
 ## The review — six steps, each ends in a check
 

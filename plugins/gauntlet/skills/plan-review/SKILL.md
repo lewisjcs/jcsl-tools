@@ -90,7 +90,7 @@ On re-dispatch: apply false-positive rules from code-quality-standards and plan-
 
 - `code-quality-standards` — defensive-code anti-patterns. Loaded by the Validator for false-positive filtering.
 - `adversarial-review` — pressure-tests structural assumptions in code diffs. Different scope; plan-review checks plan correctness, adversarial-review checks code correctness.
-- `security-gauntlet` — security review skill, also Finder/Validator pattern. Sibling within the gauntlet review-skill family.
+- `threat-review` — security review Class, runtime-driven Finder/Validator pair. Sibling within the gauntlet review-skill family.
 - `superpowers:writing-plans` — authors plans. plan-review is the QA pass on plans authored by writing-plans.
 - (review-pr archived 2026-05-27 per Phase 9 — see `.claude/_archive/skills/review-pr/`. plan-review is now invoked by gauntlet, not review-pr.)
 - `gauntlet` — offers plan-review as a follow-up when the Party runtime reports it as a gap lane.

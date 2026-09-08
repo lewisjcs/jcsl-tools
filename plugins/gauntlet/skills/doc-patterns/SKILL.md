@@ -11,7 +11,7 @@ Reference content for doc-relevant work across Contentful engineering. Load when
 
 - **General code review** — use `/gauntlet` for multi-skill review or `/code-quality-audit` for convention-only audit
 - **Style, lint, or defensive-code patterns** — use `code-quality-standards`
-- **Security-specific review** — use `security-principles` + `security-gauntlet`
+- **Security-specific review** — use `threat-review`
 - **Slack messages, emails, or casual writing** — doc-patterns covers structured prose artifacts only
 
 ## Reference files (load on demand)
@@ -38,7 +38,6 @@ When applying doc review, the five lenses (in the order doc-finder applies them 
 ## Sibling Skills
 
 - `doc-review` — applies these patterns via Finder/Validator pattern; loads this skill at Validator invocation time.
-- `security-principles` — security threat reference content. Different domain; sibling pattern for skill structure.
 - `adversarial-review` — pressure-tests hidden assumptions. Lens 5 invokes this; not doc-specific.
 
 ## Maintenance
