@@ -126,7 +126,7 @@
     },
     {
       "id": "secrets",
-      "addedLinePattern": "(?i)((api[_-]?key|secret[_-]?key|access[_-]?token|private[_-]?key|password|token)\\s*[:=]\\s*['\"][A-Za-z0-9_\\-/+=.]{12,}['\"]|\\b(ghp|gho|ghs|ghu)_[A-Za-z0-9]{30,}|\\bsk-[A-Za-z0-9_-]{20,}|\\bAKIA[0-9A-Z]{16}\\b|BEGIN [A-Z ]*PRIVATE KEY)"
+      "addedLinePattern": "(?i)((api[_-]?key|secret[_-]?key|access[_-]?token|private[_-]?key|password|token)\\s*[:=]\\s*(['\"][A-Za-z0-9_\\-/+=.]{12,}['\"]|(?=[A-Za-z0-9_\\-/+=.]*[0-9])[A-Za-z0-9_\\-/+=.]{12,}(?![A-Za-z0-9_\\-/+=.]))|\\b(ghp|gho|ghs|ghu)_[A-Za-z0-9]{30,}|\\bsk-[A-Za-z0-9_-]{20,}|\\bAKIA[0-9A-Z]{16}\\b|BEGIN [A-Z ]*PRIVATE KEY)"
     },
     {
       "id": "dependency-manifest",

@@ -1,6 +1,6 @@
 {
   "name": "gauntlet",
-  "version": "1.10.0",
+  "version": "1.11.0",
   "description": "Multi-skill AI review harness — a thin host over a deterministic Party runtime that detects the artifact type, fields the review lanes it supports (adversarial review, code-quality audit, threat review on a security signal, and revision review on a re-reviewed pull request), and reports the rest as operator-invoked follow-ups",
   "author": { "name": "Josh C.S. Lewis" },
   "repository": "https://github.com/lewisjcs/jcsl-tools",

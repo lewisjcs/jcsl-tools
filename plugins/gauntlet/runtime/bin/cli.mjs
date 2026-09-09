@@ -10137,9 +10137,6 @@ function buildOrigin({ url, baseRef, baseSha, headSha, author, visibility }) {
   }
   return Object.freeze({ contractId: ORIGIN_CONTRACT_ID, ...parsed, baseRef, baseSha, headSha, author, ...visibility !== void 0 ? { visibility } : {} });
 }
-function isPublicOrigin(origin) {
-  return origin !== null && origin.visibility !== "private";
-}
 function writeOrigin(paths, origin) {
   mkdirSync2(paths.dir, { recursive: true });
   writeFileAtomic(partySidecarPaths(paths).origin, `${JSON.stringify(origin, null, 2)}
@@ -11861,7 +11858,7 @@ function evaluateRoster(policy, profile, { forceLanes = [], skipLanes = [] } = {
         via: "policy"
       });
     } else {
-      skipped.push({ classKey: entry.classKey, reason: entry.reason, via: "policy", trigger: `no ${entry.when}` });
+      skipped.push({ classKey: entry.classKey, reason: entry.skipReason, via: "policy", trigger: `no ${entry.when}` });
     }
   }
   const gaps = row.gaps.filter((gap) => gapApplies(gap, profile)).map((gap) => ({ lane: gap.lane, reason: gap.reason, trigger: gapTrigger(gap, profile) }));
@@ -12578,13 +12575,17 @@ function buildReportModel({
     config
   });
 }
-function holdSecurityFindings(model, { origin, includeSecurity, classes: classes2 }) {
-  if (includeSecurity || !isPublicOrigin(origin)) return { model, held: { security: 0 } };
-  const kept = model.findings.filter((f) => f.category !== "security" && !(f.category === void 0 && classes2.byKey[f.lane]?.shape.report.findingsCarryCategory === true));
-  const security = model.findings.length - kept.length;
-  if (security === 0) return { model, held: { security: 0 } };
-  const revision = model.priorRef === null ? null : {};
-  return { model: { ...model, findings: kept, counts: countsFor(kept, revision), held: { security } }, held: { security } };
+function holdSecurityFindings(model, { holdSecurity, classes: classes2 }) {
+  const isRevision = model.priorRef !== null;
+  const isSecurity = (f) => f.category === "security" || f.category === void 0 && classes2.byKey[f.lane]?.shape.report.findingsCarryCategory === true;
+  const securityRows = model.findings.filter(isSecurity);
+  const securityFindings = securityRows.map((f) => ({ lane: f.lane, id: f.id, tier: f.tier, claim: f.claim, file: f.file, line: f.line, location: f.location }));
+  if (!holdSecurity || securityRows.length === 0) return { model, held: { security: 0, blockers: 0 }, securityFindings };
+  const held = {
+    security: securityRows.length,
+    blockers: securityRows.filter((f) => f.tier === "blocker" && (!isRevision || OPEN_STATUSES.has(f.status))).length
+  };
+  return { model: { ...model, findings: model.findings.filter((f) => !isSecurity(f)), held }, held, securityFindings };
 }
 var TIER_GLYPH = Object.freeze({ blocker: "\u{1F6D1}", concern: "\u26A0\uFE0F", nit: "\u{1F4A1}" });
 var STATUS_CELL = Object.freeze({
@@ -12686,8 +12687,9 @@ function renderPrComment(model) {
     `| \u{1F9EA} Lanes | ${lanesCell(model.roster)} |`
   );
   if (model.held !== void 0 && model.held.security > 0) {
-    const n = model.held.security;
-    out.push("", `\u{1F512} ${n} security finding${n === 1 ? "" : "s"} held from this comment: the repository is public or its visibility is unrecorded. They are in the report file; pass --include-security to disclose them here.`);
+    const { security: n, blockers: m } = model.held;
+    const blockersNote = m > 0 ? ` (${m} of them blocker${m === 1 ? "" : "s"})` : "";
+    out.push("", `\u{1F512} ${n} security finding${n === 1 ? "" : "s"} held from this comment at the operator's request${blockersNote}. They are in the report file, and the counts above include them.`);
   }
   const blockers = model.findings.filter((f) => f.tier === "blocker" && (!isRevision || OPEN_STATUSES.has(f.status)));
   for (const b of blockers) out.push("", blockerCallout(b));
@@ -13817,7 +13819,7 @@ function cmdPartyForm(flags) {
   }
 }
 var PARTY_REPORT_REQUIRED_FLAGS = ["party"];
-var PARTY_REPORT_OPTIONAL_FLAGS = ["party-store", "store", "keep-worktree", "format", "include-security"];
+var PARTY_REPORT_OPTIONAL_FLAGS = ["party-store", "store", "keep-worktree", "format", "hold-security"];
 var PARTY_REPORT_FORMATS = ["report", "pr-comment"];
 function assertValidPartyRunId(partyRunId) {
   if (!RUN_ID_PATTERN.test(partyRunId)) {
@@ -13966,7 +13968,7 @@ function collectLanes(record, runsStoreRoot) {
   }
   return { laneRuns, costLanes, resultsByRunId, laneFailureReasons, evidenceByClassKey };
 }
-function renderCommentFor({ record, paths, runsStoreRoot, includeSecurity }) {
+function renderCommentFor({ record, paths, runsStoreRoot, holdSecurity }) {
   const { resultsByRunId, laneFailureReasons, evidenceByClassKey } = collectLanes(record, runsStoreRoot);
   const laneResults = laneResultsFor(record, resultsByRunId);
   const origin = readOrigin(paths);
@@ -13979,8 +13981,8 @@ function renderCommentFor({ record, paths, runsStoreRoot, includeSecurity }) {
     evidenceByClassKey,
     revision: readRevision(paths)
   });
-  const { model, held } = holdSecurityFindings(fullModel, { origin, includeSecurity, classes: classes() });
-  return { model, held, markdown: renderPrComment(model) };
+  const { model, held, securityFindings } = holdSecurityFindings(fullModel, { holdSecurity, classes: classes() });
+  return { model, held, securityFindings, markdown: renderPrComment(model) };
 }
 function cmdPartyReport(flags) {
   requireFlags(flags, PARTY_REPORT_REQUIRED_FLAGS);
@@ -13993,8 +13995,8 @@ function cmdPartyReport(flags) {
   const { partyRoot, runsStoreRoot } = resolvePartyStores(flags);
   const paths = partyPaths(partyRoot, flags.party);
   const record = loadPartyRecord(paths, flags.party, partyRoot);
-  if (flags["include-security"] === true && format !== "pr-comment") {
-    throw new CliError("CLI_USAGE", "--include-security applies to --format pr-comment only");
+  if (flags["hold-security"] === true && format !== "pr-comment") {
+    throw new CliError("CLI_USAGE", "--hold-security applies to --format pr-comment only");
   }
   if (format === "pr-comment") {
     if (flags["keep-worktree"]) {
@@ -14101,7 +14103,7 @@ function cmdPartyComment(flags, { record, paths, runsStoreRoot }) {
     );
   }
   try {
-    const { model, held, markdown } = renderCommentFor({ record, paths, runsStoreRoot, includeSecurity: flags["include-security"] === true });
+    const { model, held, securityFindings, markdown } = renderCommentFor({ record, paths, runsStoreRoot, holdSecurity: flags["hold-security"] === true });
     const commentPath = partySidecarPaths(paths).prComment;
     writeFileAtomic(commentPath, markdown);
     process.stdout.write(`${JSON.stringify({
@@ -14110,6 +14112,7 @@ function cmdPartyComment(flags, { record, paths, runsStoreRoot }) {
       ref: model.ref,
       verdict: model.counts,
       hasOrigin: model.origin !== null,
+      securityFindings,
       held
     })}
 `);
@@ -14121,7 +14124,7 @@ function cmdPartyComment(flags, { record, paths, runsStoreRoot }) {
   }
 }
 var POST_REQUIRED_FLAGS = ["party"];
-var POST_OPTIONAL_FLAGS = ["party-store", "store", "include-security"];
+var POST_OPTIONAL_FLAGS = ["party-store", "store", "hold-security"];
 function cmdPost(flags) {
   requireFlags(flags, POST_REQUIRED_FLAGS);
   rejectUnknownFlags(flags, [...POST_REQUIRED_FLAGS, ...POST_OPTIONAL_FLAGS]);
@@ -14139,7 +14142,7 @@ function cmdPost(flags) {
   const sidecars = partySidecarPaths(paths);
   assertNoPendingReceipt(readReceipts(sidecars.post));
   try {
-    const { model, held, markdown } = renderCommentFor({ record, paths, runsStoreRoot, includeSecurity: flags["include-security"] === true });
+    const { model, held, securityFindings, markdown } = renderCommentFor({ record, paths, runsStoreRoot, holdSecurity: flags["hold-security"] === true });
     writeFileAtomic(sidecars.prComment, markdown);
     const outcome = postComment({
       origin,
@@ -14152,7 +14155,7 @@ function cmdPost(flags) {
       now: Date.now(),
       revisionNumber: model.priorRef === null ? null : model.revision
     });
-    process.stdout.write(`${JSON.stringify({ partyRunId: flags.party, ...outcome, held })}
+    process.stdout.write(`${JSON.stringify({ partyRunId: flags.party, ...outcome, securityFindings, held })}
 `);
   } catch (err) {
     if (err instanceof PartyError) throw new CliError(err.code, err.message);
@@ -14165,6 +14168,13 @@ function cmdEscape(flags) {
   requireFlags(flags, ESCAPE_REQUIRED_FLAGS);
   rejectUnknownFlags(flags, [...ESCAPE_REQUIRED_FLAGS, ...ESCAPE_OPTIONAL_FLAGS]);
   assertValidPartyRunId(flags.party);
+  const entry = { lane: flags.lane, category: flags.category, note: flags.note, ref: flags.ref };
+  try {
+    validateEscapeEntry(entry);
+  } catch (err) {
+    if (err instanceof EscapeError) throw new CliError(err.code, err.message);
+    throw err;
+  }
   recordForKey(flags.lane, "--lane");
   const { partyRoot } = resolvePartyStores(flags);
   const paths = partyPaths(partyRoot, flags.party);
@@ -14173,7 +14183,7 @@ function cmdEscape(flags) {
     throw new CliError("CLI_PARTY_NOT_REPORTED", `party run "${flags.party}" has not been reported yet; only a reported party can have escaped a defect`);
   }
   try {
-    const stamped = appendEscape(partySidecarPaths(paths).escapes, { lane: flags.lane, category: flags.category, note: flags.note, ref: flags.ref }, Date.now());
+    const stamped = appendEscape(partySidecarPaths(paths).escapes, entry, Date.now());
     process.stdout.write(`${JSON.stringify(stamped)}
 `);
   } catch (err) {
@@ -14629,7 +14639,7 @@ var SUBCOMMANDS = {
   post: cmdPost,
   escape: cmdEscape
 };
-var BOOLEAN_FLAGS = /* @__PURE__ */ new Set(["follow", "go-live", "no-go-live", "keep-worktree", "full", "include-security"]);
+var BOOLEAN_FLAGS = /* @__PURE__ */ new Set(["follow", "go-live", "no-go-live", "keep-worktree", "full", "hold-security"]);
 var REPEATABLE_FLAGS = /* @__PURE__ */ new Set(["golive-signal", "force-lane", "skip-lane"]);
 function parseFlags(args) {
   const flags = {};

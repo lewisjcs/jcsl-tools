@@ -48,8 +48,11 @@
               "properties": {
                 "classKey": { "$ref": "#/$defs/nonEmptyString" },
                 "reason": { "$ref": "#/$defs/nonEmptyString" },
-                "when": { "enum": ["always", "security-signal", "golive-flag", "doc-only"] }
+                "when": { "enum": ["always", "security-signal", "golive-flag", "doc-only"] },
+                "skipReason": { "$ref": "#/$defs/nonEmptyString" }
               },
+              "if": { "required": ["when"], "properties": { "when": { "not": { "const": "always" } } } },
+              "then": { "required": ["skipReason"] },
               "additionalProperties": false
             }
           },
