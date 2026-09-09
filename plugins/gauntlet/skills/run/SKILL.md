@@ -26,7 +26,7 @@ One artifact per run. The runtime reviews one file per party run and refuses a d
 
 ## 1. Preflight
 
-**Host.** The Party runs under Claude Code: step 6 dispatches with the Agent tool against the `claude-code` host binding, and no other host binding is wired at the Party level. If this session is not Claude Code (no Agent tool with `subagent_type`; a `codex` CLI session, for instance), stop here and say so: the single-lane Class skills (`threat-review`, `adversarial-review`, `code-quality-audit`, `revision-review`) are what that host can run, one artifact at a time. Never form a party on a host that cannot drive it.
+**Host.** The Party runs under Claude Code: step 6 dispatches with the Agent tool against the `claude-code` host binding, and no other host binding is wired at the Party level. If this session is not Claude Code (no Agent tool with `subagent_type`; a `codex` CLI session, for instance), stop here and say so: the single-lane sibling skills listed under **When NOT to use** above are what such a host can run, one artifact at a time, each on the hosts that skill itself supports. Never form a party on a host that cannot drive it.
 
 **Sibling-name check.** Run `ls ${CLAUDE_PLUGIN_ROOT}/skills/` and note the sibling skill names. Another plugin, or a local skill of the same bare name, can shadow one of them. Every sibling dispatch in this skill therefore uses the plugin-qualified form — `Skill: gauntlet:<name>` — never the bare name.
 
