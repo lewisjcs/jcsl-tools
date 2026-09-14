@@ -59,6 +59,16 @@
       "repository": "https://github.com/lewisjcs/jcsl-tools",
       "keywords": ["readme", "documentation", "repo-mapping", "grounding", "evidence"],
       "category": "development-workflows"
+    },
+    {
+      "name": "campaign",
+      "source": "./plugins/campaign",
+      "displayName": "Campaign",
+      "description": "Campaign Classes for the encounter runtime: the Crafter implementation Class, dispatched by Class from an encounter card. Pairs with the campaign encounter and session skills.",
+      "author": { "name": "Josh C.S. Lewis" },
+      "repository": "https://github.com/lewisjcs/jcsl-tools",
+      "keywords": ["campaign", "crafter", "class", "implementation"],
+      "category": "development-workflows"
     }
   ]
 }

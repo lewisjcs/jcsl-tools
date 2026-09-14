@@ -7,13 +7,14 @@
 ```
 jcsl-tools/
 ├── .claude-plugin/
-│   └── marketplace.json      # marketplace manifest — lists all 5 plugins below
+│   └── marketplace.json      # marketplace manifest — lists all 6 plugins below
 └── plugins/
     ├── kiln/                 # implementation workflow Party
     ├── gauntlet/              # multi-skill review harness
     ├── prospector/            # discovery-first research harness
     ├── context-economy/       # context-spend discipline Party
-    └── cartographer/          # repository documentation cartographer
+    ├── cartographer/          # repository documentation cartographer
+    └── campaign/              # campaign Classes for the encounter runtime
 ```
 
 Each plugin directory is independently installable (`claude plugin install <name>@jcsl-tools`) and has its own `.claude-plugin/plugin.json` manifest, versioned independently of the others and of the marketplace manifest itself.
@@ -29,7 +30,7 @@ Two different `.claude-plugin/plugin.json`-shaped files exist at two levels — 
 
 A plugin's version is bumped independently in its own `plugin.json` — the marketplace manifest doesn't carry version numbers at all, only routing (`source`) and display metadata.
 
-## The five plugins
+## The six plugins
 
 ### Kiln — complexity-proportionate implementation Party
 
@@ -98,6 +99,12 @@ This is the only plugin with its own hook test suite (`*.test.sh` files alongsid
 Entry: `cartograph-report` skill (auto-discovered; no slash command)
 
 Cartographer's pipeline reads a repository's own evidence — tracked files, manifests, CI configuration, and history — and turns it into a claim-classified README draft/patch, or a report of what it could not support. The skill folder `skills/cartograph-report/` is deliberately self-contained (`SKILL.md` + `core/` + `scripts/`): it is the promoted unit an external package manager copies whole, with provenance recorded by `tools/promote.sh` and org-neutrality of the shipped set enforced by `scripts/check-core-neutrality.sh`. Org-specific content enters only through the `profile/` seam defined in `core/profile-contract.md` — four fixed entry filenames that add evidence sources and conventions but can never override a core gate. `core/` holds the claim model, README ownership model, and six-stage pipeline; local validation (`scripts/check-readme-patch.sh`) and stage-5 verification (`scripts/check-verification-report.sh`) gate a draft before it is reported ready. Tests and fixtures live outside the skill folder in `tests/`, including a portability guard (`tests/check-portability.sh`) that keeps the skill folder free of harness-specific tokens.
+
+### Campaign — Classes for the encounter runtime
+
+Entry: dispatched by Class (`campaign:crafter`) from an encounter card by the campaign session skill; no slash command and never invoked standalone.
+
+Campaign ships the **Crafter**, the implementation Class of the campaign encounter runtime: it implements exactly one encounter beat from a fenced card, checks its own work against every numbered done-when check, commits on the branch, and ends with a typed outcome that carries a required deviations list. The plugin is a generated payload, not a source tree: `agents/crafter.md` (the agent body), `classes/crafter.class.json` (the Class manifest the runtime registers), and `PROVENANCE.json` (the source repository, the source commit, and a hash over the payload) are all written by the campaign repository's packager from a merged commit. Edit the canon there and repackage; a hand edit here drifts from the manifest the runtime checks against the installed agent.
 
 ## Cross-plugin conventions
 
