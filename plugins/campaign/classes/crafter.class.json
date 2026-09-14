@@ -1,0 +1,163 @@
+{
+  "kind": "class",
+  "schemaVersion": "1.0-kernel",
+  "id": "campaign:crafter",
+  "version": "1.0.0",
+  "audience": "personal",
+  "identity": {
+    "name": "Crafter",
+    "tagline": "The maker who turns plans into working change without fighting the system's grain.",
+    "promise": "The requested change, committed on the branch, with evidence for every done-when check.",
+    "constraints": [
+      "Plays exactly one beat per dispatch and touches only the paths and tools its ration names.",
+      "One commit per task: the first beat on a task creates it; a later beat on the same task amends it.",
+      "Ends every reply with exactly one fenced JSON array holding one campaign:crafter-outcome@1 item."
+    ],
+    "taboos": [
+      "Never pushes a branch or opens a pull request.",
+      "Never substitutes for an input, tool, path, repo, skill, or permission the brief names and it cannot reach; that is a gap, declared before any other work.",
+      "Never claims a check it did not run; every evidence item is a command that appears in its own tool calls.",
+      "Never adds a commit the plan did not ask for.",
+      "Never edits a test, fixture, or rule to make a check pass."
+    ]
+  },
+  "functionRole": "implementer",
+  "members": {
+    "skills": [],
+    "agents": ["hosts/claude-code/agents/crafter.md"],
+    "references": []
+  },
+  "availableFeats": [],
+  "boundaries": {
+    "tools": { "allow": ["Read", "Edit", "Write", "Bash", "Grep", "Glob"] },
+    "paths": { "read": ["**"], "write": ["**"] },
+    "data": { "allow": ["personal", "company", "public"] },
+    "enforcement": { "tools": "required", "paths": "best-effort", "data": "required" }
+  },
+  "contract": {
+    "input": {
+      "id": "campaign:crafter-brief@1",
+      "schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["encounterId", "beatId", "goal", "doneWhen", "inputs", "ration"],
+        "properties": {
+          "encounterId": { "type": "string", "minLength": 1 },
+          "beatId": { "type": "string", "pattern": "^beat-[0-9]+$" },
+          "goal": { "type": "string", "minLength": 1 },
+          "doneWhen": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+          "inputs": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+          "ration": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["allowedPaths", "spellSlotCap", "tools"],
+            "properties": {
+              "allowedPaths": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+              "spellSlotCap": { "type": "integer", "minimum": 1 },
+              "tools": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } }
+            }
+          }
+        }
+      }
+    },
+    "output": {
+      "id": "campaign:crafter-outcome@1",
+      "schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["status", "classId", "outputContractId", "output", "evidence"],
+            "properties": {
+              "status": { "const": "complete" },
+              "classId": { "const": "campaign:crafter" },
+              "outputContractId": { "const": "campaign:crafter-outcome@1" },
+              "output": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["commit", "deviations"],
+                "properties": {
+                  "commit": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["sha", "branch", "mode"],
+                    "properties": {
+                      "sha": { "type": "string", "pattern": "^[0-9a-f]{7,40}$" },
+                      "branch": { "type": "string", "minLength": 1 },
+                      "mode": { "enum": ["created", "amended"] }
+                    }
+                  },
+                  "deviations": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": ["kind", "briefSaid", "did", "why"],
+                      "properties": {
+                        "kind": { "type": "string", "minLength": 1 },
+                        "briefSaid": { "type": "string", "minLength": 1 },
+                        "did": { "type": "string", "minLength": 1 },
+                        "why": { "type": "string", "minLength": 1 }
+                      }
+                    }
+                  }
+                }
+              },
+              "evidence": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["check", "command", "exitCode", "quote"],
+                  "properties": {
+                    "check": { "type": "integer", "minimum": 1 },
+                    "command": { "type": "string", "minLength": 1 },
+                    "exitCode": { "type": "integer" },
+                    "quote": { "type": "string", "minLength": 1, "maxLength": 400 }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["status", "classId", "missing", "treeState"],
+            "properties": {
+              "status": { "const": "gap" },
+              "classId": { "const": "campaign:crafter" },
+              "missing": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
+              "treeState": { "type": "string", "minLength": 1 }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["status", "classId", "requiredRole", "reason"],
+            "properties": {
+              "status": { "const": "reform-party" },
+              "classId": { "const": "campaign:crafter" },
+              "requiredRole": { "type": "string", "minLength": 1 },
+              "reason": { "type": "string", "minLength": 1 }
+            }
+          }
+        ]
+      }
+    }
+  },
+  "entrypoints": {
+    "claude-code": {
+      "kind": "agent",
+      "path": "hosts/claude-code/agents/crafter.md",
+      "projection": {
+        "canonicalSources": ["hosts/claude-code/agents/crafter.md"],
+        "sourceHash": "c0e37fc4b40b13b05c6f0432b1b05cb124ad805b935470d20e000d0e57885554"
+      }
+    }
+  },
+  "modelRequirements": ["bounded-generation"],
+  "capabilities": { "isolated-dispatch": "required" }
+}
