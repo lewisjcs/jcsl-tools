@@ -1,9 +1,0 @@
-{
-  "name": "campaign",
-  "version": "0.1.0",
-  "description": "Campaign Classes for the encounter runtime. Ships the Crafter, the implementation Class that changes the artifact, checks its own work against every numbered done-when check, commits on the branch, and reports a typed outcome with a required deviations list. Dispatched by Class from an encounter card by the campaign session skill.",
-  "author": { "name": "Josh C.S. Lewis" },
-  "repository": "https://github.com/lewisjcs/jcsl-tools",
-  "license": "MIT",
-  "keywords": ["campaign", "class", "crafter", "implementation", "statblock"]
-}

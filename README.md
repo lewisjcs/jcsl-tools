@@ -1,6 +1,6 @@
 # jcsl-tools
 
-Josh C.S. Lewis's personal Claude Code plugin marketplace — six independently installable plugins covering implementation workflow, multi-lens review, discovery-first research, context-spend discipline, repository documentation, and campaign Classes for the encounter runtime. No build step runs in this repo and there is no server: every plugin is markdown (skills, agents) plus shell, Python, and JavaScript components that Claude Code loads directly — gauntlet's runtime CLI among them, tracked as a pre-generated bundle (`plugins/gauntlet/runtime/bin/cli.mjs`) rather than built here.
+Josh C.S. Lewis's personal Claude Code plugin marketplace — six independently installable plugins covering implementation workflow, multi-lens review, discovery-first research, context-spend discipline, repository documentation, and Classes for the Kiln runtime (kiln-next). No build step runs in this repo and there is no server: every plugin is markdown (skills, agents) plus shell, Python, and JavaScript components that Claude Code loads directly — gauntlet's runtime CLI among them, tracked as a pre-generated bundle (`plugins/gauntlet/runtime/bin/cli.mjs`) rather than built here.
 
 ## Plugins
 
@@ -11,7 +11,7 @@ Josh C.S. Lewis's personal Claude Code plugin marketplace — six independently 
 | [`prospector`](plugins/prospector/) | Discovery-first research harness. Finds where an answer lives across Glean, GitHub, Jira, and the web before reading anything — then verifies every load-bearing claim and synthesizes a cited answer. | `/prospector:research` |
 | [`context-economy`](plugins/context-economy/) | Six-Class Party (Steward, Assembler, Delegator, Chronicler, Enforcer, Observer) for spending Claude Code's context window economically — hard-gates before broad reads/greps, nudges a handoff before context fills, tracks session cost. | Fires automatically on trigger phrases; no slash command |
 | [`cartographer`](plugins/cartographer/) | Repository cartographer — analyzes a repo's structure and evidence to draft a grounded, claim-classified README enrichment, flagging unsupported claims and stale content. | `cartograph-report` skill (auto-discovered; no slash command) |
-| [`campaign`](plugins/campaign/) | Campaign Classes for the encounter runtime. Ships the Crafter, the implementation Class that changes the artifact, checks its own work against every numbered done-when check, commits on the branch, and reports a typed outcome with a required deviations list. | Dispatched by Class (`campaign:crafter`) from an encounter card by the campaign session skill; no slash command |
+| [`kiln-next`](plugins/kiln-next/) | Classes for the Kiln runtime, under the holding name kiln-next until the old kiln plugin retires. Ships the Crafter, the implementation Class that changes the artifact, checks its own work against every numbered done-when check, commits on the branch, and reports a typed outcome with a required deviations list. | Dispatched by Class (`kiln-next:crafter`) from a job plan by the fire skill; no slash command |
 
 See each plugin's own README/SKILL.md for full usage. [ARCHITECTURE.md](./ARCHITECTURE.md) covers how the six plugins relate and the conventions shared across all of them (`${CLAUDE_PLUGIN_ROOT}` usage, progressive disclosure, finder/validator pairing).
 
@@ -38,7 +38,7 @@ claude plugin install gauntlet@jcsl-tools
 claude plugin install prospector@jcsl-tools
 claude plugin install context-economy@jcsl-tools
 claude plugin install cartographer@jcsl-tools
-claude plugin install campaign@jcsl-tools
+claude plugin install kiln-next@jcsl-tools
 ```
 
 Restart Claude Code after installing or after any change to a plugin's `hooks.json` or `plugin.json`.
