@@ -61,13 +61,13 @@
       "category": "development-workflows"
     },
     {
-      "name": "campaign",
-      "source": "./plugins/campaign",
-      "displayName": "Campaign",
-      "description": "Campaign Classes for the encounter runtime: the Crafter implementation Class, dispatched by Class from an encounter card. Pairs with the campaign encounter and session skills.",
+      "name": "kiln-next",
+      "source": "./plugins/kiln-next",
+      "displayName": "Kiln (next)",
+      "description": "Classes for the Kiln runtime: the Crafter implementation Class, dispatched by Class from a job plan. Pairs with the job and fire skills. Holding name until the old kiln plugin retires.",
       "author": { "name": "Josh C.S. Lewis" },
       "repository": "https://github.com/lewisjcs/jcsl-tools",
-      "keywords": ["campaign", "crafter", "class", "implementation"],
+      "keywords": ["kiln", "crafter", "class", "implementation"],
       "category": "development-workflows"
     }
   ]
