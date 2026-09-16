@@ -34,7 +34,7 @@ Each gate must be fully done before the next starts. Do not skip a gate because 
 - `goal`: one EARS line per `${CLAUDE_PLUGIN_ROOT}/references/ears.md`, saying what the task makes true. Never the mechanism: no file-by-file instructions, no code. The Crafter decides how.
 - `covers`: the requirement lines this task serves, quoted verbatim from the decision. Every requirement line in the decision must appear in some task's `covers`. If a requirement cannot be built as written, or the decision leaves a product question open that changes what to build, stop and reply `reform-party` naming `kiln:designer` with that question as the reason.
 - `dependsOn`: earlier task ids only; an empty list for a task that depends on none.
-- `doneWhen`: one or more checks, each an object with `command` (exactly one command a reader can rerun: no `&&`, `;`, or pipes) and `expect` (the result it must show). Prefer the repo's own test runner, a grep count, a diff stat. Before writing `npm ci`, confirm the repo tracks a lockfile (`git -C <repo> ls-files package-lock.json`); otherwise say `npm install`.
+- `doneWhen`: one or more checks, each an object with `command` (exactly one command a reader can rerun: no `&&`, `||`, `;`, or `|` anywhere in the command text) and `expect` (the result it must show). A chain token inside quotes is fine, a token inside `$(...)` or backticks within double quotes is not, and an unclosed quote is refused. Prefer the repo's own test runner, a grep count, a diff stat. Before writing `npm ci`, confirm the repo tracks a lockfile (`git -C <repo> ls-files package-lock.json`); otherwise say `npm install`.
 - `inputs`: absolute paths the Crafter reads for this task.
 - `repo` and `branch`: the worktree path and branch your step's goal names.
 
