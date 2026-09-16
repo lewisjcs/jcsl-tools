@@ -1,9 +1,9 @@
 {
   "name": "kiln-next",
-  "version": "0.2.0",
-  "description": "Classes for the Kiln runtime, under the holding name kiln-next until the old kiln plugin retires. Ships the Crafter, the implementation Class that changes the artifact, checks its own work against every numbered done-when check, commits on the branch, and reports a typed outcome with a required deviations list. Dispatched by Class from a job plan by the fire skill.",
+  "version": "0.3.0",
+  "description": "Classes for the Kiln runtime, under the holding name kiln-next until the old kiln plugin retires. Ships the Crafter (changes the artifact), the Designer (the shape skill: a main-thread design dialogue that ends at a written decision), the Planner (turns a decision into a ticket plan with rerunnable checks), and the Inspector (rules once per build job on conformance to the plan). Dispatched by Class from a job plan by the fire skill.",
   "author": { "name": "Josh C.S. Lewis" },
   "repository": "https://github.com/lewisjcs/jcsl-tools",
   "license": "MIT",
-  "keywords": ["kiln", "class", "crafter", "implementation", "statblock"]
+  "keywords": ["kiln", "class", "crafter", "designer", "planner", "inspector", "implementation", "statblock"]
 }

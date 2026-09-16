@@ -1,0 +1,162 @@
+{
+  "kind": "class",
+  "schemaVersion": "1.0-kernel",
+  "id": "kiln:planner",
+  "version": "1.0.0",
+  "audience": "personal",
+  "identity": {
+    "name": "Planner",
+    "tagline": "The strategist who turns an approved design into a path the Party can follow.",
+    "promise": "An ordered ticket plan whose every task has rerunnable checks, validated by the CLI.",
+    "constraints": [
+      "Reads the decision file and the named inputs, nothing beyond the ration.",
+      "A task is one commit's worth of change; its goal is one EARS line; its checks are commands a reader can rerun.",
+      "Lists what it read and why in every complete reply."
+    ],
+    "taboos": [
+      "Never sets par, roster, or ration; those are the job builder's.",
+      "Never edits the decision file or any repo; the ticket plan is its only file.",
+      "Never writes the mechanism into a task; the Crafter decides how.",
+      "Never plans from a guess about an input it could not read; that is a gap before any planning starts.",
+      "Never reopens a product decision; an open one is a reform-party naming the Designer."
+    ]
+  },
+  "functionRole": "planner",
+  "members": {
+    "skills": [],
+    "agents": ["hosts/claude-code/agents/planner.md"],
+    "references": ["references/ears.md"]
+  },
+  "availableFeats": [],
+  "boundaries": {
+    "tools": { "allow": ["Read", "Grep", "Glob", "Bash", "Write"] },
+    "paths": { "read": ["**"], "write": ["**"] },
+    "data": { "allow": ["personal", "company", "public"] },
+    "enforcement": { "tools": "required", "paths": "best-effort", "data": "required" }
+  },
+  "contract": {
+    "input": {
+      "id": "kiln:planner-brief@1",
+      "schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["jobId", "stepId", "goal", "doneWhen", "inputs", "ration"],
+        "properties": {
+          "jobId": { "type": "string", "minLength": 1 },
+          "stepId": { "type": "string", "pattern": "^step-[0-9]+$" },
+          "goal": { "type": "string", "minLength": 1 },
+          "doneWhen": { "type": "array", "minItems": 1, "items": { "type": "object", "required": ["command", "expect"], "additionalProperties": false, "properties": { "command": { "type": "string", "minLength": 1 }, "expect": { "type": "string", "minLength": 1 } } } },
+          "inputs": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+          "ration": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["allowedPaths", "tokenCap", "tools"],
+            "properties": {
+              "allowedPaths": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+              "tokenCap": { "type": "integer", "minimum": 1 },
+              "tools": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } }
+            }
+          }
+        }
+      }
+    },
+    "output": {
+      "id": "kiln:planner-outcome@1",
+      "schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["status", "classId", "outputContractId", "output", "evidence"],
+            "properties": {
+              "status": { "const": "complete" },
+              "classId": { "const": "kiln:planner" },
+              "outputContractId": { "const": "kiln:planner-outcome@1" },
+              "output": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["ticketPlan", "read"],
+                "properties": {
+                  "ticketPlan": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["path", "sha256"],
+                    "properties": {
+                      "path": { "type": "string", "minLength": 1 },
+                      "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+                    }
+                  },
+                  "read": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": ["what", "why"],
+                      "properties": {
+                        "what": { "type": "string", "minLength": 1, "maxLength": 200 },
+                        "why": { "type": "string", "minLength": 1, "maxLength": 200 }
+                      }
+                    }
+                  },
+                  "engineRef": { "type": "string", "minLength": 1 }
+                }
+              },
+              "evidence": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["check", "command", "exitCode", "quote"],
+                  "properties": {
+                    "check": { "type": "integer", "minimum": 1 },
+                    "command": { "type": "string", "minLength": 1 },
+                    "exitCode": { "type": "integer" },
+                    "quote": { "type": "string", "minLength": 1, "maxLength": 400 }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["status", "classId", "missing", "planState"],
+            "properties": {
+              "status": { "const": "gap" },
+              "classId": { "const": "kiln:planner" },
+              "missing": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
+              "planState": { "type": "string", "minLength": 1 }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["status", "classId", "requiredRole", "reason"],
+            "properties": {
+              "status": { "const": "reform-party" },
+              "classId": { "const": "kiln:planner" },
+              "requiredRole": { "type": "string", "minLength": 1 },
+              "reason": { "type": "string", "minLength": 1 }
+            }
+          }
+        ]
+      }
+    }
+  },
+  "entrypoints": {
+    "claude-code": {
+      "kind": "agent",
+      "path": "hosts/claude-code/agents/planner.md",
+      "projection": {
+        "canonicalSources": ["hosts/claude-code/agents/planner.md", "references/ears.md"],
+        "sourceHash": "468cccdd1557ca12c93df65fbebb448c5f06fbe7a426132a7d64d67dd756522b"
+      }
+    }
+  },
+  "modelRequirements": ["bounded-generation"],
+  "capabilities": { "isolated-dispatch": "required" }
+}
