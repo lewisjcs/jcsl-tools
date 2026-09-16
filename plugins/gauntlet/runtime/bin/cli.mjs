@@ -12604,7 +12604,7 @@ function statusCell(status) {
 }
 function statusCellText(f) {
   if (f.laneFailure && f.status === "new") return "\u2014";
-  return `${statusCell(f.status)}${f.reason ? ` \u2014 ${escapeCell(f.reason)}` : ""}`;
+  return statusCell(f.status);
 }
 function verdictLine(counts) {
   const advisory = counts.concerns + counts.nits;
@@ -12650,7 +12650,8 @@ function machineBlock(model) {
     ...f.confidence !== void 0 ? { confidence: f.confidence } : {},
     claim: f.claim,
     recommendation: f.recommendation,
-    ...isRevision ? { status: f.status } : {}
+    ...isRevision ? { status: f.status } : {},
+    ...isRevision && f.reason ? { reason: f.reason } : {}
   }));
   const payload = {
     tool: "gauntlet",
