@@ -1,0 +1,147 @@
+{
+  "kind": "class",
+  "schemaVersion": "1.0-kernel",
+  "id": "kiln:designer",
+  "version": "1.0.0",
+  "audience": "personal",
+  "identity": {
+    "name": "Designer",
+    "tagline": "The visionary who gives uncertain problems a shape worth building.",
+    "promise": "One written decision the person approved, at the announced path.",
+    "constraints": [
+      "Holds the dialogue in the main thread, one question per message, plain English, a recommendation with every question.",
+      "Delegates any read larger than a short file to one read-only subagent at a time and takes back conclusions with citations, never contents.",
+      "Writes the decision file once, at the end, with its requirements as EARS lines, and leaves a usage receipt whether or not a job is open."
+    ],
+    "taboos": [
+      "Never writes source, edits a repo, or dispatches a Crafter.",
+      "Never records a decision the person did not give.",
+      "Never invents a requirement the ticket does not support; an ungrounded line is marked proposed and confirmed or dropped.",
+      "Never builds an execution task list; that is the Planner's outcome."
+    ]
+  },
+  "functionRole": "designer",
+  "members": {
+    "skills": ["hosts/claude-code/skills/shape/SKILL.md"],
+    "agents": [],
+    "references": ["references/ears.md"]
+  },
+  "availableFeats": [],
+  "boundaries": {
+    "tools": { "allow": ["Read", "Grep", "Glob", "Write", "Bash", "Agent"] },
+    "paths": { "read": ["**"], "write": ["**"] },
+    "data": { "allow": ["personal", "company", "public"] },
+    "enforcement": { "tools": "best-effort", "paths": "best-effort", "data": "required" }
+  },
+  "contract": {
+    "input": {
+      "id": "kiln:designer-brief@1",
+      "schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["jobId", "stepId", "goal", "doneWhen", "inputs", "ration"],
+        "properties": {
+          "jobId": { "type": "string", "minLength": 1 },
+          "stepId": { "type": "string", "pattern": "^step-[0-9]+$" },
+          "goal": { "type": "string", "minLength": 1 },
+          "doneWhen": { "type": "array", "minItems": 1, "items": { "type": "object", "required": ["command", "expect"], "additionalProperties": false, "properties": { "command": { "type": "string", "minLength": 1 }, "expect": { "type": "string", "minLength": 1 } } } },
+          "inputs": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+          "ration": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["allowedPaths", "tokenCap", "tools"],
+            "properties": {
+              "allowedPaths": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+              "tokenCap": { "type": "integer", "minimum": 1 },
+              "tools": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } }
+            }
+          }
+        }
+      }
+    },
+    "output": {
+      "id": "kiln:designer-outcome@1",
+      "schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["status", "classId", "outputContractId", "output", "evidence"],
+            "properties": {
+              "status": { "const": "complete" },
+              "classId": { "const": "kiln:designer" },
+              "outputContractId": { "const": "kiln:designer-outcome@1" },
+              "output": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["decision"],
+                "properties": {
+                  "decision": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["path", "sha256"],
+                    "properties": {
+                      "path": { "type": "string", "minLength": 1 },
+                      "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+                    }
+                  }
+                }
+              },
+              "evidence": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["check", "command", "exitCode", "quote"],
+                  "properties": {
+                    "check": { "type": "integer", "minimum": 1 },
+                    "command": { "type": "string", "minLength": 1 },
+                    "exitCode": { "type": "integer" },
+                    "quote": { "type": "string", "minLength": 1, "maxLength": 400 }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["status", "classId", "missing", "decisionState"],
+            "properties": {
+              "status": { "const": "gap" },
+              "classId": { "const": "kiln:designer" },
+              "missing": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
+              "decisionState": { "type": "string", "minLength": 1 }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["status", "classId", "requiredRole", "reason"],
+            "properties": {
+              "status": { "const": "reform-party" },
+              "classId": { "const": "kiln:designer" },
+              "requiredRole": { "type": "string", "minLength": 1 },
+              "reason": { "type": "string", "minLength": 1 }
+            }
+          }
+        ]
+      }
+    }
+  },
+  "entrypoints": {
+    "claude-code": {
+      "kind": "skill",
+      "path": "hosts/claude-code/skills/shape/SKILL.md",
+      "projection": {
+        "canonicalSources": ["hosts/claude-code/skills/shape/SKILL.md", "references/ears.md"],
+        "sourceHash": "0ff6f834379db4f155a04d0aff5233e1514a8844b85531ba92d0b868aa9ace34"
+      }
+    }
+  },
+  "modelRequirements": ["complex-synthesis"],
+  "capabilities": { "isolated-dispatch": "best-effort" }
+}

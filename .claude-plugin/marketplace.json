@@ -64,10 +64,10 @@
       "name": "kiln-next",
       "source": "./plugins/kiln-next",
       "displayName": "Kiln (next)",
-      "description": "Classes for the Kiln runtime: the Crafter implementation Class, dispatched by Class from a job plan. Pairs with the job and fire skills. Holding name until the old kiln plugin retires.",
+      "description": "Classes for the Kiln runtime: Crafter, Designer, Planner, and Inspector, dispatched by Class from a job plan. Pairs with the job and fire skills. Holding name until the old kiln plugin retires.",
       "author": { "name": "Josh C.S. Lewis" },
       "repository": "https://github.com/lewisjcs/jcsl-tools",
-      "keywords": ["kiln", "crafter", "class", "implementation"],
+      "keywords": ["kiln", "crafter", "designer", "planner", "inspector", "class", "implementation"],
       "category": "development-workflows"
     }
   ]

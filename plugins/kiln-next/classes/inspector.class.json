@@ -1,0 +1,168 @@
+{
+  "kind": "class",
+  "schemaVersion": "1.0-kernel",
+  "id": "kiln:inspector",
+  "version": "1.0.0",
+  "audience": "personal",
+  "identity": {
+    "name": "Inspector",
+    "tagline": "The skeptic who accepts evidence, never assurances.",
+    "promise": "A verdict on whether the job followed its plan, with one ruling per deviation.",
+    "constraints": [
+      "Runs once per build job, as its last step, over the ticket plan, the decision file, the job diff, and the Crafter's deviation records.",
+      "Walks the diff and re-runs every task's checks before reading the Crafter's declared deviations.",
+      "Every ruling is one of justified, unjustified, or undeclared, with a reason."
+    ],
+    "taboos": [
+      "Never edits anything; its Bash is read-only git and the ticket plan's own check commands.",
+      "Never rules on code quality or style.",
+      "Never softens an unjustified ruling into a justified one.",
+      "Never judges the diff against the ticket itself; conformance is to the plan, and the plan's coverage of the decision is gate one."
+    ]
+  },
+  "functionRole": "reviewer",
+  "members": {
+    "skills": [],
+    "agents": ["hosts/claude-code/agents/inspector.md"],
+    "references": []
+  },
+  "availableFeats": [],
+  "boundaries": {
+    "tools": { "allow": ["Read", "Grep", "Glob", "Bash"] },
+    "paths": { "read": ["**"], "write": ["**"] },
+    "data": { "allow": ["personal", "company", "public"] },
+    "enforcement": { "tools": "required", "paths": "best-effort", "data": "required" }
+  },
+  "contract": {
+    "input": {
+      "id": "kiln:inspector-brief@1",
+      "schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["jobId", "stepId", "goal", "doneWhen", "inputs", "ration"],
+        "properties": {
+          "jobId": { "type": "string", "minLength": 1 },
+          "stepId": { "type": "string", "pattern": "^step-[0-9]+$" },
+          "goal": { "type": "string", "minLength": 1 },
+          "doneWhen": { "type": "array", "minItems": 1, "items": { "type": "object", "required": ["command", "expect"], "additionalProperties": false, "properties": { "command": { "type": "string", "minLength": 1 }, "expect": { "type": "string", "minLength": 1 } } } },
+          "inputs": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+          "ration": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["allowedPaths", "tokenCap", "tools"],
+            "properties": {
+              "allowedPaths": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+              "tokenCap": { "type": "integer", "minimum": 1 },
+              "tools": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } }
+            }
+          }
+        }
+      }
+    },
+    "output": {
+      "id": "kiln:inspector-outcome@1",
+      "schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$defs": {
+          "ruling": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["task", "deviation", "ruling", "why"],
+            "properties": {
+              "task": { "type": "string", "pattern": "^task-[0-9]+$" },
+              "deviation": { "type": "string", "minLength": 1 },
+              "ruling": { "enum": ["justified", "unjustified", "undeclared"] },
+              "why": { "type": "string", "minLength": 1 }
+            }
+          },
+          "evidence": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["check", "command", "exitCode", "quote"],
+              "properties": {
+                "check": { "type": "integer", "minimum": 1 },
+                "command": { "type": "string", "minLength": 1 },
+                "exitCode": { "type": "integer" },
+                "quote": { "type": "string", "minLength": 1, "maxLength": 400 }
+              }
+            }
+          }
+        },
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["status", "classId", "outputContractId", "output", "evidence"],
+            "properties": {
+              "status": { "const": "complete" },
+              "classId": { "const": "kiln:inspector" },
+              "outputContractId": { "const": "kiln:inspector-outcome@1" },
+              "output": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["verdict", "rulings", "changedAnything"],
+                "properties": {
+                  "verdict": { "enum": ["conformed", "deviated-justified"] },
+                  "rulings": { "type": "array", "items": { "allOf": [{ "$ref": "#/$defs/ruling" }, { "type": "object", "properties": { "ruling": { "enum": ["justified", "undeclared"] } } }] } },
+                  "changedAnything": { "type": "boolean" }
+                },
+                "allOf": [
+                  {
+                    "if": { "properties": { "verdict": { "const": "conformed" } } },
+                    "then": { "properties": { "rulings": { "type": "array", "maxItems": 0 } } }
+                  },
+                  {
+                    "if": { "properties": { "verdict": { "const": "deviated-justified" } } },
+                    "then": { "properties": { "rulings": { "type": "array", "minItems": 1 } } }
+                  }
+                ]
+              },
+              "evidence": { "$ref": "#/$defs/evidence" }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["status", "classId", "verdict", "rulings", "changedAnything", "missing"],
+            "properties": {
+              "status": { "const": "gap" },
+              "classId": { "const": "kiln:inspector" },
+              "verdict": { "const": "deviated-unjustified" },
+              "rulings": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/ruling" }, "contains": { "type": "object", "properties": { "ruling": { "const": "unjustified" } } } },
+              "changedAnything": { "type": "boolean" },
+              "missing": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 1 } }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["status", "classId", "requiredRole", "reason"],
+            "properties": {
+              "status": { "const": "reform-party" },
+              "classId": { "const": "kiln:inspector" },
+              "requiredRole": { "enum": ["kiln:planner", "kiln:designer"] },
+              "reason": { "type": "string", "minLength": 1 },
+              "rulings": { "type": "array", "items": { "$ref": "#/$defs/ruling" } }
+            }
+          }
+        ]
+      }
+    }
+  },
+  "entrypoints": {
+    "claude-code": {
+      "kind": "agent",
+      "path": "hosts/claude-code/agents/inspector.md",
+      "projection": {
+        "canonicalSources": ["hosts/claude-code/agents/inspector.md"],
+        "sourceHash": "d3a34dfa9baedbbcfe5ac189fadce21d250a3a262f528bda34e45dcc12d5879c"
+      }
+    }
+  },
+  "modelRequirements": ["bounded-generation"],
+  "capabilities": { "isolated-dispatch": "required" }
+}
