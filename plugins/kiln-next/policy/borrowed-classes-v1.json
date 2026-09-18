@@ -1,0 +1,10 @@
+{
+  "kind": "borrowed-classes",
+  "version": "1.0.0",
+  "note": "Each pin's `tools` is the tool boundary a plan's ration for that borrowed member is checked against (validatePlan in src/contracts.mjs) and printed from (renderPlan in src/render.mjs). It lists `Agent` beside the four read tools the installed manifests grant, because a borrowed lens is played as a handed skill in the main thread, and that skill dispatches the lens's own finder and validator roles. The installed manifest states what those roles may use; this list states what the step that invokes the lens needs.",
+  "classes": [
+    { "classId": "jcsl:gauntlet:adversarial-review", "lens": "adversarial-review", "invoke": "gauntlet:adversarial-review", "manifest": "runtime/classes/adversarial-review.class.json", "majorVersion": 2, "tools": ["Read", "Grep", "Glob", "Bash", "Agent"] },
+    { "classId": "jcsl:gauntlet:threat-review", "lens": "threat-review", "invoke": "gauntlet:threat-review", "manifest": "runtime/classes/threat-review.class.json", "majorVersion": 1, "tools": ["Read", "Grep", "Glob", "Bash", "Agent"] },
+    { "classId": "jcsl:gauntlet:code-quality-audit", "lens": "code-quality-audit", "invoke": "gauntlet:code-quality-audit", "manifest": "runtime/classes/code-quality-audit.class.json", "majorVersion": 2, "tools": ["Read", "Grep", "Glob", "Bash", "Agent"] }
+  ]
+}

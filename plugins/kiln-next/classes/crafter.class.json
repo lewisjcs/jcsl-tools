@@ -2,7 +2,7 @@
   "kind": "class",
   "schemaVersion": "1.0-kernel",
   "id": "kiln:crafter",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "audience": "personal",
   "identity": {
     "name": "Crafter",
@@ -154,7 +154,7 @@
       "path": "hosts/claude-code/agents/crafter.md",
       "projection": {
         "canonicalSources": ["hosts/claude-code/agents/crafter.md"],
-        "sourceHash": "dfe931c287df683b7002fe31c5611ad1cd5e7d2c6263b8a75630047b4b82d090"
+        "sourceHash": "151a4323a1ff55520b61f5e6acf5c823cfa3b1701fab612cfedcc100e887c325"
       }
     }
   },

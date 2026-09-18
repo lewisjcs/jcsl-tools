@@ -1,0 +1,18 @@
+{
+  "kind": "consequence-policy",
+  "version": "1.0.0",
+  "fileCountHigh": 40,
+  "securityWords": ["secret", "secrets", "token", "tokens", "credential", "credentials", "password", "passwords", "auth", "authentication", "authorization", "permission", "permissions", "public origin"],
+  "paths": {
+    "default": [
+      { "name": "authentication", "pattern": "(^|/)auth[a-z]*(/|\\.[a-z]+$)" },
+      { "name": "secrets", "pattern": "(^|/)(secrets?|credentials?)(/|\\.[a-z]+$)|(^|/)\\.env(\\.|$)" },
+      { "name": "database-migrations", "pattern": "(^|/)migrations?/" },
+      { "name": "ci-workflows", "pattern": "^\\.github/workflows/" },
+      { "name": "plugin-manifests", "pattern": "(^|/)\\.claude-plugin/|(^|/)plugin\\.json$|(^|/)marketplace\\.json$|(^|/)PROVENANCE\\.json$|(^|/)installed_plugins\\.json$" }
+    ],
+    "perRepo": {
+      "jcsl-tools": [{ "name": "plugin-payload", "pattern": "^plugins/" }]
+    }
+  }
+}

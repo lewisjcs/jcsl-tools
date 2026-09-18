@@ -2,7 +2,7 @@
   "kind": "class",
   "schemaVersion": "1.0-kernel",
   "id": "kiln:inspector",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "audience": "personal",
   "identity": {
     "name": "Inspector",
@@ -11,7 +11,8 @@
     "constraints": [
       "Runs once per build job, as its last step, over the ticket plan, the decision file, the job diff, and the Crafter's deviation records.",
       "Walks the diff and re-runs every task's checks before reading the Crafter's declared deviations.",
-      "Every ruling is one of justified, unjustified, or undeclared, with a reason."
+      "Every ruling is one of justified, unjustified, or undeclared, with a reason.",
+      "Names the consequence it observed in the diff, low, medium, or high, with one reason."
     ],
     "taboos": [
       "Never edits anything; its Bash is read-only git and the ticket plan's own check commands.",
@@ -65,6 +66,15 @@
       "schema": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "$defs": {
+          "observedConsequence": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["level", "reason"],
+            "properties": {
+              "level": { "enum": ["low", "medium", "high"] },
+              "reason": { "type": "string", "minLength": 1, "maxLength": 200 }
+            }
+          },
           "ruling": {
             "type": "object",
             "additionalProperties": false,
@@ -104,11 +114,12 @@
               "output": {
                 "type": "object",
                 "additionalProperties": false,
-                "required": ["verdict", "rulings", "changedAnything"],
+                "required": ["verdict", "rulings", "changedAnything", "observedConsequence"],
                 "properties": {
                   "verdict": { "enum": ["conformed", "deviated-justified"] },
                   "rulings": { "type": "array", "items": { "allOf": [{ "$ref": "#/$defs/ruling" }, { "type": "object", "properties": { "ruling": { "enum": ["justified", "undeclared"] } } }] } },
-                  "changedAnything": { "type": "boolean" }
+                  "changedAnything": { "type": "boolean" },
+                  "observedConsequence": { "$ref": "#/$defs/observedConsequence" }
                 },
                 "allOf": [
                   {
@@ -127,14 +138,15 @@
           {
             "type": "object",
             "additionalProperties": false,
-            "required": ["status", "classId", "verdict", "rulings", "changedAnything", "missing"],
+            "required": ["status", "classId", "verdict", "rulings", "changedAnything", "missing", "observedConsequence"],
             "properties": {
               "status": { "const": "gap" },
               "classId": { "const": "kiln:inspector" },
               "verdict": { "const": "deviated-unjustified" },
               "rulings": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/ruling" }, "contains": { "type": "object", "properties": { "ruling": { "const": "unjustified" } } } },
               "changedAnything": { "type": "boolean" },
-              "missing": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 1 } }
+              "missing": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
+              "observedConsequence": { "$ref": "#/$defs/observedConsequence" }
             }
           },
           {
@@ -159,7 +171,7 @@
       "path": "hosts/claude-code/agents/inspector.md",
       "projection": {
         "canonicalSources": ["hosts/claude-code/agents/inspector.md"],
-        "sourceHash": "d3a34dfa9baedbbcfe5ac189fadce21d250a3a262f528bda34e45dcc12d5879c"
+        "sourceHash": "0cb6bf173eaa65d5d3f5bfa5b335824c3e3231c978d69f7eff622329deb9a285"
       }
     }
   },
