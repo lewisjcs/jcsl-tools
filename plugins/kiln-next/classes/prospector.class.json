@@ -1,0 +1,128 @@
+{
+  "kind": "class",
+  "schemaVersion": "1.0-kernel",
+  "id": "kiln:prospector",
+  "version": "1.0.0",
+  "audience": "personal",
+  "identity": {
+    "name": "Prospector",
+    "tagline": "The scout who finds where the answer lives and comes back with citations, not stories.",
+    "promise": "A cited report inside the ration, with every gap named.",
+    "constraints": [
+      "One agent, no fan-out: runs the research method's single-threaded path by invoking the research skill by name.",
+      "Stays inside the ration the brief gives: a read count and a tool call count.",
+      "Returns conclusions with file and line citations, never file contents."
+    ],
+    "taboos": [
+      "Never guesses a negative result; a source it did not read is a gap, not a no.",
+      "Never exceeds the ration in silence; the reply says what is still unread.",
+      "Never designs, plans, or edits anything; the report is its only file."
+    ]
+  },
+  "functionRole": "researcher",
+  "members": {
+    "skills": [],
+    "agents": ["hosts/claude-code/agents/prospector.md"],
+    "references": []
+  },
+  "availableFeats": [],
+  "boundaries": {
+    "tools": { "allow": ["Read", "Grep", "Glob", "Bash", "Skill", "Write"] },
+    "paths": { "read": ["**"], "write": ["**"] },
+    "data": { "allow": ["personal", "company", "public"] },
+    "enforcement": { "tools": "required", "paths": "best-effort", "data": "required" }
+  },
+  "contract": {
+    "input": {
+      "id": "kiln:prospector-brief@1",
+      "schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["jobId", "stepId", "goal", "doneWhen", "inputs", "ration"],
+        "properties": {
+          "jobId": { "type": "string", "minLength": 1 },
+          "stepId": { "type": "string", "pattern": "^step-[0-9]+$" },
+          "goal": { "type": "string", "minLength": 1 },
+          "doneWhen": { "type": "array", "minItems": 1, "items": { "type": "object", "required": ["command", "expect"], "additionalProperties": false, "properties": { "command": { "type": "string", "minLength": 1 }, "expect": { "type": "string", "minLength": 1 } } } },
+          "inputs": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+          "ration": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["allowedPaths", "tokenCap", "tools", "readCap", "toolCallCap"],
+            "properties": {
+              "allowedPaths": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+              "tokenCap": { "type": "integer", "minimum": 1 },
+              "tools": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+              "readCap": { "type": "integer", "minimum": 1 },
+              "toolCallCap": { "type": "integer", "minimum": 1 }
+            }
+          }
+        }
+      }
+    },
+    "output": {
+      "id": "kiln:prospector-outcome@1",
+      "schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["status", "classId", "outputContractId", "output", "evidence"],
+            "properties": {
+              "status": { "const": "complete" },
+              "classId": { "const": "kiln:prospector" },
+              "outputContractId": { "const": "kiln:prospector-outcome@1" },
+              "output": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["report", "read", "gaps"],
+                "properties": {
+                  "report": { "type": "object", "additionalProperties": false, "required": ["path", "sha256"], "properties": { "path": { "type": "string", "minLength": 1 }, "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" } } },
+                  "read": { "type": "array", "minItems": 1, "items": { "type": "object", "additionalProperties": false, "required": ["what", "why"], "properties": { "what": { "type": "string", "minLength": 1, "maxLength": 200 }, "why": { "type": "string", "minLength": 1, "maxLength": 200 } } } },
+                  "gaps": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+                }
+              },
+              "evidence": { "type": "array", "minItems": 1, "items": { "type": "object", "additionalProperties": false, "required": ["check", "command", "exitCode", "quote"], "properties": { "check": { "type": "integer", "minimum": 1 }, "command": { "type": "string", "minLength": 1 }, "exitCode": { "type": "integer" }, "quote": { "type": "string", "minLength": 1, "maxLength": 400 } } } }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["status", "classId", "missing", "unread"],
+            "properties": {
+              "status": { "const": "gap" },
+              "classId": { "const": "kiln:prospector" },
+              "missing": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
+              "unread": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["status", "classId", "requiredRole", "reason"],
+            "properties": {
+              "status": { "const": "reform-party" },
+              "classId": { "const": "kiln:prospector" },
+              "requiredRole": { "const": "kiln:designer" },
+              "reason": { "type": "string", "minLength": 1 }
+            }
+          }
+        ]
+      }
+    }
+  },
+  "entrypoints": {
+    "claude-code": {
+      "kind": "agent",
+      "path": "hosts/claude-code/agents/prospector.md",
+      "projection": {
+        "canonicalSources": ["hosts/claude-code/agents/prospector.md"],
+        "sourceHash": "da062fe63ff026c41497579f4444dfefbf97a07d0ad5685704378eeafd01e5e4"
+      }
+    }
+  },
+  "modelRequirements": ["bounded-generation"],
+  "capabilities": { "isolated-dispatch": "required" }
+}
