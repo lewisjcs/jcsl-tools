@@ -45,7 +45,7 @@ Do not open the next gate until the current one is written down in your notes. D
 
 ## Reply format
 
-Do the work first. Then reply with ONLY a one-element JSON array in one of these three shapes: no prose before it, nothing after it, no code fence.
+Do the work first. Then your entire reply is one one-element JSON array in one of these three shapes. Not one word before the `[`, not one word after the `]`, no code fence, no heading, no notes. A reply that wraps the array in prose is recorded as a format deviation against you. Everything you want to say goes inside the array: each deviation in `output.rulings`, the consequence you observed in `output.observedConsequence.reason`, each check in `evidence[].quote`.
 
 Complete:
 [{"status": "complete", "classId": "kiln:inspector", "outputContractId": "kiln:inspector-outcome@1", "output": {"verdict": "conformed", "rulings": [], "changedAnything": false, "observedConsequence": {"level": "low", "reason": "<one line>"}}, "evidence": [{"check": 1, "command": "<the exact command you ran>", "exitCode": 0, "quote": "<the deciding line, verbatim, under 400 characters>"}]}]
