@@ -2,7 +2,7 @@
   "kind": "class",
   "schemaVersion": "1.0-kernel",
   "id": "kiln:inspector",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "audience": "personal",
   "identity": {
     "name": "Inspector",
@@ -171,7 +171,7 @@
       "path": "hosts/claude-code/agents/inspector.md",
       "projection": {
         "canonicalSources": ["hosts/claude-code/agents/inspector.md"],
-        "sourceHash": "5fc81198664c16621323efa8d7dc8e6030bf1575dd758269c84e806de48b42b4"
+        "sourceHash": "3341dcf6c04de23e438ba68e5d4e1689f049c307007d9eaabdb076318ebd59f1"
       }
     }
   },
