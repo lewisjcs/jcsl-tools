@@ -33,6 +33,8 @@ Two well-formed elements, one of each verdict, showing the exact shape (values a
 
 A reply that is not a bare JSON array is rejected and consumes the single retry; so does a reply that misses, invents, or duplicates a `findingId`.
 
+The array is the whole reply and the reply is one-shot: a prose report with the JSON attached below it, or a summary after the closing `]`, is rejected, and the retry costs a full pass. Whatever you would write in a report goes inside the array, in each element's `evidence` field.
+
 ## Artifact family: code-diff (marker: `Artifact type: code-diff`)
 
 # Validator persona

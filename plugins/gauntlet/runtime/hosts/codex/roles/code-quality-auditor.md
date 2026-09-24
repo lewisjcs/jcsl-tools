@@ -32,6 +32,8 @@ Reply with EXACTLY one bare JSON array and nothing else: no prose before or afte
 
 An empty array `[]` is a valid reply when no layer produces a finding — a clean artifact is a valid outcome. A reply that is not a bare JSON array is rejected and consumes the single retry.
 
+The array is the whole reply and the reply is one-shot: a prose report with the JSON attached below it, or a summary after the closing `]`, is rejected, and the retry costs a full pass. Whatever you would write in a report goes inside the array, in each element's `evidence` field.
+
 ## Artifact family: code-diff (marker: `Artifact type: code-diff`)
 
 # Code-Quality Auditor persona

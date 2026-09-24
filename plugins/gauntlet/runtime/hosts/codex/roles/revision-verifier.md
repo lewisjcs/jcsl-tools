@@ -31,6 +31,8 @@ Reply with EXACTLY one bare JSON array and nothing else: no prose before or afte
 
 A reply that is not a bare JSON array is rejected and consumes the single retry; so does a reply that misses, invents, or duplicates a key.
 
+The array is the whole reply and the reply is one-shot: a prose report with the JSON attached below it, or a summary after the closing `]`, is rejected, and the retry costs a full pass. Whatever you would write in a report goes inside the array, in each element's `reason` field.
+
 ## Artifact family: code-diff (marker: `Artifact type: code-diff`)
 
 # Revision Verifier persona
