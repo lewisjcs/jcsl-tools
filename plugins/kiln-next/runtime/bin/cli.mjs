@@ -9452,6 +9452,10 @@ var FINDER_CHECKS = Object.freeze((state) => {
   const reportPath = `${state.runDir}/facts-report.md`;
   return [{ command: `test -f ${reportPath}`, expect: "exit 0" }, { command: `grep -c '^- ' ${reportPath}`, expect: "a count of at least 1" }];
 });
+var CONVENTIONS_CHECKS = Object.freeze((state) => {
+  const reportPath = `${state.runDir}/conventions-report.md`;
+  return [{ command: `test -f ${reportPath}`, expect: "exit 0" }, { command: `grep -c '^- ' ${reportPath}`, expect: "a count of at least 4" }];
+});
 var DESIGNER_CHECKS = Object.freeze((state) => {
   const decisionPath = `${state.runDir}/decision.md`;
   return [{ command: `test -f ${decisionPath}`, expect: "exit 0" }, { command: `grep -c '^\\*\\*Status:\\*\\* APPROVED' ${decisionPath}`, expect: "1" }];
@@ -9498,6 +9502,38 @@ function renderFinderPrompt(state) {
     `## Your report: ${reportPath}`,
     "Write a markdown file with two sections. `## Facts`: one bullet per fact about what exists today and where, each ending in `(source: <path:line or URL>)`. Ask for every missing fact against the brief in this one dispatch, not the first one found. `## Gaps`: one bullet per fact you could not find, in the words a person can answer.",
     checksSentence(FINDER_CHECKS(state)),
+    NO_CD,
+    REPLY_RULE,
+    "",
+    ...artifact(state, fence)
+  ].join("\n");
+}
+function renderConventionsPrompt(state) {
+  const reportPath = `${state.runDir}/conventions-report.md`;
+  const fence = fenceFor(state);
+  const title = state.ticket.title;
+  return [
+    ...opening("You are the finder (kiln:prospector), one member of a build Party. Read this repository's branch and pull request conventions and name the branch and the pull request title for this ticket.", fence),
+    "## Intent",
+    ...fenced(fence, [state.brief.intent.text]),
+    "",
+    ...title ? ["## Ticket title", ...fenced(fence, [title]), ""] : [],
+    `## The repository: ${state.checkout}`,
+    "Read these places, in this order:",
+    "1. `CLAUDE.md` and `AGENTS.md` at the checkout root.",
+    "2. Every `SKILL.md` under `.claude/skills/` and `skills/` that speaks of branches, commits, or pull requests.",
+    "3. `.github/PULL_REQUEST_TEMPLATE.md`.",
+    `4. The branch names from \`git -C ${state.checkout} branch -r --format='%(refname:short)'\`.`,
+    "",
+    `## Your report: ${reportPath}`,
+    "Write a markdown file with two sections. `## Facts` holds four bullets, in this order:",
+    "- `- branch: <name> (source: ...)`",
+    "- `- title: <text> (source: ...)`",
+    "- `- branch rule: <one line> (source: ...)`",
+    "- `- title rule: <one line> (source: ...)`",
+    "`## Gaps`: one bullet per place in the list above that you did not read.",
+    'When the repository states no branch rule, the branch is `<type>/<slug>`. The type is one of feat, fix, chore, docs, refactor, or test, chosen from the intent. The slug is three to six lowercase words joined by hyphens. The source reads "no convention found, the default shape". When the repository states no title rule, the title is the ticket title when it has one. Otherwise it is the first sentence of the intent, at most 80 characters, cut at a word boundary. The source reads the same. The branch name must not be one that already exists.',
+    checksSentence(CONVENTIONS_CHECKS(state)),
     NO_CD,
     REPLY_RULE,
     "",
@@ -9776,15 +9812,14 @@ var TERMINAL_STATUSES = Object.freeze(["complete", "gap", "abandoned"]);
 var PROFILE = Object.freeze({ profileId: "kiln:build-ticket", version: "1.0.0", familyMarker: "Artifact family: kiln:build-ticket@1 \u2014 one ticket, filled and built" });
 var HOST = Object.freeze({ id: "claude-code", adapterId: "kiln:claude-code@1" });
 var LOADOUT = Object.freeze({ loadoutId: "kiln:build-1" });
-var KINDS = Object.freeze(["ask-person", "dispatch-finder", "dispatch-designer", "dispatch-planner", "dispatch-changer", "dispatch-judge", "dispatch-borrowed"]);
-var ROLE_OF_KIND = Object.freeze({ "ask-person": "person", "dispatch-finder": "finder", "dispatch-designer": "designer", "dispatch-planner": "planner", "dispatch-changer": "changer", "dispatch-judge": "judge", "dispatch-borrowed": "borrowed" });
-var KIND_OF_ROLE = Object.freeze(Object.fromEntries(Object.entries(ROLE_OF_KIND).map(([k, v]) => [v, k])));
-var OUTPUT_OF_KIND = Object.freeze({ "ask-person": "kiln:person-reply@1", "dispatch-finder": "kiln:prospector-outcome@1", "dispatch-designer": "kiln:designer-outcome@1", "dispatch-planner": "kiln:planner-outcome@1", "dispatch-changer": "kiln:crafter-outcome@1", "dispatch-judge": "kiln:inspector-outcome@1", "dispatch-borrowed": "kiln:borrowed-review-outcome@1" });
-var MODEL_OF_KIND = Object.freeze({ "ask-person": "human", "dispatch-finder": "bounded-generation", "dispatch-designer": "complex-synthesis", "dispatch-planner": "bounded-generation", "dispatch-changer": "bounded-generation", "dispatch-judge": "bounded-generation", "dispatch-borrowed": "adversarial-adjudication" });
+var KINDS = Object.freeze(["ask-person", "dispatch-finder", "dispatch-conventions", "dispatch-designer", "dispatch-planner", "dispatch-changer", "dispatch-judge", "dispatch-borrowed"]);
+var ROLE_OF_KIND = Object.freeze({ "ask-person": "person", "dispatch-finder": "finder", "dispatch-conventions": "finder", "dispatch-designer": "designer", "dispatch-planner": "planner", "dispatch-changer": "changer", "dispatch-judge": "judge", "dispatch-borrowed": "borrowed" });
+var KIND_OF_ROLE = Object.freeze({ person: "ask-person", finder: "dispatch-finder", designer: "dispatch-designer", planner: "dispatch-planner", changer: "dispatch-changer", judge: "dispatch-judge", borrowed: "dispatch-borrowed" });
+var OUTPUT_OF_KIND = Object.freeze({ "ask-person": "kiln:person-reply@1", "dispatch-finder": "kiln:prospector-outcome@1", "dispatch-conventions": "kiln:prospector-outcome@1", "dispatch-designer": "kiln:designer-outcome@1", "dispatch-planner": "kiln:planner-outcome@1", "dispatch-changer": "kiln:crafter-outcome@1", "dispatch-judge": "kiln:inspector-outcome@1", "dispatch-borrowed": "kiln:borrowed-review-outcome@1" });
+var MODEL_OF_KIND = Object.freeze({ "ask-person": "human", "dispatch-finder": "bounded-generation", "dispatch-conventions": "bounded-generation", "dispatch-designer": "complex-synthesis", "dispatch-planner": "bounded-generation", "dispatch-changer": "bounded-generation", "dispatch-judge": "bounded-generation", "dispatch-borrowed": "adversarial-adjudication" });
 var MAX_FIX_ROUNDS = 2;
 var REFORM_TARGETS = /* @__PURE__ */ new Set(["designer", "planner"]);
 var MAX_REFORMS_PER_ROLE = 2;
-var YES = /* @__PURE__ */ new Set(["yes", "y", "ok", "approve"]);
 var BARE_YES = /^(yes|y|ok|approve)\.?$/i;
 var BARE_ABANDON = /^abandon\.?$/i;
 function isBareYes(text) {
@@ -9810,7 +9845,7 @@ function parseReply(text) {
   const trimmed = text.trim();
   const [head = "", ...rest2] = trimmed.split(/\s+/);
   const word = head.toLowerCase().replace(/[.!]+$/, "");
-  return { word: YES.has(word) ? "yes" : word, rest: rest2.join(" ") };
+  return { word, rest: rest2.join(" ") };
 }
 function rejection({ code, label, details, tag, reason }) {
   return { reject: { code, label, details, outcomeRetry: `${tag}-retry`, outcomeGap: `${tag}-gap`, reason } };
@@ -9853,7 +9888,10 @@ function route(state, ctx) {
   if (first === "intent") return ask(question("intent", "What is the intent of this ticket? Say the outcome and who it is for, in one or two sentences.", []));
   if (first === "facts") return fieldFor(state, ctx, "finder", {}, "the facts are empty");
   if (first === "decision") return fieldFor(state, ctx, "designer", {}, "the decision is empty");
-  if (state.repo === null) return ask(question("repo", "Where is the repository for this ticket? Reply with the absolute path of the checkout. The work lands on a new branch in a worktree under it.", []));
+  if (state.repo === null) {
+    if (state.checkout === null) return ask(question("repo", "Where is the repository for this ticket? Reply with the absolute path of the checkout. The work lands on a new branch in a worktree under it. The repository's own convention names the branch.", []));
+    return { status: "filling", nextKind: "dispatch-conventions", fields: withRole(state, ctx, "finder", "member-gap", "the branch and pull request conventions are unread", {}) };
+  }
   if (first === "acceptance" || first === "tasks") return fieldFor(state, ctx, "planner", {}, `the ${first} part is empty`);
   if (state.replan !== null) return { status: "filling", nextKind: "dispatch-planner", fields: withRole(state, ctx, "planner", "member-reform", "the decision changed, so the plan is written again from the task at the cursor", {}) };
   if (!state.buildApproved) return ask(question("build", `The plan has ${brief.tasks.plan.length} tasks. Ready to build?`, ["yes"]));
@@ -10021,10 +10059,9 @@ function acceptPerson(state, ctx, text) {
     case "design":
       return word === "continue" ? { fields: base, status: "filling", nextKind: "dispatch-designer" } : reask();
     case "repo": {
-      const root = text.trim();
-      if (!root.startsWith("/")) return reask();
-      const slug = slugOf(state.ticket.ref);
-      return accepted(state, ctx, { ...base, repo: { root: `${root}/.worktrees/${slug}`, branch: `build/${slug}` } });
+      const checkout = text.trim();
+      if (!checkout.startsWith("/")) return reask();
+      return accepted(state, ctx, { ...base, checkout });
     }
     case "write":
       return consent ? accepted(state, ctx, { ...base, pendingWrite: null }) : reask();
@@ -10073,6 +10110,54 @@ function acceptFinder(state, ctx, items) {
     lastReform: null,
     pendingWrite: state.ticket.outward ? { parts: ["facts"] } : null
   }, "facts");
+}
+function factValue(lines, key) {
+  const line = lines.find((l) => l.startsWith(`${key}:`));
+  if (line === void 0) return void 0;
+  const value = line.slice(key.length + 1).replace(/\s*\(source: .*\)$/, "").trim().replace(/^`(.+)`$/, "$1");
+  return value.length > 0 ? value : void 0;
+}
+var DEFAULT_BRANCHES = /* @__PURE__ */ new Set(["main", "master", "HEAD"]);
+var REF_SAFE = /^[A-Za-z0-9][A-Za-z0-9._/-]*$/;
+var REF_SAFE_RULE = 'a branch name matches ^[A-Za-z0-9][A-Za-z0-9._/-]*$, has no ".." and no "//", no segment that starts with "." or ends with ".lock", and no trailing "/" or "."';
+function isRefSafe(name) {
+  return REF_SAFE.test(name) && !name.includes("..") && !name.includes("//") && !name.endsWith("/") && !name.endsWith(".") && name.split("/").every((seg) => !seg.startsWith(".") && !seg.endsWith(".lock"));
+}
+function branchNameIssue(name, branches) {
+  const names = [...new Set(branches.map((b) => b.replace(/^origin\//, "")))];
+  const nonDefault = names.filter((b) => !DEFAULT_BRANCHES.has(b));
+  const examples = nonDefault.slice(0, 5);
+  const seen = examples.length > 0 ? ` (existing branches: ${examples.join(", ")})` : "";
+  if (!isRefSafe(name)) return { label: `the branch "${name}" is not a safe name: ${REF_SAFE_RULE}${seen}`, details: [] };
+  if (names.includes(name)) return { label: `the branch "${name}" already exists; name a new one${seen}`, details: [] };
+  const counts = /* @__PURE__ */ new Map();
+  for (const b of nonDefault) counts.set(b.split("/").length, (counts.get(b.split("/").length) ?? 0) + 1);
+  const ranked = [...counts.entries()].sort((a, b) => b[1] - a[1]);
+  const segments = name.split("/").length;
+  if (ranked.length > 0 && (ranked.length === 1 || ranked[0][1] > ranked[1][1]) && ranked[0][0] !== segments) {
+    return { label: `the branch "${name}" has ${plural(segments, "slash segment")}, but most existing branches have ${ranked[0][0]}; follow their shape${seen}`, details: [] };
+  }
+  return null;
+}
+function acceptConventions(state, ctx, items) {
+  const o = items[0];
+  if (o.status === "gap") return ask(question("retry", `The finder stopped reading the branch conventions with ${plural(o.missing.length, "missing item")}. The list is in the detail. Fix what it needs and reply retry.`, ["retry"], { retryKind: "dispatch-conventions", detail: bullets(o.missing) }), { lastFilled: [], lastReform: null });
+  if (o.status === "reform-party") return rejection({ code: "KILN_REFORM_FINDER", label: "the finder never reforms the Party; name what no source answers as a bullet under ## Gaps and reply complete, or reply gap", details: [`named ${o.requiredRole}`], tag: "reform", reason: "reform-finder" });
+  const evidence = checkEvidence({ outcome: o, doneWhen: CONVENTIONS_CHECKS(state), toolCalls: ctx.toolCalls });
+  if (evidence) return evidence;
+  const report = attached(ctx, "report", o.output.report.sha256);
+  if (report.reject) return { reject: report.reject };
+  const lines = parseSection(report.value.text, "## Facts");
+  const branch = factValue(lines, "branch");
+  const prTitle = factValue(lines, "title");
+  const missing = [branch === void 0 ? "branch" : null, prTitle === void 0 ? "title" : null].filter((k) => k !== null);
+  if (missing.length > 0) {
+    return rejection({ code: "KILN_CONVENTIONS_UNNAMED", label: `the report's ## Facts has no ${missing.join(" and no ")} bullet; write "- branch: <name> (source: ...)" and "- title: <text> (source: ...)"`, details: missing.map((k) => `missing: ${k}`), tag: "conventions", reason: "conventions-unnamed" });
+  }
+  const issue = branchNameIssue(branch, ctx.branches ?? []);
+  if (issue !== null) return rejection({ code: "KILN_BRANCH_NAME", label: issue.label, details: issue.details, tag: "branch", reason: "branch-name" });
+  const root = `${state.checkout}/.worktrees/${branch.replaceAll("/", "-")}`;
+  return accepted(state, ctx, { repo: { checkout: state.checkout, root, branch, prTitle }, lastFilled: [], lastReform: null });
 }
 function acceptDesigner(state, ctx, items) {
   const o = items[0];
@@ -10229,6 +10314,7 @@ function baseStateOf({ bundle, roles, extras }) {
     runDir: extras.runDir,
     cliPath: extras.cliPath,
     ticket: { ...extras.ticket, slug: slugOf(extras.ticket.ref) },
+    checkout: extras.checkout ?? null,
     repo: extras.repo ?? null,
     brief: extras.brief,
     cursor: 0,
@@ -10280,6 +10366,7 @@ function flowFor(ctx) {
     kinds: {
       "ask-person": kind("ask-person", { receipt: "text", buildPrompt: (state) => renderQuestion(state.question), accept: (state, text) => acceptPerson(state, ctx, text) }),
       "dispatch-finder": kind("dispatch-finder", { buildPrompt: renderFinderPrompt, accept: guard(acceptFinder) }),
+      "dispatch-conventions": kind("dispatch-conventions", { buildPrompt: renderConventionsPrompt, accept: guard(acceptConventions) }),
       "dispatch-designer": kind("dispatch-designer", { buildPrompt: renderDesignerPrompt, accept: guard(acceptDesigner) }),
       "dispatch-planner": kind("dispatch-planner", { buildPrompt: renderPlannerPrompt, accept: guard(acceptPlanner) }),
       "dispatch-changer": kind("dispatch-changer", { buildPrompt: renderChangerPrompt, accept: guard(acceptChanger), writeBoundary: (state) => {
@@ -10520,13 +10607,6 @@ function readTicketBody(ref, source, since) {
   const newerItems = (issue.comments ?? []).filter((c) => since === null || c.createdAt > since).map((c) => `comment ${c.createdAt.slice(0, 10)}: ${c.body.split("\n")[0].slice(0, 120)}`);
   return { body: normalizeBody(issue.body ?? ""), newerItems };
 }
-function ticketTitle(meta, state) {
-  if (meta.source === "github") {
-    const { repo, number } = githubIssueOf(meta.ticketRef);
-    return JSON.parse(gh(["issue", "view", String(number), "--repo", repo, "--json", "title"])).title;
-  }
-  return state.ticket.title ?? state.brief.intent.text.split("\n")[0].slice(0, 80);
-}
 function writeTicketBody(ref, source, body, stagePath) {
   if (source === "markdown") {
     writeFileAtomic(ref, body);
@@ -10543,9 +10623,15 @@ function ticketRepoNames(ref, source) {
 function ticketAllowList(body, ref, source) {
   return allowedWords({ ticketText: body, repoNames: ticketRepoNames(ref, source).map((r) => r.repo) });
 }
-function cleanTicketSection(sectionLines, { body, ref, source }) {
+function runAllowList({ meta, state, body }) {
+  const { checkout } = state.repo;
+  const repoNames = [...ticketRepoNames(meta.ticketRef, meta.source).map((r) => r.repo), path5.basename(checkout)];
+  const origin = spawnSync("git", ["-C", checkout, "remote", "get-url", "origin"], { encoding: "utf8" });
+  if (origin.status === 0) repoNames.push(path5.basename(origin.stdout.trim()).replace(/\.git$/, ""));
+  return allowedWords({ ticketText: body, repoNames });
+}
+function cleanTicketSection(sectionLines, { allow }) {
   const scrubbed = scrubPaths(sectionLines.join("\n"));
-  const allow = ticketAllowList(body, ref, source);
   const leaks = findLeaks(scrubbed, { allow });
   if (leaks.length > 0) throw new KilnError("KILN_TICKET_LEAK", `the ticket section still names ${leaks.map((l) => `"${l.word}" on line ${l.line}`).join(", ")}; fix the source line, never the filter`, { leaks, allowed: allow });
   return scrubbed.split("\n");
@@ -10557,6 +10643,37 @@ function gitOut(dir, args) {
   const res = spawnSync("git", ["-C", dir, ...args], { encoding: "utf8" });
   if (res.status !== 0) throw new KilnError("KILN_GIT_FAILED", `git -C ${dir} ${args.join(" ")}: ${res.stderr.trim()}`, { dir, args });
   return res.stdout;
+}
+var INSTALL_COMMANDS = [
+  { files: ["package-lock.json", "npm-shrinkwrap.json"], argv: ["npm", "ci"] },
+  { files: ["pnpm-lock.yaml"], argv: ["pnpm", "install", "--frozen-lockfile"] },
+  { files: ["yarn.lock"], argv: ["yarn", "install", "--frozen-lockfile"] },
+  { files: ["bun.lock", "bun.lockb"], argv: ["bun", "install", "--frozen-lockfile"] },
+  { files: ["package.json"], argv: ["npm", "install"] }
+];
+function installDependencies(worktree) {
+  const match = INSTALL_COMMANDS.find((c) => c.files.some((f) => existsSync2(path5.join(worktree, f))));
+  if (!match) return null;
+  const [bin, ...args] = match.argv;
+  const command = match.argv.join(" ");
+  const res = spawnSync(bin, args, { cwd: worktree, encoding: "utf8" });
+  if (res.status !== 0) {
+    const tail = (res.stderr ?? "").trim().split("\n").slice(-20).join("\n");
+    throw new KilnError("KILN_INSTALL_FAILED", `${command} failed in ${worktree} (${res.error ? res.error.message : `exit ${res.status}`}). The run is saved, and the branch and the worktree exist. Run \`${command}\` in the worktree by hand before the next dispatch:
+${tail}`, { command, worktree });
+  }
+  return { command };
+}
+function branchNamesOf(checkout) {
+  const out = gitOut(checkout, ["branch", "-a", "--format=%(if)%(symref)%(then)%(else)%(refname:short)%(end)"]);
+  return [...new Set(out.split("\n").map((l) => l.trim()).filter((l) => l.length > 0))];
+}
+function createWorktree(repo) {
+  const created = !existsSync2(repo.root);
+  if (created) gitOut(repo.checkout, ["worktree", "add", repo.root, "-b", repo.branch]);
+  const head = gitOut(repo.root, ["rev-parse", "--abbrev-ref", "HEAD"]).trim();
+  if (head !== repo.branch) throw new KilnError("KILN_WORKTREE_BRANCH", `the worktree at ${repo.root} is on ${head}, not ${repo.branch}`, { root: repo.root });
+  return created;
 }
 function dirtyMap(repo) {
   const dirty = {};
@@ -10628,7 +10745,10 @@ ${state.brief.tasks.plan.map((t) => `- ${t.taskId}: ${t.goal}`).join("\n")}`);
       parts.push(positionalDiff(normalizeBody(body), bodyWithParts(body, state, written)));
     }
   }
-  if (q.then === "pr" || q.then === "verification") parts.push([`verdict: ${state.judge.verdict}`, ...state.judge.rulings.map((r) => `- ${r.task}: ${r.deviation} (${r.ruling}: ${r.why})`), ...state.findings.map((f) => `- ${f}`)].join("\n"));
+  if (q.then === "pr" || q.then === "verification") {
+    const rulings = rulingLines(state.judge.rulings);
+    parts.push([`verdict: ${state.judge.verdict}`, ...[...rulings, ...state.findings.filter((f) => !rulings.includes(f))].map((l) => `- ${l}`)].join("\n"));
+  }
   return parts.join("\n\n") + "\n";
 }
 function nextSummary(flow, state, paths, meta) {
@@ -10749,7 +10869,8 @@ ${v.idea.trim()}
     const roles = rolesFor(roster, registry);
     const bundle = buildBundle({ ticketText: body });
     const outward = outwardOf(source);
-    const extras = { runDir: paths.dir, cliPath: path5.resolve(process.argv[1]), ticket: { ref, source, outward, title, taskGoals }, brief, repo: null };
+    const issueTitle = title === null && source === "github" ? JSON.parse(gh(["issue", "view", String(githubIssueOf(ref).number), "--repo", githubIssueOf(ref).repo, "--json", "title"])).title : title;
+    const extras = { runDir: paths.dir, cliPath: path5.resolve(process.argv[1]), ticket: { ref, source, outward, title: issueTitle, taskGoals }, brief, repo: null };
     const firstKind = route(baseStateOf({ bundle, roles, extras }), flowCtx({ ticketRef: ref, source, firstKind: null })).nextKind;
     const flow = flowFor(flowCtx({ ticketRef: ref, source, firstKind }));
     const state = createRun(flow, { bundle, loadout: LOADOUT, host: HOST, policy: null, roles, profile: PROFILE, extras });
@@ -10790,13 +10911,18 @@ ${v.idea.trim()}
     const priorEnvelopes = readEnvelopes(paths).filter((e) => visitOf(e.actionId) === visitOf(actionId));
     const ration = assessRation({ ration: rationFor(rations, classId), multiplier: rations.multiplier, envelope, priorEnvelopes });
     const rawOutput = readInput(v, "output");
-    const flow = flowFor(flowCtx(meta, { toolCalls: envelope.toolCalls, attachments: attachmentsFor(rawOutput), breach: ration.breached ? { actionId, visitTokens: ration.visitTokens, threshold: ration.threshold } : null }));
+    const branches = pending.kind === "dispatch-conventions" ? { branches: branchNamesOf(state.checkout) } : {};
+    const flow = flowFor(flowCtx(meta, { toolCalls: envelope.toolCalls, attachments: attachmentsFor(rawOutput), breach: ration.breached ? { actionId, visitTokens: ration.visitTokens, threshold: ration.threshold } : null, ...branches }));
     const { state: nextState, issues } = applyReceipt(flow, state, { actionId, rawOutput, hostMeta });
     if (nextState === state) throw new KilnError(issues[0].code, issues[0].message);
     const accepted2 = isAcceptedOutcome(nextState.ledger.at(-1).outcome);
+    const namesBranch = state.repo === null && nextState.repo !== null;
+    const created = namesBranch ? createWorktree(nextState.repo) : false;
     afterReceipt({ flow, paths, meta, state, nextState, actionId, pending, accepted: accepted2 });
     writeFileAtomic(paths.envelope(actionId), JSON.stringify(envelope, null, 2) + "\n");
-    return { ledger: { outcome: nextState.ledger.at(-1).outcome }, runStatus: nextState.status, breach: ration.breached ? { visitTokens: ration.visitTokens, threshold: ration.threshold } : null, omissions: ration.omissions, issues, next: nextSummary(flow, nextState, paths, meta) };
+    if (namesBranch) writeRunMeta(paths, { ...meta, repo: nextState.repo.root, branch: nextState.repo.branch });
+    const installed = namesBranch ? created ? installDependencies(nextState.repo.root) : null : void 0;
+    return { ledger: { outcome: nextState.ledger.at(-1).outcome }, runStatus: nextState.status, breach: ration.breached ? { visitTokens: ration.visitTokens, threshold: ration.threshold } : null, omissions: ration.omissions, issues, installed, next: nextSummary(flow, nextState, paths, meta) };
   },
   reply(args) {
     const v = flags(args, { root: { type: "string" }, ticket: { type: "string" }, action: { type: "string" }, text: { type: "string" }, file: { type: "string" } });
@@ -10809,16 +10935,10 @@ ${v.idea.trim()}
     if (pending.kind !== "ask-person") throw new KilnError("KILN_REPLY_IS_RECEIPT", "the pending action is a dispatch; use receipt");
     const text = v.text !== void 0 ? v.text : readInput(v, "file");
     const q = state.question;
+    if (q.then === "repo" && text.trim().startsWith("/")) gitOut(text.trim(), ["rev-parse", "--git-dir"]);
     if ((q.then === "write" || q.then === "build") && isBareYes(text) && meta.outward && state.pendingWrite !== null) writeParts(paths, meta, state, state.pendingWrite.parts);
     const { state: nextState, issues } = applyReceipt(flow, state, { actionId, rawOutput: text, hostMeta: {} });
     if (nextState === state) throw new KilnError(issues[0].code, issues[0].message);
-    if (q.then === "repo" && nextState.repo !== null) {
-      const checkout = text.trim();
-      if (!existsSync2(nextState.repo.root)) gitOut(checkout, ["worktree", "add", nextState.repo.root, "-b", nextState.repo.branch]);
-      const head = gitOut(nextState.repo.root, ["rev-parse", "--abbrev-ref", "HEAD"]).trim();
-      if (head !== nextState.repo.branch) throw new KilnError("KILN_WORKTREE_BRANCH", `the worktree at ${nextState.repo.root} is on ${head}, not ${nextState.repo.branch}`, { root: nextState.repo.root });
-      writeRunMeta(paths, { ...meta, repo: nextState.repo.root, branch: nextState.repo.branch });
-    }
     afterReceipt({ flow, paths, meta, state, nextState, actionId, pending, accepted: true });
     return { ledger: { outcome: nextState.ledger.at(-1).outcome }, runStatus: nextState.status, issues, next: nextSummary(flow, nextState, paths, meta) };
   },
@@ -10880,11 +11000,10 @@ ${v.idea.trim()}
     const scoreboard = computeScoreboard({ roles: state.roles, envelopes: readEnvelopes(paths), rations, priceTable, ledger: state.ledger });
     const block = renderEvidenceBlock({ state, scoreboard, publicRepo: v.public === true });
     const { body } = readTicketBody(meta.ticketRef, meta.source, null);
-    const allow = allowedWords({ ticketText: body, repoNames: [...ticketRepoNames(meta.ticketRef, meta.source).map((r) => r.repo), path5.basename(path5.resolve(state.repo.root, "..", ".."))] });
+    const allow = runAllowList({ meta, state, body });
     const blockLeaks = findLeaks(block, { allow });
     if (blockLeaks.length > 0) throw new KilnError("KILN_EVIDENCE_LEAK", `the evidence block still names ${blockLeaks.map((l) => `"${l.word}" on line ${l.line}`).join(", ")}; fix the source line, never the filter`, { leaks: blockLeaks });
-    const checkout = state.repo.root.replace(/\/\.worktrees\/[^/]+$/, "");
-    const title = scrubPaths(ticketTitle(meta, state), [state.repo.root, checkout]);
+    const title = scrubPaths(state.repo.prTitle, [state.repo.root, state.repo.checkout]);
     const titleLeaks = findLeaks(title, { allow });
     if (titleLeaks.length > 0) throw new KilnError("KILN_EVIDENCE_LEAK", `the pull request title still names ${titleLeaks.map((l) => `"${l.word}"`).join(", ")}; fix the source line, never the filter`, { leaks: titleLeaks });
     writeFileAtomic(paths.evidenceBlock, block);
@@ -10899,7 +11018,7 @@ ${v.idea.trim()}
     if (existsSync2(paths.party.report)) throw new KilnError("KILN_RUN_ALREADY_CLOSED", "the run is closed: its party report is written", { report: paths.party.report });
     const url = requireFlag(v, "pr-url");
     const { body } = readTicketBody(meta.ticketRef, meta.source, null);
-    const linkLines = cleanTicketSection([`- ${url}`], { body, ref: meta.ticketRef, source: meta.source });
+    const linkLines = cleanTicketSection([`- ${url}`], { allow: runAllowList({ meta, state, body }) });
     const nextBody = spliceSection(normalizeBody(body), HEADINGS.pullRequest, linkLines);
     const scoreboard = computeScoreboard({ roles: state.roles, envelopes: readEnvelopes(paths), rations, priceTable, ledger: state.ledger });
     const readout = renderReadout({ state, scoreboard });
