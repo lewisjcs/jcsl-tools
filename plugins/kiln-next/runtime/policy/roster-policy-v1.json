@@ -1,6 +1,6 @@
 {
   "kind": "roster-policy",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "pool": [
     { "classKey": "finder", "classId": "kiln:prospector", "families": ["build-ticket"] },
     { "classKey": "designer", "classId": "kiln:designer", "families": ["build-ticket"] },
@@ -11,15 +11,18 @@
   ],
   "rows": [
     { "rowId": "full", "match": { "family": "build-ticket", "firstEmpty": "none" }, "field": [
+      { "classKey": "finder", "reason": "the finder reads the repository's branch and pull request conventions before the branch exists" },
       { "classKey": "changer", "reason": "the plan is written; one changer dispatch per task" },
       { "classKey": "judge", "reason": "the judge rules on the whole against the plan" }
     ], "skip": [], "gaps": [] },
     { "rowId": "no-tasks", "match": { "family": "build-ticket", "firstEmpty": "tasks" }, "field": [
+      { "classKey": "finder", "reason": "the finder reads the repository's branch and pull request conventions before the branch exists" },
       { "classKey": "planner", "reason": "the plan is written from the acceptance" },
       { "classKey": "changer", "reason": "one changer dispatch per task" },
       { "classKey": "judge", "reason": "the judge rules on the whole against the plan" }
     ], "skip": [], "gaps": [] },
     { "rowId": "no-acceptance", "match": { "family": "build-ticket", "firstEmpty": "acceptance" }, "field": [
+      { "classKey": "finder", "reason": "the finder reads the repository's branch and pull request conventions before the branch exists" },
       { "classKey": "planner", "reason": "the planner writes acceptance and tasks together" },
       { "classKey": "changer", "reason": "one changer dispatch per task" },
       { "classKey": "judge", "reason": "the judge rules on the whole against the plan" }
@@ -32,6 +35,7 @@
     ], "skip": [], "gaps": [] },
     { "rowId": "no-decision", "match": { "family": "build-ticket", "firstEmpty": "decision" }, "field": [
       { "classKey": "designer", "reason": "the designer holds the dialogue and ends at a decision" },
+      { "classKey": "finder", "reason": "the finder reads the repository's branch and pull request conventions before the branch exists" },
       { "classKey": "planner", "reason": "the planner writes acceptance and tasks from the decision" },
       { "classKey": "changer", "reason": "one changer dispatch per task" },
       { "classKey": "judge", "reason": "the judge rules on the whole against the plan" }
