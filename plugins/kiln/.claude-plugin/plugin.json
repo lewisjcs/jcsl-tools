@@ -1,9 +1,24 @@
 {
   "name": "kiln",
-  "version": "2.17.0",
-  "description": "Complexity-proportionate implementation Party — thin conductor enforces gates via PreToolUse hooks; scenario-dispatched verification (code + tool-authoring); /process-review-feedback handles a PR's review threads (Sifter → SIFT-GATE → build loop → Finisher)",
-  "author": { "name": "Josh C.S. Lewis" },
+  "version": "3.0.0",
+  "description": "The Kiln build run. Ships the build skill (one run per ticket: it fills the ticket's brief, builds its tasks one change at a time, has a judge rule on the whole, and opens the pull request on the person's yes), the shape skill (a three-lens design dialogue that ends at a written decision), and the Classes the run dispatches: the Crafter, the Designer, the Planner, the Inspector, and the Prospector. Carries the runtime bundle, the roster policy, the rations, the host bindings, the price table, and the borrowed-review pins.",
+  "author": {
+    "name": "Josh C.S. Lewis"
+  },
   "repository": "https://github.com/lewisjcs/jcsl-tools",
   "license": "MIT",
-  "keywords": ["implementation", "tdd", "workflow", "compounds"]
+  "keywords": [
+    "kiln",
+    "build",
+    "class",
+    "crafter",
+    "designer",
+    "planner",
+    "inspector",
+    "implementation",
+    "statblock",
+    "prospector",
+    "router",
+    "gate"
+  ]
 }

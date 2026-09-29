@@ -3,5 +3,5 @@
 .claude/settings.json
 
 # Smith local Langfuse — never commit creds or local state
-plugins/kiln/skills/smith/langfuse/.env
-plugins/kiln/skills/smith/langfuse/local.env
+plugins/_archive/kiln-2.17/skills/smith/langfuse/.env
+plugins/_archive/kiln-2.17/skills/smith/langfuse/local.env

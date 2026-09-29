@@ -7,14 +7,14 @@
 ```
 jcsl-tools/
 ├── .claude-plugin/
-│   └── marketplace.json      # marketplace manifest — lists all 6 plugins below
+│   └── marketplace.json      # marketplace manifest — lists all 5 plugins below
 └── plugins/
-    ├── kiln/                 # implementation workflow Party
+    ├── kiln/                 # the Kiln build run and its Classes (generated payload)
     ├── gauntlet/              # multi-skill review harness
     ├── prospector/            # discovery-first research harness
     ├── context-economy/       # context-spend discipline Party
     ├── cartographer/          # repository documentation cartographer
-    └── kiln-next/             # Classes for the Kiln runtime (holding name)
+    └── _archive/kiln-2.17/    # the previous Kiln, kept whole, not listed
 ```
 
 Each plugin directory is independently installable (`claude plugin install <name>@jcsl-tools`) and has its own `.claude-plugin/plugin.json` manifest, versioned independently of the others and of the marketplace manifest itself.
@@ -30,36 +30,13 @@ Two different `.claude-plugin/plugin.json`-shaped files exist at two levels — 
 
 A plugin's version is bumped independently in its own `plugin.json` — the marketplace manifest doesn't carry version numbers at all, only routing (`source`) and display metadata.
 
-## The six plugins
+## The five plugins
 
-### Kiln — complexity-proportionate implementation Party
+### Kiln — the build run and its Classes
 
-Entry: `/kiln EXT-NNNN | /kiln "raw idea" | /kiln EXT-NNNN path/to/plan.md`
+Entry: `/kiln:build <ticket>`. The `build` skill is the host of one run per ticket. It opens the run through the runtime bundle, dispatches the agent Classes (`kiln:crafter`, `kiln:planner`, `kiln:inspector`, `kiln:prospector`) by Class as the runtime names each next action, measures each dispatch, and appends the receipt. The Classes are never invoked standalone. The Designer is the `shape` skill. When the runtime hands the run a design step, it runs in the main thread as `/kiln:shape --ticket <ref> --cli <path>`. With no run, it runs as `/kiln:shape "<idea>"`.
 
-Kiln is a **thin conductor** (`skills/fire/SKILL.md`) that routes work through lanes (EXECUTE / PLAN / TRIVIAL / RESUME / DESIGN / RESEARCH / REVIEW) and dispatches specialized members — it never edits source itself. A plugin `PreToolUse` hook (`hooks/kiln-guard-conductor.sh`) enforces this at the tool layer: while a run's `.active` sentinel is present, the conductor's file-editing tools (Edit/Write/MultiEdit/NotebookEdit) and Compounds mutation calls are denied in the main thread. Two more guards run alongside it: `kiln-guard-branch.sh` (branch discipline) and `kiln-guard-spine.sh` (progress-spine discipline on every `Agent` dispatch).
-
-**Members** (each a subagent in `agents/`, dispatched by the conductor — never self-invoking):
-
-| Member | Role |
-|---|---|
-| `designer` | Design-dialogue partner for fuzzy/net-new requirements (DESIGN/RESEARCH lanes) |
-| `scout` | Parallel research sweep for sparse tickets — reports gaps, never guesses |
-| `planner` | Runs Compounds `plan_change`/`generate_tasks`, writes `tasklist.md` + `plan.md` |
-| `walker` | HIGH-blast-only: role-plays executing the plan, surfaces ambiguity before code is written |
-| `crafter` | Per-task implementation over the run's bound engine (`compounds` or `native`) |
-| `inspector` | Per-task adversarial test-adequacy/spec-compliance review after each crafter |
-| `curator` | Run-level close-out — `/verify`, closes Compounds project, opens the PR, transitions Jira |
-| `drafter` | Renders an agreed spec into the ticket's team-format + EARS description |
-| `sifter` | Read-only PR-review-comment triage (accept/push-back/needs-clarification) |
-| `finisher` | Gated outward-write close-out for the review-feedback flow — posts replies, re-requests review |
-
-**Engine binding:** every run binds one engine at classify time — `code` scenarios bind Compounds (MCP-driven plan/implement/verify loop via `mcp__compounds-dev__*` tools), `tool-authoring`/`doc` scenarios bind `native` (deterministic self-check, no Compounds call). The contract for both is `skills/fire/engines.md`, loaded by `crafter` and `planner`.
-
-**Progressive disclosure:** `skills/fire/SKILL.md` is deliberately thin — `lanes.md`, `scenarios.md`, `gates.md`, `dispatch-contracts.md` load on demand at specific verbs, not all at once. This keeps the conductor's own context footprint small across a long-running multi-member dispatch.
-
-`skills/smith/` is a separate, read-only retrospective skill (`/smith`) — reads past Kiln run ledgers and briefs on accuracy/friction/cost; it proposes, never edits. Its local-Langfuse dev setup lives in `skills/smith/langfuse/` (gitignored `.env`, tracked `docker-compose.yml`).
-
-`skills/process-review-feedback/` and `skills/spec-ticket/` are standalone-invocable skills that also compose into the conductor's REVIEW lane and Drafter checkpoints respectively — per the repo's "every capability is standalone-invocable, the conductor is one caller" principle.
+Kiln ships five Classes of the Kiln runtime. The **Crafter** builds exactly one task from the run's ticket plan, checks its own work against every numbered done-when check, commits on the branch, and ends with a typed outcome that carries a required deviations list. The **Designer** holds a one-question-at-a-time design dialogue and ends at a written, approved decision file. The **Planner** turns a decision into a ticket plan of ordered tasks with rerunnable checks. The **Inspector** rules once per run, last, on whether the Crafter commits conform to the ticket plan, and names the consequence it observed. The **Prospector** is a bounded researcher that invokes the research skill by name and returns a cited report within its ration. The plugin is a generated payload, not a source tree. The kiln repository's packager writes every part of it from a merged commit: `agents/` (the four agent bodies), `skills/build/SKILL.md` (the host skill), `skills/shape/SKILL.md` (the Designer's skill body), `references/` (files a body loads through `${CLAUDE_PLUGIN_ROOT}`), `classes/` (the five Class manifests the runtime registers), `policy/` (the roster policy, the rations, the host bindings, the price table, and the borrowed-review pins), `runtime/` (the bundled command `runtime/bin/cli.mjs` with the data it reads beside it), and `PROVENANCE.json` (the source repository, the source commit, and a hash over the payload). Edit the canon there and repackage. A hand edit here drifts from the manifest the runtime checks against the installed agent. The previous Kiln (2.17, the conductor with lanes, guard hooks, and the Compounds engine) is archived whole at `plugins/_archive/kiln-2.17/` and is not listed in the marketplace.
 
 ### Gauntlet — multi-skill review harness
 
@@ -100,22 +77,15 @@ Entry: `cartograph-report` skill (auto-discovered; no slash command)
 
 Cartographer's pipeline reads a repository's own evidence — tracked files, manifests, CI configuration, and history — and turns it into a claim-classified README draft/patch, or a report of what it could not support. The skill folder `skills/cartograph-report/` is deliberately self-contained (`SKILL.md` + `core/` + `scripts/`): it is the promoted unit an external package manager copies whole, with provenance recorded by `tools/promote.sh` and org-neutrality of the shipped set enforced by `scripts/check-core-neutrality.sh`. Org-specific content enters only through the `profile/` seam defined in `core/profile-contract.md` — four fixed entry filenames that add evidence sources and conventions but can never override a core gate. `core/` holds the claim model, README ownership model, and six-stage pipeline; local validation (`scripts/check-readme-patch.sh`) and stage-5 verification (`scripts/check-verification-report.sh`) gate a draft before it is reported ready. Tests and fixtures live outside the skill folder in `tests/`, including a portability guard (`tests/check-portability.sh`) that keeps the skill folder free of harness-specific tokens.
 
-### Kiln-next — Classes for the Kiln runtime
-
-Entry: `/kiln-next:build <ticket>`. The `build` skill is the host of one run per ticket. It opens the run through the runtime bundle, dispatches the agent Classes (`kiln-next:crafter`, `kiln-next:planner`, `kiln-next:inspector`, `kiln-next:prospector`) by Class as the runtime names each next action, measures each dispatch, and appends the receipt. The Classes are never invoked standalone. The Designer is the `shape` skill. When the runtime hands the run a design step, it runs in the main thread as `/kiln-next:shape --ticket <ref> --cli <path>`. With no run, it runs as `/kiln-next:shape "<idea>"`.
-
-Kiln-next ships five Classes of the Kiln runtime. The **Crafter** builds exactly one task from the run's ticket plan, checks its own work against every numbered done-when check, commits on the branch, and ends with a typed outcome that carries a required deviations list. The **Designer** holds a one-question-at-a-time design dialogue and ends at a written, approved decision file. The **Planner** turns a decision into a ticket plan of ordered tasks with rerunnable checks. The **Inspector** rules once per run, last, on whether the Crafter commits conform to the ticket plan, and names the consequence it observed. The **Prospector** is a bounded researcher that invokes the research skill by name and returns a cited report within its ration. The plugin is a generated payload, not a source tree. The kiln repository's packager writes every part of it from a merged commit: `agents/` (the four agent bodies), `skills/build/SKILL.md` (the host skill), `skills/shape/SKILL.md` (the Designer's skill body), `references/` (files a body loads through `${CLAUDE_PLUGIN_ROOT}`), `classes/` (the five Class manifests the runtime registers), `policy/` (the roster policy, the rations, the host bindings, the price table, and the borrowed-review pins), `runtime/` (the bundled command `runtime/bin/cli.mjs` with the data it reads beside it), and `PROVENANCE.json` (the source repository, the source commit, and a hash over the payload). Edit the canon there and repackage. A hand edit here drifts from the manifest the runtime checks against the installed agent.
-
 ## Cross-plugin conventions
 
 - **`${CLAUDE_PLUGIN_ROOT}`** is the only portable way to reference a plugin's own files from a hook command or agent instruction — every `hooks.json` in this repo uses it; a hardcoded or relative path breaks on any install method other than the exact local checkout. Cartographer's skill folder is the one deliberate exception: as a promoted unit that must run outside the plugin cache, it references its own files skill-root-relative and ships no environment-variable dependency — `tests/check-portability.sh` enforces this.
-- **Progressive disclosure** — every plugin with a nontrivial skill (`kiln/fire`, `prospector/research`) keeps its top-level `SKILL.md` thin and defers detail to sibling `.md` files loaded at specific points in the flow, not all upfront.
-- **Standalone invocability** — every Kiln capability (Drafter via `/spec-ticket`, Smith via `/smith`) is independently invocable outside the conductor, not conductor-only.
+- **Progressive disclosure** — every plugin with a nontrivial skill (`kiln/build`, `prospector/research`) keeps its top-level `SKILL.md` thin and defers detail to sibling `.md` files loaded at specific points in the flow, not all upfront.
+- **Standalone invocability** — a capability with its own use is its own entry point: the Kiln's Designer runs as `/kiln:shape "<idea>"` with no run, and the gauntlet's lanes run alone.
 - **Finder/validator adversarial pairing** — Gauntlet's core review pattern: propose, then try to disprove, then report only what survives.
 
 ## Local, gitignored state (not part of the shipped artifact)
 
-- `.compounds/` — Compounds MCP's local project/task state for whichever repo the conductor is currently bound to; regenerated per machine, never committed.
 - `.worktrees/` — git worktrees created per the "always use worktrees for impl work" convention; ephemeral.
 - `.superpowers/sdd/` — spec-driven-development scratch artifacts (task briefs/reports, review diffs) from past sessions; entirely gitignored (`*`).
-- `plugins/kiln/skills/smith/langfuse/.env` / `local.env` — local Langfuse credentials for Smith's cost-analysis dev loop.
+- `plugins/_archive/kiln-2.17/skills/smith/langfuse/.env` / `local.env` — local Langfuse credentials from the previous Kiln's Smith; still gitignored.

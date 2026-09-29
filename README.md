@@ -1,19 +1,18 @@
 # jcsl-tools
 
-Josh C.S. Lewis's personal Claude Code plugin marketplace — six independently installable plugins covering implementation workflow, multi-lens review, discovery-first research, context-spend discipline, repository documentation, and Classes for the Kiln runtime (kiln-next). No build step runs in this repo and there is no server: every plugin is markdown (skills, agents) plus shell, Python, and JavaScript components that Claude Code loads directly — gauntlet's runtime CLI among them, tracked as a pre-generated bundle (`plugins/gauntlet/runtime/bin/cli.mjs`) rather than built here.
+Josh C.S. Lewis's personal Claude Code plugin marketplace — five independently installable plugins covering the Kiln build run, multi-lens review, discovery-first research, context-spend discipline, and repository documentation. No build step runs in this repo and there is no server: every plugin is markdown (skills, agents) plus shell, Python, and JavaScript components that Claude Code loads directly — gauntlet's runtime CLI among them, tracked as a pre-generated bundle (`plugins/gauntlet/runtime/bin/cli.mjs`) rather than built here.
 
 ## Plugins
 
 | Plugin | What it does | Entry point |
 |---|---|---|
-| [`kiln`](plugins/kiln/) | Complexity-proportionate implementation Party. A thin conductor routes work through lanes (design, research, plan, execute, review) and dispatches specialized members (Designer, Scout, Planner, Crafter, Inspector, Curator, Drafter, Sifter, Finisher) — it never edits source itself. | `/kiln EXT-NNNN` \| `/kiln "raw idea"` \| `/kiln EXT-NNNN path/to/plan.md` |
+| [`kiln`](plugins/kiln/) | The Kiln build run. The `build` skill takes one ticket, fills its brief, builds its tasks one change at a time, has a judge rule on the whole, and opens the pull request on the person's yes. Ships five Classes. The Crafter changes the artifact. The Designer is the `shape` skill: a three-lens design dialogue that ends at a written decision. The Planner turns a decision into a ticket plan with rerunnable checks. The Inspector rules once per run on conformance to the plan and names the consequence it observed. The Prospector is a bounded researcher that invokes the research skill by name. | `/kiln:build <ticket>` is the front door. The runtime decides each next action, and the build skill dispatches the agent Classes by Class (`kiln:crafter`, `kiln:planner`, `kiln:inspector`, `kiln:prospector`). When the runtime hands it a design step, the Designer runs in the main thread as `/kiln:shape`. |
 | [`gauntlet`](plugins/gauntlet/) | Multi-skill AI review harness. A thin host over a deterministic Party runtime that detects an artifact's type (code diff, plan, doc, skill, directive) and fields the review lanes it supports today (adversarial review, code-quality audit, threat review on a security signal, revision review on a re-review); lanes it doesn't yet field are reported as gaps and offered as operator-invoked follow-ups. | `/gauntlet [<pr-url>\|<path>]` |
 | [`prospector`](plugins/prospector/) | Discovery-first research harness. Finds where an answer lives across Glean, GitHub, Jira, and the web before reading anything — then verifies every load-bearing claim and synthesizes a cited answer. | `/prospector:research` |
 | [`context-economy`](plugins/context-economy/) | Six-Class Party (Steward, Assembler, Delegator, Chronicler, Enforcer, Observer) for spending Claude Code's context window economically — hard-gates before broad reads/greps, nudges a handoff before context fills, tracks session cost. | Fires automatically on trigger phrases; no slash command |
 | [`cartographer`](plugins/cartographer/) | Repository cartographer — analyzes a repo's structure and evidence to draft a grounded, claim-classified README enrichment, flagging unsupported claims and stale content. | `cartograph-report` skill (auto-discovered; no slash command) |
-| [`kiln-next`](plugins/kiln-next/) | The Kiln build run, under the holding name kiln-next until the old kiln plugin retires. The `build` skill takes one ticket, fills its brief, builds its tasks one change at a time, has a judge rule on the whole, and opens the pull request on the person's yes. Ships five Classes. The Crafter changes the artifact. The Designer is the `shape` skill: a three-lens design dialogue that ends at a written decision. The Planner turns a decision into a ticket plan with rerunnable checks. The Inspector rules once per run on conformance to the plan and names the consequence it observed. The Prospector is a bounded researcher that invokes the research skill by name. | `/kiln-next:build <ticket>` is the front door. The runtime decides each next action, and the build skill dispatches the agent Classes by Class (`kiln-next:crafter`, `kiln-next:planner`, `kiln-next:inspector`, `kiln-next:prospector`). When the runtime hands it a design step, the Designer runs in the main thread as `/kiln-next:shape`. |
 
-See each plugin's own README/SKILL.md for full usage. [ARCHITECTURE.md](./ARCHITECTURE.md) covers how the six plugins relate and the conventions shared across all of them (`${CLAUDE_PLUGIN_ROOT}` usage, progressive disclosure, finder/validator pairing).
+See each plugin's own README/SKILL.md for full usage. [ARCHITECTURE.md](./ARCHITECTURE.md) covers how the five plugins relate and the conventions shared across all of them (`${CLAUDE_PLUGIN_ROOT}` usage, progressive disclosure, finder/validator pairing).
 
 ## Installation
 
@@ -38,7 +37,6 @@ claude plugin install gauntlet@jcsl-tools
 claude plugin install prospector@jcsl-tools
 claude plugin install context-economy@jcsl-tools
 claude plugin install cartographer@jcsl-tools
-claude plugin install kiln-next@jcsl-tools
 ```
 
 Restart Claude Code after installing or after any change to a plugin's `hooks.json` or `plugin.json`.

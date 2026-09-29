@@ -8,7 +8,7 @@
 | `node` (>= 22) | Required by gauntlet's runtime-driven skills (`adversarial-review`, `code-quality-audit`, `revision-review`, `threat-review`); their CLI ships pre-generated at `plugins/gauntlet/runtime/bin/cli.mjs` |
 | `jq` | Required by `context-economy`'s hooks (`telemetry-record.sh`, `handoff-nudge.sh`, `context-reset-nudge.sh`) |
 | `python3` | Required by `context-economy/hooks/cost-statusline.py` (stdlib only, no pip installs) |
-| `gh` (GitHub CLI) | Used by Kiln's Curator (PR creation) and Gauntlet (`code-pr` mode metadata) |
+| `gh` (GitHub CLI) | Used by the Kiln runtime (GitHub issue tickets and pull request creation) and Gauntlet (`code-pr` mode metadata) |
 | `bash` + `shasum`/`sha256sum` | Required by `gauntlet/agents/check-grounding-parity.sh` |
 
 No `package.json`, no lockfile, no build system — there is nothing to `npm install`.
@@ -55,7 +55,7 @@ There's no repo-wide test command — verification is per-component, where a com
 
 | Component | Verify with |
 |---|---|
-| Kiln guard hooks | `bash plugins/kiln/hooks/test-kiln-guards.sh` — offline unit tests, feeds synthetic `PreToolUse` stdin JSON to each guard and asserts allow/deny. No Claude session needed. |
+| Kiln payload | Generated: verify in the kiln repository (`npm test`, then the packager), and confirm `plugins/kiln/PROVENANCE.json` names the merged source commit. Nothing here is tested in place. |
 | Gauntlet finder/validator agents | `bash plugins/gauntlet/agents/check-grounding-parity.sh` — asserts the shared grounding-contract sentinel block is byte-identical across the checked finder/validator agent files. |
 | Context Economy hooks | `bash plugins/context-economy/hooks/<hook-name>.test.sh` for each of `cost-statusline`, `telemetry-record`, `handoff-nudge`, `context-reset-nudge`. Exits non-zero on any failure. |
 | Context Economy behavioral fixtures | Five operator-in-the-loop scenarios in `plugins/context-economy/fixtures/` (`CE-01`–`CE-05`), each with a `prompt.md` + `expected.md` checkbox rubric. See `fixtures/README.md`. Target ≥3/5 pass before shipping a change that touches Steward/Assembler/Delegator behavior. |
@@ -66,7 +66,7 @@ There's no repo-wide test command — verification is per-component, where a com
 | Cartographer verification-report checker | `bash plugins/cartographer/skills/cartograph-report/scripts/check-verification-report.sh <VERIFICATION_REPORT_FILE>` — fixture-driven unit tests via `bash plugins/cartographer/tests/check-verification-report.test.sh`. Validates the stage-5 verification report's record grammar and both gate predicates per `core/claim-verification.md` RC-31/RC-36. Its fixtures live in `plugins/cartographer/tests/fixtures/accuracy-verification/` and `plugins/cartographer/tests/fixtures/effectiveness-verification/`, one whole verification report per case. |
 | Cartographer portability guard | `bash plugins/cartographer/tests/check-portability.sh` — greps the skill root (`SKILL.md` + `core/` + `scripts/`) for harness-specific tokens (`CLAUDE_PLUGIN_ROOT`, repo-relative self-paths, Claude-Code-only API names, absolute paths). A token grep, not a semantic proof; exit 0 required before promotion. |
 | Cartographer promotion script | `bash plugins/cartographer/tools/promote.sh <target-dir>` — copies the skill root's parity set and writes `PROVENANCE.md`; deterministic, doubles as the drift detector. Tested via `bash plugins/cartographer/tests/promote.test.sh`. |
-| Kiln/Gauntlet skills generally | No automated harness — verify by exercising the skill's entry point (`/kiln`, `/gauntlet`, etc.) against a real or fixture scenario. |
+| Kiln/Gauntlet skills generally | No automated harness — verify by exercising the skill's entry point (`/kiln:build`, `/gauntlet`, etc.) against a real or fixture scenario. |
 
 There is no CI pipeline (`.github/workflows/`) wired up yet — these checks are run manually before a commit lands on `main`.
 
@@ -86,7 +86,7 @@ Nearly every commit on `main` (29 of 36 at last count) carries a `(#N)` suffix �
 
 | Path | Why restricted |
 |---|---|
-| `plugins/kiln/skills/smith/langfuse/.env`, `local.env` | Local Langfuse credentials — gitignored, never commit |
+| `plugins/_archive/kiln-2.17/skills/smith/langfuse/.env`, `local.env` | Local Langfuse credentials from the previous Kiln — gitignored, never commit |
 | `.compounds/`, `.worktrees/` | Local machine state — gitignored, regenerated per machine |
 | `.claude/settings.json` (repo root) | Personal `enabledPlugins` state — gitignored |
-| `plugins/kiln/agents/crafter/references/`, `plugins/kiln/agents/designer/references/` | Loaded by `crafter.md`/`designer.md` via `${CLAUDE_PLUGIN_ROOT}` path — moving without updating both callers breaks the agent |
+| `plugins/kiln/` | Generated payload — hand edits drift from the manifests the runtime checks; edit the kiln repository and repackage |
