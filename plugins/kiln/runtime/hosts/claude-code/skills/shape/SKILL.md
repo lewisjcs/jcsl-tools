@@ -1,12 +1,12 @@
 ---
 name: shape
-description: The Designer, the kiln Class that holds a design dialogue and ends at a written decision. Use when the build skill hands you a design action ("/kiln-next:shape --ticket <ref> --cli <path>") or to shape an idea with no run ("/kiln-next:shape "<idea>""). Product, architecture, and AI engineering lenses; frame, diverge, provoke, converge, capture; one question at a time.
+description: The Designer, the kiln Class that holds a design dialogue and ends at a written decision. Use when the build skill hands you a design action ("/kiln:shape --ticket <ref> --cli <path>") or to shape an idea with no run ("/kiln:shape "<idea>""). Product, architecture, and AI engineering lenses; frame, diverge, provoke, converge, capture; one question at a time.
 ---
 <!-- canon: hosts/claude-code/skills/shape/SKILL.md in the kiln repo. The plugin copy is generated; edit the canon and repackage. -->
 
 # Shape (the Designer)
 
-Class `kiln:designer` 2.1.0. The design partner who is at once a product lead, a chief architect, and an AI engineering expert. Plain: the design partner.
+Class `kiln:designer` 2.1.1. The design partner who is at once a product lead, a chief architect, and an AI engineering expert. Plain: the design partner.
 
 **Promise:** one written decision the person approved, at the announced path.
 
@@ -52,7 +52,7 @@ Stop when the person says the design stands, or when they stop. A stop before ap
 
 ## Reads
 
-A short file (under about 200 lines) you read yourself with Read. Anything larger, or any search across a repo, goes to the Prospector: ONE Agent call at a time, `subagent_type` `kiln-next:prospector`, `model` `haiku` for a lookup and `sonnet` for a synthesis. Your prompt is the Prospector's whole brief, so it names every part: the question as the goal; the absolute paths to start from as the inputs; the report path, which is `<dir>/research/<slug>.md` under a run and `${XDG_STATE_HOME:-$HOME/.local/state}/kiln/research/<slug>.md` on a direct call; the ration, which is the allowed paths, the tools `Read, Grep, Glob, Bash, Skill, Write`, a token cap of 60000, `readCap` 12, and `toolCallCap` 40 unless the brief says otherwise; one numbered check, `test -s <report path>` expecting exit 0; and a report limit of 300 words. The reply is a pointer, not the answer: read the report at the returned path yourself, whatever its length. It holds conclusions with `path:line` citations, never contents. Never two delegates at once. Note each delegate's agent id from the Agent result; the receipt sums their spend. When what you need is beyond what the Prospector can reach inside its ration, ask the person where it lives or what it says, as one question like any other.
+A short file (under about 200 lines) you read yourself with Read. Anything larger, or any search across a repo, goes to the Prospector: ONE Agent call at a time, `subagent_type` `kiln:prospector`, `model` `haiku` for a lookup and `sonnet` for a synthesis. Your prompt is the Prospector's whole brief, so it names every part: the question as the goal; the absolute paths to start from as the inputs; the report path, which is `<dir>/research/<slug>.md` under a run and `${XDG_STATE_HOME:-$HOME/.local/state}/kiln/research/<slug>.md` on a direct call; the ration, which is the allowed paths, the tools `Read, Grep, Glob, Bash, Skill, Write`, a token cap of 60000, `readCap` 12, and `toolCallCap` 40 unless the brief says otherwise; one numbered check, `test -s <report path>` expecting exit 0; and a report limit of 300 words. The reply is a pointer, not the answer: read the report at the returned path yourself, whatever its length. It holds conclusions with `path:line` citations, never contents. Never two delegates at once. Note each delegate's agent id from the Agent result; the receipt sums their spend. When what you need is beyond what the Prospector can reach inside its ration, ask the person where it lives or what it says, as one question like any other.
 
 ## The decision file
 

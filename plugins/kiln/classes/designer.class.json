@@ -2,7 +2,7 @@
   "kind": "class",
   "schemaVersion": "1.0-kernel",
   "id": "kiln:designer",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "audience": "personal",
   "identity": {
     "name": "Designer",
@@ -129,7 +129,7 @@
       "path": "hosts/claude-code/skills/shape/SKILL.md",
       "projection": {
         "canonicalSources": ["hosts/claude-code/skills/shape/SKILL.md", "references/ears.md", "references/brainstorming.md", "references/architecture.md"],
-        "sourceHash": "5225034a23d9448c174f05ef8d277a1b36edae0cc788fe42437103930de4e323"
+        "sourceHash": "bfbf3769de0118a57c834b557a089048777fc42d1447066f6a685d5f560b55df"
       }
     }
   },
