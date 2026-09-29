@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["classId", "inputContractId", "input", "loadout"],
+  "properties": {
+    "classId": { "$ref": "#/$defs/classOrPartyId" },
+    "partyId": { "$ref": "#/$defs/classOrPartyId" },
+    "inputContractId": { "$ref": "#/$defs/contractId" },
+    "input": {},
+    "loadout": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["featIds", "tools", "references", "modelRequirement", "budget"],
+      "properties": {
+        "featIds": { "$ref": "#/$defs/nonEmptyStringList" },
+        "tools": { "$ref": "#/$defs/nonEmptyStringList" },
+        "references": { "$ref": "#/$defs/nonEmptyStringList" },
+        "modelRequirement": { "$ref": "#/$defs/modelRequirement" },
+        "budget": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["maxTokens", "maxTurns"],
+          "properties": {
+            "maxTokens": { "type": "integer", "minimum": 1 },
+            "maxTurns": { "type": "integer", "minimum": 1 }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "classOrPartyId": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*(?::[a-z0-9][a-z0-9-]*)+$" },
+    "contractId": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*:[a-z0-9][a-z0-9-]*@[0-9]+$" },
+    "modelRequirement": { "enum": ["mechanical-transformation", "bounded-generation", "complex-synthesis", "independent-judgment", "adversarial-adjudication"] },
+    "nonEmptyString": { "type": "string", "minLength": 1 },
+    "nonEmptyStringList": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/nonEmptyString" } }
+  }
+}

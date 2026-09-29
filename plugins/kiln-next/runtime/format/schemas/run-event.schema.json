@@ -1,0 +1,40 @@
+{
+  "$id": "jcsl:run-event@1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Run event line",
+  "type": "object",
+  "required": ["seq", "at", "kind", "data"],
+  "additionalProperties": false,
+  "properties": {
+    "seq": { "type": "integer", "minimum": 1 },
+    "at": { "type": "string", "format": "date-time", "pattern": "Z$" },
+    "kind": {
+      "enum": [
+        "bundle-created",
+        "catalog-admitted",
+        "party-formed",
+        "party-formation-failed",
+        "invocation-validated",
+        "host-bound",
+        "run-initialized",
+        "action-pending",
+        "receipt-applied",
+        "stage-failed",
+        "run-terminal",
+        "outcome-validated",
+        "result-written",
+        "triage-appended",
+        "profile-computed",
+        "roster-selected",
+        "party-reformed",
+        "snapshot-staged",
+        "worktree-pinned",
+        "lane-run-linked",
+        "party-report-written",
+        "revision-linked",
+        "origin-recorded"
+      ]
+    },
+    "data": { "type": "object" }
+  }
+}

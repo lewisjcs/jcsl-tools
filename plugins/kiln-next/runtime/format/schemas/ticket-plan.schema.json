@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contractId", "ticketRef", "source", "summary", "tasks"],
+  "properties": {
+    "contractId": { "const": "kiln:ticket-plan@1" },
+    "ticketRef": { "$ref": "#/$defs/nonEmptyString" },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256"],
+      "properties": {
+        "path": { "$ref": "#/$defs/nonEmptyString" },
+        "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+      }
+    },
+    "summary": { "$ref": "#/$defs/nonEmptyString" },
+    "drewOn": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/nonEmptyString" } },
+    "tasks": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["taskId", "goal", "covers", "dependsOn", "doneWhen", "inputs", "paths", "repo", "branch"],
+        "properties": {
+          "taskId": { "type": "string", "pattern": "^task-[0-9]+$" },
+          "goal": { "$ref": "#/$defs/nonEmptyString" },
+          "covers": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/nonEmptyString" } },
+          "dependsOn": { "type": "array", "uniqueItems": true, "items": { "type": "string", "pattern": "^task-[0-9]+$" } },
+          "doneWhen": { "type": "array", "minItems": 1, "items": { "type": "object", "required": ["command", "expect", "repo"], "additionalProperties": false, "properties": { "command": { "type": "string", "minLength": 1 }, "expect": { "type": "string", "minLength": 1 }, "repo": { "type": "string", "minLength": 1, "description": "The repo the check runs in. Every check names its own, so a re-run happens where the check belongs." } } } },
+          "inputs": { "type": "array", "items": { "$ref": "#/$defs/nonEmptyString" } },
+          "paths": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
+          "fixes": { "type": "array", "uniqueItems": true, "items": { "type": "string", "pattern": "^task-[0-9]+$" } },
+          "repo": { "$ref": "#/$defs/nonEmptyString" },
+          "branch": { "$ref": "#/$defs/nonEmptyString" }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "nonEmptyString": { "type": "string", "minLength": 1 }
+  }
+}

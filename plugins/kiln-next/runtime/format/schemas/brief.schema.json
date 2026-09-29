@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["intent", "facts", "decision", "acceptance", "tasks"],
+  "properties": {
+    "intent": { "oneOf": [{ "type": "null" }, { "type": "object", "additionalProperties": false, "required": ["by", "text"], "properties": { "by": { "$ref": "#/$defs/by" }, "text": { "$ref": "#/$defs/nonEmptyString" } } }] },
+    "facts": { "oneOf": [{ "type": "null" }, { "type": "object", "additionalProperties": false, "required": ["by", "items"], "properties": { "by": { "$ref": "#/$defs/by" }, "items": { "type": "array", "minItems": 1, "items": { "type": "object", "additionalProperties": false, "required": ["fact", "source"], "properties": { "fact": { "$ref": "#/$defs/nonEmptyString" }, "source": { "$ref": "#/$defs/nonEmptyString" } } } } } }] },
+    "decision": { "oneOf": [{ "type": "null" }, { "type": "object", "additionalProperties": false, "required": ["by", "text"], "properties": { "by": { "$ref": "#/$defs/by" }, "text": { "$ref": "#/$defs/nonEmptyString" } } }] },
+    "acceptance": { "oneOf": [{ "type": "null" }, { "type": "object", "additionalProperties": false, "required": ["by", "lines"], "properties": { "by": { "$ref": "#/$defs/by" }, "lines": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/nonEmptyString" } } } }] },
+    "tasks": { "oneOf": [{ "type": "null" }, { "type": "object", "additionalProperties": false, "required": ["by", "summary", "plan"], "properties": { "by": { "$ref": "#/$defs/by" }, "summary": { "$ref": "#/$defs/nonEmptyString" }, "plan": { "type": "array", "minItems": 1 } } }] }
+  },
+  "$defs": {
+    "by": { "enum": ["person", "party"] },
+    "nonEmptyString": { "type": "string", "minLength": 1 }
+  }
+}

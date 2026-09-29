@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "jcsl:price-table@1",
+  "type": "object",
+  "required": ["kind", "version", "currency", "provenance", "models"],
+  "properties": {
+    "kind": { "const": "price-table" },
+    "version": { "$ref": "#/$defs/semver" },
+    "currency": { "const": "USD" },
+    "provenance": {
+      "type": "object",
+      "required": ["source", "retrievedAt"],
+      "properties": {
+        "source": { "$ref": "#/$defs/nonEmptyString" },
+        "retrievedAt": { "type": "string", "format": "date-time", "pattern": "Z$" }
+      },
+      "additionalProperties": false
+    },
+    "models": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": { "$ref": "#/$defs/modelRates" }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "nonEmptyString": { "type": "string", "minLength": 1 },
+    "semver": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+    "rate": { "type": "number", "minimum": 0 },
+    "modelRates": {
+      "type": "object",
+      "required": ["inputPerMTok", "cacheWritePerMTok", "cacheReadPerMTok", "outputPerMTok"],
+      "properties": {
+        "inputPerMTok": { "$ref": "#/$defs/rate" },
+        "cacheWritePerMTok": { "$ref": "#/$defs/rate" },
+        "cacheReadPerMTok": { "$ref": "#/$defs/rate" },
+        "outputPerMTok": { "$ref": "#/$defs/rate" }
+      },
+      "additionalProperties": false
+    }
+  }
+}
