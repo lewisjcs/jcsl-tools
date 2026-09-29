@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft-07/schema",
   "name": "jcsl-tools",
-  "description": "Josh C.S. Lewis's personal AI tooling — implementation workflow parties and skills for Claude Code.",
+  "description": "Josh C.S. Lewis's personal AI tooling \u2014 implementation workflow parties and skills for Claude Code.",
   "owner": {
     "name": "Josh C.S. Lewis"
   },
@@ -10,64 +10,95 @@
       "name": "kiln",
       "source": "./plugins/kiln",
       "displayName": "The Kiln",
-      "description": "Complexity-proportionate implementation Party — a thin conductor dispatches Planner, Crafter, Inspector, and Walker members, enforcing gates via PreToolUse hooks. Invoke with /kiln.",
+      "description": "The Kiln build run: the build skill takes one ticket, fills its brief, builds its tasks one change at a time, has a judge rule on the whole, and opens the pull request on the person's yes. Ships the shape skill, the Crafter, Designer, Planner, Inspector, and Prospector Classes, the runtime bundle, and the policies.",
       "author": {
         "name": "Josh C.S. Lewis"
       },
       "repository": "https://github.com/lewisjcs/jcsl-tools",
-      "keywords": ["implementation", "workflow", "tdd", "compounds", "party"],
+      "keywords": [
+        "kiln",
+        "build",
+        "crafter",
+        "designer",
+        "planner",
+        "inspector",
+        "class",
+        "implementation",
+        "prospector"
+      ],
       "category": "development-workflows"
     },
     {
       "name": "gauntlet",
       "source": "./plugins/gauntlet",
       "displayName": "Gauntlet",
-      "description": "Multi-skill AI review harness — a thin host over a deterministic Party runtime that detects the artifact type, fields the review lanes it supports (adversarial review, code-quality audit, threat review on a security signal, and revision review on a re-reviewed pull request), and reports the rest as operator-invoked follow-ups. Invoke with /gauntlet:run.",
+      "description": "Multi-skill AI review harness \u2014 a thin host over a deterministic Party runtime that detects the artifact type, fields the review lanes it supports (adversarial review, code-quality audit, threat review on a security signal, and revision review on a re-reviewed pull request), and reports the rest as operator-invoked follow-ups. Invoke with /gauntlet:run.",
       "author": {
         "name": "Josh C.S. Lewis"
       },
       "repository": "https://github.com/lewisjcs/jcsl-tools",
-      "keywords": ["review", "gauntlet", "security", "adversarial", "directive", "audit"],
+      "keywords": [
+        "review",
+        "gauntlet",
+        "security",
+        "adversarial",
+        "directive",
+        "audit"
+      ],
       "category": "development-workflows"
     },
     {
       "name": "prospector",
       "source": "./plugins/prospector",
       "displayName": "Prospector",
-      "description": "Discovery-first research harness — finds where an answer lives across Glean, GitHub, Jira, and the web, verifies every load-bearing claim, and synthesizes a cited answer. Invoke with /prospector:research.",
-      "author": { "name": "Josh C.S. Lewis" },
+      "description": "Discovery-first research harness \u2014 finds where an answer lives across Glean, GitHub, Jira, and the web, verifies every load-bearing claim, and synthesizes a cited answer. Invoke with /prospector:research.",
+      "author": {
+        "name": "Josh C.S. Lewis"
+      },
       "repository": "https://github.com/lewisjcs/jcsl-tools",
-      "keywords": ["research", "discovery", "fan-out", "synthesis"],
+      "keywords": [
+        "research",
+        "discovery",
+        "fan-out",
+        "synthesis"
+      ],
       "category": "development-workflows"
     },
     {
       "name": "context-economy",
       "source": "./plugins/context-economy",
       "displayName": "Context Economy",
-      "description": "Context Economy Party — Steward, Assembler, Delegator, Chronicler, Observer skills plus telemetry + a boundary-gated mid-session handoff nudge for spending Claude Code context economically. Invoke via the context-economy skill.",
-      "author": { "name": "Josh C.S. Lewis" },
+      "description": "Context Economy Party \u2014 Steward, Assembler, Delegator, Chronicler, Observer skills plus telemetry + a boundary-gated mid-session handoff nudge for spending Claude Code context economically. Invoke via the context-economy skill.",
+      "author": {
+        "name": "Josh C.S. Lewis"
+      },
       "repository": "https://github.com/lewisjcs/jcsl-tools",
-      "keywords": ["context", "tokens", "handoff", "telemetry", "hooks", "self-improvement"],
+      "keywords": [
+        "context",
+        "tokens",
+        "handoff",
+        "telemetry",
+        "hooks",
+        "self-improvement"
+      ],
       "category": "development-workflows"
     },
     {
       "name": "cartographer",
       "source": "./plugins/cartographer",
       "displayName": "Cartographer",
-      "description": "Repository cartographer — analyzes a repo's structure and evidence to draft a grounded, claim-classified README enrichment, flagging unsupported claims and stale content. Invoke via the cartograph-report skill.",
-      "author": { "name": "Josh C.S. Lewis" },
+      "description": "Repository cartographer \u2014 analyzes a repo's structure and evidence to draft a grounded, claim-classified README enrichment, flagging unsupported claims and stale content. Invoke via the cartograph-report skill.",
+      "author": {
+        "name": "Josh C.S. Lewis"
+      },
       "repository": "https://github.com/lewisjcs/jcsl-tools",
-      "keywords": ["readme", "documentation", "repo-mapping", "grounding", "evidence"],
-      "category": "development-workflows"
-    },
-    {
-      "name": "kiln-next",
-      "source": "./plugins/kiln-next",
-      "displayName": "Kiln (next)",
-      "description": "The Kiln build run: the build skill takes one ticket, fills its brief, builds its tasks one change at a time, has a judge rule on the whole, and opens the pull request on the person's yes. Ships the shape skill, the Crafter, Designer, Planner, Inspector, and Prospector Classes, the runtime bundle, and the policies. Holding name until the old kiln plugin retires.",
-      "author": { "name": "Josh C.S. Lewis" },
-      "repository": "https://github.com/lewisjcs/jcsl-tools",
-      "keywords": ["kiln", "build", "crafter", "designer", "planner", "inspector", "class", "implementation", "prospector"],
+      "keywords": [
+        "readme",
+        "documentation",
+        "repo-mapping",
+        "grounding",
+        "evidence"
+      ],
       "category": "development-workflows"
     }
   ]

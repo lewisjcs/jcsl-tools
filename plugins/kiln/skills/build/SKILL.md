@@ -1,6 +1,6 @@
 ---
 name: build
-description: Build a ticket with the kiln Party. Use when asked to "build this ticket", "build <ticket>", "kiln <ticket>", "run the kiln on <ticket>", "/kiln-next:build <ticket reference or idea>", or to continue a build that stopped in an earlier session. One run per ticket, on the ticket key; the runtime decides what is next; you dispatch, measure, and append. Never implements a task yourself.
+description: Build a ticket with the kiln Party. Use when asked to "build this ticket", "build <ticket>", "kiln <ticket>", "run the kiln on <ticket>", "/kiln:build <ticket reference or idea>", or to continue a build that stopped in an earlier session. One run per ticket, on the ticket key; the runtime decides what is next; you dispatch, measure, and append. Never implements a task yourself.
 ---
 <!-- canon: hosts/claude-code/skills/build/SKILL.md in the kiln repo. The plugin copy is generated; edit the canon and repackage. -->
 

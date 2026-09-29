@@ -2,14 +2,14 @@
 
 Josh C.S. Lewis's personal Claude Code plugin marketplace — implementation workflow Parties and review/research skills. Owned and maintained by Josh alone.
 
-Read [AGENTS.md](./AGENTS.md) for the full agent guardrail set and invariants, [ARCHITECTURE.md](./ARCHITECTURE.md) for how the marketplace and its six plugins fit together, and [CONTRIBUTING.md](./CONTRIBUTING.md) for setup and verification.
+Read [AGENTS.md](./AGENTS.md) for the full agent guardrail set and invariants, [ARCHITECTURE.md](./ARCHITECTURE.md) for how the marketplace and its five plugins fit together, and [CONTRIBUTING.md](./CONTRIBUTING.md) for setup and verification.
 
 ## Commands
 
 | Task | Command |
 |------|---------|
 | Install a plugin locally | `claude plugin install <name>@jcsl-tools` |
-| Verify Kiln guard hooks | `bash plugins/kiln/hooks/test-kiln-guards.sh` |
+| Verify the Kiln payload | In the kiln repository: `npm test`, then repackage; confirm `plugins/kiln/PROVENANCE.json` names the merged commit |
 | Verify Gauntlet agent parity | `bash plugins/gauntlet/agents/check-grounding-parity.sh` |
 | Verify a Context Economy hook | `bash plugins/context-economy/hooks/<hook-name>.test.sh` |
 
@@ -27,14 +27,13 @@ There is no install/build/lint/test command at the repo level — see [CONTRIBUT
 See [ARCHITECTURE.md](./ARCHITECTURE.md) for full details.
 
 Key patterns to respect:
-- This repo IS the marketplace manifest source — `.claude-plugin/marketplace.json` lists all six plugins by `source` path. A new plugin needs an entry here too, not just its own directory.
+- This repo IS the marketplace manifest source — `.claude-plugin/marketplace.json` lists all five plugins by `source` path. A new plugin needs an entry here too, not just its own directory.
 - Every hook script reference uses `${CLAUDE_PLUGIN_ROOT}` — never a hardcoded or relative path.
-- Kiln's conductor is intentionally thin: a `PreToolUse` hook denies its file-editing tools mid-run. Don't propose "simplifying" Kiln by having the conductor edit source directly — that guarantee is load-bearing.
+- `plugins/kiln/` is a generated payload written by the kiln repository's packager from a merged commit. Never hand-edit it; edit the canon there and repackage.
 
 ## Sharp Edges
 
-- `plugins/kiln/agents/crafter/` and `plugins/kiln/agents/designer/` are directories, not flat `.md` files like every other agent — each holds a `references/` file its sibling `.md` loads explicitly. Don't flatten without checking both load paths.
-- `plugins/kiln/skills/smith/langfuse/` mixes a tracked `docker-compose.yml` with gitignored `.env`/`local.env` — never commit the latter two.
+- `plugins/_archive/kiln-2.17/` is the previous Kiln, kept whole and unlisted in the marketplace. Its `skills/smith/langfuse/` mixes a tracked `docker-compose.yml` with gitignored `.env`/`local.env` — never commit the latter two.
 - No CI is wired up. Manual verification (see Commands above) is the only gate before a PR merges.
 
 ## Testing

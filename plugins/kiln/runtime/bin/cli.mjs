@@ -8916,7 +8916,7 @@ function computeProjectionSourceHash(records) {
 }
 
 // src/classes.mjs
-var PLUGIN_NAMESPACE = "kiln-next";
+var PLUGIN_NAMESPACE = "kiln";
 var CLASS_MANIFESTS = Object.freeze(["classes/crafter.class.json", "classes/designer.class.json", "classes/planner.class.json", "classes/inspector.class.json", "classes/prospector.class.json"]);
 var REPO_ROOT = path3.resolve(path3.dirname(fileURLToPath(import.meta.url)), "..");
 var BORROWED_PINS = Object.freeze(JSON.parse(readFileSync6(new URL("../policy/borrowed-classes-v1.json", import.meta.url), "utf8")).classes);

@@ -1,9 +1,0 @@
-{
-  "name": "kiln-next",
-  "version": "0.5.2",
-  "description": "The Kiln build run, under the holding name kiln-next until the old kiln plugin retires. Ships the build skill (one run per ticket: it fills the ticket's brief, builds its tasks one change at a time, has a judge rule on the whole, and opens the pull request on the person's yes), the shape skill (a three-lens design dialogue that ends at a written decision), and the Classes the run dispatches: the Crafter, the Designer, the Planner, the Inspector, and the Prospector. Carries the runtime bundle, the roster policy, the rations, the host bindings, the price table, and the borrowed-review pins.",
-  "author": { "name": "Josh C.S. Lewis" },
-  "repository": "https://github.com/lewisjcs/jcsl-tools",
-  "license": "MIT",
-  "keywords": ["kiln", "build", "class", "crafter", "designer", "planner", "inspector", "implementation", "statblock", "prospector", "router", "gate"]
-}
