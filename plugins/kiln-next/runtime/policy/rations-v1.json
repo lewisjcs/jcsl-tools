@@ -1,0 +1,16 @@
+{
+  "kind": "rations",
+  "version": "1.0.0",
+  "status": "guess",
+  "multiplier": 1.5,
+  "rations": {
+    "kiln:prospector": { "tokens": 150000, "turns": 40 },
+    "kiln:designer": { "tokens": 300000, "turns": 100 },
+    "kiln:planner": { "tokens": 120000, "turns": 30 },
+    "kiln:crafter": { "tokens": 200000, "turns": 60 },
+    "kiln:inspector": { "tokens": 120000, "turns": 30 },
+    "jcsl:gauntlet:adversarial-review": { "tokens": 400000, "turns": 120 },
+    "jcsl:gauntlet:threat-review": { "tokens": 400000, "turns": 120 },
+    "jcsl:gauntlet:code-quality-audit": { "tokens": 400000, "turns": 120 }
+  }
+}

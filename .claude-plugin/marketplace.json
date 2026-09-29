@@ -64,10 +64,10 @@
       "name": "kiln-next",
       "source": "./plugins/kiln-next",
       "displayName": "Kiln (next)",
-      "description": "Classes for the Kiln runtime: Crafter, Designer, Planner, Inspector, and Prospector, dispatched by Class from a job plan, plus the consequence policy and borrowed-review pins. Pairs with the job and fire skills. Holding name until the old kiln plugin retires.",
+      "description": "The Kiln build run: the build skill takes one ticket, fills its brief, builds its tasks one change at a time, has a judge rule on the whole, and opens the pull request on the person's yes. Ships the shape skill, the Crafter, Designer, Planner, Inspector, and Prospector Classes, the runtime bundle, and the policies. Holding name until the old kiln plugin retires.",
       "author": { "name": "Josh C.S. Lewis" },
       "repository": "https://github.com/lewisjcs/jcsl-tools",
-      "keywords": ["kiln", "crafter", "designer", "planner", "inspector", "class", "implementation", "prospector"],
+      "keywords": ["kiln", "build", "crafter", "designer", "planner", "inspector", "class", "implementation", "prospector"],
       "category": "development-workflows"
     }
   ]

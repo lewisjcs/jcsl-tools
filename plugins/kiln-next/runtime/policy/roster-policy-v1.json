@@ -1,0 +1,47 @@
+{
+  "kind": "roster-policy",
+  "version": "1.0.0",
+  "pool": [
+    { "classKey": "finder", "classId": "kiln:prospector", "families": ["build-ticket"] },
+    { "classKey": "designer", "classId": "kiln:designer", "families": ["build-ticket"] },
+    { "classKey": "planner", "classId": "kiln:planner", "families": ["build-ticket"] },
+    { "classKey": "changer", "classId": "kiln:crafter", "families": ["build-ticket"] },
+    { "classKey": "judge", "classId": "kiln:inspector", "families": ["build-ticket"] },
+    { "classKey": "borrowed", "classId": "jcsl:gauntlet:adversarial-review", "families": ["build-ticket"] }
+  ],
+  "rows": [
+    { "rowId": "full", "match": { "family": "build-ticket", "firstEmpty": "none" }, "field": [
+      { "classKey": "changer", "reason": "the plan is written; one changer dispatch per task" },
+      { "classKey": "judge", "reason": "the judge rules on the whole against the plan" }
+    ], "skip": [], "gaps": [] },
+    { "rowId": "no-tasks", "match": { "family": "build-ticket", "firstEmpty": "tasks" }, "field": [
+      { "classKey": "planner", "reason": "the plan is written from the acceptance" },
+      { "classKey": "changer", "reason": "one changer dispatch per task" },
+      { "classKey": "judge", "reason": "the judge rules on the whole against the plan" }
+    ], "skip": [], "gaps": [] },
+    { "rowId": "no-acceptance", "match": { "family": "build-ticket", "firstEmpty": "acceptance" }, "field": [
+      { "classKey": "planner", "reason": "the planner writes acceptance and tasks together" },
+      { "classKey": "changer", "reason": "one changer dispatch per task" },
+      { "classKey": "judge", "reason": "the judge rules on the whole against the plan" }
+    ], "skip": [], "gaps": [] },
+    { "rowId": "no-facts", "match": { "family": "build-ticket", "firstEmpty": "facts" }, "field": [
+      { "classKey": "finder", "reason": "facts need a reader with no pen" },
+      { "classKey": "planner", "reason": "the planner writes acceptance and tasks from the facts and the decision" },
+      { "classKey": "changer", "reason": "one changer dispatch per task" },
+      { "classKey": "judge", "reason": "the judge rules on the whole against the plan" }
+    ], "skip": [], "gaps": [] },
+    { "rowId": "no-decision", "match": { "family": "build-ticket", "firstEmpty": "decision" }, "field": [
+      { "classKey": "designer", "reason": "the designer holds the dialogue and ends at a decision" },
+      { "classKey": "planner", "reason": "the planner writes acceptance and tasks from the decision" },
+      { "classKey": "changer", "reason": "one changer dispatch per task" },
+      { "classKey": "judge", "reason": "the judge rules on the whole against the plan" }
+    ], "skip": [], "gaps": [] },
+    { "rowId": "no-intent", "match": { "family": "build-ticket", "firstEmpty": "intent" }, "field": [
+      { "classKey": "designer", "reason": "an idea or an empty ticket needs the dialogue first" },
+      { "classKey": "finder", "reason": "the facts are empty too" },
+      { "classKey": "planner", "reason": "the planner writes acceptance and tasks" },
+      { "classKey": "changer", "reason": "one changer dispatch per task" },
+      { "classKey": "judge", "reason": "the judge rules on the whole against the plan" }
+    ], "skip": [], "gaps": [] }
+  ]
+}
