@@ -9446,7 +9446,7 @@ function partyRecordFor({ slug, createdAt, ticketText, profile, roster, bundleSh
 
 // src/prompts.mjs
 var QUESTION_CAP = 700;
-var NO_CD = "Absolute paths only, from any directory, never after a cd. Run every numbered check as the absolute command written: the host cross-checks your evidence commands against your tool calls, and a cd form does not match.";
+var NO_CD = "Absolute paths only, from any directory, never after a cd. Run every numbered check as the absolute command written: the host cross-checks your evidence commands against your tool calls, and a cd form does not match. Run each numbered check as its own Bash call, with nothing before it and nothing after it: no variable, no heredoc, no second command. The host records the head of each call, so a check inside a compound call is never seen.";
 var REPLY_RULE = "Do the work first. Then your entire reply is one one-element JSON array in one of the shapes your Class body names. Not one word before the [, not one word after the ], no code fence.";
 var FINDER_CHECKS = Object.freeze((state) => {
   const reportPath = `${state.runDir}/facts-report.md`;
@@ -9873,6 +9873,9 @@ function commandWasRun(command, toolCalls) {
     return shorter >= MIN_MATCH_CHARS && (cmd.startsWith(target) || target.startsWith(cmd));
   });
 }
+function isCompoundCall(target) {
+  return /[\n;|]|&&/.test(target);
+}
 function checkEvidence({ outcome, doneWhen, toolCalls }) {
   const checks = outcome.evidence.map((e) => e.check);
   if (checks.length !== doneWhen.length || checks.some((c, i) => c !== i + 1)) {
@@ -9880,7 +9883,9 @@ function checkEvidence({ outcome, doneWhen, toolCalls }) {
   }
   const unrun = outcome.evidence.filter((e) => !commandWasRun(e.command, toolCalls)).map((e) => e.check);
   if (unrun.length > 0) {
-    return rejection({ code: "KILN_EVIDENCE_UNRUN", label: "every evidence command must appear among the Bash calls this dispatch made", details: [`check ${unrun.join(", ")} cites a command no Bash call ran`], tag: "evidence", reason: "evidence-unrun" });
+    const details = [`check ${unrun.join(", ")} cites a command no Bash call ran`];
+    if (toolCalls.calls.some((call) => call.tool === "Bash" && isCompoundCall(call.target))) details.push("one Bash call was a compound command (a heredoc, a chain, or a variable before the command). Run each check as its own call");
+    return rejection({ code: "KILN_EVIDENCE_UNRUN", label: "every evidence command must appear among the Bash calls this dispatch made", details, tag: "evidence", reason: "evidence-unrun" });
   }
   return null;
 }
