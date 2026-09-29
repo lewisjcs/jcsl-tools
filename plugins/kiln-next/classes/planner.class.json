@@ -150,7 +150,7 @@
       "path": "hosts/claude-code/agents/planner.md",
       "projection": {
         "canonicalSources": ["hosts/claude-code/agents/planner.md", "references/ears.md"],
-        "sourceHash": "83cdd18229fb5f84cc032a07f765a746921d1401f1d3d1317c0802e2be3478b8"
+        "sourceHash": "59b35263feb8f8853970245976bdcf88dfe7c99b2b58f61d635fa7fee0fe28a6"
       }
     }
   },
