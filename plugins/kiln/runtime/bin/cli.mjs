@@ -7547,6 +7547,9 @@ function assertProtocolModule(protocol) {
   assertNonEmptyString(protocol.classVersion, "classVersion");
   assertFunction(protocol.admit, "admit");
   assertFunction(protocol.validateOutput, "validateOutput");
+  if (protocol.onRetriesExhausted !== void 0) {
+    assertFunction(protocol.onRetriesExhausted, "onRetriesExhausted");
+  }
   if (!Array.isArray(protocol.terminalStatuses) || protocol.terminalStatuses.length === 0) {
     throw new TypeError("protocol: terminalStatuses must be a non-empty array");
   }
@@ -7761,9 +7764,18 @@ function writeBoundaryInstructionLine(outsideCount) {
   const shown = MAX_RETRY_DIAGNOSTIC_LINES - 1;
   return outsideCount > shown ? `revert every change outside the boundary before replying (${outsideCount} paths outside, the first ${shown} follow)` : "revert every change outside the boundary before replying";
 }
-function recordFailure(state, { stage, attempt, buildRetryAction, code, messageLabel, outcomeRetry, outcomeGap, reason, omissions = [] }) {
+function exhaustedStep(protocol, state, failure) {
+  const step = protocol.onRetriesExhausted(state, failure);
+  const shaped = step !== null && typeof step === "object" && typeof step.status === "string" && step.status.length > 0 && typeof step.nextKind === "string" && Object.hasOwn(protocol.kinds, step.nextKind);
+  if (!shaped) {
+    throw new TypeError("protocol: onRetriesExhausted must return {fields, status, nextKind} with a non-empty status and nextKind a key of kinds");
+  }
+  return step;
+}
+function recordFailure(protocol, state, { stage, attempt, buildRetryAction, failure, messageLabel, outcomeRetry, outcomeGap, omissions = [] }) {
   const receiptActionId = state.pendingAction.actionId;
   const kind2 = state.pendingAction.kind;
+  const { code, reason } = failure;
   const omissionField = omissions.length === 0 ? {} : { omissions };
   if (attempt < MAX_ATTEMPTS_PER_STAGE) {
     const retryAction = buildRetryAction(state);
@@ -7775,6 +7787,14 @@ function recordFailure(state, { stage, attempt, buildRetryAction, code, messageL
     return {
       state: sealState(nextState2),
       issues: [{ code, stage, attempt, message: `${stage} stage ${messageLabel} on attempt ${attempt}; retrying` }]
+    };
+  }
+  if (protocol.onRetriesExhausted !== void 0) {
+    const step = exhaustedStep(protocol, state, { stage, kind: kind2, ...failure });
+    const ledgerEntry = { actionId: receiptActionId, kind: kind2, attempt, outcome: "retries-exhausted", reason, ...omissionField };
+    return {
+      state: settle(protocol, state, ledgerEntry, step),
+      issues: [{ code, stage, attempt, message: `${stage} stage ${messageLabel} on attempt ${attempt}; retries exhausted, the protocol names the next step` }]
     };
   }
   const nextState = {
@@ -7829,15 +7849,14 @@ function applyStageReceipt(protocol, state, receipt, omissions) {
   const parsed = parseReceiptArray(protocol, receipt.rawOutput, config.outputContractId);
   if (!parsed.ok) {
     const retryContext = buildRetryContext({ attempt: attempt + 1, label: parsed.label, details: parsed.details, outputContractId: config.outputContractId });
-    return recordFailure(state, {
+    return recordFailure(protocol, state, {
       stage: config.stage,
       attempt,
       buildRetryAction: (s) => buildDispatchAction(protocol, { kind: kind2, attempt: attempt + 1, state: s, retryContext }),
-      code: "RUNTIME_OUTPUT_MALFORMED",
+      failure: { code: "RUNTIME_OUTPUT_MALFORMED", label: parsed.label, details: parsed.details, reason: "malformed-output" },
       messageLabel: "output malformed",
       outcomeRetry: "malformed-retry",
       outcomeGap: "malformed-gap",
-      reason: "malformed-output",
       omissions
     });
   }
@@ -7845,19 +7864,26 @@ function applyStageReceipt(protocol, state, receipt, omissions) {
   if (outcome.reject) {
     const rejection2 = outcome.reject;
     const retryContext = buildRetryContext({ attempt: attempt + 1, label: rejection2.label, details: rejection2.details, outputContractId: config.outputContractId });
-    return recordFailure(state, {
+    return recordFailure(protocol, state, {
       stage: config.stage,
       attempt,
       buildRetryAction: (s) => buildDispatchAction(protocol, { kind: kind2, attempt: attempt + 1, state: s, retryContext }),
-      code: rejection2.code,
+      failure: { code: rejection2.code, label: rejection2.label, details: rejection2.details, reason: rejection2.reason },
       messageLabel: rejection2.label,
       outcomeRetry: rejection2.outcomeRetry,
       outcomeGap: rejection2.outcomeGap,
-      reason: rejection2.reason,
       omissions
     });
   }
   return applyAcceptance(protocol, state, receipt, { kind: kind2, attempt, outcome, salvaged: parsed.salvaged, omissions });
+}
+function settle(protocol, state, ledgerEntry, { fields, status, nextKind }) {
+  const settled = { ...state, ...fields, ledger: [...state.ledger, ledgerEntry] };
+  if (nextKind !== void 0) {
+    const chainedAction = buildDispatchAction(protocol, { kind: nextKind, attempt: 1, state: settled });
+    return sealState({ ...settled, status, pendingAction: chainedAction });
+  }
+  return sealState({ ...settled, status, pendingAction: null });
 }
 function applyAcceptance(protocol, state, receipt, { kind: kind2, attempt, outcome, salvaged, omissions }) {
   const ledgerEntry = {
@@ -7867,12 +7893,7 @@ function applyAcceptance(protocol, state, receipt, { kind: kind2, attempt, outco
     outcome: salvaged ? "accepted-salvaged" : "accepted",
     ...omissions.length === 0 ? {} : { omissions }
   };
-  const accepted2 = { ...state, ...outcome.fields, ledger: [...state.ledger, ledgerEntry] };
-  if (outcome.nextKind !== void 0) {
-    const chainedAction = buildDispatchAction(protocol, { kind: outcome.nextKind, attempt: 1, state: accepted2 });
-    return { state: sealState({ ...accepted2, status: outcome.status, pendingAction: chainedAction }), issues: [] };
-  }
-  return { state: sealState({ ...accepted2, status: outcome.status, pendingAction: null }), issues: [] };
+  return { state: settle(protocol, state, ledgerEntry, outcome), issues: [] };
 }
 function createRun(protocol, { bundle, loadout, host, policy, roles, profile, extras, classId }) {
   assertProtocolModule(protocol);
@@ -7975,21 +7996,21 @@ function applyReceipt(protocol, state, receipt) {
       };
     }
     const attempt = state.pendingAction.attempt;
+    const label = "the dispatch changed paths outside its declared write boundary";
     const retryContext = buildRetryContext({
       attempt: attempt + 1,
-      label: "the dispatch changed paths outside its declared write boundary",
+      label,
       details: [writeBoundaryInstructionLine(writesCheck.outside.length), ...writesCheck.outside],
       outputContractId: config.outputContractId
     });
-    return recordFailure(state, {
+    return recordFailure(protocol, state, {
       stage: config.stage,
       attempt,
       buildRetryAction: (s) => buildDispatchAction(protocol, { kind: kind2, attempt: attempt + 1, state: s, retryContext }),
-      code: "RUNTIME_WRITE_OUTSIDE_BOUNDARY",
+      failure: { code: "RUNTIME_WRITE_OUTSIDE_BOUNDARY", label, details: writesCheck.outside, reason: "write-outside-boundary" },
       messageLabel: "wrote outside its boundary",
       outcomeRetry: "write-boundary-retry",
-      outcomeGap: "write-boundary-gap",
-      reason: "write-outside-boundary"
+      outcomeGap: "write-boundary-gap"
     });
   }
   return applyStageReceipt(protocol, state, receipt, writesCheck.omissions);
@@ -9355,6 +9376,9 @@ function renderPart(part, value, date) {
 // src/brief.mjs
 var BRIEF_PARTS = Object.freeze(["intent", "facts", "decision", "acceptance", "tasks"]);
 var FILLER = Object.freeze({ intent: "the person", facts: "the finder", decision: "the designer", acceptance: "the planner", tasks: "the planner" });
+function emptyBrief() {
+  return { intent: null, facts: null, decision: null, acceptance: null, tasks: null };
+}
 function firstEmptyOf(brief) {
   return BRIEF_PARTS.find((p) => brief[p] === null) ?? "none";
 }
@@ -9374,6 +9398,15 @@ function buildProfile(brief, { sizeBytes }) {
     }
   };
 }
+function acceptanceOpen(state) {
+  const { acceptance } = state.brief;
+  return acceptance === null || acceptance.by === "party" && state.replan !== null && state.replan.by === "person";
+}
+function partsInFlux(state) {
+  const waiting = state.pendingWrite === null ? [] : state.pendingWrite.parts;
+  const rewritten = state.replan !== null && state.replan.by === "person" ? ["tasks", ...acceptanceOpen(state) ? ["acceptance"] : []] : [];
+  return [.../* @__PURE__ */ new Set([...waiting, ...rewritten, ...state.cleared ?? []])];
+}
 function forecastOf(brief) {
   return (brief.facts === null ? 1 : 0) + (brief.decision === null ? 1 : 0) + (brief.acceptance === null || brief.tasks === null ? 1 : 0);
 }
@@ -9391,12 +9424,13 @@ function fillStateLines({ brief, taskGoals = [], roster, changed = [] }) {
     `forecast: ${forecastOf(brief)} dispatches before the plan, then one per task and one judge`
   ];
 }
-function partsChanged(stateBrief, ticketBody, scrub) {
+function partsChanged(stateBrief, ticketBody, scrub, pending = []) {
   const body = normalizeBody(ticketBody);
   const ticket = briefFromBody(body).brief;
   const text = (lines) => lines.length === 0 ? "" : scrub(lines).join("\n");
   const rendered = (part, value) => value === null ? "" : text(partLines(part, value));
   return BRIEF_PARTS.filter((p) => {
+    if (pending.includes(p)) return false;
     if (p === "tasks") return stateBrief.tasks !== null && rendered("tasks", stateBrief.tasks) !== text(parseSection(body, HEADINGS.tasks).map((l) => `- ${l}`));
     return rendered(p, stateBrief[p]) !== rendered(p, ticket[p]);
   });
@@ -9476,16 +9510,31 @@ function fenced(fence, lines) {
 function opening(role, fence) {
   return [role, instructionDataBoundary(fence), ""];
 }
+var MAX_REFUSAL_DETAILS = 10;
+function refusalDetailLines(details) {
+  const shown = details.slice(0, MAX_REFUSAL_DETAILS).map((d) => `- ${d}`);
+  return details.length > MAX_REFUSAL_DETAILS ? [...shown, `and ${details.length - MAX_REFUSAL_DETAILS} more`] : shown;
+}
+function retryLines(state, kindName, fence) {
+  const retry = state.retry;
+  if (retry === void 0 || retry === null || retry.kind !== kindName) return [];
+  const lines = [];
+  if (retry.rejection !== null) lines.push("## Why this runs again: the run refused the last two replies", ...fenced(fence, [retry.rejection.label, ...refusalDetailLines(retry.rejection.details)]), "");
+  if (state.writeBaseline !== null) lines.push("The worktree keeps what those attempts left. The run measures this attempt from the tree before the first one, so revert every change outside your paths before you reply.", "");
+  if (retry.note.length > 0) lines.push("## The person's note for this attempt", ...fenced(fence, [retry.note]), "");
+  return lines;
+}
 function artifact(state, fence) {
   return [renderArtifactView(state.bundle, fence)];
 }
-function renderQuestion(question2) {
+function renderQuestion(question2, change = false) {
   const lines = [question2.ask];
   if (question2.reply !== void 0) {
     const refused = question2.leaks.length > 0 ? `It would put ${question2.leaks.slice(0, 5).map((w) => `"${w}"`).join(", ")} on the ticket, and the ticket never names a tool or a process word. Say it in plain words.` : "It did not answer the question.";
     lines.unshift(`Your last reply was "${question2.reply.slice(0, 80)}". ${refused}`);
   }
-  if (question2.options.length > 0) lines.push(`Reply with one of: ${question2.options.join(", ")}. Reply abandon to end the run.`);
+  const options = change ? [...question2.options, "change <note>"] : question2.options;
+  if (options.length > 0) lines.push(`Reply with one of: ${options.join(", ")}. Reply abandon to end the run.`);
   lines.push("Detail: below the line in the question file.");
   const text = lines.join("\n");
   if (text.length > QUESTION_CAP) throw new RangeError(`question renders to ${text.length} characters; the cap is ${QUESTION_CAP}`);
@@ -9496,6 +9545,7 @@ function renderFinderPrompt(state) {
   const fence = fenceFor(state);
   return [
     ...opening("You are the finder (kiln:prospector), one member of a build Party. Find the facts the brief lacks and write one cited report.", fence),
+    ...retryLines(state, "dispatch-finder", fence),
     "## Intent",
     ...fenced(fence, [state.brief.intent.text]),
     "",
@@ -9514,6 +9564,7 @@ function renderConventionsPrompt(state) {
   const title = state.ticket.title;
   return [
     ...opening("You are the finder (kiln:prospector), one member of a build Party. Read this repository's branch and pull request conventions and name the branch and the pull request title for this ticket.", fence),
+    ...retryLines(state, "dispatch-conventions", fence),
     "## Intent",
     ...fenced(fence, [state.brief.intent.text]),
     "",
@@ -9545,6 +9596,7 @@ function renderDesignerPrompt(state) {
   const fence = fenceFor(state);
   return [
     ...opening("You are the designer (kiln:designer). Hold the dialogue with the person and end at one written decision.", fence),
+    ...retryLines(state, "dispatch-designer", fence),
     "## Intent",
     ...fenced(fence, [state.brief.intent.text]),
     "",
@@ -9563,10 +9615,13 @@ function renderDesignerPrompt(state) {
 function renderPlannerPrompt(state) {
   const planPath = `${state.runDir}/ticket-plan.json`;
   const replan = state.replan !== null;
+  const byPerson = replan && state.replan.by === "person";
   const fence = fenceFor(state);
   const { brief } = state;
+  const unbuilt = byPerson ? brief.tasks.plan.slice(state.cursor) : [];
   return [
     ...opening(`You are the planner (kiln:planner). ${replan ? "Re-plan the remaining work." : "Turn the decision into an ordered ticket plan whose every task has rerunnable checks."}`, fence),
+    ...retryLines(state, "dispatch-planner", fence),
     "## Intent",
     ...fenced(fence, [brief.intent.text]),
     "",
@@ -9576,13 +9631,15 @@ function renderPlannerPrompt(state) {
     "## Decision",
     ...fenced(fence, [brief.decision === null ? "(none; plan from the intent, the facts, and the acceptance)" : brief.decision.text]),
     "",
-    ...brief.acceptance === null ? ["## Acceptance", ...fenced(fence, ["(empty: write the EARS lines yourself, and quote each one verbatim in a task's covers)"])] : ["## Acceptance (given, quote these lines verbatim in covers)", ...fenced(fence, brief.acceptance.lines.map((l) => `- ${l}`))],
+    ...brief.acceptance === null ? ["## Acceptance", ...fenced(fence, ["(empty: write the EARS lines yourself, and quote each one verbatim in a task's covers)"])] : [acceptanceOpen(state) ? "## Acceptance (from the last plan: keep each line that still holds, word for word, write a new line only where the change needs one, and quote every line a task serves verbatim in covers)" : "## Acceptance (given, quote these lines verbatim in covers)", ...fenced(fence, brief.acceptance.lines.map((l) => `- ${l}`))],
     "",
     ...state.ticket.taskGoals.length > 0 ? ["## Task goals the ticket lists", ...fenced(fence, state.ticket.taskGoals.map((g) => `- ${g}`)), ""] : [],
     ...replan ? [
       "## Why the plan is written again",
       ...fenced(fence, [state.replan.reason]),
       "",
+      ...unbuilt.length > 0 ? ["## Not built yet, from the plan before the change", ...fenced(fence, unbuilt.map((t) => `- ${t.taskId}: ${t.goal}`)), "Write these tasks again as the change needs. A new task can use one of their numbers.", ""] : [],
+      ...byPerson && state.findings.length > 0 ? ["## Findings from the last review", ...fenced(fence, state.findings.map((f) => `- ${f}`)), ""] : [],
       "## Done already (keep these, plan only what follows)",
       ...state.done.map((d) => `- ${d.taskId}: commit ${d.sha}`),
       `Number the new tasks from task-${state.done.length + 1}. A new task's dependsOn names only tasks in the new file, never a done task.`,
@@ -9613,6 +9670,7 @@ function renderChangerPrompt(state) {
   const fence = fenceFor(state);
   return [
     ...opening("You are the changer (kiln:crafter), one member of a build Party. Build exactly one task, check it, commit it on the branch, and report.", fence),
+    ...retryLines(state, "dispatch-changer", fence),
     `## Your task: ${task.taskId}`,
     ...fenced(fence, [`Goal: ${task.goal}`, `Covers: ${task.covers.join(" | ")}`]),
     `Worktree: ${task.repo}`,
@@ -9649,6 +9707,7 @@ function renderJudgePrompt(state) {
   });
   return [
     ...opening("You are the judge (kiln:inspector). Rule on whether the commits followed the plan, one ruling per deviation, and re-run every check yourself.", fence),
+    ...retryLines(state, "dispatch-judge", fence),
     `Worktree: ${state.repo.root}`,
     `Branch: ${state.repo.branch}`,
     "",
@@ -9670,6 +9729,7 @@ function renderBorrowedPrompt(state) {
   const fence = fenceFor(state);
   return [
     ...opening("Borrowed review. The host plays the gauntlet adversarial review over the branch diff and appends the mapped outcome as this receipt.", fence),
+    ...retryLines(state, "dispatch-borrowed", fence),
     `Worktree: ${state.repo.root}`,
     `Branch: ${state.repo.branch}`,
     "Reason:",
@@ -9822,11 +9882,18 @@ var REFORM_TARGETS = /* @__PURE__ */ new Set(["designer", "planner"]);
 var MAX_REFORMS_PER_ROLE = 2;
 var BARE_YES = /^(yes|y|ok|approve)\.?$/i;
 var BARE_ABANDON = /^abandon\.?$/i;
+var CHANGE_STOPS = /* @__PURE__ */ new Set(["build", "retry", "failed", "fix", "verification", "ration", "pr"]);
 function isBareYes(text) {
   return BARE_YES.test(text.trim());
 }
+function takesChange(state) {
+  return CHANGE_STOPS.has(state.question.then) && state.brief.tasks !== null;
+}
 function isAcceptedOutcome(outcome) {
   return outcome.startsWith("accepted");
+}
+function firstAttemptOf(actionId) {
+  return actionId.replace(/-\d+$/, "-1");
 }
 function buildBundle({ ticketText }) {
   const digest = sha256Utf8(ticketText);
@@ -9871,6 +9938,22 @@ function fieldFor(state, ctx, classKey, fields, reason) {
   const merged = withRole(state, ctx, classKey, "member-gap", reason, fields);
   return { status: "filling", nextKind: KIND_OF_ROLE[classKey], fields: merged };
 }
+function memberOf(kindName) {
+  const role = ROLE_OF_KIND[kindName];
+  return role === "borrowed" ? "the second review" : `the ${role}`;
+}
+function retriesExhausted(state, failure) {
+  const failed = state.pendingAction;
+  const baseline = failed.write === void 0 ? null : state.writeBaseline ?? firstAttemptOf(failed.actionId);
+  const task = failure.kind === "dispatch-changer" ? ` on ${state.brief.tasks.plan[state.cursor].taskId}` : "";
+  const tree = baseline === null ? [] : ["The worktree keeps what the failed attempts left. A retry is measured from the tree before the first attempt. A change starts a fresh measurement, so after a change the run does not measure what the failed attempts left outside the task's paths."];
+  const unchanged = failure.kind === "dispatch-borrowed" ? ["A retry runs the second review again unchanged, because the review keeps its own fixed instructions and a note never reaches it, so reply change <note> or abandon instead."] : [];
+  const detail = [failure.label, ...refusalDetailLines(failure.details), ...tree, ...unchanged].join("\n");
+  return ask(question("failed", `The run refused the reply from ${memberOf(failure.kind)}${task} twice. The last refusal was ${failure.code}. Its text is in the detail.`, ["retry <note>"], { retryKind: failure.kind, rejection: { label: failure.label, details: failure.details }, baseline, detail }), { lastFilled: [], lastReform: null });
+}
+function retryStage(base, kindName, note, rejection2, baseline) {
+  return { fields: { ...base, retry: { kind: kindName, note, rejection: rejection2 }, writeBaseline: baseline }, status: "filling", nextKind: kindName };
+}
 function route(state, ctx) {
   const brief = state.brief;
   if (state.breach !== null) {
@@ -9893,7 +9976,7 @@ function route(state, ctx) {
     return { status: "filling", nextKind: "dispatch-conventions", fields: withRole(state, ctx, "finder", "member-gap", "the branch and pull request conventions are unread", {}) };
   }
   if (first === "acceptance" || first === "tasks") return fieldFor(state, ctx, "planner", {}, `the ${first} part is empty`);
-  if (state.replan !== null) return { status: "filling", nextKind: "dispatch-planner", fields: withRole(state, ctx, "planner", "member-reform", "the decision changed, so the plan is written again from the task at the cursor", {}) };
+  if (state.replan !== null) return { status: "filling", nextKind: "dispatch-planner", fields: withRole(state, ctx, "planner", "member-reform", `${state.replan.by === "person" ? "the person changed the plan" : "the decision changed"}, so the plan is written again from the task at the cursor`, {}) };
   if (!state.buildApproved) return ask(question("build", `The plan has ${brief.tasks.plan.length} tasks. Ready to build?`, ["yes"]));
   return routeBuild(state, ctx);
 }
@@ -9986,7 +10069,7 @@ function accepted(state, ctx, fields) {
   const next = route(merged, ctx);
   return { fields: { ...fields, ...next.fields, question: next.nextKind === "ask-person" ? next.fields.question : null }, status: next.status, ...next.nextKind === null ? {} : { nextKind: next.nextKind } };
 }
-function validatedAccept(state, ctx, brief, fields, tag) {
+function validatedAccept(state, ctx, brief, fields, tag, extraLeaks = []) {
   const { valid, issues } = validateKilnContract("kiln:brief@1", brief);
   if (!valid) {
     return rejection({
@@ -9997,20 +10080,24 @@ function validatedAccept(state, ctx, brief, fields, tag) {
       reason: `${tag}-invalid`
     });
   }
-  const leaks = fields.lastFilled.flatMap((part) => leakWords(ctx, part, brief[part]).map((word) => `"${word}" in the ${part} section`));
-  if (leaks.length > 0) {
-    return rejection({
-      code: "KILN_TICKET_LEAK",
-      label: "the ticket would name a tool or a process word; nothing written to a ticket names a tool, a path, or a process word, so say it in plain words",
-      details: leaks.slice(0, 5),
-      tag: "leak",
-      reason: "ticket-leak"
-    });
-  }
+  const leaks = [...fields.lastFilled.flatMap((part) => outwardLeaks(ctx, partLines(part, brief[part]), `the ${part} section`)), ...extraLeaks];
+  if (leaks.length > 0) return leakRejection(leaks);
   return accepted(state, ctx, { brief, ...fields });
 }
-function leakWords(ctx, part, value) {
-  return [...new Set(ctx.leaksIn(part, value).map((l) => l.word))];
+function leakRejection(leaks) {
+  return rejection({
+    code: "KILN_TICKET_LEAK",
+    label: "the ticket or the pull request would name a tool or a process word; nothing the run writes outward names a tool, a path, or a process word, so say it in plain words",
+    details: leaks.slice(0, 5),
+    tag: "leak",
+    reason: "ticket-leak"
+  });
+}
+function outwardLeaks(ctx, lines, where) {
+  return leakWords(ctx, lines).map((word) => `"${word}" in ${where}`);
+}
+function leakWords(ctx, lines) {
+  return [...new Set(ctx.leaksIn(lines).map((l) => l.word))];
 }
 function memberReform(state, ctx, requiredRole, reason, fields) {
   const classKey = classKeyOf(requiredRole);
@@ -10022,8 +10109,9 @@ function memberReform(state, ctx, requiredRole, reason, fields) {
     return rejection({ code: "KILN_REFORM_LIMIT", label: `${requiredRole} has already been named in ${count} member reforms this run; no more are admitted`, details: [], tag: "reform", reason: "reform-limit" });
   }
   const withReform = withRole(state, ctx, classKey, "member-reform", reason, fields);
-  const redesign = classKey === "designer" ? { brief: { ...state.brief, decision: null, acceptance: null } } : {};
-  const replan = state.brief.tasks !== null ? { replan: { from: state.cursor, reason } } : {};
+  const redesign = classKey === "designer" ? { brief: { ...state.brief, decision: null, acceptance: null }, cleared: [.../* @__PURE__ */ new Set([...state.cleared ?? [], "decision", "acceptance"])] } : {};
+  const replan = state.brief.tasks !== null ? { replan: { ...state.replan, from: state.cursor, reason: state.replan === null ? reason : `${state.replan.reason}
+${reason}` } } : {};
   return accepted(state, ctx, {
     ...withReform,
     ...redesign,
@@ -10034,6 +10122,28 @@ function memberReform(state, ctx, requiredRole, reason, fields) {
     reformCounts: { ...state.reformCounts, [classKey]: count + 1 }
   });
 }
+function stillCleared(state, filled) {
+  return (state.cleared ?? []).filter((p) => !filled.includes(p));
+}
+function changePlan(state, ctx, note, base) {
+  const { parts, brief: onTicket, taskGoals } = ctx.ticketChanges;
+  if (note.length === 0 && parts.length === 0) return null;
+  const brief = { ...state.brief };
+  for (const part of parts) if (part !== "tasks") brief[part] = onTicket[part] === null ? null : { ...onTicket[part], by: "person" };
+  const reason = [...state.replan === null ? [] : [state.replan.reason], ...note.length > 0 ? [note] : [], ...parts.length > 0 ? [`Changed on the ticket: ${parts.join(", ")}.`] : []].join("\n");
+  const pending = state.pendingWrite === null ? [] : state.pendingWrite.parts.filter((p) => p !== "acceptance" && p !== "tasks");
+  return accepted(state, ctx, {
+    ...base,
+    brief,
+    ticket: parts.includes("tasks") ? { ...state.ticket, taskGoals } : state.ticket,
+    replan: { from: state.cursor, reason, by: "person" },
+    buildApproved: false,
+    pendingWrite: pending.length > 0 ? { parts: pending } : null,
+    breach: null,
+    retry: null,
+    writeBaseline: null
+  });
+}
 function acceptPerson(state, ctx, text) {
   const { word, rest: rest2 } = parseReply(text);
   const q = state.question;
@@ -10041,11 +10151,12 @@ function acceptPerson(state, ctx, text) {
   if (BARE_ABANDON.test(text.trim())) return { fields: { question: null, lastFilled: [] }, status: "abandoned" };
   const consent = isBareYes(text);
   const base = { question: null, lastFilled: [], lastReform: null };
+  if (word === "change" && takesChange(state)) return changePlan(state, ctx, rest2, base) ?? reask();
   switch (q.then) {
     case "intent": {
       if (text.trim().length === 0) return reask();
       const intent = { by: "person", text: text.trim() };
-      const leaks = leakWords(ctx, "intent", intent);
+      const leaks = leakWords(ctx, partLines("intent", intent));
       return leaks.length > 0 ? reask(leaks) : accepted(state, ctx, { ...base, brief: { ...state.brief, intent }, lastFilled: ["intent"] });
     }
     case "facts": {
@@ -10053,7 +10164,7 @@ function acceptPerson(state, ctx, text) {
       const lines = text.split("\n").map((l) => l.replace(/^-\s*/, "").trim()).filter((l) => l.length > 0);
       if (lines.length === 0) return reask();
       const facts = { by: state.brief.facts.by, items: [...state.brief.facts.items, ...lines.map((fact) => ({ fact, source: "the person" }))] };
-      const leaks = leakWords(ctx, "facts", facts);
+      const leaks = leakWords(ctx, partLines("facts", facts));
       return leaks.length > 0 ? reask(leaks) : accepted(state, ctx, { ...base, factGaps: [], brief: { ...state.brief, facts }, lastFilled: ["facts"] });
     }
     case "design":
@@ -10068,7 +10179,9 @@ function acceptPerson(state, ctx, text) {
     case "build":
       return consent ? accepted(state, ctx, { ...base, pendingWrite: null, buildApproved: true }) : reask();
     case "retry":
-      return word === "retry" ? { fields: base, status: "filling", nextKind: q.retryKind } : reask();
+      return word === "retry" ? retryStage(base, q.retryKind, rest2, null, null) : reask();
+    case "failed":
+      return word === "retry" ? retryStage(base, q.retryKind, rest2, q.rejection, q.baseline) : reask();
     case "fix": {
       if (word !== "fix") return reask();
       const { brief, cursor } = appendFixTask(state, q.missing, q.taskIds);
@@ -10175,7 +10288,8 @@ function acceptDesigner(state, ctx, items) {
   if (summary.length === 0) return rejection({ code: "KILN_DECISION_NO_SUMMARY", label: "the decision file must carry a ## Summary section; that section goes on the ticket", details: [], tag: "decision", reason: "decision-no-summary" });
   const brief = { ...state.brief, decision: { by: "party", text: summary } };
   return validatedAccept(state, ctx, brief, {
-    ...state.brief.tasks === null ? {} : { replan: { from: state.cursor, reason: state.replan === null ? "the decision changed" : state.replan.reason } },
+    ...state.brief.tasks === null ? {} : { replan: { ...state.replan, from: state.cursor, reason: state.replan === null ? "the decision changed" : state.replan.reason } },
+    cleared: stillCleared(state, ["decision"]),
     lastFilled: ["decision"],
     lastReform: null,
     pendingWrite: state.ticket.outward ? { parts: ["decision"] } : null
@@ -10200,7 +10314,7 @@ function acceptPlanner(state, ctx, items) {
   const newCovers = [...new Set(newTasks.flatMap((t) => t.covers))];
   let acceptance = state.brief.acceptance;
   const filled = ["tasks"];
-  if (acceptance === null) {
+  if (acceptanceOpen(state)) {
     const keptCovers = kept.flatMap((t) => t.covers);
     acceptance = { by: "party", lines: [.../* @__PURE__ */ new Set([...keptCovers, ...newCovers])] };
     filled.unshift("acceptance");
@@ -10211,11 +10325,12 @@ function acceptPlanner(state, ctx, items) {
   const brief = { ...state.brief, acceptance, tasks: { by: "party", summary: plan.summary, plan: [...kept, ...newTasks] } };
   return validatedAccept(state, ctx, brief, {
     replan: null,
+    cleared: stillCleared(state, filled),
     lastFilled: filled,
     lastReform: null,
     pendingWrite: state.ticket.outward ? { parts: filled } : null,
     judgeDue: false
-  }, "plan");
+  }, "plan", outwardLeaks(ctx, [plan.summary], "the plan summary"));
 }
 function firstOffRepo(tasks, repo) {
   for (const t of tasks) {
@@ -10260,6 +10375,8 @@ function acceptJudge(state, ctx, items) {
     if (unknown.length > 0 || taskIds.length === 0) {
       return rejection({ code: "KILN_RULING_UNKNOWN_TASK", label: "ruling names no known task", details: unknown.length > 0 ? unknown.map((id) => `no task ${id} in the plan (${[...known].join(", ")})`) : ["no unjustified ruling names a task"], tag: "ruling", reason: "ruling-unknown-task" });
     }
+    const goalLeaks = outwardLeaks(ctx, o.missing, "the missing list, which becomes the goal of a fix task");
+    if (goalLeaks.length > 0) return leakRejection(goalLeaks);
     const judge = { verdict: o.verdict, rulings: o.rulings, observedConsequence: o.observedConsequence, changedAnything: o.changedAnything };
     if (state.fixRounds >= MAX_FIX_ROUNDS) {
       return ask(question("fix", `The judge failed the change ${state.fixRounds} times over, with ${plural(o.missing.length, "item")} still missing. The list is in the detail. Reply fix for one more fix task.`, ["fix"], { missing: o.missing, taskIds, detail: bullets(o.missing) }), { judge, judgeDue: false, findings: rulingLines(o.rulings), lastFilled: [], lastReform: null });
@@ -10286,6 +10403,8 @@ function acceptBorrowed(state, ctx, items) {
     return ask(question("retry", `The second review did not finish, with ${plural(o.missing.length, "item")} listed. The list is in the detail. Fix what it needs and reply retry.`, ["retry"], { retryKind: "dispatch-borrowed", detail: bullets(o.missing) }), { lastFilled: [], lastReform: null });
   }
   if (o.status === "gap") {
+    const goalLeaks = outwardLeaks(ctx, o.missing, "the missing list, which becomes the goal of a fix task");
+    if (goalLeaks.length > 0) return leakRejection(goalLeaks);
     const taskIds = state.done.map((d) => d.taskId);
     const fields = { findings: o.missing, verification: { ...state.verification, borrowedDone: true }, judgeDue: false, lastFilled: [], lastReform: null };
     if (state.fixRounds >= MAX_FIX_ROUNDS) {
@@ -10330,6 +10449,9 @@ function baseStateOf({ bundle, roles, extras }) {
     fixRounds: 0,
     breach: null,
     replan: null,
+    retry: null,
+    writeBaseline: null,
+    cleared: [],
     lastFilled: [],
     lastReform: null,
     prApproved: false,
@@ -10341,7 +10463,8 @@ function flowFor(ctx) {
   if (typeof ctx.firstKind !== "string") throw new KilnError("KILN_FLOW_FIRST_KIND_REQUIRED", "flowFor needs ctx.firstKind: compute it with route(baseStateOf(input), ctx).nextKind before createRun, and keep it for the life of the run");
   const guard = (fn) => (state, items) => {
     if (items.length !== 1) return rejection({ code: "KILN_OUTCOME_COUNT", label: "reply with exactly one outcome", details: [`got ${items.length}`], tag: "outcome", reason: "outcome-count" });
-    const result = fn(state, ctx, items);
+    const outcome = fn(state, ctx, items);
+    const result = outcome.reject !== void 0 ? outcome : { ...outcome, fields: { ...outcome.fields, retry: null, writeBaseline: null } };
     if (ctx.breach !== null && ctx.breach.actionId !== state.pendingAction.actionId) {
       throw new KilnError("KILN_BREACH_ACTION_MISMATCH", `the ration breach names action ${ctx.breach.actionId} but this receipt answers ${state.pendingAction.actionId}`);
     }
@@ -10356,6 +10479,7 @@ function flowFor(ctx) {
     initialKind: ctx.firstKind,
     terminalStatuses: TERMINAL_STATUSES,
     validateOutput: validateKilnContract,
+    onRetriesExhausted: retriesExhausted,
     admit({ bundle, roles, extras }) {
       if (!roles.person) throw new TypeError("admit: roles.person is required");
       const base = baseStateOf({ bundle, roles, extras });
@@ -10364,7 +10488,7 @@ function flowFor(ctx) {
       return { status: first.status, extraFields: { ...base, ...first.fields, question: first.nextKind === "ask-person" ? first.fields.question : null } };
     },
     kinds: {
-      "ask-person": kind("ask-person", { receipt: "text", buildPrompt: (state) => renderQuestion(state.question), accept: (state, text) => acceptPerson(state, ctx, text) }),
+      "ask-person": kind("ask-person", { receipt: "text", buildPrompt: (state) => renderQuestion(state.question, takesChange(state)), accept: (state, text) => acceptPerson(state, ctx, text) }),
       "dispatch-finder": kind("dispatch-finder", { buildPrompt: renderFinderPrompt, accept: guard(acceptFinder) }),
       "dispatch-conventions": kind("dispatch-conventions", { buildPrompt: renderConventionsPrompt, accept: guard(acceptConventions) }),
       "dispatch-designer": kind("dispatch-designer", { buildPrompt: renderDesignerPrompt, accept: guard(acceptDesigner) }),
@@ -10431,8 +10555,11 @@ function scrubPaths(text, prefixes = []) {
   const local = [...prefixes].sort((a, b) => b.length - a.length).reduce((t, p) => t.split(p).join("<worktree>"), text);
   return local.replace(REPO_PATH, "$1").replace(HOME_PATH, "<path>/$1");
 }
+function wordPattern(word) {
+  return `(^|[^a-z-])${word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}([^a-z-]|$)`;
+}
 function wordBoundaryRegex(word) {
-  return new RegExp(`(^|[^a-z-])${word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}([^a-z-]|$)`);
+  return new RegExp(wordPattern(word));
 }
 function containsWord(lowerText, word) {
   return wordBoundaryRegex(word).test(lowerText);
@@ -10457,11 +10584,11 @@ function baseNamesOf(name) {
   const segments = name.split("/").filter(Boolean);
   return name.startsWith("/") ? segments.slice(-1) : segments;
 }
-function allowedWords({ ticketText = "", repoNames = [] } = {}) {
+function allowedWords({ ticketText = "", repoNames = [], repoWords = [] } = {}) {
   const lower = (ticketText ?? "").toLowerCase();
   const names = new Set(repoNames.flatMap(baseNamesOf).map((n2) => n2.toLowerCase()));
   const onSubjectRepo = SUBJECT_WORDS.some((word) => names.has(word));
-  return FORBIDDEN_WORDS.filter((word) => SUBJECT_WORDS.includes(word) ? containsWord(lower, word) || names.has(word) : onSubjectRepo);
+  return FORBIDDEN_WORDS.filter((word) => repoWords.includes(word) || (SUBJECT_WORDS.includes(word) ? containsWord(lower, word) || names.has(word) : onSubjectRepo));
 }
 function costFloorLine(scoreboard) {
   const named = [...new Set(scoreboard.cost.omissions.map((o) => o.split(":")[0]))];
@@ -10620,15 +10747,22 @@ function ticketRepoNames(ref, source) {
   if (source === "github") return [{ repo: githubIssueOf(ref).repo }];
   return ref.split("/").filter(Boolean).map((segment) => ({ repo: segment }));
 }
-function ticketAllowList(body, ref, source) {
-  return allowedWords({ ticketText: body, repoNames: ticketRepoNames(ref, source).map((r) => r.repo) });
+function ticketAllowList(body, ref, source, repoWords) {
+  return allowedWords({ ticketText: body, repoNames: ticketRepoNames(ref, source).map((r) => r.repo), repoWords });
+}
+function repoWordsOf(root) {
+  return FORBIDDEN_WORDS.filter((word) => {
+    const res = spawnSync("git", ["-C", root, "grep", "-I", "-i", "-q", "-E", "-e", wordPattern(word)], { encoding: "utf8" });
+    if (res.status !== 0 && res.status !== 1) throw new KilnError("KILN_GIT_FAILED", `git -C ${root} grep for "${word}": ${res.stderr.trim()}`, { dir: root, word });
+    return res.status === 0;
+  });
 }
 function runAllowList({ meta, state, body }) {
   const { checkout } = state.repo;
   const repoNames = [...ticketRepoNames(meta.ticketRef, meta.source).map((r) => r.repo), path5.basename(checkout)];
   const origin = spawnSync("git", ["-C", checkout, "remote", "get-url", "origin"], { encoding: "utf8" });
   if (origin.status === 0) repoNames.push(path5.basename(origin.stdout.trim()).replace(/\.git$/, ""));
-  return allowedWords({ ticketText: body, repoNames });
+  return allowedWords({ ticketText: body, repoNames, repoWords: meta.repoWords });
 }
 function cleanTicketSection(sectionLines, { allow }) {
   const scrubbed = scrubPaths(sectionLines.join("\n"));
@@ -10711,15 +10845,15 @@ function openRun(v) {
   const state = loadState(paths);
   return { ref, root, paths, meta, state };
 }
-function leakCheckFor(ref, source) {
+function leakCheckFor(ref, source, repoWords) {
   let allow = null;
-  return (part, value) => {
-    if (allow === null) allow = ticketAllowList(readTicketBody(ref, source, null).body, ref, source);
-    return findLeaks(scrubPaths(renderPart(part, value, today()).join("\n")), { allow });
+  return (lines) => {
+    if (allow === null) allow = ticketAllowList(readTicketBody(ref, source, null).body, ref, source, repoWords);
+    return findLeaks(scrubPaths(lines.join("\n")), { allow });
   };
 }
-function flowCtx({ ticketRef, source, firstKind }, extra = {}) {
-  return { registry: getRegistry(), policy: rosterPolicy, toolCalls: { availability: "unavailable" }, attachments: {}, breach: null, leaksIn: leakCheckFor(ticketRef, source), firstKind, ...extra };
+function flowCtx({ ticketRef, source, firstKind, repoWords }, extra = {}) {
+  return { registry: getRegistry(), policy: rosterPolicy, toolCalls: { availability: "unavailable" }, attachments: {}, breach: null, leaksIn: leakCheckFor(ticketRef, source, repoWords), ticketChanges: { parts: [], brief: emptyBrief(), taskGoals: [] }, firstKind, ...extra };
 }
 function bodyWithParts(body, state, parts) {
   let next = withIntentHeading(body);
@@ -10733,17 +10867,22 @@ function ticketWriteFor(meta, state, parts) {
 function writeParts(paths, meta, state, parts) {
   writeTicketBody(meta.ticketRef, meta.source, ticketWriteFor(meta, state, parts), paths.ticketBody);
 }
+function ticketChangesFor(state, ticketBody) {
+  const body = withIntentHeading(ticketBody);
+  const { brief, taskGoals } = briefFromBody(body);
+  return { parts: partsChanged(state.brief, body, scrubLines, partsInFlux(state)), brief, taskGoals };
+}
 function questionDetail(meta, state) {
   const q = state.question;
-  const parts = q.detail === null ? [] : [q.detail];
+  const { body } = readTicketBody(meta.ticketRef, meta.source, null);
+  const changed = ticketChangesFor(state, body).parts.map((p) => HEADINGS[p].slice(3));
+  const parts = changed.length === 0 ? [] : [`Changed on the ticket since the run read it: ${changed.join(", ")}.${takesChange(state) ? " Reply change to read the new text into the run and have the plan written again." : ""}`];
+  if (q.detail !== null) parts.push(q.detail);
   if (q.then === "write" || q.then === "build") {
     const written = state.pendingWrite?.parts ?? [];
     if (written.length === 0) parts.push(`Tasks:
 ${state.brief.tasks.plan.map((t) => `- ${t.taskId}: ${t.goal}`).join("\n")}`);
-    else {
-      const { body } = readTicketBody(meta.ticketRef, meta.source, null);
-      parts.push(positionalDiff(normalizeBody(body), bodyWithParts(body, state, written)));
-    }
+    else parts.push(positionalDiff(normalizeBody(body), bodyWithParts(body, state, written)));
   }
   if (q.then === "pr" || q.then === "verification") {
     const rulings = rulingLines(state.judge.rulings);
@@ -10755,7 +10894,12 @@ function nextSummary(flow, state, paths, meta) {
   const pending = nextAction(flow, state);
   if (pending.terminal) return { terminal: true, status: state.status };
   const out = { terminal: false, actionId: pending.actionId, kind: pending.kind, attempt: pending.attempt, promptBody: pending.promptBody, hostBinding: hostBindingFor(state, pending, getRegistry()) };
-  if (pending.write) out.write = pending.write;
+  if (pending.write) {
+    out.write = pending.write;
+    const baseline = state.writeBaseline ?? null;
+    const beforePath = paths.before(baseline ?? firstAttemptOf(pending.actionId));
+    out.before = { path: beforePath, take: baseline === null && pending.attempt === 1 && !existsSync2(beforePath) };
+  }
   if (pending.kind === "ask-person") {
     const questionPath = paths.question(pending.actionId);
     writeFileAtomic(questionPath, `${pending.promptBody}
@@ -10862,7 +11006,7 @@ ${v.idea.trim()}
       const state2 = loadState(paths);
       const record2 = JSON.parse(readFileSync9(paths.party.record, "utf8"));
       const flow2 = flowFor(flowCtx(meta2));
-      return { resumed: true, dir: paths.dir, ...ENDED.has(state2.status) ? { again: `this run ended ${state2.status}; open --again sets it aside and starts a fresh run on this ticket` } : {}, fillState: fillStateLines({ brief: state2.brief, taskGoals, roster: record2.roster, changed: partsChanged(state2.brief, body, scrubLines) }), roster: { rowId: record2.roster.rowId, fielded: record2.roster.fielded.map((m) => m.classKey) }, next: nextSummary(flow2, state2, paths, meta2) };
+      return { resumed: true, dir: paths.dir, ...ENDED.has(state2.status) ? { again: `this run ended ${state2.status}; open --again sets it aside and starts a fresh run on this ticket` } : {}, fillState: fillStateLines({ brief: state2.brief, taskGoals, roster: record2.roster, changed: partsChanged(state2.brief, body, scrubLines, partsInFlux(state2)) }), roster: { rowId: record2.roster.rowId, fielded: record2.roster.fielded.map((m) => m.classKey) }, next: nextSummary(flow2, state2, paths, meta2) };
     }
     const profile = buildProfile(brief, { sizeBytes: Buffer.byteLength(body, "utf8") });
     const roster = selectRoster(rosterPolicy, profile);
@@ -10918,9 +11062,10 @@ ${v.idea.trim()}
     const accepted2 = isAcceptedOutcome(nextState.ledger.at(-1).outcome);
     const namesBranch = state.repo === null && nextState.repo !== null;
     const created = namesBranch ? createWorktree(nextState.repo) : false;
+    const repoWords = namesBranch ? repoWordsOf(nextState.repo.root) : [];
     afterReceipt({ flow, paths, meta, state, nextState, actionId, pending, accepted: accepted2 });
     writeFileAtomic(paths.envelope(actionId), JSON.stringify(envelope, null, 2) + "\n");
-    if (namesBranch) writeRunMeta(paths, { ...meta, repo: nextState.repo.root, branch: nextState.repo.branch });
+    if (namesBranch) writeRunMeta(paths, { ...meta, repo: nextState.repo.root, branch: nextState.repo.branch, repoWords });
     const installed = namesBranch ? created ? installDependencies(nextState.repo.root) : null : void 0;
     return { ledger: { outcome: nextState.ledger.at(-1).outcome }, runStatus: nextState.status, breach: ration.breached ? { visitTokens: ration.visitTokens, threshold: ration.threshold } : null, omissions: ration.omissions, issues, installed, next: nextSummary(flow, nextState, paths, meta) };
   },
@@ -10928,13 +11073,14 @@ ${v.idea.trim()}
     const v = flags(args, { root: { type: "string" }, ticket: { type: "string" }, action: { type: "string" }, text: { type: "string" }, file: { type: "string" } });
     const { paths, meta, state } = openRun(v);
     const actionId = requireFlag(v, "action");
-    const flow = flowFor(flowCtx(meta));
-    const pending = nextAction(flow, state);
+    const pending = nextAction(flowFor(flowCtx(meta)), state);
     if (pending.terminal) throw new KilnError("KILN_RUN_TERMINAL", `the run is ${state.status}; nothing to reply to`);
     if (pending.actionId !== actionId) throw new KilnError("KILN_ACTION_STALE", `actionId ${actionId} is not the pending action (${pending.actionId})`);
     if (pending.kind !== "ask-person") throw new KilnError("KILN_REPLY_IS_RECEIPT", "the pending action is a dispatch; use receipt");
     const text = v.text !== void 0 ? v.text : readInput(v, "file");
     const q = state.question;
+    const changes = parseReply(text).word === "change" && takesChange(state) ? { ticketChanges: ticketChangesFor(state, readTicketBody(meta.ticketRef, meta.source, null).body) } : {};
+    const flow = flowFor(flowCtx(meta, changes));
     if (q.then === "repo" && text.trim().startsWith("/")) gitOut(text.trim(), ["rev-parse", "--git-dir"]);
     if ((q.then === "write" || q.then === "build") && isBareYes(text) && meta.outward && state.pendingWrite !== null) writeParts(paths, meta, state, state.pendingWrite.parts);
     const { state: nextState, issues } = applyReceipt(flow, state, { actionId, rawOutput: text, hostMeta: {} });
