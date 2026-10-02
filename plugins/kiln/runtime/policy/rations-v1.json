@@ -1,10 +1,10 @@
 {
   "kind": "rations",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "status": "guess",
   "multiplier": 1.5,
   "rations": {
-    "kiln:prospector": { "tokens": 150000, "turns": 40 },
+    "kiln:prospector": { "tokens": 300000, "turns": 130 },
     "kiln:designer": { "tokens": 300000, "turns": 100 },
     "kiln:planner": { "tokens": 120000, "turns": 30 },
     "kiln:crafter": { "tokens": 200000, "turns": 60 },

@@ -1,0 +1,20 @@
+{
+  "kind": "mode-policy",
+  "version": "1.0.0",
+  "signals": {
+    "EXECUTE": ["a plan beside the ticket", "a plan found by the ticket key", "a ticket that is itself a plan"],
+    "ORIENT": ["file paths with line numbers", "EARS lines", "a stated root cause", "test assertions", "an approved decision document"],
+    "RESEARCH": ["a title-only or thin ticket", "a reference that names a document but does not link it", "acceptance bullets with no paths"]
+  },
+  "fills": {
+    "EXECUTE": { "facts": "plan", "decision": "plan" },
+    "ORIENT": { "facts": "finder", "decision": "planner" },
+    "RESEARCH": { "facts": "finder", "decision": "designer" }
+  },
+  "factsDepth": { "EXECUTE": "none", "ORIENT": "targeted", "RESEARCH": "full" },
+  "drift": {
+    "cosmetic": { "EXECUTE": "EXECUTE", "ORIENT": "ORIENT", "RESEARCH": "RESEARCH" },
+    "local": { "EXECUTE": "ORIENT", "ORIENT": "ORIENT", "RESEARCH": "RESEARCH" },
+    "premise": { "EXECUTE": "RESEARCH", "ORIENT": "RESEARCH", "RESEARCH": "RESEARCH" }
+  }
+}

@@ -7456,7 +7456,7 @@ var require__ = __commonJS({
 
 // src/cli.mjs
 import { parseArgs } from "node:util";
-import { readFileSync as readFileSync9, existsSync as existsSync2, writeFileSync as writeFileSync2 } from "node:fs";
+import { readFileSync as readFileSync9, existsSync as existsSync2, writeFileSync as writeFileSync2, realpathSync as realpathSync2 } from "node:fs";
 import { spawnSync } from "node:child_process";
 import path5 from "node:path";
 
@@ -9243,15 +9243,15 @@ function sectionRange(lines, heading) {
 }
 function parseSection(body, heading) {
   const lines = body.split("\n");
-  const range = sectionRange(lines, heading);
-  if (!range) return [];
-  return lines.slice(range.start + 1, range.end).filter((l) => l.startsWith("- ")).map((l) => l.slice(2));
+  const range2 = sectionRange(lines, heading);
+  if (!range2) return [];
+  return lines.slice(range2.start + 1, range2.end).filter((l) => l.startsWith("- ")).map((l) => l.slice(2));
 }
 function spliceSection(body, heading, sectionLines) {
   const lines = body.replace(/\n+$/, "").split("\n");
   const block = [heading, ...sectionLines];
-  const range = sectionRange(lines, heading);
-  const next = range ? [...lines.slice(0, range.start), ...block, "", ...lines.slice(range.end)] : [...lines, "", ...block];
+  const range2 = sectionRange(lines, heading);
+  const next = range2 ? [...lines.slice(0, range2.start), ...block, "", ...lines.slice(range2.end)] : [...lines, "", ...block];
   return next.join("\n").replace(/\n{3,}/g, "\n\n") + "\n";
 }
 function positionalDiff(before, after) {
@@ -9299,15 +9299,15 @@ function normalizeBody(body) {
 }
 function sectionText(body, heading) {
   const lines = body.split("\n");
-  const range = sectionRange(lines, heading);
-  if (!range) return "";
-  return lines.slice(range.start + 1, range.end).filter((l) => !MARKER.test(l)).join("\n").replace(/^\n+|\n+$/g, "");
+  const range2 = sectionRange(lines, heading);
+  if (!range2) return "";
+  return lines.slice(range2.start + 1, range2.end).filter((l) => !MARKER.test(l)).join("\n").replace(/^\n+|\n+$/g, "");
 }
 function byOf(body, heading) {
   const lines = body.split("\n");
-  const range = sectionRange(lines, heading);
-  if (!range) return "person";
-  return MARKER.test(lines[range.start + 1] ?? "") ? "party" : "person";
+  const range2 = sectionRange(lines, heading);
+  if (!range2) return "person";
+  return MARKER.test(lines[range2.start + 1] ?? "") ? "party" : "person";
 }
 function hasAnyHeading(body) {
   return HEADING_KEYS.some((k) => sectionRange(body.split("\n"), HEADINGS[k]) !== null);
@@ -9375,7 +9375,7 @@ function renderPart(part, value, date) {
 
 // src/brief.mjs
 var BRIEF_PARTS = Object.freeze(["intent", "facts", "decision", "acceptance", "tasks"]);
-var FILLER = Object.freeze({ intent: "the person", facts: "the finder", decision: "the designer", acceptance: "the planner", tasks: "the planner" });
+var FILLER = Object.freeze({ intent: "research proposes it", facts: "the finder fills it", decision: "the design step or, in ORIENT, the planning step fills it", acceptance: "the planning step fills it", tasks: "the planning step fills it" });
 function emptyBrief() {
   return { intent: null, facts: null, decision: null, acceptance: null, tasks: null };
 }
@@ -9408,13 +9408,13 @@ function partsInFlux(state) {
   return [.../* @__PURE__ */ new Set([...waiting, ...rewritten, ...state.cleared ?? []])];
 }
 function forecastOf(brief) {
-  return (brief.facts === null ? 1 : 0) + (brief.decision === null ? 1 : 0) + (brief.acceptance === null || brief.tasks === null ? 1 : 0);
+  return 1 + (brief.facts === null ? 1 : 0) + (brief.decision === null ? 1 : 0) + (brief.acceptance === null || brief.tasks === null ? 1 : 0);
 }
 function partLine(part, value, taskGoals, changed) {
   const suffix = changed.includes(part) ? " (changed on the ticket since the last session)" : "";
   if (value !== null) return `${part}: ${value.by === "person" ? "given by the person" : "filled by the assistant"}${suffix}`;
   const goals = part === "tasks" && taskGoals.length > 0 ? ` (${taskGoals.length} goals listed on the ticket)` : "";
-  return `${part}: empty, ${FILLER[part]} fills it${goals}`;
+  return `${part}: empty, ${FILLER[part]}${goals}`;
 }
 function fillStateLines({ brief, taskGoals = [], roster, changed = [] }) {
   return [
@@ -9486,9 +9486,9 @@ var FINDER_CHECKS = Object.freeze((state) => {
   const reportPath = `${state.runDir}/facts-report.md`;
   return [{ command: `test -f ${reportPath}`, expect: "exit 0" }, { command: `grep -c '^- ' ${reportPath}`, expect: "a count of at least 1" }];
 });
-var CONVENTIONS_CHECKS = Object.freeze((state) => {
-  const reportPath = `${state.runDir}/conventions-report.md`;
-  return [{ command: `test -f ${reportPath}`, expect: "exit 0" }, { command: `grep -c '^- ' ${reportPath}`, expect: "a count of at least 4" }];
+var DISCOVER_CHECKS = Object.freeze((state) => {
+  const reportPath = `${state.runDir}/discover-report.md`;
+  return [{ command: `test -f ${reportPath}`, expect: "exit 0" }, { command: `grep -c '^- ' ${reportPath}`, expect: "a count of at least 5" }];
 });
 var DESIGNER_CHECKS = Object.freeze((state) => {
   const decisionPath = `${state.runDir}/decision.md`;
@@ -9520,6 +9520,7 @@ function retryLines(state, kindName, fence) {
   if (retry === void 0 || retry === null || retry.kind !== kindName) return [];
   const lines = [];
   if (retry.rejection !== null) lines.push("## Why this runs again: the run refused the last two replies", ...fenced(fence, [retry.rejection.label, ...refusalDetailLines(retry.rejection.details)]), "");
+  if (kindName === "dispatch-planner" && retry.rejection === null && retry.note.length === 0) lines.push("The person replied retry with no note: take your own proposal for each gap you reported.", "");
   if (state.writeBaseline !== null) lines.push("The worktree keeps what those attempts left. The run measures this attempt from the tree before the first one, so revert every change outside your paths before you reply.", "");
   if (retry.note.length > 0) lines.push("## The person's note for this attempt", ...fenced(fence, [retry.note]), "");
   return lines;
@@ -9527,9 +9528,16 @@ function retryLines(state, kindName, fence) {
 function artifact(state, fence) {
   return [renderArtifactView(state.bundle, fence)];
 }
+function emptiedLine(parts) {
+  const names = parts.map((p) => `${p[0].toUpperCase()}${p.slice(1)}`);
+  const listed = names.length < 3 ? names.join(" and ") : `${names.slice(0, -1).join(", ")}, and ${names.at(-1)}`;
+  const [noun, pronoun] = names.length === 1 ? ["section", "it"] : ["sections", "them"];
+  return `The ticket no longer has its ${listed} ${noun}, and the run needs ${pronoun}. Put ${pronoun} back on the ticket and reply change, or reply abandon.`;
+}
 function renderQuestion(question2, change = false) {
   const lines = [question2.ask];
-  if (question2.reply !== void 0) {
+  if (question2.emptied !== void 0) lines.unshift(emptiedLine(question2.emptied));
+  else if (question2.reply !== void 0) {
     const refused = question2.leaks.length > 0 ? `It would put ${question2.leaks.slice(0, 5).map((w) => `"${w}"`).join(", ")} on the ticket, and the ticket never names a tool or a process word. Say it in plain words.` : "It did not answer the question.";
     lines.unshift(`Your last reply was "${question2.reply.slice(0, 80)}". ${refused}`);
   }
@@ -9540,17 +9548,40 @@ function renderQuestion(question2, change = false) {
   if (text.length > QUESTION_CAP) throw new RangeError(`question renders to ${text.length} characters; the cap is ${QUESTION_CAP}`);
   return text;
 }
+var FACTS_CEILING = 120;
+var DRIFT_RULE = "When the code contradicts the ticket or the plan, write one bullet under `## Drift` as `- <kind>: <what> (source: <path:line>)`, where the kind is one of cosmetic, local, or premise. Cosmetic: moved lines, a moved file you found, a new name with the same meaning. Local: a missing or renamed file or function, a changed interface, work that is partly merged. Premise: a wrong root cause, a behavior that already exists, work that is fully merged.";
+function namedPlaces(ticketText) {
+  const out = [];
+  for (const m of ticketText.matchAll(/(?<![\w/:.-])((?:\/|[\w.-]+\/)[\w./-]*\.[A-Za-z]{1,5}(?::\d+(?:-\d+)?)?|[\w-][\w.-]*\.[A-Za-z]{1,5}:\d+(?:-\d+)?)\b/g)) if (!out.includes(m[1])) out.push(m[1]);
+  return out;
+}
 function renderFinderPrompt(state) {
   const reportPath = `${state.runDir}/facts-report.md`;
   const fence = fenceFor(state);
+  const mode = state.mode ?? "RESEARCH";
+  const places = namedPlaces(state.bundle.components[0].inlineContent);
+  const depth = mode === "ORIENT" ? ["## Where to read", "Start from these places, which the ticket names, and from every item under `" + state.runDir + "/fetched/` (read `" + state.runDir + "/fetched/index.md` first):", ...places.map((p) => `- ${p}`), "Follow their code outward: the callers, the tests, and the code the named lines call. Read every item the ticket links to. Do not search parts of the repository that these places do not lead to.", ""] : ["## Where to read", "No scope limit: read whatever the brief needs across the worktree and the fetched items under `" + state.runDir + "/fetched/`.", ""];
+  const drift = (state.drift ?? []).length > 0 ? ["## Drift findings to read around", ...fenced(fence, state.drift.map((d) => `- ${d.kind}: ${d.text} (source: ${d.source})`)), "Read the code around each finding and report the facts as they stand now.", ""] : [];
+  const notes = (state.discover?.notes ?? []).filter((n2) => n2.answer !== null && n2.answer !== n2.proposal);
   return [
     ...opening("You are the finder (kiln:prospector), one member of a build Party. Find the facts the brief lacks and write one cited report.", fence),
     ...retryLines(state, "dispatch-finder", fence),
     "## Intent",
     ...fenced(fence, [state.brief.intent.text]),
     "",
+    `Worktree: ${state.repo.root}`,
+    `Branch: ${state.repo.branch}`,
+    "Read the worktree, never another branch of the checkout: a fact cited from a file of the checkout outside the worktree is refused. Never cite a file of the checkout outside the worktree. A path in another repository, a relative path, and a URL are fine.",
+    "",
+    ...depth,
+    ...drift,
+    ...notes.length > 0 ? ["## From the person", ...fenced(fence, notes.map((n2) => `- ${n2.text}: ${n2.answer}`)), ""] : [],
+    `## Your caps`,
+    `There is no read cap. Your ceiling is ${FACTS_CEILING} tool calls in total, the wrap-up included. Stop at full coverage: every fact the brief needs is found or named under Missing. Hold back a reserve for the report, its hash, and your checks.`,
+    "",
     `## Your report: ${reportPath}`,
-    "Write a markdown file with two sections. `## Facts`: one bullet per fact about what exists today and where, each ending in `(source: <path:line or URL>)`. Ask for every missing fact against the brief in this one dispatch, not the first one found. `## Gaps`: one bullet per fact you could not find, in the words a person can answer.",
+    "Write a markdown file with five sections. `## Facts`: one bullet per fact about what exists today and where, each ending in `(source: <path:line or URL>)`. `## Missing`: one bullet per fact you looked for and could not find, in words a person can answer. `## Open questions`: one bullet per question that no source can answer because it is undecided. `## Unread`: one bullet per place you found but did not read. `## Drift`: see below. Leave a section empty when it has nothing, but keep its heading.",
+    DRIFT_RULE,
     checksSentence(FINDER_CHECKS(state)),
     NO_CD,
     REPLY_RULE,
@@ -9558,42 +9589,86 @@ function renderFinderPrompt(state) {
     ...artifact(state, fence)
   ].join("\n");
 }
-function renderConventionsPrompt(state) {
-  const reportPath = `${state.runDir}/conventions-report.md`;
+var DISCOVER_COMMANDS = Object.freeze([
+  "gh pr list --repo <owner/repo> --search <ticket key or title> --state all --json number,title,state,baseRefName,headRefName,url",
+  "gh pr view <number> --repo <owner/repo> --json title,body,state,baseRefName,headRefName,url",
+  "gh issue view <number> --repo <owner/repo> --json title,body",
+  "gh repo view <owner/repo> --json name,defaultBranchRef,url",
+  "git -C <checkout> remote get-url origin",
+  "git -C <checkout> fetch origin",
+  "git -C <checkout> ls-remote --heads origin <branch>",
+  "git -C <checkout> branch -r --format='%(refname:short)'",
+  "git -C <checkout> show origin/<base>:<path>",
+  "git -C <checkout> log --oneline -n 20 origin/<base>",
+  "git -C <checkout> rev-parse --abbrev-ref origin/HEAD"
+]);
+function renderDiscoverPrompt(state) {
+  const reportPath = `${state.runDir}/discover-report.md`;
   const fence = fenceFor(state);
   const title = state.ticket.title;
+  const roots = state.checkoutRoots.join(":");
+  const baseLine = state.baseFlag !== null ? `The person named the base ${state.baseFlag}. Do not look for another; answer \`- base: ${state.baseFlag} (source: the person)\`.` : "Look for a parent branch: a plan or a decision document that names a base, a dependency on a ticket with an open pull request, or ticket text that names a branch. A merged parent means the default branch. With no evidence, answer `- base: default (source: no parent branch named)`.";
+  const kindLine = state.ticket.shape !== null ? `The ticket is a ${state.ticket.kind} by its shape. Answer \`- kind: ${state.ticket.kind} (source: its shape)\`.` : "Classify the ticket document: `ticket`, `plan`, or `decision`. For `plan` or `decision`, the source is the ticket lines that show it, as `ticket:<from>-<to>`. A plain ticket needs no lines.";
+  const givenPlan = state.documents.plan;
+  const planLine = givenPlan !== null && givenPlan.kind === null ? [`## A document given beside the ticket: ${givenPlan.path}`, "Its shape is unknown. Read it and answer `- document: <its path> is a <plan|decision> (source: <its lines that show its kind>)`.", ""] : givenPlan !== null && givenPlan.kind === "decision" ? [`## The decision: ${givenPlan.path}`, "A decision document exists beside the ticket. The run reads it once this step settles.", ""] : givenPlan !== null || state.ticket.kind === "plan" ? [`## The plan: ${givenPlan?.path ?? state.ticket.ref}`, "A plan exists. Under `## Changes since the plan`, list every ticket comment newer than the plan file's last change and every merged pull request for the ticket key or title, one bullet each with a source.", ""] : ["## A plan or a decision document", "Look for one that names the ticket key or title under the checkout folders and the fetched items. When you find one, answer `- document: <absolute path> is a <plan|decision> (source: the lines that name the ticket)`. Otherwise write no document bullet.", ""];
   return [
-    ...opening("You are the finder (kiln:prospector), one member of a build Party. Read this repository's branch and pull request conventions and name the branch and the pull request title for this ticket.", fence),
-    ...retryLines(state, "dispatch-conventions", fence),
-    "## Intent",
-    ...fenced(fence, [state.brief.intent.text]),
-    "",
+    ...opening("You are the finder (kiln:prospector), one member of a build Party. Find where this ticket's work lives before any branch exists: the repository, the base branch, the branch name, the pull request title, and the kind of document the ticket is. Stop for nothing. What you cannot settle is a gap with a proposal.", fence),
+    ...retryLines(state, "dispatch-discover", fence),
     ...title ? ["## Ticket title", ...fenced(fence, [title]), ""] : [],
-    `## The repository: ${state.checkout}`,
-    "Read these places, in this order:",
-    "1. `CLAUDE.md` and `AGENTS.md` at the checkout root.",
-    "2. Every `SKILL.md` under `.claude/skills/` and `skills/` that speaks of branches, commits, or pull requests.",
-    "3. `.github/PULL_REQUEST_TEMPLATE.md`.",
-    `4. The branch names from \`git -C ${state.checkout} branch -r --format='%(refname:short)'\`.`,
+    `## Fetched items: ${state.runDir}/fetched/`,
+    `\`${state.runDir}/fetched/index.md\` lists every item the ticket links to and where its copy is. Read the index first, then the copies you need. An item marked not fetched is a place you did not read.`,
+    "",
+    `## Checkout folders: ${roots}`,
+    "Search for the repository only under these folders, one level deep. A repository with no checkout under them is a gap. Its proposal is the clone command with the remote URL you found.",
+    "",
+    "## The base",
+    baseLine,
+    "",
+    "## The kind",
+    kindLine,
+    "",
+    ...planLine,
+    "## Conventions at the base",
+    "Read the repository's branch and pull request conventions with `git -C <checkout> show origin/<base>:<path>` for `CLAUDE.md`, `AGENTS.md`, `.github/PULL_REQUEST_TEMPLATE.md`, and any `SKILL.md` under `.claude/skills/` that speaks of branches. Never read them from the working files: the checkout can sit on another branch. Run `git -C <checkout> fetch origin` first.",
+    'When the repository states no branch rule, the branch is `<type>/<slug>`. The type is one of feat, fix, chore, docs, refactor, or test, chosen from the intent. The slug is three to six lowercase words joined by hyphens. The source reads "no convention found, the default shape". When the repository states no title rule, the title is the ticket title when it has one. Otherwise it is the first sentence of the intent, at most 80 characters, cut at a word boundary. The branch name must not be one that already exists.',
+    "",
+    "## Commands you may run",
+    "Only these, each as its own Bash call, with the placeholders filled:",
+    ...DISCOVER_COMMANDS.map((c) => `- \`${c}\``),
+    "Plus `test`, `grep`, and `shasum` for your checks and your report. The host records every call, and a call outside this list is a refusal.",
     "",
     `## Your report: ${reportPath}`,
-    "Write a markdown file with two sections. `## Facts` holds four bullets, in this order:",
-    "- `- branch: <name> (source: ...)`",
-    "- `- title: <text> (source: ...)`",
-    "- `- branch rule: <one line> (source: ...)`",
-    "- `- title rule: <one line> (source: ...)`",
-    "`## Gaps`: one bullet per place in the list above that you did not read.",
-    'When the repository states no branch rule, the branch is `<type>/<slug>`. The type is one of feat, fix, chore, docs, refactor, or test, chosen from the intent. The slug is three to six lowercase words joined by hyphens. The source reads "no convention found, the default shape". When the repository states no title rule, the title is the ticket title when it has one. Otherwise it is the first sentence of the intent, at most 80 characters, cut at a word boundary. The source reads the same. The branch name must not be one that already exists.',
-    checksSentence(CONVENTIONS_CHECKS(state)),
+    "Write a markdown file with four sections.",
+    "`## Answers` holds one bullet per answer, each as `- <key>: <value> (source: <what names it>)`, in this order:",
+    "- repository: <the absolute path of the checkout>",
+    "- remote: <its origin URL>",
+    "- base: <a branch name, or default>",
+    "- branch: <the new branch name>",
+    "- title: <the pull request title>",
+    "- kind: <ticket, plan, or decision>",
+    ...state.brief.intent === null ? ["- intent: <one or two sentences: the outcome and who it is for, because the ticket has none>"] : [],
+    "- document: <its path> is a <plan|decision>, only when you found one",
+    "When nothing names an answer, write `(source: none)` and still give your best value. When two sources name different values, write `(sources disagree: <A> says <X>, <B> says <Y>)` and give the value you favor.",
+    "`## Signals` holds one bullet per routing signal you saw in the ticket or the fetched items, as `- <ORIENT|RESEARCH>: <what> (source: ticket:<lines> or <item>:<lines>)`. ORIENT signals: a stated root cause, test assertions, an approved decision document. RESEARCH signals: a reference that names a document but does not link it, a parent epic with a thin own description. A signal with no source is not counted.",
+    "`## Changes since the plan` holds, when a plan exists, one bullet per ticket comment newer than the plan and per merged pull request for the ticket key. Otherwise leave it empty.",
+    "`## Gaps` holds one bullet per thing you could not settle that the keys above do not cover, as `- <what>: <your proposal>`.",
+    checksSentence(DISCOVER_CHECKS(state)),
     NO_CD,
     REPLY_RULE,
     "",
     ...artifact(state, fence)
   ].join("\n");
 }
+function settledAtDiscover(state, fence) {
+  const notes = (state.discover?.notes ?? []).filter((n2) => n2.answer !== null);
+  return notes.length > 0 ? ["## Settled at the discover stop", ...fenced(fence, notes.map((n2) => `- ${n2.text}: ${n2.answer}`)), "The person settled these before the run went on. Take them as given.", ""] : [];
+}
 function renderDesignerPrompt(state) {
   const decisionPath = `${state.runDir}/decision.md`;
   const fence = fenceFor(state);
+  const gaps = state.factGaps;
+  const draft = state.documents?.decision !== null && state.documents?.decision !== void 0 && !state.documents.decision.approved ? state.documents.decision.path : null;
+  const acceptance = state.brief.acceptance;
   return [
     ...opening("You are the designer (kiln:designer). Hold the dialogue with the person and end at one written decision.", fence),
     ...retryLines(state, "dispatch-designer", fence),
@@ -9602,6 +9677,14 @@ function renderDesignerPrompt(state) {
     "",
     "## Facts",
     ...fenced(fence, factsLines(state.brief)),
+    "",
+    ...(state.drift ?? []).length > 0 ? ["## Drift findings", ...fenced(fence, state.drift.map((d) => `- ${d.kind}: ${d.text} (source: ${d.source})`)), "These findings are why the run came back to design.", ""] : [],
+    ...gaps.length > 0 ? ["## Gaps from the research", ...fenced(fence, gaps.map((g) => `- ${g}`)), "Settle what you can with your own research. Ask the person only what is left, one question at a time, each with a recommendation and its reason.", ""] : [],
+    ...settledAtDiscover(state, fence),
+    ...acceptance !== null && acceptance.by === "person" ? ["## Acceptance (the person wrote these lines; keep them as written)", ...fenced(fence, acceptance.lines.map((l) => `- ${l}`)), ""] : [],
+    ...draft !== null ? [`## Starting point: ${draft}`, "A draft decision the person stopped before approving. Read it first, and continue from where it stopped.", ""] : [],
+    `Worktree: ${state.repo.root}`,
+    `Branch: ${state.repo.branch}`,
     "",
     `## Your decision file: ${decisionPath}`,
     "Sections in order: a status line, `## Summary` (the decision in prose, this section goes on the ticket), `## Ships / does not ship`, `## Rulings`, `## Requirements` (EARS lines), `## Design`, `## Set aside`, `## Open questions`. No tool names, no local paths.",
@@ -9628,8 +9711,21 @@ function renderPlannerPrompt(state) {
     "## Facts",
     ...fenced(fence, factsLines(brief)),
     "",
+    ...state.factGaps.length > 0 && !state.designerRan ? ["## Gaps from the research", ...fenced(fence, state.factGaps.map((g) => `- ${g}`)), "Plan around a gap when you can. When a gap blocks a task, stop and reply gap, with each missing line as `<what is missing>. Proposal: <your proposed answer>`.", ""] : [],
+    ...settledAtDiscover(state, fence),
     "## Decision",
     ...fenced(fence, [brief.decision === null ? "(none; plan from the intent, the facts, and the acceptance)" : brief.decision.text]),
+    "",
+    ...brief.decision === null && (state.mode ?? "RESEARCH") === "ORIENT" ? ["## The decision is empty", "In this run the planner fills it. Your summary is the approach: one paragraph that says what changes and why, in plain words. It goes on the ticket as the decision.", ""] : [],
+    // A move to RESEARCH (premise drift, or a reform that names the Designer) voids the plan, so only EXECUTE and ORIENT copy from it.
+    ...state.documents?.plan !== null && state.documents?.plan !== void 0 && state.documents.plan.kind === "plan" && ["EXECUTE", "ORIENT"].includes(state.mode) ? [
+      `## The plan to copy: ${state.documents.plan.path}`,
+      (state.drift ?? []).length > 0 ? "Write a fresh plan from the plan to copy and these findings: drop the parts the findings show as merged or gone, and keep the rest." : "Keep its tasks, their order, and their scope. Add one or more rerunnable checks to each task. Make sure that every file and name the plan relies on exists in the worktree. When one does not exist in the worktree, stop and reply gap with one missing line per path as `drift local: <path> named by <task> does not exist in the worktree (source: <plan path:line>)`.",
+      ""
+    ] : [],
+    ...(state.planChanges ?? []).length > 0 ? ["## Changes since the plan", ...fenced(fence, state.planChanges.map((c) => `- ${c}`)), "Read each one against the plan before you copy it.", ""] : [],
+    ...(state.drift ?? []).length > 0 ? ["## Drift findings", ...fenced(fence, state.drift.map((d) => `- ${d.kind}: ${d.text} (source: ${d.source})`)), ""] : [],
+    `Drift that cannot move the mode is not a reason to withhold a plan: cosmetic drift never moves it, local drift moves only EXECUTE, and this run is in ${state.mode ?? "RESEARCH"}.`,
     "",
     ...brief.acceptance === null ? ["## Acceptance", ...fenced(fence, ["(empty: write the EARS lines yourself, and quote each one verbatim in a task's covers)"])] : [acceptanceOpen(state) ? "## Acceptance (from the last plan: keep each line that still holds, word for word, write a new line only where the change needs one, and quote every line a task serves verbatim in covers)" : "## Acceptance (given, quote these lines verbatim in covers)", ...fenced(fence, brief.acceptance.lines.map((l) => `- ${l}`))],
     "",
@@ -9734,8 +9830,245 @@ function renderBorrowedPrompt(state) {
     `Branch: ${state.repo.branch}`,
     "Reason:",
     ...fenced(fence, [state.verification.reason]),
-    "Scope: branch (the diff from the merge base with the default branch to HEAD)."
+    `Scope: branch (the diff from the merge base with ${state.repo.base ?? "the default branch"} to HEAD).`
   ].join("\n");
+}
+
+// src/evidence.mjs
+var FORBIDDEN_WORDS = Object.freeze(["kiln", "kiln-next", "crafter", "inspector", "planner", "designer", "prospector", "statblock", "gauntlet", "journal", "readout", "fire skill", "job skill", "ration", "reform-party", "claude code", "jcsl-tools"]);
+var SUBJECT_WORDS = Object.freeze(["kiln", "kiln-next", "statblock", "gauntlet", "jcsl-tools", "claude code"]);
+var REPO_PATH = /\/Users\/[^/\s`]+\/[^\s`]*?\/repos\/([^\s`]+)/g;
+var HOME_PATH = /\/Users\/[^/\s`]+(?:\/[^/\s`]+)*\/([^/\s`]+)/g;
+function scrubPaths(text, prefixes = []) {
+  const local = [...prefixes].sort((a, b) => b.length - a.length).reduce((t, p) => t.split(p).join("<worktree>"), text);
+  return local.replace(REPO_PATH, "$1").replace(HOME_PATH, "<path>/$1");
+}
+function wordPattern(word) {
+  return `(^|[^a-z-])${word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}([^a-z-]|$)`;
+}
+function wordBoundaryRegex(word) {
+  return new RegExp(wordPattern(word));
+}
+function containsWord(lowerText, word) {
+  return wordBoundaryRegex(word).test(lowerText);
+}
+function findLeaks(text, { allow = [] } = {}) {
+  const skip = new Set(allow.map((w) => w.toLowerCase()));
+  const leaks = [];
+  text.split("\n").forEach((line, i) => {
+    const lower = line.toLowerCase();
+    for (const word of FORBIDDEN_WORDS) {
+      if (skip.has(word.toLowerCase())) continue;
+      const m = wordBoundaryRegex(word).exec(lower);
+      if (m) {
+        const start = m.index + m[1].length;
+        leaks.push({ line: i + 1, word: line.slice(start, start + word.length) });
+      }
+    }
+  });
+  return leaks;
+}
+function baseNamesOf(name) {
+  const segments = name.split("/").filter(Boolean);
+  return name.startsWith("/") ? segments.slice(-1) : segments;
+}
+function allowedWords({ ticketText = "", repoNames = [], repoWords = [] } = {}) {
+  const lower = (ticketText ?? "").toLowerCase();
+  const names = new Set(repoNames.flatMap(baseNamesOf).map((n2) => n2.toLowerCase()));
+  const onSubjectRepo = SUBJECT_WORDS.some((word) => names.has(word));
+  return FORBIDDEN_WORDS.filter((word) => repoWords.includes(word) || (SUBJECT_WORDS.includes(word) ? containsWord(lower, word) || names.has(word) : onSubjectRepo));
+}
+function costFloorLine(scoreboard) {
+  const named = [...new Set(scoreboard.cost.omissions.map((o) => o.split(":")[0]))];
+  const suffix = named.length ? ` (${named.join(", ")})` : "";
+  return `- $${scoreboard.cost.totals.bookedUsd} booked, a floor: ${scoreboard.totals.omissionDispatches} of ${scoreboard.totals.dispatches} dispatches had an unmeasured metric${suffix}`;
+}
+function renderEvidenceBlock({ state, scoreboard, publicRepo = false }) {
+  const lines = ["## What changed", state.brief.tasks.summary, ""];
+  for (const t of state.brief.tasks.plan) {
+    const sha = state.done.find((d) => d.taskId === t.taskId)?.sha;
+    lines.push(`- ${t.taskId}: ${t.goal}${sha ? ` (${sha.slice(0, 12)})` : ""}`);
+    for (const c of t.doneWhen) lines.push(`  - check: \`${c.command}\` expects ${c.expect}`);
+  }
+  lines.push("", "## Acceptance", ...state.brief.acceptance.lines.map((l) => `- ${l}`), "", "## Review");
+  if (state.judge) {
+    lines.push(`- verdict: ${state.judge.verdict}`);
+    for (const r of state.judge.rulings) lines.push(`  - ${r.task}: ${r.deviation} (${r.ruling}: ${r.why})`);
+    lines.push(`- consequence observed: ${state.judge.observedConsequence.level}, ${state.judge.observedConsequence.reason}`);
+    if (state.verification?.decision === "lower") lines.push(`- verification lowered by the author: ${state.verification.lowerReason}`);
+    if (state.verification?.borrowedDone) lines.push(`- second review: ${publicRepo ? `${state.findings.length} findings` : state.findings.length === 0 ? "no findings" : state.findings.map((f) => `
+  - ${f}`).join("")}`);
+  } else {
+    lines.push("- verdict: none recorded");
+  }
+  lines.push("", "## Cost", costFloorLine(scoreboard));
+  const checkout = state.repo.root.replace(/\/\.worktrees\/[^/]+$/, "");
+  return scrubPaths(lines.join("\n"), [state.repo.root, checkout]) + "\n";
+}
+
+// src/mode.mjs
+var MODES = Object.freeze(["EXECUTE", "ORIENT", "RESEARCH"]);
+var RANK = Object.freeze({ EXECUTE: 0, ORIENT: 1, RESEARCH: 2 });
+function assertMode(policy, mode) {
+  if (!MODES.includes(mode) || policy.fills[mode] === void 0) throw new TypeError(`mode: no mode ${mode} in the policy`);
+}
+function counted(signals) {
+  return signals.filter((s) => typeof s.source === "string" && s.source.length > 0);
+}
+function pickMode(policy, { hasPlan, signals }) {
+  if (hasPlan) return { mode: "EXECUTE", reasons: ["a plan"] };
+  const live = counted(signals);
+  const orient = live.filter((s) => s.mode === "ORIENT");
+  const research = live.filter((s) => s.mode === "RESEARCH");
+  const at = (s) => `${s.text} at ${s.source}`;
+  if (orient.length > 0 && research.length === 0) return { mode: "ORIENT", reasons: orient.map(at) };
+  if (orient.length > 0) return { mode: "RESEARCH", reasons: ["a mix of signals", ...orient.map(at), ...research.map(at)] };
+  return { mode: "RESEARCH", reasons: research.length > 0 ? research.map(at) : ["no ORIENT signal"] };
+}
+function fillerOf(policy, mode, part) {
+  assertMode(policy, mode);
+  if (part === "acceptance" || part === "tasks") return "planner";
+  const filler = policy.fills[mode][part];
+  if (filler === void 0) throw new TypeError(`mode: no filler for ${part} in ${mode}`);
+  return filler;
+}
+function factsDepthOf(policy, mode) {
+  assertMode(policy, mode);
+  return policy.factsDepth[mode];
+}
+function applyDrift(policy, mode, findings) {
+  assertMode(policy, mode);
+  let next = mode;
+  const counts = /* @__PURE__ */ new Map();
+  for (const f of findings) {
+    const table = policy.drift[f.kind];
+    if (table === void 0) throw new TypeError(`mode: no drift kind ${f.kind} in the policy`);
+    const target = table[mode];
+    if (RANK[target] > RANK[mode]) counts.set(f.kind, (counts.get(f.kind) ?? 0) + 1);
+    if (RANK[target] > RANK[next]) next = target;
+  }
+  const moved = next !== mode;
+  const reasons = moved ? [...counts.entries()].map(([kind2, n2]) => `${n2} ${kind2} drift finding${n2 === 1 ? "" : "s"}`) : [];
+  return { mode: next, moved, reasons };
+}
+function modeLine(mode, reasons, from = null) {
+  const head = from === null ? mode : `${from}, changed to ${mode}`;
+  return scrubPaths(`${head}: ${reasons.join(", ")}.`);
+}
+
+// src/documents.mjs
+var SP_TASK = /^### Task (\d+): (.+)$/;
+var KILN_TASK = /^## Task (\d+): (.+)$/;
+var STATUS = /^\*\*Status:\*\* (APPROVED|DRAFT)\b/;
+var FILE_LINE = /^(?:- )?(?:Create|Modify|Test|Delete): `?([^`\s]+)`?/;
+var SPEC_PATH = /\/specs\/[^/]*-design\.md$/;
+function lineNumbers(lines, re) {
+  return lines.map((l, i) => re.test(l) ? i + 1 : 0).filter((n2) => n2 > 0);
+}
+function documentKindOf(rawText, path6) {
+  const text = normalizeBody(rawText);
+  const lines = text.split("\n");
+  const sp = lineNumbers(lines, SP_TASK);
+  if (sp.length > 0) return { kind: "plan", shape: "superpowers-plan", lines: sp };
+  const kiln = lineNumbers(lines, KILN_TASK);
+  if (kiln.length > 0) return { kind: "plan", shape: "kiln-plan", lines: kiln };
+  const status = lines.findIndex((l) => STATUS.test(l));
+  const summary = lines.findIndex((l) => l.trim() === "## Summary");
+  if (status !== -1 && summary !== -1) return { kind: "decision", shape: "designer-decision", lines: [status + 1, summary + 1] };
+  if (SPEC_PATH.test(path6)) return { kind: "decision", shape: "brainstorming-spec", lines: [] };
+  return null;
+}
+function firstParagraph(lines) {
+  let i = lines.findIndex((l) => /^# /.test(l)) + 1;
+  while (i < lines.length && (lines[i].trim().length === 0 || lines[i].startsWith(">"))) i += 1;
+  const out = [];
+  while (i < lines.length && lines[i].trim().length > 0 && !/^#/.test(lines[i])) {
+    out.push(lines[i]);
+    i += 1;
+  }
+  return out.join("\n").trim();
+}
+function boldField(lines, name) {
+  const re = new RegExp(`^\\*\\*${name}:\\*\\*\\s*(.*)$`);
+  const line = lines.find((l) => re.test(l));
+  return line === void 0 ? null : re.exec(line)[1].trim();
+}
+function briefFromPlan(rawText, path6) {
+  const text = normalizeBody(rawText);
+  const lines = text.split("\n");
+  const taskRe = lines.some((l) => SP_TASK.test(l)) ? SP_TASK : KILN_TASK;
+  const headings = lines.map((l) => taskRe.exec(l)).filter((m) => m !== null).map((m) => `Task ${m[1]}: ${m[2].trim()}`);
+  const goal = boldField(lines, "Goal") ?? firstParagraph(lines);
+  const architecture = boldField(lines, "Architecture");
+  const decisionText = [architecture, headings.length > 0 ? `Tasks:
+${headings.map((h) => `- ${h}`).join("\n")}` : null].filter((t) => t !== null && t.length > 0).join("\n\n");
+  const items = [];
+  let current = null;
+  lines.forEach((l, i) => {
+    const m = taskRe.exec(l);
+    if (m) {
+      current = `Task ${m[1]}: ${m[2].trim()}`;
+      return;
+    }
+    const f = FILE_LINE.exec(l.trim());
+    if (f && current !== null) items.push({ fact: `${current} changes ${f[1]}`, source: `${path6}:${i + 1}` });
+  });
+  return {
+    intent: goal.length > 0 ? { by: "party", text: goal } : null,
+    decision: decisionText.length > 0 ? { by: "party", text: decisionText } : null,
+    facts: { by: "party", items: items.length > 0 ? items : [{ fact: "the plan names no file; its tasks are the facts", source: `${path6}:1` }] },
+    taskGoals: headings.map((h) => h.replace(/^Task \d+: /, ""))
+  };
+}
+var NUMBERED = /^\d+\.\s+(.+)$/;
+function renamed(text, heading) {
+  const body = sectionText(text, heading);
+  return body.length === 0 ? null : `### ${heading.slice(3)}
+${body}`;
+}
+function briefFromDecision(rawText) {
+  const text = normalizeBody(rawText);
+  const status = text.split("\n").find((l) => STATUS.test(l));
+  const summary = sectionText(text, "## Summary");
+  const requirements = sectionText(text, "## Requirements").split("\n").map((l) => NUMBERED.exec(l.trim())).filter((m) => m !== null).map((m) => m[1].trim());
+  const decision = [renamed(text, "## Ships / does not ship"), renamed(text, "## Design"), renamed(text, "## Set aside")].filter((s) => s !== null).join("\n\n");
+  return {
+    approved: status !== void 0 && STATUS.exec(status)[1] === "APPROVED",
+    intent: summary.length > 0 ? { by: "party", text: summary } : null,
+    decision: decision.length > 0 ? { by: "party", text: decision } : null,
+    acceptance: requirements.length > 0 ? { by: "party", lines: requirements } : null
+  };
+}
+var EARS = /^-?\s*(When|While|If|Where|The)\b.*\bshall\b/;
+var CITATION = /\b[\w./-]+\.[A-Za-z]{1,5}:\d+\b/;
+var THIN_CHARS = 120;
+function range(numbers) {
+  return numbers.length === 1 ? `ticket:${numbers[0]}` : `ticket:${numbers[0]}-${numbers[numbers.length - 1]}`;
+}
+function codeSignals(rawBody) {
+  const body = normalizeBody(rawBody);
+  const lines = body.split("\n");
+  const signals = [];
+  const text = lines.filter((l) => !/^# /.test(l)).join("\n").trim();
+  if (text.length < THIN_CHARS) return [{ mode: "RESEARCH", text: "a title-only or thin ticket", source: range([Math.max(1, lines.findIndex((l) => /^# /.test(l)) + 1)]) }];
+  const ears = lineNumbers(lines, EARS);
+  if (ears.length > 0) signals.push({ mode: "ORIENT", text: "EARS lines", source: range(ears) });
+  const cited = lineNumbers(lines, CITATION);
+  if (cited.length > 0) signals.push({ mode: "ORIENT", text: "file paths with line numbers", source: range(cited) });
+  const decisionStart = lines.findIndex((l) => l.trim() === "## Decision");
+  if (decisionStart !== -1 && sectionText(body, "## Decision").length > 0) {
+    let end = decisionStart + 1;
+    while (end < lines.length && !/^## /.test(lines[end])) end += 1;
+    const filled = lines.slice(decisionStart + 1, end).map((l, i) => l.trim().length > 0 ? decisionStart + 2 + i : 0).filter((n2) => n2 > 0);
+    signals.push({ mode: "ORIENT", text: "a filled Decision section", source: range(filled) });
+  }
+  const acceptStart = lines.findIndex((l) => l.trim() === "## Acceptance");
+  if (acceptStart !== -1 && ears.length === 0 && cited.length === 0) {
+    const bullets2 = [];
+    for (let i = acceptStart + 1; i < lines.length && !/^## /.test(lines[i]); i += 1) if (lines[i].startsWith("- ")) bullets2.push(i + 1);
+    if (bullets2.length > 0) signals.push({ mode: "RESEARCH", text: "acceptance bullets with no paths", source: range(bullets2) });
+  }
+  return signals;
 }
 
 // src/runs.mjs
@@ -9767,6 +10100,8 @@ function runPathsFor(root, ref) {
     events: path4.join(dir, "events.jsonl"),
     handed: path4.join(dir, "handed"),
     writes: path4.join(dir, "writes"),
+    fetched: path4.join(dir, "fetched"),
+    discoverReport: path4.join(dir, "discover-report.md"),
     party: Object.freeze({ dir: path4.join(dir, "party"), record: path4.join(dir, "party", "party-record.json"), report: path4.join(dir, "party", "report.md") }),
     ticketBody: path4.join(dir, "ticket-body.md"),
     evidenceBlock: path4.join(dir, "evidence-block.md"),
@@ -9783,7 +10118,7 @@ function runExists(paths) {
 function createRunDir2(paths) {
   if (existsSync(paths.meta)) throw new KilnError("KILN_RUN_EXISTS", `a run already exists for this ticket at ${paths.dir}; open resumes it`, { dir: paths.dir });
   rmSync(paths.dir, { recursive: true, force: true });
-  for (const d of [paths.dir, paths.handed, paths.writes, paths.party.dir]) mkdirSync2(d, { recursive: true });
+  for (const d of [paths.dir, paths.handed, paths.writes, paths.fetched, paths.party.dir]) mkdirSync2(d, { recursive: true });
 }
 function setRunAside(paths, stamp) {
   const aside = `${paths.dir}.abandoned-${stamp}`;
@@ -9872,11 +10207,11 @@ var TERMINAL_STATUSES = Object.freeze(["complete", "gap", "abandoned"]);
 var PROFILE = Object.freeze({ profileId: "kiln:build-ticket", version: "1.0.0", familyMarker: "Artifact family: kiln:build-ticket@1 \u2014 one ticket, filled and built" });
 var HOST = Object.freeze({ id: "claude-code", adapterId: "kiln:claude-code@1" });
 var LOADOUT = Object.freeze({ loadoutId: "kiln:build-1" });
-var KINDS = Object.freeze(["ask-person", "dispatch-finder", "dispatch-conventions", "dispatch-designer", "dispatch-planner", "dispatch-changer", "dispatch-judge", "dispatch-borrowed"]);
-var ROLE_OF_KIND = Object.freeze({ "ask-person": "person", "dispatch-finder": "finder", "dispatch-conventions": "finder", "dispatch-designer": "designer", "dispatch-planner": "planner", "dispatch-changer": "changer", "dispatch-judge": "judge", "dispatch-borrowed": "borrowed" });
+var KINDS = Object.freeze(["ask-person", "dispatch-discover", "dispatch-finder", "dispatch-designer", "dispatch-planner", "dispatch-changer", "dispatch-judge", "dispatch-borrowed"]);
+var ROLE_OF_KIND = Object.freeze({ "ask-person": "person", "dispatch-discover": "finder", "dispatch-finder": "finder", "dispatch-designer": "designer", "dispatch-planner": "planner", "dispatch-changer": "changer", "dispatch-judge": "judge", "dispatch-borrowed": "borrowed" });
 var KIND_OF_ROLE = Object.freeze({ person: "ask-person", finder: "dispatch-finder", designer: "dispatch-designer", planner: "dispatch-planner", changer: "dispatch-changer", judge: "dispatch-judge", borrowed: "dispatch-borrowed" });
-var OUTPUT_OF_KIND = Object.freeze({ "ask-person": "kiln:person-reply@1", "dispatch-finder": "kiln:prospector-outcome@1", "dispatch-conventions": "kiln:prospector-outcome@1", "dispatch-designer": "kiln:designer-outcome@1", "dispatch-planner": "kiln:planner-outcome@1", "dispatch-changer": "kiln:crafter-outcome@1", "dispatch-judge": "kiln:inspector-outcome@1", "dispatch-borrowed": "kiln:borrowed-review-outcome@1" });
-var MODEL_OF_KIND = Object.freeze({ "ask-person": "human", "dispatch-finder": "bounded-generation", "dispatch-conventions": "bounded-generation", "dispatch-designer": "complex-synthesis", "dispatch-planner": "bounded-generation", "dispatch-changer": "bounded-generation", "dispatch-judge": "bounded-generation", "dispatch-borrowed": "adversarial-adjudication" });
+var OUTPUT_OF_KIND = Object.freeze({ "ask-person": "kiln:person-reply@1", "dispatch-discover": "kiln:prospector-outcome@1", "dispatch-finder": "kiln:prospector-outcome@1", "dispatch-designer": "kiln:designer-outcome@1", "dispatch-planner": "kiln:planner-outcome@1", "dispatch-changer": "kiln:crafter-outcome@1", "dispatch-judge": "kiln:inspector-outcome@1", "dispatch-borrowed": "kiln:borrowed-review-outcome@1" });
+var MODEL_OF_KIND = Object.freeze({ "ask-person": "human", "dispatch-discover": "bounded-generation", "dispatch-finder": "bounded-generation", "dispatch-designer": "complex-synthesis", "dispatch-planner": "bounded-generation", "dispatch-changer": "bounded-generation", "dispatch-judge": "bounded-generation", "dispatch-borrowed": "adversarial-adjudication" });
 var MAX_FIX_ROUNDS = 2;
 var REFORM_TARGETS = /* @__PURE__ */ new Set(["designer", "planner"]);
 var MAX_REFORMS_PER_ROLE = 2;
@@ -9888,6 +10223,17 @@ function isBareYes(text) {
 }
 function takesChange(state) {
   return CHANGE_STOPS.has(state.question.then) && state.brief.tasks !== null;
+}
+function discoverSettled(state) {
+  return state.repo !== null || state.discover !== void 0 && state.discover !== null;
+}
+function modeOf(state) {
+  return state.mode ?? "RESEARCH";
+}
+function queuedWrite(state, parts) {
+  if (!state.ticket.outward || state.ticket.readOnly) return null;
+  const all = [.../* @__PURE__ */ new Set([...state.pendingWrite?.parts ?? [], ...parts])];
+  return all.length > 0 ? { parts: all } : null;
 }
 function isAcceptedOutcome(outcome) {
   return outcome.startsWith("accepted");
@@ -9959,26 +10305,39 @@ function route(state, ctx) {
   if (state.breach !== null) {
     return ask(question("ration", `The last member spent ${fmt(state.breach.visitTokens)} fresh tokens on one action against a ration of ${fmt(state.breach.threshold)}. Continue?`, ["continue"]));
   }
-  if (state.pendingWrite !== null && state.ticket.outward) {
-    const parts = state.pendingWrite.parts;
-    const then = parts.includes("tasks") ? "build" : "write";
-    return ask(question(then, then === "build" ? `The plan is written (${brief.tasks.plan.length} tasks) and the ${parts.join(" and ")} section${parts.length > 1 ? "s" : ""} will be written to the ticket. Ready to build?` : `The ${parts.join(" and ")} section${parts.length > 1 ? "s" : ""} will be written to the ticket.`, ["yes"], { parts }));
+  if (!discoverSettled(state)) {
+    if (state.discoverGaps.length > 0) return ask(discoverQuestion(state));
+    return { status: "filling", nextKind: "dispatch-discover", fields: withRole(state, ctx, "finder", "member-gap", "the repository, the base, and the branch are unread", {}) };
   }
-  if (state.factGaps.length > 0) {
-    return ask(question("facts", `The finder could not find ${plural(state.factGaps.length, "fact")}. The list is in the detail. Answer what you know, one per line, or reply skip.`, ["skip"], { detail: bullets(state.factGaps) }));
-  }
+  const mode = modeOf(state);
   const first = firstEmptyOf(brief);
-  if (first === "intent") return ask(question("intent", "What is the intent of this ticket? Say the outcome and who it is for, in one or two sentences.", []));
-  if (first === "facts") return fieldFor(state, ctx, "finder", {}, "the facts are empty");
-  if (first === "decision") return fieldFor(state, ctx, "designer", {}, "the decision is empty");
-  if (state.repo === null) {
-    if (state.checkout === null) return ask(question("repo", "Where is the repository for this ticket? Reply with the absolute path of the checkout. The work lands on a new branch in a worktree under it. The repository's own convention names the branch.", []));
-    return { status: "filling", nextKind: "dispatch-conventions", fields: withRole(state, ctx, "finder", "member-gap", "the branch and pull request conventions are unread", {}) };
+  if (first === "intent") throw new TypeError("route: the intent is empty after discover settled; discover always proposes one");
+  if (first === "facts") {
+    if (factsDepthOf(ctx.modePolicy, mode) === "none") throw new TypeError("route: the facts are empty in EXECUTE; the plan fills them when discover settles");
+    return fieldFor(state, ctx, "finder", {}, "the facts are empty");
+  }
+  if (first === "decision") {
+    const filler = fillerOf(ctx.modePolicy, mode, "decision");
+    if (filler === "plan") throw new TypeError("route: the decision is empty in EXECUTE; the plan fills it when discover settles");
+    return fieldFor(state, ctx, filler, {}, filler === "designer" ? "the decision is empty" : "the decision is empty, and in ORIENT the planner fills it with the tasks");
   }
   if (first === "acceptance" || first === "tasks") return fieldFor(state, ctx, "planner", {}, `the ${first} part is empty`);
   if (state.replan !== null) return { status: "filling", nextKind: "dispatch-planner", fields: withRole(state, ctx, "planner", "member-reform", `${state.replan.by === "person" ? "the person changed the plan" : "the decision changed"}, so the plan is written again from the task at the cursor`, {}) };
-  if (!state.buildApproved) return ask(question("build", `The plan has ${brief.tasks.plan.length} tasks. Ready to build?`, ["yes"]));
+  if (!state.buildApproved) return ask(question("build", buildAsk(state), ["yes"], { parts: state.pendingWrite?.parts ?? [] }));
   return routeBuild(state, ctx);
+}
+function buildAsk(state) {
+  const n2 = state.brief.tasks.plan.length;
+  const repoName = state.repo.checkout.split("/").filter(Boolean).pop();
+  const parts = state.pendingWrite?.parts ?? [];
+  const write = parts.length > 0 ? ` The ${parts.join(", ")} section${parts.length > 1 ? "s" : ""} will be written to the ticket; the diff is in the detail.` : "";
+  const cut = state.repo.base === void 0 ? "" : `, cut from ${state.repo.base}`;
+  return `The plan has ${plural(n2, "task")}. The work lands in ${repoName} on the branch ${state.repo.branch}${cut}.${write} Ready to build?`;
+}
+function discoverQuestion(state) {
+  const gaps = state.discoverGaps;
+  const detail = gaps.map((g) => `${g.n}. ${g.key}: ${g.text}. Proposal: ${g.proposal}${g.options ? ` (answers: ${g.options.join(" or ")})` : ""}`).join("\n");
+  return question("discover", `Research left ${plural(gaps.length, "gap")}, each with a proposed answer. The list is in the detail. Reply yes to take every proposal, or answer by number, one per line, as "N: <answer>".`, ["yes", "N: <answer>"], { detail });
 }
 var MIN_MATCH_CHARS = 6;
 function normalizeCommand(text) {
@@ -10070,19 +10429,22 @@ function accepted(state, ctx, fields) {
   return { fields: { ...fields, ...next.fields, question: next.nextKind === "ask-person" ? next.fields.question : null }, status: next.status, ...next.nextKind === null ? {} : { nextKind: next.nextKind } };
 }
 function validatedAccept(state, ctx, brief, fields, tag, extraLeaks = []) {
-  const { valid, issues } = validateKilnContract("kiln:brief@1", brief);
-  if (!valid) {
-    return rejection({
-      code: "KILN_BRIEF_INVALID",
-      label: `the ${tag} would not validate as kiln:brief@1`,
-      details: issues.slice(0, 5).map((i) => `${i.instancePath || "/"}: ${i.message}`),
-      tag,
-      reason: `${tag}-invalid`
-    });
-  }
+  const invalid = briefRejection(brief, tag, `the ${tag}`);
+  if (invalid !== null) return invalid;
   const leaks = [...fields.lastFilled.flatMap((part) => outwardLeaks(ctx, partLines(part, brief[part]), `the ${part} section`)), ...extraLeaks];
   if (leaks.length > 0) return leakRejection(leaks);
   return accepted(state, ctx, { brief, ...fields });
+}
+function briefRejection(brief, tag, what) {
+  const { valid, issues } = validateKilnContract("kiln:brief@1", brief);
+  if (valid) return null;
+  return rejection({
+    code: "KILN_BRIEF_INVALID",
+    label: `${what} would not validate as kiln:brief@1`,
+    details: issues.slice(0, 5).map((i) => `${i.instancePath || "/"}: ${i.message}`),
+    tag,
+    reason: `${tag}-invalid`
+  });
 }
 function leakRejection(leaks) {
   return rejection({
@@ -10096,8 +10458,8 @@ function leakRejection(leaks) {
 function outwardLeaks(ctx, lines, where) {
   return leakWords(ctx, lines).map((word) => `"${word}" in ${where}`);
 }
-function leakWords(ctx, lines) {
-  return [...new Set(ctx.leaksIn(lines).map((l) => l.word))];
+function leakWords(ctx, lines, checkout) {
+  return [...new Set(ctx.leaksIn(lines, checkout).map((l) => l.word))];
 }
 function memberReform(state, ctx, requiredRole, reason, fields) {
   const classKey = classKeyOf(requiredRole);
@@ -10110,11 +10472,13 @@ function memberReform(state, ctx, requiredRole, reason, fields) {
   }
   const withReform = withRole(state, ctx, classKey, "member-reform", reason, fields);
   const redesign = classKey === "designer" ? { brief: { ...state.brief, decision: null, acceptance: null }, cleared: [.../* @__PURE__ */ new Set([...state.cleared ?? [], "decision", "acceptance"])] } : {};
+  const toResearch = classKey === "designer" && modeOf(state) !== "RESEARCH" ? { mode: "RESEARCH", modeLog: [...state.modeLog, { mode: "RESEARCH", reasons: ["a member asked for a re-design"] }] } : {};
   const replan = state.brief.tasks !== null ? { replan: { ...state.replan, from: state.cursor, reason: state.replan === null ? reason : `${state.replan.reason}
 ${reason}` } } : {};
   return accepted(state, ctx, {
     ...withReform,
     ...redesign,
+    ...toResearch,
     ...replan,
     question: null,
     lastFilled: [],
@@ -10132,10 +10496,11 @@ function changePlan(state, ctx, note, base) {
   for (const part of parts) if (part !== "tasks") brief[part] = onTicket[part] === null ? null : { ...onTicket[part], by: "person" };
   const reason = [...state.replan === null ? [] : [state.replan.reason], ...note.length > 0 ? [note] : [], ...parts.length > 0 ? [`Changed on the ticket: ${parts.join(", ")}.`] : []].join("\n");
   const pending = state.pendingWrite === null ? [] : state.pendingWrite.parts.filter((p) => p !== "acceptance" && p !== "tasks");
+  const ticket = state.ticket.readOnly === true ? { ...state.ticket, documentParts: { ...state.ticket.documentParts, ...Object.fromEntries(parts.map((part) => [part, onTicket[part]])) } } : parts.includes("tasks") ? { ...state.ticket, taskGoals } : state.ticket;
   return accepted(state, ctx, {
     ...base,
     brief,
-    ticket: parts.includes("tasks") ? { ...state.ticket, taskGoals } : state.ticket,
+    ticket,
     replan: { from: state.cursor, reason, by: "person" },
     buildApproved: false,
     pendingWrite: pending.length > 0 ? { parts: pending } : null,
@@ -10144,36 +10509,53 @@ function changePlan(state, ctx, note, base) {
     writeBaseline: null
   });
 }
+function noMemberFills(ctx, mode, part) {
+  if (part === "intent") return true;
+  if (part === "facts") return factsDepthOf(ctx.modePolicy, mode) === "none";
+  return part === "decision" && fillerOf(ctx.modePolicy, mode, "decision") === "plan";
+}
+function partsAChangeEmpties(state, ctx) {
+  const { parts, brief: onTicket } = ctx.ticketChanges;
+  return parts.filter((part) => part !== "tasks" && onTicket[part] === null && noMemberFills(ctx, modeOf(state), part));
+}
+function askedAs(q) {
+  const { reply, leaks, emptied, ...asked } = q;
+  return asked;
+}
 function acceptPerson(state, ctx, text) {
   const { word, rest: rest2 } = parseReply(text);
   const q = state.question;
-  const reask = (leaks = []) => ({ fields: { question: { ...q, reply: text, leaks }, lastFilled: [] }, status: "asking", nextKind: "ask-person" });
+  const reask = (leaks = []) => ({ fields: { question: { ...askedAs(q), reply: text, leaks }, lastFilled: [] }, status: "asking", nextKind: "ask-person" });
   if (BARE_ABANDON.test(text.trim())) return { fields: { question: null, lastFilled: [] }, status: "abandoned" };
   const consent = isBareYes(text);
   const base = { question: null, lastFilled: [], lastReform: null };
-  if (word === "change" && takesChange(state)) return changePlan(state, ctx, rest2, base) ?? reask();
+  if (word === "change" && takesChange(state)) {
+    const emptied = partsAChangeEmpties(state, ctx);
+    if (emptied.length === 0) return changePlan(state, ctx, rest2, base) ?? reask();
+    return { fields: { question: { ...askedAs(q), emptied }, lastFilled: [] }, status: "asking", nextKind: "ask-person" };
+  }
   switch (q.then) {
-    case "intent": {
-      if (text.trim().length === 0) return reask();
-      const intent = { by: "person", text: text.trim() };
-      const leaks = leakWords(ctx, partLines("intent", intent));
-      return leaks.length > 0 ? reask(leaks) : accepted(state, ctx, { ...base, brief: { ...state.brief, intent }, lastFilled: ["intent"] });
-    }
-    case "facts": {
-      if (word === "skip") return accepted(state, ctx, { ...base, factGaps: [] });
-      const lines = text.split("\n").map((l) => l.replace(/^-\s*/, "").trim()).filter((l) => l.length > 0);
-      if (lines.length === 0) return reask();
-      const facts = { by: state.brief.facts.by, items: [...state.brief.facts.items, ...lines.map((fact) => ({ fact, source: "the person" }))] };
-      const leaks = leakWords(ctx, partLines("facts", facts));
-      return leaks.length > 0 ? reask(leaks) : accepted(state, ctx, { ...base, factGaps: [], brief: { ...state.brief, facts }, lastFilled: ["facts"] });
+    case "discover": {
+      const { draft, parsed } = state.discoverDraft;
+      const answers = consent ? /* @__PURE__ */ new Map() : parseGapAnswers(text, state.discoverGaps);
+      if (answers === null) return reask();
+      const repositoryGap = state.discoverGaps.find((g) => g.key === "repository");
+      if (repositoryGap !== void 0 && answers.has(repositoryGap.n) && !underCheckoutRoots(answers.get(repositoryGap.n), state.checkoutRoots)) {
+        const asked = discoverQuestion(state);
+        return { fields: { question: { ...asked, reply: text, leaks: [], detail: `${asked.detail}
+The answer to ${repositoryGap.n} must be the absolute path of a folder directly under one of the checkout folders: ${state.checkoutRoots.join(", ")}.` }, lastFilled: [] }, status: "asking", nextKind: "ask-person" };
+      }
+      const next = draftWithAnswers(draft, state.discoverGaps, answers);
+      const intentGap = state.discoverGaps.find((g) => g.key === "intent");
+      if (intentGap !== void 0 && answers.has(intentGap.n)) {
+        const leaks = leakWords(ctx, [answers.get(intentGap.n)], next.repository);
+        if (leaks.length > 0) return reask(leaks);
+      }
+      const settledParsed = { ...parsed, answers: Object.fromEntries(Object.entries(parsed.answers).map(([k, v]) => [k, { ...v, source: v.source ?? "the person", disagree: null }])) };
+      return settleDiscover(state, ctx, next, settledParsed, base);
     }
     case "design":
       return word === "continue" ? { fields: base, status: "filling", nextKind: "dispatch-designer" } : reask();
-    case "repo": {
-      const checkout = text.trim();
-      if (!checkout.startsWith("/")) return reask();
-      return accepted(state, ctx, { ...base, checkout });
-    }
     case "write":
       return consent ? accepted(state, ctx, { ...base, pendingWrite: null }) : reask();
     case "build":
@@ -10199,15 +10581,40 @@ function acceptPerson(state, ctx, text) {
       throw new TypeError(`flow: unknown question.then ${q.then}`);
   }
 }
+var DRIFT_LINE = /^(cosmetic|local|premise): (.+?)\s*\(source: (.+)\)$/;
+function parseDriftLines(lines) {
+  return lines.map((l) => DRIFT_LINE.exec(l)).filter((m) => m !== null).map((m) => ({ kind: m[1], text: m[2], source: m[3] }));
+}
+function malformedDriftLines(lines) {
+  return lines.filter((l) => !DRIFT_LINE.test(l));
+}
+function applyDriftToState(state, ctx, findings, brief) {
+  const mode = modeOf(state);
+  const cosmetic = findings.filter((f) => f.kind === "cosmetic");
+  const moving = findings.filter((f) => f.kind !== "cosmetic");
+  const next = applyDrift(ctx.modePolicy, mode, moving);
+  const corrected = cosmetic.length > 0 ? { ...brief, facts: { by: "party", items: [...brief.facts.items, ...cosmetic.map((f) => ({ fact: f.text, source: f.source }))] } } : brief;
+  if (!next.moved) return { brief: corrected, fields: moving.length > 0 ? { drift: [...state.drift ?? [], ...moving] } : {} };
+  const toResearch = next.mode === "RESEARCH";
+  const dropped = { ...corrected, facts: null, ...toResearch ? { decision: null, ...corrected.acceptance?.by === "party" ? { acceptance: null } : {} } : {} };
+  const clearedParts = toResearch ? ["decision", ...corrected.acceptance?.by === "party" ? ["acceptance"] : []] : [];
+  return { brief: dropped, fields: { mode: next.mode, modeLog: [...state.modeLog, { mode: next.mode, reasons: next.reasons }], drift: moving, cleared: [.../* @__PURE__ */ new Set([...state.cleared, ...clearedParts])] } };
+}
+function offWorktreeSources(items, repo) {
+  const checkout = `${repo.checkout}/`;
+  const root = `${repo.root}/`;
+  return items.map((i) => i.source).filter((s) => s.startsWith(checkout) && !s.startsWith(root));
+}
 function acceptFinder(state, ctx, items) {
   const o = items[0];
   if (o.status === "gap") return ask(question("retry", `The finder stopped with ${plural(o.missing.length, "missing item")}. The list is in the detail. Fix what it needs and reply retry.`, ["retry"], { retryKind: "dispatch-finder", detail: bullets(o.missing) }), { lastFilled: [], lastReform: null });
-  if (o.status === "reform-party") return rejection({ code: "KILN_REFORM_FINDER", label: "the finder never reforms the Party; name what no source answers as a bullet under ## Gaps and reply complete, or reply gap", details: [`named ${o.requiredRole}`], tag: "reform", reason: "reform-finder" });
+  if (o.status === "reform-party") return rejection({ code: "KILN_REFORM_FINDER", label: "the finder never reforms the Party; name what no source answers as a bullet under ## Missing or ## Open questions and reply complete, or reply gap", details: [`named ${o.requiredRole}`], tag: "reform", reason: "reform-finder" });
   const evidence = checkEvidence({ outcome: o, doneWhen: FINDER_CHECKS(state), toolCalls: ctx.toolCalls });
   if (evidence) return evidence;
   const report = attached(ctx, "report", o.output.report.sha256);
   if (report.reject) return { reject: report.reject };
-  const lines = parseSection(report.value.text, "## Facts");
+  const text = report.value.text;
+  const lines = parseSection(text, "## Facts");
   const items2 = lines.map((l) => {
     const m = /^(.*?)\s*\(source: (.+)\)$/.exec(l);
     return m ? { fact: m[1], source: m[2] } : null;
@@ -10215,20 +10622,26 @@ function acceptFinder(state, ctx, items) {
   if (lines.length === 0 || items2.some((i) => i === null)) {
     return rejection({ code: "KILN_FACTS_UNCITED", label: "every fact in the report must be a bullet ending in (source: <citation>), and there must be at least one", details: lines.filter((l) => !/\(source: .+\)$/.test(l)).slice(0, 5), tag: "facts", reason: "facts-uncited" });
   }
-  const gaps = [...parseSection(report.value.text, "## Gaps"), ...o.output.gaps ?? []];
-  const brief = { ...state.brief, facts: { by: "party", items: items2 } };
-  return validatedAccept(state, ctx, brief, {
-    factGaps: [...new Set(gaps)],
-    lastFilled: ["facts"],
+  const off = offWorktreeSources(items2, state.repo);
+  if (off.length > 0) return rejection({ code: "KILN_FACTS_OFF_WORKTREE", label: `a fact cites ${off[0]}, a file of the checkout outside the worktree ${state.repo.root}; read the worktree, never another branch of the checkout`, details: off.slice(0, 5).map((s) => `source: ${s}`), tag: "facts", reason: "facts-off-worktree" });
+  const missing = [...parseSection(text, "## Missing"), ...parseSection(text, "## Gaps"), ...o.output.gaps ?? []];
+  const open = parseSection(text, "## Open questions");
+  const unread = parseSection(text, "## Unread");
+  const driftLines = parseSection(text, "## Drift");
+  const malformed = malformedDriftLines(driftLines);
+  if (malformed.length > 0) return rejection({ code: "KILN_FACTS_DRIFT_MALFORMED", label: `every bullet under ## Drift must read <kind>: <what> (source: <citation>), where the kind is cosmetic, local, or premise; this one does not: ${malformed[0]}`, details: malformed.slice(0, 5), tag: "facts", reason: "facts-drift-malformed" });
+  const drift = parseDriftLines(driftLines);
+  const brief0 = { ...state.brief, facts: { by: "party", items: items2 } };
+  const moved = applyDriftToState(state, ctx, drift, brief0);
+  const filled = moved.brief.facts === null ? [] : ["facts"];
+  return validatedAccept(state, ctx, moved.brief, {
+    factGaps: [.../* @__PURE__ */ new Set([...state.factGaps, ...missing, ...open])],
+    unread: [.../* @__PURE__ */ new Set([...state.unread ?? [], ...unread])],
+    ...moved.fields,
+    lastFilled: filled,
     lastReform: null,
-    pendingWrite: state.ticket.outward ? { parts: ["facts"] } : null
+    pendingWrite: queuedWrite(state, filled)
   }, "facts");
-}
-function factValue(lines, key) {
-  const line = lines.find((l) => l.startsWith(`${key}:`));
-  if (line === void 0) return void 0;
-  const value = line.slice(key.length + 1).replace(/\s*\(source: .*\)$/, "").trim().replace(/^`(.+)`$/, "$1");
-  return value.length > 0 ? value : void 0;
 }
 var DEFAULT_BRANCHES = /* @__PURE__ */ new Set(["main", "master", "HEAD"]);
 var REF_SAFE = /^[A-Za-z0-9][A-Za-z0-9._/-]*$/;
@@ -10252,25 +10665,299 @@ function branchNameIssue(name, branches) {
   }
   return null;
 }
-function acceptConventions(state, ctx, items) {
+var ANSWER = /^([a-z-]+): (.*?)\s*\((source: (.+)|sources disagree: (.+))\)$/;
+var REQUIRED_ANSWERS = ["repository", "base", "branch", "title", "kind"];
+var SIGNAL = /^(ORIENT|RESEARCH): (.+?)\s*\(source: (.+)\)$/;
+var DOCUMENT_ANSWER = /^(\S+)(?: is an? (plan|decision))?$/;
+var DISCOVER_COMMAND_HEADS = [/^gh (pr list|pr view|issue view|repo view)\b/, /^git -C \S+ (remote get-url|fetch|ls-remote|branch -r|show|log|rev-parse)\b/, /^(test|grep|shasum) /];
+function parseDiscoverReport(text) {
+  const answers = {};
+  const bad = [];
+  for (const line of parseSection(text, "## Answers")) {
+    const m = ANSWER.exec(line);
+    const value = m === null ? "" : m[2].trim().replace(/^`(.+)`$/, "$1").trim();
+    if (value.length === 0) {
+      bad.push(line);
+      continue;
+    }
+    answers[m[1]] = { value, source: m[4] === void 0 || m[4].trim() === "none" ? null : m[4].trim(), disagree: m[5]?.trim() ?? null };
+  }
+  const signals = parseSection(text, "## Signals").map((l) => SIGNAL.exec(l)).filter((m) => m !== null).map((m) => ({ mode: m[1], text: m[2], source: m[3].trim() === "none" ? "" : m[3].trim() }));
+  const changes = parseSection(text, "## Changes since the plan");
+  const gaps = parseSection(text, "## Gaps").map((l) => {
+    const i = l.indexOf(": ");
+    return i === -1 ? { text: l, proposal: "(none)" } : { text: l.slice(0, i), proposal: l.slice(i + 2) };
+  });
+  return { answers, bad, signals, changes, gaps };
+}
+function discoverCommandOutsideList(toolCalls) {
+  if (toolCalls?.availability !== "measured") return null;
+  const call = toolCalls.calls.find((c) => c.tool === "Bash" && typeof c.target === "string" && !DISCOVER_COMMAND_HEADS.some((re) => re.test(c.target.trim())));
+  return call === void 0 ? null : call.target;
+}
+function underCheckoutRoots(repository, roots) {
+  const segments = repository.split("/");
+  const parent = segments.slice(0, -1).join("/");
+  return !segments.includes("..") && roots.some((root) => root.replace(/\/$/, "") === parent);
+}
+function discoverDraftOf(state, parsed) {
+  const a = parsed.answers;
+  const value = (key) => a[key]?.value ?? null;
+  const doc = a.document === void 0 ? null : (() => {
+    const m = DOCUMENT_ANSWER.exec(a.document.value);
+    return m === null ? { path: a.document.value, kind: null } : { path: m[1], kind: m[2] ?? null };
+  })();
+  return {
+    repository: value("repository"),
+    remote: value("remote"),
+    base: state.baseFlag ?? value("base"),
+    branch: value("branch"),
+    title: value("title"),
+    kind: state.ticket.shape !== null ? state.ticket.kind : value("kind"),
+    intent: state.brief.intent === null ? value("intent") : null,
+    intentBy: "party",
+    intentAccepted: false,
+    document: doc,
+    useDocument: false,
+    givenDropped: false,
+    reviewed: false,
+    signals: parsed.signals,
+    planChanges: parsed.changes,
+    notes: parsed.gaps.map((g) => ({ ...g, answer: null }))
+  };
+}
+function readsAsDocument(state, draft) {
+  return state.ticket.shape === null && (draft.kind === "plan" || draft.kind === "decision");
+}
+var NO_READS = Object.freeze({ reads: Object.freeze({ given: null, ticket: null, found: null }), unreadable: Object.freeze([]), unknown: Object.freeze([]) });
+function documentReads(state, ctx, draft, kindOpen) {
+  const read = (which, path6, kind2) => ({ which, path: path6, kind: kind2, ...ctx.readDocument(path6, kind2, draft.repository) });
+  const given = state.documents.plan;
+  const all = {
+    given: given !== null && given.kind !== null && !draft.givenDropped ? read("given", given.path, given.kind) : null,
+    ticket: readsAsDocument(state, draft) && !kindOpen ? read("ticket", state.ticket.ref, draft.kind) : null,
+    found: draft.useDocument ? read("found", draft.document.path, draft.document.kind) : null
+  };
+  const docs = Object.values(all).filter((doc) => doc !== null);
+  const unreadable = docs.filter((doc) => doc.unreadable !== void 0);
+  const unknown = docs.filter((doc) => doc.unknown === true);
+  return {
+    reads: Object.fromEntries(Object.entries(all).map(([which, doc]) => [which, unreadable.includes(doc) || unknown.includes(doc) ? null : doc])),
+    unreadable,
+    unknown
+  };
+}
+function dropDocument(draft, which) {
+  switch (which) {
+    case "found":
+      draft.useDocument = false;
+      break;
+    case "given":
+      draft.givenDropped = true;
+      break;
+    case "ticket":
+      break;
+    default:
+      throw new TypeError(`flow: unknown document ${which}`);
+  }
+}
+function discoverGapsOf(state, ctx, draft, parsed) {
+  const gaps = [];
+  const a = parsed.answers;
+  const untrusted = (key) => a[key] !== void 0 && (a[key].source === null || a[key].disagree !== null);
+  for (const key of ["repository", "base", "branch", "title"]) {
+    if (key === "base" && state.baseFlag !== null) continue;
+    if (untrusted(key)) gaps.push({ key, text: a[key].disagree ?? "no source names it", proposal: a[key].value });
+  }
+  const kindOpen = readsAsDocument(state, draft) && untrusted("kind");
+  const facts = ctx.repoFacts(draft.repository, draft.base === "default" ? null : draft.base);
+  const { reads, unreadable, unknown } = facts.exists ? documentReads(state, ctx, draft, kindOpen) : NO_READS;
+  const settled = discoverBrief(state, draft, reads);
+  const documentIntent = reads.given?.parts.intent ?? reads.ticket?.parts.intent ?? null;
+  if (draft.intent !== null && !draft.intentAccepted && documentIntent === null) gaps.push({ key: "intent", text: "the ticket has no intent", proposal: draft.intent });
+  if (draft.document !== null && !draft.reviewed) gaps.push({ key: "document", text: `a ${draft.document.kind ?? "document"} that names the ticket was found at ${draft.document.path}`, proposal: "use it", path: draft.document.path, kind: draft.document.kind });
+  if (kindOpen) gaps.push({ key: "kind", text: `the ticket reads as a ${draft.kind} but no lines show it`, proposal: draft.kind });
+  if (!facts.exists) {
+    const clone = { key: "repository", text: `no checkout under ${state.checkoutRoots.join(":")} for ${draft.remote ?? "the repository"}`, proposal: `run git clone ${draft.remote ?? "<remote url>"} ${draft.repository}, then reply yes` };
+    const open = gaps.findIndex((g) => g.key === "repository");
+    if (open === -1) gaps.push(clone);
+    else gaps[open] = { ...clone, text: `${gaps[open].text}; ${clone.text}` };
+  } else if (facts.defaultBranch === null) gaps.push({ key: "default-branch", text: `KILN_DEFAULT_BRANCH_UNKNOWN: the checkout has no origin/HEAD`, proposal: `run git -C ${draft.repository} remote set-head origin --auto, then reply yes` });
+  else if (draft.base !== "default" && draft.base !== facts.defaultBranch && !facts.baseOnRemote) gaps.push({ key: "base", text: `the base ${draft.base} is not on the remote`, proposal: "push the parent branch, then reply yes", options: ["pushed", "default"] });
+  for (const doc of unreadable) gaps.push({ key: "document-file", text: `the ${doc.kind ?? "document"} at ${doc.path} cannot be read (${doc.unreadable})`, proposal: doc.which === "ticket" ? "restore it and reply yes" : `restore it and reply yes, or answer ${gaps.length + 1}: drop`, which: doc.which });
+  for (const doc of unknown) gaps.push({ key: "document-kind", text: `the document at ${doc.path} matches no known shape`, proposal: `answer ${gaps.length + 1}: plan or ${gaps.length + 1}: decision, or ${gaps.length + 1}: drop`, which: doc.which });
+  for (const doc of [reads.given, reads.found]) {
+    const words = doc === null ? [] : settled.takes[doc.which].flatMap((part) => doc.leaks[part].map((word) => `"${word}" in the ${part}`));
+    if (words.length > 0) gaps.push({ key: "document-words", text: `the ${doc.kind} at ${doc.path} would put a tool or a process word on the ticket: ${words.join(", ")}`, proposal: `fix the document, then reply yes, or answer ${gaps.length + 1}: drop`, which: doc.which });
+  }
+  for (const note of draft.notes) if (note.answer === null) gaps.push({ key: "other", text: note.text, proposal: note.proposal });
+  return { gaps: gaps.map((g, i) => ({ n: i + 1, ...g })), facts, reads, ...settled };
+}
+function fillFrom(brief, doc) {
+  if (doc === null) return [];
+  const draftDecision = doc.kind === "decision" && !doc.approved;
+  const parts = ["intent", "facts", "decision", "acceptance"].filter((part) => brief[part] === null && doc.parts[part] !== null && !(draftDecision && part !== "intent"));
+  for (const part of parts) brief[part] = doc.parts[part];
+  return parts;
+}
+function discoverBrief(state, draft, reads) {
+  const brief = { ...state.brief };
+  const filled = [];
+  const take = (doc) => {
+    const parts = fillFrom(brief, doc);
+    filled.push(...parts);
+    return parts;
+  };
+  const takeIntent = () => {
+    if (brief.intent === null) {
+      brief.intent = { by: draft.intentBy, text: draft.intent };
+      filled.push("intent");
+    }
+  };
+  if (draft.intentAccepted) takeIntent();
+  const takes = { given: take(reads.given), ticket: take(reads.ticket) };
+  takeIntent();
+  takes.found = take(reads.found);
+  const plan = [reads.given, reads.ticket, reads.found].some((doc) => doc !== null && doc.kind === "plan") || state.ticket.kind === "plan";
+  const executes = plan && brief.decision !== null;
+  if (executes || !filled.includes("facts")) return { brief, filled, takes, executes };
+  const withoutFacts = (parts) => parts.filter((part) => part !== "facts");
+  return { brief: { ...brief, facts: null }, filled: withoutFacts(filled), takes: { given: withoutFacts(takes.given), ticket: withoutFacts(takes.ticket), found: withoutFacts(takes.found) }, executes };
+}
+function documentsAfter(documents, reads, draft) {
+  const filed = (docs, doc) => doc.kind === "plan" ? { ...docs, plan: { path: doc.path, kind: "plan", shape: doc.shape } } : { ...docs, decision: { path: doc.path, approved: doc.approved } };
+  const opened = reads.given !== null || draft.givenDropped ? { ...documents, plan: null } : documents;
+  const withGiven = reads.given === null ? opened : filed(opened, reads.given);
+  return reads.found === null ? withGiven : filed(withGiven, reads.found);
+}
+function settleDiscover(state, ctx, draft, parsed, base) {
+  const { gaps: found, facts, reads, brief, filled, takes, executes } = discoverGapsOf(state, ctx, draft, parsed);
+  const invalid = draft.reviewed ? null : briefRejection(brief, "discover", "the brief from the discover report");
+  if (invalid !== null) return invalid;
+  const issue = branchNameIssue(draft.branch, facts.branches);
+  const branchGap = found.find((g) => g.key === "branch");
+  if (issue !== null && branchGap === void 0 && !draft.reviewed) return rejection({ code: "KILN_BRANCH_NAME", label: issue.label, details: issue.details, tag: "branch", reason: "branch-name" });
+  const gaps = issue === null ? found : branchGap !== void 0 ? found.map((g) => g === branchGap ? { ...g, text: `${g.text}; ${issue.label}` } : g) : [...found, { n: found.length + 1, key: "branch", text: issue.label, proposal: `answer ${found.length + 1}: <a new branch name>` }];
+  if (gaps.length > 0) return ask(discoverQuestion({ ...state, discoverGaps: gaps }), { ...base, discoverGaps: gaps, discoverDraft: { draft, parsed } });
+  const resolvedBase = draft.base === "default" ? facts.defaultBranch : draft.base;
+  const root = `${draft.repository}/.worktrees/${draft.branch.replaceAll("/", "-")}`;
+  const repo = { checkout: draft.repository, root, branch: draft.branch, prTitle: draft.title, base: resolvedBase };
+  const documents = documentsAfter(state.documents, reads, draft);
+  const asDocument = readsAsDocument(state, draft) ? { ...state.ticket, kind: draft.kind, readOnly: true, documentParts: Object.fromEntries(takes.ticket.map((part) => [part, reads.ticket.parts[part]])) } : state.ticket;
+  const ticket = reads.given !== null && asDocument.taskGoals.length === 0 ? { ...asDocument, taskGoals: reads.given.taskGoals } : asDocument;
+  const ticketText = state.bundle.components[0].inlineContent;
+  const { mode, reasons } = pickMode(ctx.modePolicy, { hasPlan: executes, signals: [...codeSignals(ticketText), ...draft.signals] });
+  return accepted(state, ctx, {
+    ...base,
+    discover: { ...draft, kind: draft.kind ?? "ticket" },
+    discoverGaps: [],
+    discoverDraft: null,
+    checkout: draft.repository,
+    repo,
+    brief,
+    documents,
+    mode,
+    modeLog: [{ mode, reasons }],
+    planChanges: draft.planChanges,
+    ticket,
+    lastFilled: filled,
+    lastReform: null,
+    pendingWrite: queuedWrite({ ...state, ticket }, filled)
+  });
+}
+function acceptDiscover(state, ctx, items) {
   const o = items[0];
-  if (o.status === "gap") return ask(question("retry", `The finder stopped reading the branch conventions with ${plural(o.missing.length, "missing item")}. The list is in the detail. Fix what it needs and reply retry.`, ["retry"], { retryKind: "dispatch-conventions", detail: bullets(o.missing) }), { lastFilled: [], lastReform: null });
+  if (o.status === "gap") return ask(question("retry", `The finder stopped before it found where the work lives, with ${plural(o.missing.length, "missing item")}. The list is in the detail. Fix what it needs and reply retry.`, ["retry"], { retryKind: "dispatch-discover", detail: bullets(o.missing) }), { lastFilled: [], lastReform: null });
   if (o.status === "reform-party") return rejection({ code: "KILN_REFORM_FINDER", label: "the finder never reforms the Party; name what no source answers as a bullet under ## Gaps and reply complete, or reply gap", details: [`named ${o.requiredRole}`], tag: "reform", reason: "reform-finder" });
-  const evidence = checkEvidence({ outcome: o, doneWhen: CONVENTIONS_CHECKS(state), toolCalls: ctx.toolCalls });
+  const evidence = checkEvidence({ outcome: o, doneWhen: DISCOVER_CHECKS(state), toolCalls: ctx.toolCalls });
   if (evidence) return evidence;
+  const outside = discoverCommandOutsideList(ctx.toolCalls);
+  if (outside !== null) return rejection({ code: "KILN_DISCOVER_COMMAND", label: `the discover step runs only the read-only commands its brief lists, and it ran ${outside}`, details: [], tag: "discover", reason: "discover-command" });
   const report = attached(ctx, "report", o.output.report.sha256);
   if (report.reject) return { reject: report.reject };
-  const lines = parseSection(report.value.text, "## Facts");
-  const branch = factValue(lines, "branch");
-  const prTitle = factValue(lines, "title");
-  const missing = [branch === void 0 ? "branch" : null, prTitle === void 0 ? "title" : null].filter((k) => k !== null);
-  if (missing.length > 0) {
-    return rejection({ code: "KILN_CONVENTIONS_UNNAMED", label: `the report's ## Facts has no ${missing.join(" and no ")} bullet; write "- branch: <name> (source: ...)" and "- title: <text> (source: ...)"`, details: missing.map((k) => `missing: ${k}`), tag: "conventions", reason: "conventions-unnamed" });
+  const parsed = parseDiscoverReport(report.value.text);
+  const required = [...REQUIRED_ANSWERS, ...state.brief.intent === null ? ["intent"] : [], ...state.documents.plan?.kind === null ? ["document"] : []];
+  const missing = required.filter((k) => parsed.answers[k] === void 0);
+  if (missing.length > 0 || parsed.bad.length > 0) {
+    const defect = missing.length > 0 ? `the report's ## Answers has no ${missing.join(" and no ")} bullet` : "a bullet under the report's ## Answers does not parse";
+    return rejection({ code: "KILN_DISCOVER_UNNAMED", label: `${defect}; every bullet reads "- <key>: <value> (source: ...)", with a value that is not empty`, details: [...missing.map((k) => `missing: ${k}`), ...parsed.bad.slice(0, 3).map((l) => `unparsed: ${l}`)], tag: "discover", reason: "discover-unnamed" });
   }
-  const issue = branchNameIssue(branch, ctx.branches ?? []);
-  if (issue !== null) return rejection({ code: "KILN_BRANCH_NAME", label: issue.label, details: issue.details, tag: "branch", reason: "branch-name" });
-  const root = `${state.checkout}/.worktrees/${branch.replaceAll("/", "-")}`;
-  return accepted(state, ctx, { repo: { checkout: state.checkout, root, branch, prTitle }, lastFilled: [], lastReform: null });
+  const draft = discoverDraftOf(state, parsed);
+  if (draft.repository !== null && !underCheckoutRoots(draft.repository, state.checkoutRoots)) {
+    return rejection({ code: "KILN_DISCOVER_OFF_ROOTS", label: `the repository ${draft.repository} is outside the checkout folders ${state.checkoutRoots.join(":")}; it is one folder directly under one of them, with no ".." in its path`, details: [], tag: "discover", reason: "discover-off-roots" });
+  }
+  if (draft.intent !== null) {
+    const leaks = leakWords(ctx, [draft.intent], draft.repository);
+    if (leaks.length > 0) return leakRejection(leaks.map((w) => `"${w}" in the proposed intent`));
+  }
+  return settleDiscover(state, ctx, draft, parsed, { lastFilled: [], lastReform: null });
+}
+var GAP_ANSWER = /^(\d+):\s*(.+)$/;
+function parseGapAnswers(text, gaps) {
+  const lines = text.split("\n").map((l) => l.trim()).filter((l) => l.length > 0);
+  if (lines.length === 0) return null;
+  const answers = /* @__PURE__ */ new Map();
+  for (const raw of lines) {
+    const m = GAP_ANSWER.exec(raw);
+    if (!m) return null;
+    const gap = gaps.find((g) => g.n === Number(m[1]));
+    if (gap === void 0) return null;
+    answers.set(gap.n, m[2].trim());
+  }
+  return answers;
+}
+function draftWithAnswers(draft, gaps, answers) {
+  const next = { ...draft, reviewed: true, notes: draft.notes.map((n2) => ({ ...n2 })) };
+  for (const g of gaps) {
+    const answer = answers.get(g.n) ?? null;
+    switch (g.key) {
+      case "repository":
+        if (answer !== null) next.repository = answer;
+        break;
+      case "base":
+        next.base = answer === null || answer === "pushed" ? draft.base : answer;
+        break;
+      case "branch":
+        if (answer !== null) next.branch = answer;
+        break;
+      case "title":
+        if (answer !== null) next.title = answer;
+        break;
+      case "intent":
+        next.intentAccepted = true;
+        if (answer !== null) {
+          next.intent = answer;
+          next.intentBy = "person";
+        }
+        break;
+      case "kind":
+        if (answer !== null) next.kind = answer;
+        break;
+      case "default-branch":
+        break;
+      case "document":
+        next.useDocument = answer === null || /^(yes|use it)$/i.test(answer);
+        break;
+      // The settle reads the document again, so the person's fix decides; `drop` goes on without the document.
+      case "document-words":
+      case "document-file":
+        if (answer !== null && /^drop$/i.test(answer)) dropDocument(next, g.which);
+        break;
+      // A found document of no known shape: the person names its kind, and the settle reads it by that kind.
+      case "document-kind":
+        if (answer !== null && /^(plan|decision)$/i.test(answer)) next.document = { ...next.document, kind: answer.toLowerCase() };
+        else if (answer !== null && /^drop$/i.test(answer)) dropDocument(next, g.which);
+        break;
+      case "other": {
+        const note = next.notes.find((n2) => n2.text === g.text);
+        if (note) note.answer = answer ?? note.proposal;
+        break;
+      }
+      default:
+        throw new TypeError(`flow: unknown discover gap key ${g.key}`);
+    }
+  }
+  return next;
 }
 function acceptDesigner(state, ctx, items) {
   const o = items[0];
@@ -10290,14 +10977,23 @@ function acceptDesigner(state, ctx, items) {
   return validatedAccept(state, ctx, brief, {
     ...state.brief.tasks === null ? {} : { replan: { ...state.replan, from: state.cursor, reason: state.replan === null ? "the decision changed" : state.replan.reason } },
     cleared: stillCleared(state, ["decision"]),
+    designerRan: true,
     lastFilled: ["decision"],
     lastReform: null,
-    pendingWrite: state.ticket.outward ? { parts: ["decision"] } : null
+    pendingWrite: queuedWrite(state, ["decision"])
   }, "decision");
 }
 function acceptPlanner(state, ctx, items) {
   const o = items[0];
-  if (o.status === "gap") return ask(question("retry", `The planner stopped with ${plural(o.missing.length, "missing item")}. The list is in the detail. Fix what it needs and reply retry.`, ["retry"], { retryKind: "dispatch-planner", detail: bullets(o.missing) }), { lastFilled: [], lastReform: null });
+  if (o.status === "gap") {
+    const findingOf = (l) => l.startsWith("drift ") ? parseDriftLines([l.slice("drift ".length)]) : [];
+    const drift = o.missing.flatMap(findingOf);
+    const other = o.missing.filter((l) => findingOf(l).length === 0);
+    const moved = drift.length > 0 ? applyDriftToState(state, ctx, drift, state.brief) : { brief: state.brief, fields: {} };
+    if (moved.fields.mode !== void 0) return accepted(state, ctx, { brief: moved.brief, ...moved.fields, factGaps: [.../* @__PURE__ */ new Set([...state.factGaps, ...other])], lastFilled: [], lastReform: null });
+    if (other.length === 0) return rejection({ code: "KILN_PLAN_DRIFT_ONLY", label: "the gap holds only drift that cannot move the mode; drift that cannot move the mode is not a reason to withhold a plan, so write the plan and reply complete", details: o.missing.slice(0, 5), tag: "plan", reason: "plan-drift-only" });
+    return ask(question("retry", `The planner stopped with ${plural(other.length, "missing item")}, each with a proposal. The list is in the detail. Reply retry to take the proposals, or retry <note> to answer them.`, ["retry <note>"], { retryKind: "dispatch-planner", detail: bullets(other) }), { brief: moved.brief, ...moved.fields, lastFilled: [], lastReform: null });
+  }
   if (o.status === "reform-party") return memberReform(state, ctx, o.requiredRole, o.reason, {});
   const evidence = checkEvidence({ outcome: o, doneWhen: PLANNER_CHECKS(state), toolCalls: ctx.toolCalls });
   if (evidence) return evidence;
@@ -10323,12 +11019,18 @@ function acceptPlanner(state, ctx, items) {
     if (missing.length > 0) return rejection({ code: "KILN_PLAN_COVERS", label: "every covers line must quote a given acceptance line verbatim", details: missing.slice(0, 5), tag: "plan", reason: "plan-covers" });
   }
   const brief = { ...state.brief, acceptance, tasks: { by: "party", summary: plan.summary, plan: [...kept, ...newTasks] } };
+  const decisionFilled = state.brief.decision === null;
+  if (decisionFilled) {
+    brief.decision = { by: "party", text: plan.summary };
+    filled.unshift("decision");
+  }
   return validatedAccept(state, ctx, brief, {
     replan: null,
     cleared: stillCleared(state, filled),
+    drift: [],
     lastFilled: filled,
     lastReform: null,
-    pendingWrite: state.ticket.outward ? { parts: filled } : null,
+    pendingWrite: queuedWrite(state, filled),
     judgeDue: false
   }, "plan", outwardLeaks(ctx, [plan.summary], "the plan summary"));
 }
@@ -10432,10 +11134,22 @@ function baseStateOf({ bundle, roles, extras }) {
     bundle,
     runDir: extras.runDir,
     cliPath: extras.cliPath,
-    ticket: { ...extras.ticket, slug: slugOf(extras.ticket.ref) },
+    ticket: { kind: "ticket", shape: null, readOnly: false, ...extras.ticket, slug: slugOf(extras.ticket.ref) },
     checkout: extras.checkout ?? null,
     repo: extras.repo ?? null,
     brief: extras.brief,
+    checkoutRoots: extras.checkoutRoots ?? [],
+    baseFlag: extras.base ?? null,
+    documents: extras.documents ?? { plan: null, decision: null },
+    discover: null,
+    discoverGaps: [],
+    discoverDraft: null,
+    mode: null,
+    modeLog: [],
+    planChanges: [],
+    unread: [],
+    drift: [],
+    designerRan: false,
     cursor: 0,
     done: [],
     findings: [],
@@ -10461,6 +11175,9 @@ function baseStateOf({ bundle, roles, extras }) {
 }
 function flowFor(ctx) {
   if (typeof ctx.firstKind !== "string") throw new KilnError("KILN_FLOW_FIRST_KIND_REQUIRED", "flowFor needs ctx.firstKind: compute it with route(baseStateOf(input), ctx).nextKind before createRun, and keep it for the life of the run");
+  if (ctx.modePolicy === void 0 || ctx.modePolicy === null) throw new KilnError("KILN_FLOW_MODE_POLICY_REQUIRED", "flowFor needs ctx.modePolicy: the parsed policy/mode-policy-v1.json");
+  if (typeof ctx.repoFacts !== "function") throw new KilnError("KILN_FLOW_REPO_FACTS_REQUIRED", "flowFor needs ctx.repoFacts(checkout, base): the CLI's program checks");
+  if (typeof ctx.readDocument !== "function") throw new KilnError("KILN_FLOW_READ_DOCUMENT_REQUIRED", "flowFor needs ctx.readDocument(path, kind, checkout): the CLI's document reader");
   const guard = (fn) => (state, items) => {
     if (items.length !== 1) return rejection({ code: "KILN_OUTCOME_COUNT", label: "reply with exactly one outcome", details: [`got ${items.length}`], tag: "outcome", reason: "outcome-count" });
     const outcome = fn(state, ctx, items);
@@ -10490,7 +11207,7 @@ function flowFor(ctx) {
     kinds: {
       "ask-person": kind("ask-person", { receipt: "text", buildPrompt: (state) => renderQuestion(state.question, takesChange(state)), accept: (state, text) => acceptPerson(state, ctx, text) }),
       "dispatch-finder": kind("dispatch-finder", { buildPrompt: renderFinderPrompt, accept: guard(acceptFinder) }),
-      "dispatch-conventions": kind("dispatch-conventions", { buildPrompt: renderConventionsPrompt, accept: guard(acceptConventions) }),
+      "dispatch-discover": kind("dispatch-discover", { buildPrompt: renderDiscoverPrompt, accept: guard(acceptDiscover) }),
       "dispatch-designer": kind("dispatch-designer", { buildPrompt: renderDesignerPrompt, accept: guard(acceptDesigner) }),
       "dispatch-planner": kind("dispatch-planner", { buildPrompt: renderPlannerPrompt, accept: guard(acceptPlanner) }),
       "dispatch-changer": kind("dispatch-changer", { buildPrompt: renderChangerPrompt, accept: guard(acceptChanger), writeBoundary: (state) => {
@@ -10546,78 +11263,6 @@ function assessRation({ ration, multiplier, envelope, priorEnvelopes }) {
   };
 }
 
-// src/evidence.mjs
-var FORBIDDEN_WORDS = Object.freeze(["kiln", "kiln-next", "crafter", "inspector", "planner", "designer", "prospector", "statblock", "gauntlet", "journal", "readout", "fire skill", "job skill", "ration", "reform-party", "claude code", "jcsl-tools"]);
-var SUBJECT_WORDS = Object.freeze(["kiln", "kiln-next", "statblock", "gauntlet", "jcsl-tools", "claude code"]);
-var REPO_PATH = /\/Users\/[^/\s`]+\/[^\s`]*?\/repos\/([^\s`]+)/g;
-var HOME_PATH = /\/Users\/[^/\s`]+(?:\/[^/\s`]+)*\/([^/\s`]+)/g;
-function scrubPaths(text, prefixes = []) {
-  const local = [...prefixes].sort((a, b) => b.length - a.length).reduce((t, p) => t.split(p).join("<worktree>"), text);
-  return local.replace(REPO_PATH, "$1").replace(HOME_PATH, "<path>/$1");
-}
-function wordPattern(word) {
-  return `(^|[^a-z-])${word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}([^a-z-]|$)`;
-}
-function wordBoundaryRegex(word) {
-  return new RegExp(wordPattern(word));
-}
-function containsWord(lowerText, word) {
-  return wordBoundaryRegex(word).test(lowerText);
-}
-function findLeaks(text, { allow = [] } = {}) {
-  const skip = new Set(allow.map((w) => w.toLowerCase()));
-  const leaks = [];
-  text.split("\n").forEach((line, i) => {
-    const lower = line.toLowerCase();
-    for (const word of FORBIDDEN_WORDS) {
-      if (skip.has(word.toLowerCase())) continue;
-      const m = wordBoundaryRegex(word).exec(lower);
-      if (m) {
-        const start = m.index + m[1].length;
-        leaks.push({ line: i + 1, word: line.slice(start, start + word.length) });
-      }
-    }
-  });
-  return leaks;
-}
-function baseNamesOf(name) {
-  const segments = name.split("/").filter(Boolean);
-  return name.startsWith("/") ? segments.slice(-1) : segments;
-}
-function allowedWords({ ticketText = "", repoNames = [], repoWords = [] } = {}) {
-  const lower = (ticketText ?? "").toLowerCase();
-  const names = new Set(repoNames.flatMap(baseNamesOf).map((n2) => n2.toLowerCase()));
-  const onSubjectRepo = SUBJECT_WORDS.some((word) => names.has(word));
-  return FORBIDDEN_WORDS.filter((word) => repoWords.includes(word) || (SUBJECT_WORDS.includes(word) ? containsWord(lower, word) || names.has(word) : onSubjectRepo));
-}
-function costFloorLine(scoreboard) {
-  const named = [...new Set(scoreboard.cost.omissions.map((o) => o.split(":")[0]))];
-  const suffix = named.length ? ` (${named.join(", ")})` : "";
-  return `- $${scoreboard.cost.totals.bookedUsd} booked, a floor: ${scoreboard.totals.omissionDispatches} of ${scoreboard.totals.dispatches} dispatches had an unmeasured metric${suffix}`;
-}
-function renderEvidenceBlock({ state, scoreboard, publicRepo = false }) {
-  const lines = ["## What changed", state.brief.tasks.summary, ""];
-  for (const t of state.brief.tasks.plan) {
-    const sha = state.done.find((d) => d.taskId === t.taskId)?.sha;
-    lines.push(`- ${t.taskId}: ${t.goal}${sha ? ` (${sha.slice(0, 12)})` : ""}`);
-    for (const c of t.doneWhen) lines.push(`  - check: \`${c.command}\` expects ${c.expect}`);
-  }
-  lines.push("", "## Acceptance", ...state.brief.acceptance.lines.map((l) => `- ${l}`), "", "## Review");
-  if (state.judge) {
-    lines.push(`- verdict: ${state.judge.verdict}`);
-    for (const r of state.judge.rulings) lines.push(`  - ${r.task}: ${r.deviation} (${r.ruling}: ${r.why})`);
-    lines.push(`- consequence observed: ${state.judge.observedConsequence.level}, ${state.judge.observedConsequence.reason}`);
-    if (state.verification?.decision === "lower") lines.push(`- verification lowered by the author: ${state.verification.lowerReason}`);
-    if (state.verification?.borrowedDone) lines.push(`- second review: ${publicRepo ? `${state.findings.length} findings` : state.findings.length === 0 ? "no findings" : state.findings.map((f) => `
-  - ${f}`).join("")}`);
-  } else {
-    lines.push("- verdict: none recorded");
-  }
-  lines.push("", "## Cost", costFloorLine(scoreboard));
-  const checkout = state.repo.root.replace(/\/\.worktrees\/[^/]+$/, "");
-  return scrubPaths(lines.join("\n"), [state.repo.root, checkout]) + "\n";
-}
-
 // src/scoreboard.mjs
 var CD_PATTERN = /(^|[;&|]\s*|\(\s*)cd\s/;
 function countCdCalls(toolCalls) {
@@ -10661,20 +11306,31 @@ function computeScoreboard({ roles, envelopes, rations: rations2, priceTable: pr
 
 // src/readout.mjs
 var n = (v) => v === null || v === void 0 ? "?" : v.toLocaleString("en-US");
-function renderReadout({ state, scoreboard }) {
+function modeSummary(state) {
+  if (state.mode === void 0) return "mode: legacy";
+  if (state.mode === null) return "mode: not picked";
+  const lines = state.modeLog.map((e, i) => modeLine(e.mode, e.reasons, i === 0 ? null : state.modeLog[i - 1].mode));
+  return `mode: ${state.mode} (${lines.join(" ")})`;
+}
+function renderReadout({ state, scoreboard, prUrl = null }) {
   const cost = Object.fromEntries(scoreboard.cost.perLane.map((l) => [l.classKey, l.bookedUsd]));
   const rows = scoreboard.perMember.map((m) => `| ${m.roleKey} | ${m.dispatches} | ${n(m.turns)} / ${n(m.rationTurns)} | ${n(m.tokens)} / ${n(m.rationTokens)} | ${n(m.cacheReadTokens)} | $${cost[m.roleKey]} |`);
   const t = scoreboard.totals;
+  const unread = state.unread ?? [];
   return [
     "# Readout",
     "",
     `status: ${state.status}`,
+    ...prUrl === null ? [] : [`pull request: ${prUrl}`],
+    modeSummary(state),
+    ...state.repo?.base ? [`base: ${state.repo.base}`] : [],
     "",
     "## Tasks",
     ...state.done.map((d) => `- ${d.taskId}: ${state.brief.tasks.plan.find((x) => x.taskId === d.taskId).goal} (${d.sha.slice(0, 12)})`),
     "",
     state.judge ? `review: ${state.judge.verdict}, consequence ${state.judge.observedConsequence.level} (${state.judge.observedConsequence.reason})${state.verification?.decision === "lower" ? `, verification lowered: ${state.verification.lowerReason}` : ""}` : "review: none",
     "",
+    ...unread.length > 0 ? ["## Unread places", ...unread.map((u) => `- ${u}`), ""] : [],
     "## Members (tokens are fresh tokens; actual / ration)",
     "| member | dispatches | turns | tokens | cache reads | booked |",
     "| --- | --- | --- | --- | --- | --- |",
@@ -10693,6 +11349,57 @@ var priceTable = JSON.parse(readFileSync9(new URL("../policy/price-table-v1.json
 var rosterPolicy = JSON.parse(readFileSync9(new URL("../policy/roster-policy-v1.json", import.meta.url), "utf8"));
 var rations = JSON.parse(readFileSync9(new URL("../policy/rations-v1.json", import.meta.url), "utf8"));
 var hostBindings = JSON.parse(readFileSync9(new URL("../policy/host-bindings-v1.json", import.meta.url), "utf8")).hosts["claude-code"];
+var modePolicy = JSON.parse(readFileSync9(new URL("../policy/mode-policy-v1.json", import.meta.url), "utf8"));
+function checkoutRootsOf(env = process.env) {
+  const raw = env.KILN_CHECKOUTS ?? "";
+  const roots = raw.split(":").map((r) => r.trim()).filter((r) => r.length > 0);
+  if (roots.length === 0 || roots.some((r) => !r.startsWith("/"))) {
+    throw new KilnError("KILN_CHECKOUTS_UNSET", `KILN_CHECKOUTS names the folders that hold the repository checkouts, as absolute paths joined by ":"; set it under env in the profile's settings.json, for example "env": { "KILN_CHECKOUTS": "/home/me/repos" }`, { value: raw });
+  }
+  return roots.map((r) => r.replace(/\/+$/, ""));
+}
+function isCheckout(dir) {
+  if (!existsSync2(dir)) return false;
+  const top = spawnSync("git", ["-C", dir, "rev-parse", "--show-toplevel"], { encoding: "utf8" });
+  return top.status === 0 && top.stdout.trim() === realpathSync2(dir);
+}
+function repoFactsFor() {
+  return (checkout, base) => {
+    if (!isCheckout(checkout)) return { exists: false, defaultBranch: null, baseOnRemote: false, branches: [] };
+    const head = spawnSync("git", ["-C", checkout, "symbolic-ref", "--short", "refs/remotes/origin/HEAD"], { encoding: "utf8" });
+    const defaultBranch = head.status === 0 ? head.stdout.trim().replace(/^origin\//, "") : null;
+    const baseOnRemote = base === null || spawnSync("git", ["-C", checkout, "ls-remote", "--exit-code", "--heads", "origin", `refs/heads/${base}`], { encoding: "utf8" }).status === 0;
+    return { exists: true, defaultBranch, baseOnRemote, branches: branchNamesOf(checkout) };
+  };
+}
+function documentBriefFor(file, text, kind2) {
+  const shape = documentKindOf(text, file);
+  const resolvedKind = shape?.kind ?? kind2;
+  if (resolvedKind === null) return null;
+  const mapped = resolvedKind === "plan" ? { ...briefFromPlan(text, file), acceptance: null, approved: null } : { ...briefFromDecision(text), facts: null, taskGoals: [] };
+  const parts = { intent: mapped.intent, facts: mapped.facts, decision: mapped.decision, acceptance: mapped.acceptance };
+  return { kind: resolvedKind, shape: shape?.shape ?? "classified", approved: mapped.approved, parts, taskGoals: mapped.taskGoals };
+}
+function documentReaderFor(ticketRef, source) {
+  const wordsOf = /* @__PURE__ */ new Map();
+  return (file, kind2, checkout) => {
+    let text;
+    if (file === ticketRef) text = readTicketBody(ticketRef, source, null).body;
+    else {
+      try {
+        text = readFileSync9(file, "utf8");
+      } catch (err) {
+        return { unreadable: err.message.replace(`, ${err.syscall} '${file}'`, "") };
+      }
+    }
+    const doc = documentBriefFor(file, text, kind2);
+    if (doc === null) return { unknown: true };
+    if (!wordsOf.has(checkout)) wordsOf.set(checkout, repoWordsOf(checkout));
+    const leaksIn = leakCheckFor(ticketRef, source, wordsOf.get(checkout));
+    const leaks = Object.fromEntries(Object.entries(doc.parts).filter(([, v]) => v !== null).map(([part, v]) => [part, [...new Set(leaksIn(partLines(part, v)).map((l) => l.word))]]));
+    return { ...doc, leaks };
+  };
+}
 var registryCache = null;
 function getRegistry() {
   if (registryCache === null) registryCache = loadClassRegistry(process.env.KILN_CLASSES_ROOT);
@@ -10730,9 +11437,9 @@ function readTicketBody(ref, source, since) {
   if (source === "jira") throw new KilnError("KILN_TICKET_SOURCE_UNBUILT", "the Jira adapter is declared but not built; its body lands on the first real Jira ticket", { ref });
   if (source === "markdown") return { body: normalizeBody(readFileSync9(ref, "utf8")), newerItems: [] };
   const { repo, number } = githubIssueOf(ref);
-  const issue = JSON.parse(gh(["issue", "view", String(number), "--repo", repo, "--json", "body,comments"]));
+  const issue = JSON.parse(gh(["issue", "view", String(number), "--repo", repo, "--json", "body,comments,title"]));
   const newerItems = (issue.comments ?? []).filter((c) => since === null || c.createdAt > since).map((c) => `comment ${c.createdAt.slice(0, 10)}: ${c.body.split("\n")[0].slice(0, 120)}`);
-  return { body: normalizeBody(issue.body ?? ""), newerItems };
+  return { body: normalizeBody(issue.body ?? ""), newerItems, comments: issue.comments ?? [], title: issue.title ?? null };
 }
 function writeTicketBody(ref, source, body, stagePath) {
   if (source === "markdown") {
@@ -10742,6 +11449,75 @@ function writeTicketBody(ref, source, body, stagePath) {
   const { repo, number } = githubIssueOf(ref);
   writeFileAtomic(stagePath, body);
   gh(["issue", "edit", String(number), "--repo", repo, "--body-file", stagePath]);
+}
+var GITHUB_ITEM_URL = /https:\/\/github\.com\/([\w.-]+\/[\w.-]+)\/(?:issues|pull)\/(\d+)/g;
+var GITHUB_ITEM_REF = /(?<![\w/.])([\w.-]+\/[\w.-]+)#(\d+)\b/g;
+var GITHUB_SHORT_REF = /(?<![\w/#])#(\d+)\b/g;
+var ANY_URL = /https?:\/\/[^\s)>\]]+/g;
+var LOCAL_PATH = /(?<![\w/])((?:\/|\.\.?\/)[\w./-]+\.md)\b/g;
+function fetchGithubItem(repo, number) {
+  for (const [kind2, fields] of [["issue", "title,body,url"], ["pr", "title,body,state,baseRefName,headRefName,url"]]) {
+    const res = spawnSync("gh", [kind2, "view", String(number), "--repo", repo, "--json", fields], { encoding: "utf8" });
+    if (res.status === 0) {
+      const item = JSON.parse(res.stdout);
+      const head = kind2 === "pr" ? `
+
+state: ${item.state}
+base: ${item.baseRefName}
+head: ${item.headRefName}` : "";
+      return `# ${item.title}
+
+${item.url}${head}
+
+${normalizeBody(item.body ?? "")}
+`;
+    }
+  }
+  return null;
+}
+function fetchLinked(paths, { ref, source, body, title, comments = [] }) {
+  const items = /* @__PURE__ */ new Map();
+  const ownRepo = source === "github" ? githubIssueOf(ref).repo : null;
+  if (source === "github") {
+    const own = path5.join(paths.fetched, "issue.md");
+    writeFileAtomic(own, `# ${title ?? ""}
+
+${body}
+${comments.map((c) => `
+---
+comment ${c.createdAt}:
+${c.body}`).join("\n")}`);
+    items.set(ref, `fetched, ${own}`);
+  }
+  const ticketDir = source === "markdown" ? path5.dirname(path5.resolve(ref)) : null;
+  const github = [];
+  for (const m of body.matchAll(GITHUB_ITEM_URL)) github.push({ repo: m[1], number: Number(m[2]), label: `${m[1]}#${m[2]}`, url: m[0] });
+  for (const m of body.matchAll(GITHUB_ITEM_REF)) github.push({ repo: m[1], number: Number(m[2]), label: m[0] });
+  if (ownRepo !== null) for (const m of body.matchAll(GITHUB_SHORT_REF)) github.push({ repo: ownRepo, number: Number(m[1]), label: `${ownRepo}#${m[1]}` });
+  for (const g of github) {
+    if (g.label === ref || items.has(g.label)) continue;
+    const text = fetchGithubItem(g.repo, g.number);
+    if (text === null) {
+      items.set(g.label, "not fetched");
+      continue;
+    }
+    const copy = path5.join(paths.fetched, `${g.repo.replace("/", "-")}-${g.number}.md`);
+    writeFileAtomic(copy, text);
+    items.set(g.label, `fetched, ${copy}`);
+  }
+  const githubUrls = new Set(github.map((g) => g.url).filter((u) => u !== void 0));
+  for (const m of body.matchAll(ANY_URL)) if (!githubUrls.has(m[0]) && !items.has(m[0])) items.set(m[0], "not fetched");
+  if (ticketDir !== null) {
+    for (const m of body.matchAll(LOCAL_PATH)) {
+      const abs = path5.resolve(ticketDir, m[1]);
+      if (abs === path5.resolve(ref) || !existsSync2(abs)) continue;
+      items.set(abs, "local, read in place");
+    }
+  }
+  writeFileAtomic(path5.join(paths.fetched, "index.md"), `# Fetched items
+
+${[...items.entries()].map(([k, v]) => `- ${k}: ${v}`).join("\n")}
+`);
 }
 function ticketRepoNames(ref, source) {
   if (source === "github") return [{ repo: githubIssueOf(ref).repo }];
@@ -10769,6 +11545,11 @@ function cleanTicketSection(sectionLines, { allow }) {
   const leaks = findLeaks(scrubbed, { allow });
   if (leaks.length > 0) throw new KilnError("KILN_TICKET_LEAK", `the ticket section still names ${leaks.map((l) => `"${l.word}" on line ${l.line}`).join(", ")}; fix the source line, never the filter`, { leaks, allowed: allow });
   return scrubbed.split("\n");
+}
+function bodyWithLink(meta, state, url) {
+  const { body } = readTicketBody(meta.ticketRef, meta.source, null);
+  const linkLines = cleanTicketSection([`- ${url}`], { allow: runAllowList({ meta, state, body }) });
+  return spliceSection(normalizeBody(body), HEADINGS.pullRequest, linkLines);
 }
 function today() {
   return (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
@@ -10804,7 +11585,10 @@ function branchNamesOf(checkout) {
 }
 function createWorktree(repo) {
   const created = !existsSync2(repo.root);
-  if (created) gitOut(repo.checkout, ["worktree", "add", repo.root, "-b", repo.branch]);
+  if (created) {
+    gitOut(repo.checkout, ["fetch", "origin", repo.base]);
+    gitOut(repo.checkout, ["worktree", "add", "--no-track", "-b", repo.branch, repo.root, `origin/${repo.base}`]);
+  }
   const head = gitOut(repo.root, ["rev-parse", "--abbrev-ref", "HEAD"]).trim();
   if (head !== repo.branch) throw new KilnError("KILN_WORKTREE_BRANCH", `the worktree at ${repo.root} is on ${head}, not ${repo.branch}`, { root: repo.root });
   return created;
@@ -10843,17 +11627,26 @@ function openRun(v) {
   if (!runExists(paths)) throw new KilnError("KILN_RUN_MISSING", `no run for this ticket; run open first`, { ticket: ref });
   const meta = readRunMeta(paths);
   const state = loadState(paths);
+  refuseOldRelease(paths, state);
   return { ref, root, paths, meta, state };
 }
+function isOldReleaseRun(state) {
+  return state.discover === void 0 && state.repo === null;
+}
+function refuseOldRelease(paths, state) {
+  if (isOldReleaseRun(state)) throw new KilnError("KILN_RUN_OLD_RELEASE", "this run was opened by an older release before it found its repository; abandon it and open --again", { dir: paths.dir });
+}
 function leakCheckFor(ref, source, repoWords) {
-  let allow = null;
-  return (lines) => {
-    if (allow === null) allow = ticketAllowList(readTicketBody(ref, source, null).body, ref, source, repoWords);
-    return findLeaks(scrubPaths(lines.join("\n")), { allow });
+  let body = null;
+  const allowFor = /* @__PURE__ */ new Map();
+  return (lines, checkout = null) => {
+    if (body === null) body = readTicketBody(ref, source, null).body;
+    if (!allowFor.has(checkout)) allowFor.set(checkout, ticketAllowList(body, ref, source, checkout !== null && isCheckout(checkout) ? repoWordsOf(checkout) : repoWords));
+    return findLeaks(scrubPaths(lines.join("\n")), { allow: allowFor.get(checkout) });
   };
 }
 function flowCtx({ ticketRef, source, firstKind, repoWords }, extra = {}) {
-  return { registry: getRegistry(), policy: rosterPolicy, toolCalls: { availability: "unavailable" }, attachments: {}, breach: null, leaksIn: leakCheckFor(ticketRef, source, repoWords), ticketChanges: { parts: [], brief: emptyBrief(), taskGoals: [] }, firstKind, ...extra };
+  return { registry: getRegistry(), policy: rosterPolicy, modePolicy, toolCalls: { availability: "unavailable" }, attachments: {}, breach: null, leaksIn: leakCheckFor(ticketRef, source, repoWords), ticketChanges: { parts: [], brief: emptyBrief(), taskGoals: [] }, repoFacts: repoFactsFor(), readDocument: documentReaderFor(ticketRef, source), firstKind, ...extra };
 }
 function bodyWithParts(body, state, parts) {
   let next = withIntentHeading(body);
@@ -10868,6 +11661,13 @@ function writeParts(paths, meta, state, parts) {
   writeTicketBody(meta.ticketRef, meta.source, ticketWriteFor(meta, state, parts), paths.ticketBody);
 }
 function ticketChangesFor(state, ticketBody) {
+  if (state.ticket.readOnly === true) {
+    const doc = documentBriefFor(state.ticket.ref, ticketBody, state.ticket.kind);
+    const taken = state.ticket.documentParts;
+    const text = (part, value) => value === null ? "" : partLines(part, value).join("\n");
+    const parts = Object.keys(taken).filter((part) => text(part, taken[part]) !== text(part, doc.parts[part]));
+    return { parts, brief: { ...emptyBrief(), ...Object.fromEntries(Object.keys(taken).map((part) => [part, doc.parts[part]])) }, taskGoals: doc.taskGoals };
+  }
   const body = withIntentHeading(ticketBody);
   const { brief, taskGoals } = briefFromBody(body);
   return { parts: partsChanged(state.brief, body, scrubLines, partsInFlux(state)), brief, taskGoals };
@@ -10959,7 +11759,7 @@ function afterReceipt({ flow, paths, meta, state, nextState, actionId, pending, 
   checkBriefValid(nextState.brief);
   const reform = accepted2 && nextState.lastReform !== null ? nextState.lastReform : null;
   const reformedRecord = reform === null ? null : reformPartyRecord(JSON.parse(readFileSync9(paths.party.record, "utf8")), rosterPolicy, { actionId, trigger: reform.trigger, classKey: reform.classKey, reason: reform.reason });
-  const writesTicket = accepted2 && nextState.lastFilled.length > 0 && nextState.pendingWrite === null;
+  const writesTicket = accepted2 && nextState.lastFilled.length > 0 && nextState.pendingWrite === null && nextState.ticket.readOnly !== true;
   const nextBody = writesTicket ? ticketWriteFor(meta, nextState, nextState.lastFilled) : null;
   if (reformedRecord !== null) {
     writeFileAtomic(paths.party.record, JSON.stringify(reformedRecord, null, 2) + "\n");
@@ -10968,22 +11768,41 @@ function afterReceipt({ flow, paths, meta, state, nextState, actionId, pending, 
   if (writesTicket) writeTicketBody(meta.ticketRef, meta.source, nextBody, paths.ticketBody);
   saveRunState(paths, nextState);
   const after = nextAction(flow, nextState);
+  const modeLog = (nextState.modeLog ?? []).slice((state.modeLog ?? []).length);
   appendRunEvents(paths.dir, [
-    { kind: accepted2 ? "receipt-applied" : "stage-failed", data: { actionId, actionKind: pending.kind, attempt: pending.attempt, outcome: nextState.ledger.at(-1).outcome, runStatus: nextState.status } },
+    { kind: accepted2 ? "receipt-applied" : "stage-failed", data: { actionId, actionKind: pending.kind, attempt: pending.attempt, outcome: nextState.ledger.at(-1).outcome, runStatus: nextState.status, ...modeLog.length > 0 ? { modeLog } : {} } },
     after.terminal ? { kind: "run-terminal", data: { status: nextState.status } } : pendingEvent(nextState)
   ]);
 }
+function settleRepo({ paths, meta, state, nextState, apply }) {
+  const namesBranch = state.repo === null && nextState.repo !== null;
+  const created = namesBranch ? createWorktree(nextState.repo) : false;
+  const repoWords = namesBranch ? repoWordsOf(nextState.repo.root) : [];
+  apply();
+  if (namesBranch) writeRunMeta(paths, { ...meta, repo: nextState.repo.root, branch: nextState.repo.branch, base: nextState.repo.base, repoWords });
+  const installed = namesBranch ? created ? installDependencies(nextState.repo.root) : null : void 0;
+  return { installed };
+}
+function modeLineFor(state, nextState) {
+  const before = state.modeLog ?? [];
+  const after = nextState.modeLog ?? [];
+  if (after.length <= before.length) return void 0;
+  const entry = after.at(-1);
+  return modeLine(entry.mode, entry.reasons, after.length > 1 ? after.at(-2).mode : null);
+}
 var ENDED = /* @__PURE__ */ new Set(["abandoned", "gap"]);
 function againFor(paths) {
-  const { status } = loadState(paths);
-  if (!ENDED.has(status)) throw new KilnError("KILN_RUN_NOT_ENDED", `the run is ${status}; open --again only sets aside a run that ended abandoned or gap`, { status });
+  const state = loadState(paths);
+  const { status } = state;
+  if (!ENDED.has(status) && !isOldReleaseRun(state)) throw new KilnError("KILN_RUN_NOT_ENDED", `the run is ${status}; open --again only sets aside a run that ended abandoned or gap`, { status });
   return setRunAside(paths, (/* @__PURE__ */ new Date()).toISOString().replace(/[-:]/g, "").replace(/\.\d+Z$/, "Z"));
 }
 var COMMANDS = {
   open(args) {
-    const v = flags(args, { root: { type: "string" }, ticket: { type: "string" }, idea: { type: "string" }, again: { type: "boolean" } });
+    const v = flags(args, { root: { type: "string" }, ticket: { type: "string" }, idea: { type: "string" }, again: { type: "boolean" }, base: { type: "string" }, plan: { type: "string" } });
     const ref = requireFlag(v, "ticket");
     const source = sourceOf(ref);
+    const checkoutRoots = checkoutRootsOf();
     const root = resolveRunsRoot({ flag: v.root });
     const paths = runPathsFor(root, ref);
     if (v.idea !== void 0) {
@@ -10996,30 +11815,41 @@ var COMMANDS = {
 ${v.idea.trim()}
 `);
     }
-    const { body: rawBody } = readTicketBody(ref, source, null);
-    const body = withIntentHeading(rawBody);
-    const { brief, taskGoals, title } = briefFromBody(body);
+    const ticketRead = readTicketBody(ref, source, null);
+    const body = withIntentHeading(ticketRead.body);
+    const ticketShape = source === "markdown" ? documentKindOf(body, ref) : null;
+    const fromTicket = ticketShape === null ? briefFromBody(body) : null;
+    const ticketDoc = ticketShape === null ? null : documentBriefFor(ref, ticketRead.body, null);
+    const documentParts = ticketDoc === null ? null : Object.fromEntries(Object.entries(ticketDoc.parts).filter(([, v2]) => v2 !== null));
+    const brief = ticketShape === null ? fromTicket.brief : { ...emptyBrief(), ...documentParts };
+    const taskGoals = ticketShape === null ? fromTicket.taskGoals : ticketDoc.taskGoals;
+    const title = ticketShape === null ? fromTicket.title : body.split("\n").find((l) => /^# /.test(l))?.slice(2).trim() ?? null;
+    const planPath = v.plan === void 0 ? null : path5.resolve(v.plan);
+    const planShape = planPath === null ? null : documentKindOf(readInput({ plan: planPath }, "plan"), planPath);
+    const documents = { plan: planPath === null ? null : { path: planPath, kind: planShape?.kind ?? null, shape: planShape?.shape ?? null }, decision: null };
     const registry = getRegistry();
     const setAside = v.again === true && runExists(paths) ? againFor(paths) : null;
     if (runExists(paths)) {
       const meta2 = readRunMeta(paths);
       const state2 = loadState(paths);
+      refuseOldRelease(paths, state2);
       const record2 = JSON.parse(readFileSync9(paths.party.record, "utf8"));
       const flow2 = flowFor(flowCtx(meta2));
-      return { resumed: true, dir: paths.dir, ...ENDED.has(state2.status) ? { again: `this run ended ${state2.status}; open --again sets it aside and starts a fresh run on this ticket` } : {}, fillState: fillStateLines({ brief: state2.brief, taskGoals, roster: record2.roster, changed: partsChanged(state2.brief, body, scrubLines, partsInFlux(state2)) }), roster: { rowId: record2.roster.rowId, fielded: record2.roster.fielded.map((m) => m.classKey) }, next: nextSummary(flow2, state2, paths, meta2) };
+      return { resumed: true, dir: paths.dir, ...ENDED.has(state2.status) ? { again: `this run ended ${state2.status}; open --again sets it aside and starts a fresh run on this ticket` } : {}, fillState: fillStateLines({ brief: state2.brief, taskGoals, roster: record2.roster, changed: ticketChangesFor(state2, ticketRead.body).parts }), roster: { rowId: record2.roster.rowId, fielded: record2.roster.fielded.map((m) => m.classKey) }, next: nextSummary(flow2, state2, paths, meta2) };
     }
     const profile = buildProfile(brief, { sizeBytes: Buffer.byteLength(body, "utf8") });
     const roster = selectRoster(rosterPolicy, profile);
     const roles = rolesFor(roster, registry);
     const bundle = buildBundle({ ticketText: body });
     const outward = outwardOf(source);
-    const issueTitle = title === null && source === "github" ? JSON.parse(gh(["issue", "view", String(githubIssueOf(ref).number), "--repo", githubIssueOf(ref).repo, "--json", "title"])).title : title;
-    const extras = { runDir: paths.dir, cliPath: path5.resolve(process.argv[1]), ticket: { ref, source, outward, title: issueTitle, taskGoals }, brief, repo: null };
+    const issueTitle = title === null && source === "github" ? ticketRead.title : title;
+    const extras = { runDir: paths.dir, cliPath: path5.resolve(process.argv[1]), ticket: { ref, source, outward, title: issueTitle, taskGoals, kind: ticketShape?.kind ?? "ticket", shape: ticketShape?.shape ?? null, readOnly: ticketShape !== null, ...documentParts === null ? {} : { documentParts } }, brief, repo: null, checkoutRoots, base: v.base ?? null, documents };
     const firstKind = route(baseStateOf({ bundle, roles, extras }), flowCtx({ ticketRef: ref, source, firstKind: null })).nextKind;
     const flow = flowFor(flowCtx({ ticketRef: ref, source, firstKind }));
     const state = createRun(flow, { bundle, loadout: LOADOUT, host: HOST, policy: null, roles, profile: PROFILE, extras });
-    const meta = { ticketRef: ref, source, outward, repo: null, branch: null, firstKind, createdAt: (/* @__PURE__ */ new Date()).toISOString() };
+    const meta = { ticketRef: ref, source, outward, repo: null, branch: null, base: null, firstKind, createdAt: (/* @__PURE__ */ new Date()).toISOString() };
     createRunDir2(paths);
+    fetchLinked(paths, { ref, source, body, title: issueTitle, comments: ticketRead.comments ?? [] });
     const bundleText = JSON.stringify(bundle, null, 2) + "\n";
     writeFileAtomic(paths.bundle, bundleText);
     const record = partyRecordFor({ slug: paths.slug, createdAt: meta.createdAt, ticketText: body, profile, roster, bundleSha256: sha256Utf8(bundleText) });
@@ -11055,19 +11885,15 @@ ${v.idea.trim()}
     const priorEnvelopes = readEnvelopes(paths).filter((e) => visitOf(e.actionId) === visitOf(actionId));
     const ration = assessRation({ ration: rationFor(rations, classId), multiplier: rations.multiplier, envelope, priorEnvelopes });
     const rawOutput = readInput(v, "output");
-    const branches = pending.kind === "dispatch-conventions" ? { branches: branchNamesOf(state.checkout) } : {};
-    const flow = flowFor(flowCtx(meta, { toolCalls: envelope.toolCalls, attachments: attachmentsFor(rawOutput), breach: ration.breached ? { actionId, visitTokens: ration.visitTokens, threshold: ration.threshold } : null, ...branches }));
+    const flow = flowFor(flowCtx(meta, { toolCalls: envelope.toolCalls, attachments: attachmentsFor(rawOutput), breach: ration.breached ? { actionId, visitTokens: ration.visitTokens, threshold: ration.threshold } : null }));
     const { state: nextState, issues } = applyReceipt(flow, state, { actionId, rawOutput, hostMeta });
     if (nextState === state) throw new KilnError(issues[0].code, issues[0].message);
     const accepted2 = isAcceptedOutcome(nextState.ledger.at(-1).outcome);
-    const namesBranch = state.repo === null && nextState.repo !== null;
-    const created = namesBranch ? createWorktree(nextState.repo) : false;
-    const repoWords = namesBranch ? repoWordsOf(nextState.repo.root) : [];
-    afterReceipt({ flow, paths, meta, state, nextState, actionId, pending, accepted: accepted2 });
-    writeFileAtomic(paths.envelope(actionId), JSON.stringify(envelope, null, 2) + "\n");
-    if (namesBranch) writeRunMeta(paths, { ...meta, repo: nextState.repo.root, branch: nextState.repo.branch, repoWords });
-    const installed = namesBranch ? created ? installDependencies(nextState.repo.root) : null : void 0;
-    return { ledger: { outcome: nextState.ledger.at(-1).outcome }, runStatus: nextState.status, breach: ration.breached ? { visitTokens: ration.visitTokens, threshold: ration.threshold } : null, omissions: ration.omissions, issues, installed, next: nextSummary(flow, nextState, paths, meta) };
+    const { installed } = settleRepo({ paths, meta, state, nextState, apply: () => {
+      afterReceipt({ flow, paths, meta, state, nextState, actionId, pending, accepted: accepted2 });
+      writeFileAtomic(paths.envelope(actionId), JSON.stringify(envelope, null, 2) + "\n");
+    } });
+    return { ledger: { outcome: nextState.ledger.at(-1).outcome }, runStatus: nextState.status, breach: ration.breached ? { visitTokens: ration.visitTokens, threshold: ration.threshold } : null, omissions: ration.omissions, issues, installed, mode: modeLineFor(state, nextState), next: nextSummary(flow, nextState, paths, meta) };
   },
   reply(args) {
     const v = flags(args, { root: { type: "string" }, ticket: { type: "string" }, action: { type: "string" }, text: { type: "string" }, file: { type: "string" } });
@@ -11081,12 +11907,11 @@ ${v.idea.trim()}
     const q = state.question;
     const changes = parseReply(text).word === "change" && takesChange(state) ? { ticketChanges: ticketChangesFor(state, readTicketBody(meta.ticketRef, meta.source, null).body) } : {};
     const flow = flowFor(flowCtx(meta, changes));
-    if (q.then === "repo" && text.trim().startsWith("/")) gitOut(text.trim(), ["rev-parse", "--git-dir"]);
-    if ((q.then === "write" || q.then === "build") && isBareYes(text) && meta.outward && state.pendingWrite !== null) writeParts(paths, meta, state, state.pendingWrite.parts);
+    if ((q.then === "write" || q.then === "build") && isBareYes(text) && meta.outward && state.pendingWrite !== null && state.ticket.readOnly !== true) writeParts(paths, meta, state, state.pendingWrite.parts);
     const { state: nextState, issues } = applyReceipt(flow, state, { actionId, rawOutput: text, hostMeta: {} });
     if (nextState === state) throw new KilnError(issues[0].code, issues[0].message);
-    afterReceipt({ flow, paths, meta, state, nextState, actionId, pending, accepted: true });
-    return { ledger: { outcome: nextState.ledger.at(-1).outcome }, runStatus: nextState.status, issues, next: nextSummary(flow, nextState, paths, meta) };
+    const { installed } = settleRepo({ paths, meta, state, nextState, apply: () => afterReceipt({ flow, paths, meta, state, nextState, actionId, pending, accepted: true }) });
+    return { ledger: { outcome: nextState.ledger.at(-1).outcome }, runStatus: nextState.status, issues, installed, mode: modeLineFor(state, nextState), next: nextSummary(flow, nextState, paths, meta) };
   },
   writes(args) {
     const [sub, ...rest2] = args;
@@ -11155,7 +11980,7 @@ ${v.idea.trim()}
     writeFileAtomic(paths.evidenceBlock, block);
     writeFileAtomic(paths.prTitle, `${title}
 `);
-    return { evidenceBlockPath: paths.evidenceBlock, worktree: state.repo.root, branch: state.repo.branch, title, titlePath: paths.prTitle };
+    return { evidenceBlockPath: paths.evidenceBlock, worktree: state.repo.root, branch: state.repo.branch, base: state.repo.base, title, titlePath: paths.prTitle };
   },
   close(args) {
     const v = flags(args, { root: { type: "string" }, ticket: { type: "string" }, "pr-url": { type: "string" } });
@@ -11163,15 +11988,14 @@ ${v.idea.trim()}
     if (state.status !== "complete") throw new KilnError("KILN_RUN_NOT_COMPLETE", `the run is ${state.status}; close after the pull request opens`);
     if (existsSync2(paths.party.report)) throw new KilnError("KILN_RUN_ALREADY_CLOSED", "the run is closed: its party report is written", { report: paths.party.report });
     const url = requireFlag(v, "pr-url");
-    const { body } = readTicketBody(meta.ticketRef, meta.source, null);
-    const linkLines = cleanTicketSection([`- ${url}`], { allow: runAllowList({ meta, state, body }) });
-    const nextBody = spliceSection(normalizeBody(body), HEADINGS.pullRequest, linkLines);
+    const readOnly = state.ticket.readOnly === true;
+    const nextBody = readOnly ? null : bodyWithLink(meta, state, url);
     const scoreboard = computeScoreboard({ roles: state.roles, envelopes: readEnvelopes(paths), rations, priceTable, ledger: state.ledger });
-    const readout = renderReadout({ state, scoreboard });
+    const readout = renderReadout({ state, scoreboard, prUrl: readOnly ? url : null });
     const record = JSON.parse(readFileSync9(paths.party.record, "utf8"));
     const reportedAt = (/* @__PURE__ */ new Date()).toISOString();
     const completed = completePartyRecord(record, { laneRuns: record.laneRuns.map((l) => ({ ...l, executionStatus: "complete" })), cost: scoreboard.cost, report: { path: paths.party.report, sha256: sha256Utf8(readout) }, reportedAt });
-    writeTicketBody(meta.ticketRef, meta.source, nextBody, paths.ticketBody);
+    if (nextBody !== null) writeTicketBody(meta.ticketRef, meta.source, nextBody, paths.ticketBody);
     writeFileAtomic(paths.readout, readout);
     writeFileAtomic(paths.party.record, JSON.stringify(completed, null, 2) + "\n");
     writeFileAtomic(paths.party.report, readout);
