@@ -2,7 +2,7 @@
   "kind": "class",
   "schemaVersion": "1.0-kernel",
   "id": "kiln:prospector",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "audience": "personal",
   "identity": {
     "name": "Prospector",
@@ -105,7 +105,7 @@
       "path": "hosts/claude-code/agents/prospector.md",
       "projection": {
         "canonicalSources": ["hosts/claude-code/agents/prospector.md"],
-        "sourceHash": "855e70f63d9e4f86ca1772c12215b8737522a5e3f6ccc825fac3a6399e1d3505"
+        "sourceHash": "9905da4e257ab341a477be85b103dd5ce213c34fc4c71a016ae1083b5bff2e19"
       }
     }
   },

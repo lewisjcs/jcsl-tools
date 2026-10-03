@@ -1,0 +1,17 @@
+{
+  "kind": "ticket-format",
+  "version": "1.1.0",
+  "layout": ["context", "functional-requirements", "non-functional-requirements", "detailed-solution", "api-specification", "excluded-scope", "open-questions"],
+  "families": {
+    "context": { "heading": "Context", "names": ["Context", "Background", "Problem", "Description", "Intent"], "part": "intent" },
+    "references": { "heading": "References", "names": ["References"], "under": "context" },
+    "functional-requirements": { "heading": "Functional Requirements", "names": ["Functional Requirements", "Acceptance Criteria", "Acceptance"], "part": "acceptance" },
+    "non-functional-requirements": { "heading": "Non-functional Requirements", "names": ["Non-functional Requirements"] },
+    "detailed-solution": { "heading": "Detailed Solution", "names": ["Detailed Solution", "Decision"], "part": "decision", "emptyWhen": ["to be done at build kickoff"] },
+    "api-specification": { "heading": "API Specification", "names": ["API Specification"] },
+    "excluded-scope": { "heading": "Excluded Scope", "names": ["Excluded Scope", "Out of Scope"] },
+    "open-questions": { "heading": "Open Questions", "names": ["Open Questions"] }
+  },
+  "emptyWhenOnly": ["_no response_"],
+  "noFamily": ["Facts", "Tasks", "Pull request"]
+}
