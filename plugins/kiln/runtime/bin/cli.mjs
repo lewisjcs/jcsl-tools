@@ -10450,15 +10450,23 @@ var MIN_MATCH_CHARS = 6;
 function normalizeCommand(text) {
   return text.trim().replace(/\s+/g, " ");
 }
-function commandWasRun(command, toolCalls) {
-  if (toolCalls?.availability !== "measured") return true;
-  const cmd = normalizeCommand(command);
-  return toolCalls.calls.some((call) => {
-    if (call.tool !== "Bash" || typeof call.target !== "string") return false;
-    const target = normalizeCommand(call.target);
-    const shorter = Math.min(cmd.length, target.length);
-    return shorter >= MIN_MATCH_CHARS && (cmd.startsWith(target) || target.startsWith(cmd));
-  });
+function callMatches(cmd, call) {
+  if (call.tool !== "Bash" || typeof call.target !== "string") return false;
+  const target = normalizeCommand(call.target);
+  const shorter = Math.min(cmd.length, target.length);
+  return shorter >= MIN_MATCH_CHARS && (cmd.startsWith(target) || target.startsWith(cmd));
+}
+function unrunChecks(evidence, toolCalls) {
+  if (toolCalls?.availability !== "measured") return [];
+  const used = /* @__PURE__ */ new Set();
+  const unrun = [];
+  for (const e of evidence) {
+    const cmd = normalizeCommand(e.command);
+    const at = toolCalls.calls.findIndex((call, i) => !used.has(i) && callMatches(cmd, call));
+    if (at === -1) unrun.push(e.check);
+    else used.add(at);
+  }
+  return unrun;
 }
 function isCompoundCall(target) {
   return /[\n;|]|&&/.test(target);
@@ -10468,7 +10476,7 @@ function checkEvidence({ outcome, doneWhen, toolCalls }) {
   if (checks.length !== doneWhen.length || checks.some((c, i) => c !== i + 1)) {
     return rejection({ code: "KILN_EVIDENCE_COUNT", label: `one evidence item per check, numbered 1 to ${doneWhen.length} in order`, details: [`got checks [${checks.join(", ")}]`], tag: "evidence", reason: "evidence-count" });
   }
-  const unrun = outcome.evidence.filter((e) => !commandWasRun(e.command, toolCalls)).map((e) => e.check);
+  const unrun = unrunChecks(outcome.evidence, toolCalls);
   if (unrun.length > 0) {
     const details = [`check ${unrun.join(", ")} cites a command no Bash call ran`];
     if (toolCalls.calls.some((call) => call.tool === "Bash" && isCompoundCall(call.target))) details.push("one Bash call was a compound command (a heredoc, a chain, or a variable before the command). Run each check as its own call");
