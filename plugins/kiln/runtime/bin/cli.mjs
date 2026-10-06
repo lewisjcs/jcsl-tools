@@ -10220,6 +10220,45 @@ function slugOf(ref) {
 function resolveRunsRoot({ flag, env = process.env, home = homedir() }) {
   return resolveStoreRoot({ flag, env, home, stateSubpath: ["kiln", "runs"] });
 }
+function resolveJiraStore({ env = process.env, home = homedir() } = {}) {
+  return resolveStoreRoot({ env, home, stateSubpath: ["kiln", "jira"] });
+}
+function jiraCapturePaths(store, key) {
+  const dir = path4.join(store, key);
+  return Object.freeze({ dir, request: path4.join(dir, "request.json"), capture: path4.join(dir, "capture.json"), answer: path4.join(dir, "answer.json"), refusedCapture: path4.join(dir, "refused-capture.json"), refusedAnswer: path4.join(dir, "refused-answer.json") });
+}
+function readJsonOrNull(file) {
+  try {
+    return JSON.parse(readFileSync8(file, "utf8"));
+  } catch {
+    return null;
+  }
+}
+function readJiraRequest(paths) {
+  return readJsonOrNull(paths.request);
+}
+function writeJiraRequest(paths, request) {
+  mkdirSync2(paths.dir, { recursive: true });
+  clearJiraCapture(paths);
+  writeFileAtomic(paths.request, JSON.stringify(request, null, 2) + "\n");
+}
+function clearJiraRequest(paths) {
+  rmSync(paths.request, { force: true });
+}
+function readJiraCapture(paths) {
+  const capture = readJsonOrNull(paths.capture);
+  if (capture === null) return null;
+  return { capture, answer: existsSync(paths.answer) ? readFileSync8(paths.answer, "utf8") : null };
+}
+function setJiraCaptureAside(paths) {
+  renameSync2(paths.capture, paths.refusedCapture);
+  rmSync(paths.refusedAnswer, { force: true });
+  if (existsSync(paths.answer)) renameSync2(paths.answer, paths.refusedAnswer);
+}
+function clearJiraCapture(paths) {
+  rmSync(paths.capture, { force: true });
+  rmSync(paths.answer, { force: true });
+}
 function runPathsFor(root, ref) {
   const slug = slugOf(ref);
   const dir = path4.join(root, slug);
@@ -11571,6 +11610,33 @@ ${description.text}
   };
 }
 
+// src/jira-capture.mjs
+var JIRA_FIELDS = Object.freeze(["summary", "description", "comment", "issuelinks", "parent"]);
+var REQUEST_TTL_MS = 6e5;
+function requestOf(key, now) {
+  return { key, at: new Date(now).toISOString(), fields: [...JIRA_FIELDS], responseContentFormat: "markdown", updateHistory: false };
+}
+function requestOpen(request, key, now) {
+  const at = Date.parse(request?.at);
+  return request?.key === key && Number.isFinite(at) && now >= at && now - at <= REQUEST_TTL_MS;
+}
+function captureFresh(capture, key, now) {
+  return requestOpen(capture?.request, key, now);
+}
+function captureFault(capture, key) {
+  if (capture === null || typeof capture !== "object") return "the capture file is not a capture";
+  if (typeof capture.problem === "string") return capture.problem;
+  if (capture.key !== key || capture.toolInput?.issueIdOrKey !== key) return "the capture is for another key";
+  if (!(Date.parse(capture.savedAt) >= Date.parse(capture.request?.at))) return "the capture is older than its request";
+  const asked = capture.toolInput?.fields;
+  if (!Array.isArray(asked) || JIRA_FIELDS.some((field) => !asked.includes(field)) || capture.toolInput.responseContentFormat !== "markdown") return "the tool was not asked for the fields and the form of the request";
+  return null;
+}
+function ticketNodeOf(json) {
+  const node = json?.issues?.nodes?.[0];
+  return node !== null && typeof node === "object" ? node : null;
+}
+
 // src/writes.mjs
 function measureWrites({ before, after, committed }) {
   const paths = new Set(committed);
@@ -11798,7 +11864,7 @@ function jiraTimeoutSecondsOf(env) {
 }
 function jiraView(key, env = process.env) {
   const argv = viewArgv(env.KILN_JIRA_VIEW, key);
-  if (argv === null) throw new KilnError("KILN_JIRA_VIEW_UNSET", `KILN_JIRA_VIEW names the command that prints one Jira ticket as JSON, with {key} where the ticket key goes. Set it under env in the profile's settings.json, for example "env": { "KILN_JIRA_VIEW": "<command> {key} --json" }. ${JIRA_FORM}`, { value: env.KILN_JIRA_VIEW ?? "" });
+  if (argv === null) throw new KilnError("KILN_JIRA_VIEW_UNSET", `KILN_JIRA_VIEW is set and holds no {key}. It names the command that prints one Jira ticket as JSON, with {key} where the ticket key goes, for example "env": { "KILN_JIRA_VIEW": "<command> {key} --json" } in the profile's settings.json. Remove the setting to read through the session's Jira read tool. ${JIRA_FORM}`, { value: env.KILN_JIRA_VIEW ?? "" });
   const [bin, ...args] = argv;
   const seconds = jiraTimeoutSecondsOf(env);
   const res = spawnSync(bin, args, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], maxBuffer: 64 * 1024 * 1024, timeout: Math.ceil(seconds * 1e3), killSignal: "SIGKILL" });
@@ -11807,25 +11873,85 @@ function jiraView(key, env = process.env) {
   if (res.status !== 0) throw new KilnError("KILN_JIRA_FAILED", `${argv.join(" ")}: ${jiraErrorText((res.stderr ?? "").trim() || res.error?.message || `exit ${res.status}`)}. If the tool is not logged in, log in from your own terminal; the run never starts a login.`, { args: argv });
   return res.stdout;
 }
-function readJiraTicket(key) {
-  const raw = jiraView(key);
+function jiraByCommand(env = process.env) {
+  return typeof env.KILN_JIRA_VIEW === "string" && env.KILN_JIRA_VIEW.trim() !== "";
+}
+function jiraReadNeeded(keys) {
+  return new KilnError("KILN_JIRA_READ_NEEDED", `The run needs ${keys.join(", ")} from Jira, and no Jira command is named. For each key, call the session's Jira read tool, the tool whose name ends in getJiraIssue, with issueIdOrKey and cloudId only. Then run the command again as the build skill says.`, { keys });
+}
+function jiraCaptureOf(key, now = Date.now()) {
+  const paths = jiraCapturePaths(resolveJiraStore(), key);
+  const saved = readJiraCapture(paths);
+  if (saved !== null && captureFresh(saved.capture, key, now)) {
+    const fault = captureFault(saved.capture, key) ?? (saved.answer === null ? "the answer file is absent" : null);
+    if (fault !== null) {
+      setJiraCaptureAside(paths);
+      throw new KilnError("KILN_JIRA_CAPTURE", `the saved answer of the Jira read tool for ${key} cannot be used: ${fault}. The capture is kept at ${paths.refusedCapture}. The next command asks for the read again.`, { ref: key, capture: paths.refusedCapture, fault });
+    }
+    return { state: "text", answer: saved.answer, paths };
+  }
+  return { state: requestOpen(readJiraRequest(paths), key, now) ? "asked" : "none", paths };
+}
+function jiraCaptured(key, { ask: ask2 }) {
+  const found = jiraCaptureOf(key);
+  if (found.state === "text") return found.answer;
+  if (found.state === "none" && ask2) {
+    writeJiraRequest(found.paths, requestOf(key, Date.now()));
+    throw jiraReadNeeded([key]);
+  }
+  clearJiraRequest(found.paths);
+  throw new KilnError("KILN_JIRA_NOT_READ", `no answer of the Jira read tool was saved for ${key}. One of three things happened. The session has no Jira read tool. The call failed, as it does with no login or no access to the ticket. Or the session started before the kiln plugin was updated and did not load its hook: start a new session. The next command asks for the read again.`, { ref: key });
+}
+var jiraReads = /* @__PURE__ */ new Map();
+function readJiraTicket(key, { ask: ask2 = true } = {}) {
+  const byCommand = jiraByCommand();
+  if (!byCommand && jiraReads.has(key)) return jiraReads.get(key);
+  const raw = byCommand ? jiraView(key) : jiraCaptured(key, { ask: ask2 });
+  const origin = byCommand ? "the Jira command's output" : "the answer of the Jira read tool";
   let json;
   try {
     json = JSON.parse(raw);
   } catch {
-    throw new KilnError("KILN_JIRA_OUTPUT", `the Jira command did not print JSON for ${key}; KILN_JIRA_VIEW must name a command and the flags that make it print JSON`, { ref: key });
+    throw new KilnError("KILN_JIRA_OUTPUT", byCommand ? `the Jira command did not print JSON for ${key}; KILN_JIRA_VIEW must name a command and the flags that make it print JSON` : `the answer of the Jira read tool for ${key} is not JSON`, { ref: key });
   }
-  const ticket = jiraTicketOf(json);
-  if (ticket.unreadable !== void 0) throw new KilnError("KILN_JIRA_SHAPE", `the Jira command's output for ${key} has ${ticket.unreadable}. It saw these field names: ${ticket.keys.join(", ")}. ${JIRA_FORM}`, { ref: key, keys: ticket.keys });
-  return { ...ticket, raw };
+  const node = byCommand ? json : ticketNodeOf(json);
+  if (node === null) {
+    const keys = json !== null && typeof json === "object" ? Object.keys(json).sort() : [];
+    throw new KilnError("KILN_JIRA_SHAPE", `${origin} for ${key} holds no ticket at issues.nodes[0]. It saw these field names: ${keys.join(", ")}.`, { ref: key, keys });
+  }
+  const ticket = jiraTicketOf(node);
+  if (ticket.unreadable !== void 0) throw new KilnError("KILN_JIRA_SHAPE", `${origin} for ${key} has ${ticket.unreadable}. It saw these field names: ${ticket.keys.join(", ")}.${byCommand ? ` ${JIRA_FORM}` : ""}`, { ref: key, keys: ticket.keys });
+  const read = { ...ticket, raw };
+  if (!byCommand) jiraReads.set(key, read);
+  return read;
 }
 function fetchJiraItem(key) {
   try {
-    return readJiraTicket(key).body;
+    const { body } = readJiraTicket(key, { ask: false });
+    if (!jiraByCommand()) clearJiraCapture(jiraCapturePaths(resolveJiraStore(), key));
+    return body;
   } catch (err) {
     if (err instanceof KilnError) return null;
     throw err;
   }
+}
+function needLinkedJira(ref, links) {
+  if (jiraByCommand()) return;
+  const needed = [];
+  for (const key of new Set(links)) {
+    if (key === ref) continue;
+    let found;
+    try {
+      found = jiraCaptureOf(key);
+    } catch (err) {
+      if (err instanceof KilnError) continue;
+      throw err;
+    }
+    if (found.state !== "none") continue;
+    writeJiraRequest(found.paths, requestOf(key, Date.now()));
+    needed.push(key);
+  }
+  if (needed.length > 0) throw jiraReadNeeded(needed);
 }
 function readGithubIssue(ref) {
   const { repo, number } = githubIssueOf(ref);
@@ -12109,7 +12235,7 @@ function detailTicketBody(meta) {
   try {
     return { body: readTicketBody(meta.ticketRef, meta.source, null).body, notRead: null };
   } catch (err) {
-    if (!(err instanceof KilnError) || !outwardOf(meta.source)) throw err;
+    if (!(err instanceof KilnError) || !outwardOf(meta.source) || err.code === "KILN_JIRA_READ_NEEDED") throw err;
     return { body: null, notRead: `The ticket was not read (${err.code}), so this detail holds no comparison with the ticket. The next command reads the ticket again.` };
   }
 }
@@ -12153,11 +12279,18 @@ function nextSummary(flow, state, paths, meta) {
     out.promptBody = briefLine(briefPath);
   }
   if (pending.kind === "ask-person") {
+    let detail;
+    try {
+      detail = questionDetail(meta, state);
+    } catch (err) {
+      if (err instanceof KilnError && err.code === "KILN_JIRA_READ_NEEDED") return { terminal: false, jiraRead: { keys: err.details.keys, message: err.message } };
+      throw err;
+    }
     const questionPath = paths.question(pending.actionId);
     writeFileAtomic(questionPath, `${pending.promptBody}
 
 ---
-${questionDetail(meta, state)}`);
+${detail}`);
     out.questionPath = questionPath;
   }
   return out;
@@ -12276,6 +12409,7 @@ ${v.idea.trim()}
 `);
     }
     const ticketRead = readTicketBody(ref, source, null);
+    if (source === "jira" && (!runExists(paths) || v.again === true)) needLinkedJira(ref, ticketRead.links ?? []);
     const body = withContextHeading(ticketRead.body, ticketFormat);
     const ticketShape = source === "markdown" ? documentKindOf(body, ref) : null;
     const fromTicket = ticketShape === null ? readTicket(body, ticketFormat) : null;
