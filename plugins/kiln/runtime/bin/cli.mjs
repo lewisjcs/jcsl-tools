@@ -2217,20 +2217,20 @@ var require_resolve = __commonJS({
       return false;
     }
     function countKeys(schema) {
-      let count = 0;
+      let count2 = 0;
       for (const key in schema) {
         if (key === "$ref")
           return Infinity;
-        count++;
+        count2++;
         if (SIMPLE_INLINED.has(key))
           continue;
         if (typeof schema[key] == "object") {
-          (0, util_1.eachItem)(schema[key], (sch) => count += countKeys(sch));
+          (0, util_1.eachItem)(schema[key], (sch) => count2 += countKeys(sch));
         }
-        if (count === Infinity)
+        if (count2 === Infinity)
           return Infinity;
       }
-      return count;
+      return count2;
     }
     function getFullPath(resolver, id = "", normalize) {
       if (normalize !== false)
@@ -5712,8 +5712,8 @@ var require_contains = __commonJS({
         cxt.result(valid, () => cxt.reset());
         function validateItemsWithCount() {
           const schValid = gen.name("_valid");
-          const count = gen.let("count", 0);
-          validateItems(schValid, () => gen.if(schValid, () => checkLimits(count)));
+          const count2 = gen.let("count", 0);
+          validateItems(schValid, () => gen.if(schValid, () => checkLimits(count2)));
         }
         function validateItems(_valid, block) {
           gen.forRange("i", 0, len, (i) => {
@@ -5726,16 +5726,16 @@ var require_contains = __commonJS({
             block();
           });
         }
-        function checkLimits(count) {
-          gen.code((0, codegen_1._)`${count}++`);
+        function checkLimits(count2) {
+          gen.code((0, codegen_1._)`${count2}++`);
           if (max === void 0) {
-            gen.if((0, codegen_1._)`${count} >= ${min}`, () => gen.assign(valid, true).break());
+            gen.if((0, codegen_1._)`${count2} >= ${min}`, () => gen.assign(valid, true).break());
           } else {
-            gen.if((0, codegen_1._)`${count} > ${max}`, () => gen.assign(valid, false).break());
+            gen.if((0, codegen_1._)`${count2} > ${max}`, () => gen.assign(valid, false).break());
             if (min === 1)
               gen.assign(valid, true);
             else
-              gen.if((0, codegen_1._)`${count} >= ${min}`, () => gen.assign(valid, true));
+              gen.if((0, codegen_1._)`${count2} >= ${min}`, () => gen.assign(valid, true));
           }
         }
       }
@@ -9295,17 +9295,38 @@ function sectionText(body, heading) {
   if (!range2) return "";
   return lines.slice(range2.start + 1, range2.end).filter((l) => !MARKER.test(l)).join("\n").replace(/^\n+|\n+$/g, "");
 }
-var FENCE = /^ {0,3}(`{3,}|~{3,})/;
-function titleIndexOf(lines) {
-  let fence = null;
-  for (let i = 0; i < lines.length; i += 1) {
-    const m = FENCE.exec(lines[i]);
-    if (m !== null) {
-      if (fence === null) fence = m[1];
-      else if (m[1][0] === fence[0] && m[1].length >= fence.length) fence = null;
-    } else if (fence === null && /^# /.test(lines[i])) return i;
+var FENCE_OPEN = /^( {0,3})((?:[-+*]|[0-9]{1,9}[.)]) {1,4})?(`{3,}(?!.*`)|~{3,})/;
+var FENCE_CLOSE = /^( *)(`{3,}(?!.*`)|~{3,})/;
+function fenceOpenedBy(line) {
+  const m = FENCE_OPEN.exec(line);
+  if (m === null) return null;
+  const at = m[1].length + (m[2]?.length ?? 0);
+  return { run: m[3], at, limit: (m[2] === void 0 ? 0 : at) + 3, marker: m[2] !== void 0 };
+}
+function fenceClosedBy(fence, line) {
+  const m = FENCE_CLOSE.exec(line);
+  return m !== null && m[1].length <= fence.limit && m[2][0] === fence.run[0] && m[2].length >= fence.run.length;
+}
+function fenceStep(fence, line) {
+  if (fence !== null) {
+    if (fenceClosedBy(fence, line)) return { fence: null, inside: true };
+    const endsItem = fence.marker && line.trim() !== "" && line.length - line.trimStart().length < fence.at;
+    if (!endsItem) return { fence, inside: true };
   }
-  return -1;
+  const opened = fenceOpenedBy(line);
+  return { fence: opened, inside: opened !== null };
+}
+function codeLinesOf(lines) {
+  let fence = null;
+  return lines.map((line) => {
+    const step = fenceStep(fence, line);
+    fence = step.fence;
+    return step.inside;
+  });
+}
+function titleIndexOf(lines) {
+  const code = codeLinesOf(lines);
+  return lines.findIndex((l, i) => !code[i] && /^# /.test(l));
 }
 function titleOf(body) {
   const lines = body.split("\n");
@@ -9331,9 +9352,10 @@ function renderPart(part, value, date) {
   return value.by === "party" ? [markerLine(date), ...lines] : lines;
 }
 function headingsOf(lines) {
+  const code = codeLinesOf(lines);
   const out = [];
   lines.forEach((l, i) => {
-    const m = HEADING.exec(l);
+    const m = code[i] ? null : HEADING.exec(l);
     if (m !== null && m[1].length > 1) out.push({ level: m[1].length, text: m[2].trim(), line: i });
   });
   return out;
@@ -9720,6 +9742,9 @@ function renderDiscoverPrompt(state) {
   const kindLine = state.ticket.shape !== null ? `The ticket is a ${state.ticket.kind} by its shape. Answer \`- kind: ${state.ticket.kind} (source: its shape)\`.` : "Classify the ticket document: `ticket`, `plan`, or `decision`. For `plan` or `decision`, the source is the ticket lines that show it, as `ticket:<from>-<to>`. A plain ticket needs no lines.";
   const givenPlan = state.documents.plan;
   const planLine = givenPlan !== null && givenPlan.kind === null ? [`## A document given beside the ticket: ${givenPlan.path}`, "Its shape is unknown. Read it and answer `- document: <its path> is a <plan|decision> (source: <its lines that show its kind>)`.", ""] : givenPlan !== null && givenPlan.kind === "decision" ? [`## The decision: ${givenPlan.path}`, "A decision document exists beside the ticket. The run reads it once this step settles.", ""] : givenPlan !== null || state.ticket.kind === "plan" ? [`## The plan: ${givenPlan?.path ?? state.ticket.ref}`, "A plan exists. Under `## Changes since the plan`, list every ticket comment newer than the plan file's last change and every merged pull request for the ticket key or title, one bullet each with a source.", ""] : ["## A plan or a decision document", "Look for one that names the ticket key or title under the checkout folders and the fetched items. When you find one, answer `- document: <absolute path> is a <plan|decision> (source: the lines that name the ticket)`. Otherwise write no document bullet.", ""];
+  const jira = state.ticket.source === "jira";
+  const defaultBranch = jira ? `<type>/${state.ticket.ref}-<slug>` : "<type>/<slug>";
+  const keyLine = jira ? [`The ticket is the Jira ticket ${state.ticket.ref}. The branch name or the pull request title must hold the key ${state.ticket.ref}, in capitals as written here, inside the repository's own conventions, because Jira links a pull request by the key. When the repository's branch rule does not allow the key in the branch name, put the key at the front of the pull request title.`] : [];
   return [
     ...opening("You are the finder (kiln:prospector), one member of a build Party. Find where this ticket's work lives before any branch exists: the repository, the base branch, the branch name, the pull request title, and the kind of document the ticket is. Stop for nothing. What you cannot settle is a gap with a proposal.", fence),
     ...retryLines(state, "dispatch-discover", fence),
@@ -9739,7 +9764,8 @@ function renderDiscoverPrompt(state) {
     ...planLine,
     "## Conventions at the base",
     "Read the repository's branch and pull request conventions with `git -C <checkout> show origin/<base>:<path>` for `CLAUDE.md`, `AGENTS.md`, `.github/PULL_REQUEST_TEMPLATE.md`, and any `SKILL.md` under `.claude/skills/` that speaks of branches. Never read them from the working files: the checkout can sit on another branch. Run `git -C <checkout> fetch origin` first.",
-    'When the repository states no branch rule, the branch is `<type>/<slug>`. The type is one of feat, fix, chore, docs, refactor, or test, chosen from the intent. The slug is three to six lowercase words joined by hyphens. The source reads "no convention found, the default shape". When the repository states no title rule, the title is the ticket title when it has one. Otherwise it is the first sentence of the intent, at most 80 characters, cut at a word boundary. The branch name must not be one that already exists.',
+    `When the repository states no branch rule, the branch is \`${defaultBranch}\`. The type is one of feat, fix, chore, docs, refactor, or test, chosen from the intent. The slug is three to six lowercase words joined by hyphens. The source reads "no convention found, the default shape". When the repository states no title rule, the title is the ticket title when it has one. Otherwise it is the first sentence of the intent, at most 80 characters, cut at a word boundary. The branch name must not be one that already exists.`,
+    ...keyLine,
     "",
     "## Commands you may run",
     "Only these, each as its own Bash call, with the placeholders filled:",
@@ -10207,6 +10233,7 @@ function runPathsFor(root, ref) {
     handed: path4.join(dir, "handed"),
     writes: path4.join(dir, "writes"),
     fetched: path4.join(dir, "fetched"),
+    original: path4.join(dir, "original"),
     discoverReport: path4.join(dir, "discover-report.md"),
     party: Object.freeze({ dir: path4.join(dir, "party"), record: path4.join(dir, "party", "party-record.json"), report: path4.join(dir, "party", "report.md") }),
     ticketBody: path4.join(dir, "ticket-body.md"),
@@ -10225,7 +10252,7 @@ function runExists(paths) {
 function createRunDir2(paths) {
   if (existsSync(paths.meta)) throw new KilnError("KILN_RUN_EXISTS", `a run already exists for this ticket at ${paths.dir}; open resumes it`, { dir: paths.dir });
   rmSync(paths.dir, { recursive: true, force: true });
-  for (const d of [paths.dir, paths.handed, paths.writes, paths.fetched, paths.party.dir]) mkdirSync2(d, { recursive: true });
+  for (const d of [paths.dir, paths.handed, paths.writes, paths.fetched, paths.original, paths.party.dir]) mkdirSync2(d, { recursive: true });
 }
 function setRunAside(paths, stamp) {
   const aside = `${paths.dir}.abandoned-${stamp}`;
@@ -10436,10 +10463,21 @@ function route(state, ctx) {
 function buildAsk(state, ctx) {
   const n2 = state.brief.tasks.plan.length;
   const repoName = state.repo.checkout.split("/").filter(Boolean).pop();
-  const names = (state.pendingWrite?.parts ?? []).filter((p) => TICKET_PARTS.includes(p)).map((p) => ctx.ticketFormat.families[FAMILY_OF_PART[p]].heading);
-  const write = names.length > 0 ? ` The ${joinNames(names)} section${names.length > 1 ? "s" : ""} will be written to the ticket; the diff is in the detail.` : "";
+  const rank = (part) => ctx.ticketFormat.layout.indexOf(FAMILY_OF_PART[part]);
+  const names = (state.pendingWrite?.parts ?? []).filter((p) => TICKET_PARTS.includes(p)).sort((a, b) => rank(a) - rank(b)).map((p) => ctx.ticketFormat.families[FAMILY_OF_PART[p]].heading);
   const cut = state.repo.base === void 0 ? "" : `, cut from ${state.repo.base}`;
-  return `The plan has ${plural(n2, "task")}. The work lands in ${repoName} on the branch ${state.repo.branch}${cut}.${write} Ready to build?`;
+  return `The plan has ${plural(n2, "task")}. The work lands in ${repoName} on the branch ${state.repo.branch}${cut}.${ticketWriteLine(state, names)} Ready to build?`;
+}
+function ticketWriteLine(state, names) {
+  const sections = `${joinNames(names)} section${names.length > 1 ? "s" : ""}`;
+  if (state.ticket.source !== "jira") return names.length === 0 ? "" : ` The ${sections} will be written to the ticket; the diff is in the detail.`;
+  if (names.length === 0) return " This release writes nothing to the Jira ticket.";
+  return ` The run filled the ${sections}. This release writes nothing to the Jira ticket. The filled text is in the detail, to paste by hand.`;
+}
+function unwrittenAtBuild(state) {
+  if (state.ticket.source !== "jira") return {};
+  const shown = (state.pendingWrite?.parts ?? []).filter((p) => TICKET_PARTS.includes(p));
+  return { ticket: { ...state.ticket, unwritten: [.../* @__PURE__ */ new Set([...state.ticket.unwritten ?? [], ...shown])] } };
 }
 function discoverQuestion(state) {
   const gaps = state.discoverGaps;
@@ -10585,9 +10623,9 @@ function memberReform(state, ctx, requiredRole, reason, fields) {
   if (!REFORM_TARGETS.has(classKey)) {
     return rejection({ code: "KILN_REFORM_ROLE_UNKNOWN", label: `a member reform may only name kiln:designer or kiln:planner; "${requiredRole}" is neither`, details: [], tag: "reform", reason: "reform-role-unknown" });
   }
-  const count = state.reformCounts[classKey];
-  if (count >= MAX_REFORMS_PER_ROLE) {
-    return rejection({ code: "KILN_REFORM_LIMIT", label: `${requiredRole} has already been named in ${count} member reforms this run; no more are admitted`, details: [], tag: "reform", reason: "reform-limit" });
+  const count2 = state.reformCounts[classKey];
+  if (count2 >= MAX_REFORMS_PER_ROLE) {
+    return rejection({ code: "KILN_REFORM_LIMIT", label: `${requiredRole} has already been named in ${count2} member reforms this run; no more are admitted`, details: [], tag: "reform", reason: "reform-limit" });
   }
   const withReform = withRole(state, ctx, classKey, "member-reform", reason, fields);
   const redesign = classKey === "designer" ? { brief: { ...state.brief, decision: null, acceptance: null }, cleared: [.../* @__PURE__ */ new Set([...state.cleared ?? [], "decision", "acceptance"])] } : {};
@@ -10602,7 +10640,7 @@ ${reason}` } } : {};
     question: null,
     lastFilled: [],
     lastReform: withReform.lastReform ?? null,
-    reformCounts: { ...state.reformCounts, [classKey]: count + 1 }
+    reformCounts: { ...state.reformCounts, [classKey]: count2 + 1 }
   });
 }
 function stillCleared(state, filled) {
@@ -10664,7 +10702,7 @@ function acceptPerson(state, ctx, text) {
         return { fields: { question: { ...asked, reply: text, leaks: [], detail: `${asked.detail}
 The answer to ${repositoryGap.n} must be the absolute path of a folder directly under one of the checkout folders: ${state.checkoutRoots.join(", ")}.` }, lastFilled: [] }, status: "asking", nextKind: "ask-person" };
       }
-      const next = draftWithAnswers(draft, state.discoverGaps, answers);
+      const next = draftWithAnswers(draft, state.discoverGaps, answers, state.ticket);
       const intentGap = state.discoverGaps.find((g) => g.key === "intent");
       if (intentGap !== void 0 && answers.has(intentGap.n)) {
         const leaks = leakWords(ctx, [answers.get(intentGap.n)], next.repository);
@@ -10678,7 +10716,7 @@ The answer to ${repositoryGap.n} must be the absolute path of a folder directly 
     case "write":
       return consent ? accepted(state, ctx, { ...base, pendingWrite: null }) : reask();
     case "build":
-      return consent ? accepted(state, ctx, { ...base, pendingWrite: null, buildApproved: true }) : reask();
+      return consent ? accepted(state, ctx, { ...base, pendingWrite: null, buildApproved: true, ...unwrittenAtBuild(state) }) : reask();
     case "retry":
       return word === "retry" ? retryStage(base, q.retryKind, rest2, null, null) : reask();
     case "failed":
@@ -10783,6 +10821,12 @@ function branchNameIssue(name, branches) {
     return { label: `the branch "${name}" has ${plural(segments, "slash segment")}, but most existing branches have ${ranked[0][0]}; follow their shape${seen}`, details: [] };
   }
   return null;
+}
+function ticketKeyIssue(ticket, branch, title) {
+  if (ticket.source !== "jira") return null;
+  const key = new RegExp(`(?<![A-Za-z0-9])${ticket.ref}(?![0-9])`);
+  if (key.test(branch) || key.test(title)) return null;
+  return { label: `neither the branch "${branch}" nor the pull request title "${title}" holds the ticket key ${ticket.ref}; Jira links a pull request by the key, so put it in one of them, inside the repository's own conventions` };
 }
 var ANSWER = /^([a-z-]+): (.*?)\s*\((source: (.+)|sources disagree: (.+))\)$/;
 var REQUIRED_ANSWERS = ["repository", "base", "branch", "title", "kind"];
@@ -10954,9 +10998,12 @@ function settleDiscover(state, ctx, draft, parsed, base) {
   const invalid = draft.reviewed ? null : briefRejection(brief, "discover", "the brief from the discover report");
   if (invalid !== null) return invalid;
   const issue = branchNameIssue(draft.branch, facts.branches);
+  const keyIssue = ticketKeyIssue(state.ticket, draft.branch, draft.title);
   const branchGap = found.find((g) => g.key === "branch");
+  if (keyIssue !== null && !draft.reviewed) return rejection({ code: "KILN_TICKET_KEY", label: issue === null ? keyIssue.label : `${keyIssue.label}; also, ${issue.label}`, details: issue === null ? [] : issue.details, tag: "ticket-key", reason: "ticket-key" });
   if (issue !== null && branchGap === void 0 && !draft.reviewed) return rejection({ code: "KILN_BRANCH_NAME", label: issue.label, details: issue.details, tag: "branch", reason: "branch-name" });
-  const gaps = issue === null ? found : branchGap !== void 0 ? found.map((g) => g === branchGap ? { ...g, text: `${g.text}; ${issue.label}` } : g) : [...found, { n: found.length + 1, key: "branch", text: issue.label, proposal: `answer ${found.length + 1}: <a new branch name>` }];
+  const branchGaps = issue === null ? found : branchGap !== void 0 ? found.map((g) => g === branchGap ? { ...g, text: `${g.text}; ${issue.label}` } : g) : [...found, { n: found.length + 1, key: "branch", text: issue.label, proposal: `answer ${found.length + 1}: <a new branch name>` }];
+  const gaps = keyIssue === null ? branchGaps : [...branchGaps, { n: branchGaps.length + 1, key: "ticket-key", text: keyIssue.label, proposal: `${state.ticket.ref} ${draft.title}` }];
   if (gaps.length > 0) return ask(discoverQuestion({ ...state, discoverGaps: gaps }), { ...base, discoverGaps: gaps, discoverDraft: { draft, parsed } });
   const resolvedBase = draft.base === "default" ? facts.defaultBranch : draft.base;
   const root = `${draft.repository}/.worktrees/${draft.branch.replaceAll("/", "-")}`;
@@ -11025,7 +11072,7 @@ function parseGapAnswers(text, gaps) {
   }
   return answers;
 }
-function draftWithAnswers(draft, gaps, answers) {
+function draftWithAnswers(draft, gaps, answers, ticket) {
   const next = { ...draft, reviewed: true, notes: draft.notes.map((n2) => ({ ...n2 })) };
   for (const g of gaps) {
     const answer = answers.get(g.n) ?? null;
@@ -11041,6 +11088,11 @@ function draftWithAnswers(draft, gaps, answers) {
         break;
       case "title":
         if (answer !== null) next.title = answer;
+        break;
+      // An answer is the new title. With no answer, the key goes at the front of the title, unless an answer in the same reply put it in the branch. The key gap is the last gap, so `next.branch` already holds that answer.
+      case "ticket-key":
+        if (answer !== null) next.title = answer;
+        else if (ticketKeyIssue(ticket, next.branch, next.title) !== null) next.title = g.proposal;
         break;
       case "intent":
         next.intentAccepted = true;
@@ -11340,6 +11392,185 @@ function flowFor(ctx) {
   };
 }
 
+// src/jira.mjs
+var KEY = /^[A-Z][A-Z0-9]+-[0-9]+$/;
+var BROWSE_LINK = /https?:\/\/[^\s)>\]]+\/browse\/([A-Z][A-Z0-9]+-[0-9]+)(?![A-Za-z0-9])/g;
+var TEXT_HEADING = /^(#{1,6}) (.*\S)\s*$/;
+function literalLine(line) {
+  if (TEXT_HEADING.test(line)) return `\\${line}`;
+  const fence = fenceOpenedBy(line);
+  return fence === null ? line : `${line.slice(0, fence.at)}\\${line.slice(fence.at)}`;
+}
+function textLines(text) {
+  return text.split("\n").map(literalLine);
+}
+function codeFenceFor(text) {
+  const longest = Math.max(0, ...[...text.matchAll(/`+/g)].map((m) => m[0].length));
+  return "`".repeat(Math.max(3, longest + 1));
+}
+function viewArgv(setting, key) {
+  const parts = (setting ?? "").trim().split(/\s+/).filter((part) => part.length > 0);
+  if (!parts.some((part) => part.includes("{key}"))) return null;
+  return parts.map((part) => part.replaceAll("{key}", key));
+}
+function count(skipped, kind2) {
+  skipped.set(kind2, (skipped.get(kind2) ?? 0) + 1);
+}
+function inlineText(node, skipped) {
+  switch (node.type) {
+    case "text": {
+      const marks = node.marks ?? [];
+      const text = marks.some((m) => m.type === "code") ? `\`${node.text}\`` : node.text;
+      const href = marks.find((m) => m.type === "link")?.attrs?.href;
+      return href === void 0 || href === node.text ? text : `[${text}](${href})`;
+    }
+    case "hardBreak":
+      return "\n";
+    case "mention":
+    case "status":
+      return node.attrs?.text ?? "";
+    case "emoji":
+      return node.attrs?.text ?? node.attrs?.shortName ?? "";
+    case "inlineCard":
+      return node.attrs?.url ?? "";
+    case "date": {
+      const at = Number(node.attrs?.timestamp);
+      return Number.isFinite(at) ? new Date(at).toISOString().slice(0, 10) : "";
+    }
+    default:
+      count(skipped, String(node.type));
+      return "";
+  }
+}
+function inlines(nodes, skipped) {
+  return (nodes ?? []).map((node) => inlineText(node, skipped)).join("");
+}
+function blank(lines) {
+  return lines.every((line) => line.trim() === "");
+}
+function listLines(items, skipped) {
+  return (items ?? []).flatMap((item) => {
+    const lines = (item.content ?? []).flatMap((child) => blockLines(child, skipped) ?? []);
+    return blank(lines) ? [] : lines.map((line, i) => i === 0 ? `- ${line}` : `  ${line}`);
+  });
+}
+function taskListLines(children, skipped) {
+  return (children ?? []).flatMap((child) => {
+    if (child.type === "taskList") return taskListLines(child.content, skipped).map((line) => `  ${line}`);
+    const lines = textLines(inlines(child.content, skipped));
+    if (blank(lines)) return [];
+    const [first, ...rest2] = lines;
+    return [`- [${child.attrs?.state === "DONE" ? "x" : " "}] ${first}`, ...rest2.map((line) => `  ${line}`)];
+  });
+}
+function blockLines(node, skipped) {
+  switch (node.type) {
+    case "paragraph":
+      return textLines(inlines(node.content, skipped));
+    case "heading":
+      return [`${"#".repeat(Math.min((node.attrs?.level ?? 1) + 1, 6))} ${inlines(node.content, skipped).replace(/\n/g, " ")}`];
+    case "bulletList":
+    case "orderedList":
+      return listLines(node.content, skipped);
+    case "taskList":
+      return taskListLines(node.content, skipped);
+    case "codeBlock": {
+      const text = inlines(node.content, skipped);
+      const fence = codeFenceFor(text);
+      const language = (node.attrs?.language ?? "").replace(/[`\s]/g, "");
+      return [`${fence}${language}`, ...text.split("\n"), fence];
+    }
+    case "blockquote":
+      return blocksText(node.content, skipped).map((line) => line === "" ? ">" : `> ${line}`);
+    case "panel":
+    case "expand":
+    case "nestedExpand":
+      return [...node.attrs?.title ? [literalLine(node.attrs.title), ""] : [], ...blocksText(node.content, skipped)];
+    case "blockCard":
+    case "embedCard": {
+      const url = node.attrs?.url;
+      if (typeof url === "string" && url.length > 0) return [literalLine(url)];
+      count(skipped, node.type);
+      return null;
+    }
+    case "rule":
+      return ["---"];
+    case "table":
+      return (node.content ?? []).map((row) => `| ${(row.content ?? []).map((cell) => blocksText(cell.content, skipped).filter((line) => line !== "").join(" ")).join(" | ")} |`);
+    default:
+      count(skipped, String(node.type));
+      return null;
+  }
+}
+function blocksText(nodes, skipped) {
+  const out = [];
+  for (const node of nodes ?? []) {
+    const lines = blockLines(node, skipped);
+    if (lines === null || lines.length === 0) continue;
+    if (out.length > 0) out.push("");
+    out.push(...lines);
+  }
+  return out;
+}
+var OLD_MARKUP = /^(h[1-6]\. \S|\{(code|noformat|quote|panel)\b)/;
+function textView(text) {
+  const out = [];
+  let fence = null;
+  let lastWasFirstLevel = false;
+  for (const line of text.split("\n")) {
+    const step = fenceStep(fence, line);
+    fence = step.fence;
+    if (step.inside) {
+      out.push(line);
+      lastWasFirstLevel = false;
+      continue;
+    }
+    if (OLD_MARKUP.test(line)) return null;
+    const m = TEXT_HEADING.exec(line);
+    const firstLevel = m !== null && m[1].length === 1;
+    if (firstLevel && lastWasFirstLevel) return null;
+    lastWasFirstLevel = firstLevel;
+    out.push(m !== null && m[1].length < 6 ? `#${line}` : line);
+  }
+  return out.join("\n");
+}
+function textOf(value, skipped, plainText = (text) => text) {
+  if (value === null || value === void 0) return { text: "", form: "empty" };
+  if (typeof value === "string") return { text: plainText(value.replace(/\r\n/g, "\n").trim()), form: "text" };
+  if (typeof value === "object" && value.type === "doc" && Array.isArray(value.content)) return { text: blocksText(value.content, skipped).join("\n"), form: "tree" };
+  return null;
+}
+function isObject(value) {
+  return value !== null && typeof value === "object";
+}
+function jiraTicketOf(json) {
+  const fields = json !== null && typeof json === "object" ? json.fields ?? json : {};
+  const skipped = /* @__PURE__ */ new Map();
+  const description = textOf(fields.description, skipped, textView);
+  const title = typeof fields.summary === "string" ? fields.summary.replace(/\s+/g, " ").trim() : "";
+  const unreadable = title === "" ? "no summary" : description === null ? "a description that is neither text nor a tree of blocks" : description.text === null ? "a description in Jira's older text markup" : null;
+  if (unreadable !== null) return { unreadable, keys: Object.keys(fields).sort() };
+  const rawComments = Array.isArray(fields.comment?.comments) ? fields.comment.comments : Array.isArray(fields.comments) ? fields.comments : [];
+  const comments = rawComments.filter(isObject).map((c) => ({ createdAt: String(c.created ?? c.createdAt ?? ""), body: textOf(c.body, skipped)?.text ?? "" }));
+  const linked = [
+    ...(Array.isArray(fields.issuelinks) ? fields.issuelinks : []).filter(isObject).map((link) => link.inwardIssue?.key ?? link.outwardIssue?.key),
+    fields.parent?.key,
+    ...[...description.text.matchAll(BROWSE_LINK)].map((m) => m[1])
+  ].filter((key) => typeof key === "string" && KEY.test(key));
+  return {
+    title,
+    body: description.text.length > 0 ? `# ${title}
+
+${description.text}
+` : `# ${title}
+`,
+    comments,
+    links: [...new Set(linked)],
+    skipped: [...skipped.entries()].sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0).map(([kind2, n2]) => ({ kind: kind2, count: n2 })),
+    form: description.form
+  };
+}
+
 // src/writes.mjs
 function measureWrites({ before, after, committed }) {
   const paths = new Set(committed);
@@ -11437,6 +11668,7 @@ function renderReadout({ state, scoreboard, prUrl = null }) {
   const rows = scoreboard.perMember.map((m) => `| ${m.roleKey} | ${m.dispatches} | ${n(m.turns)} / ${n(m.rationTurns)} | ${n(m.tokens)} / ${n(m.rationTokens)} | ${n(m.cacheReadTokens)} | $${cost[m.roleKey]} |`);
   const t = scoreboard.totals;
   const unread = state.unread ?? [];
+  const skipped = state.ticket?.skipped ?? [];
   return [
     "# Readout",
     "",
@@ -11444,6 +11676,7 @@ function renderReadout({ state, scoreboard, prUrl = null }) {
     ...prUrl === null ? [] : [`pull request: ${prUrl}`],
     modeSummary(state),
     ...state.repo?.base ? [`base: ${state.repo.base}`] : [],
+    ...skipped.length > 0 ? [`ticket blocks not read: ${skipped.map((s) => `${s.kind} (${s.count})`).join(", ")}`] : [],
     "",
     "## Tasks",
     ...state.done.map((d) => `- ${d.taskId}: ${state.brief.tasks.plan.find((x) => x.taskId === d.taskId).goal} (${d.sha.slice(0, 12)})`),
@@ -11554,15 +11787,63 @@ function gh(ghArgs) {
   if (res.status !== 0) throw new KilnError("KILN_GH_FAILED", `gh ${ghArgs.join(" ")}: ${res.stderr.trim()}`, { args: ghArgs });
   return res.stdout;
 }
-function readTicketBody(ref, source, since) {
-  if (source === "jira") throw new KilnError("KILN_TICKET_SOURCE_UNBUILT", "the Jira adapter is declared but not built; its body lands on the first real Jira ticket", { ref });
-  if (source === "markdown") return { body: normalizeBody(readFileSync9(ref, "utf8")), newerItems: [] };
+var JIRA_FORM = 'The reader takes summary, description, comment, issuelinks, and parent, at the top level or under "fields". The setting can also name a script of your own that prints that form.';
+var JIRA_ERROR_CHARS = 300;
+function jiraErrorText(text) {
+  return text.length > JIRA_ERROR_CHARS ? `${text.slice(0, JIRA_ERROR_CHARS)} [cut at ${JIRA_ERROR_CHARS} characters]` : text;
+}
+function jiraTimeoutSecondsOf(env) {
+  const seconds = Number(env.KILN_JIRA_TIMEOUT_SECONDS);
+  return Number.isFinite(seconds) && seconds > 0 ? seconds : 60;
+}
+function jiraView(key, env = process.env) {
+  const argv = viewArgv(env.KILN_JIRA_VIEW, key);
+  if (argv === null) throw new KilnError("KILN_JIRA_VIEW_UNSET", `KILN_JIRA_VIEW names the command that prints one Jira ticket as JSON, with {key} where the ticket key goes. Set it under env in the profile's settings.json, for example "env": { "KILN_JIRA_VIEW": "<command> {key} --json" }. ${JIRA_FORM}`, { value: env.KILN_JIRA_VIEW ?? "" });
+  const [bin, ...args] = argv;
+  const seconds = jiraTimeoutSecondsOf(env);
+  const res = spawnSync(bin, args, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], maxBuffer: 64 * 1024 * 1024, timeout: Math.ceil(seconds * 1e3), killSignal: "SIGKILL" });
+  if (res.error?.code === "ENOENT") throw new KilnError("KILN_JIRA_CLI_MISSING", `the Jira command ${bin} is not on the command path; install it, or correct KILN_JIRA_VIEW`, { command: bin });
+  if (res.error?.code === "ETIMEDOUT") throw new KilnError("KILN_JIRA_FAILED", `${argv.join(" ")}: timed out after ${seconds} seconds, and the run stopped it. If the tool waits for a login, log in from your own terminal; the run never starts a login. KILN_JIRA_TIMEOUT_SECONDS changes the limit.`, { args: argv, seconds });
+  if (res.status !== 0) throw new KilnError("KILN_JIRA_FAILED", `${argv.join(" ")}: ${jiraErrorText((res.stderr ?? "").trim() || res.error?.message || `exit ${res.status}`)}. If the tool is not logged in, log in from your own terminal; the run never starts a login.`, { args: argv });
+  return res.stdout;
+}
+function readJiraTicket(key) {
+  const raw = jiraView(key);
+  let json;
+  try {
+    json = JSON.parse(raw);
+  } catch {
+    throw new KilnError("KILN_JIRA_OUTPUT", `the Jira command did not print JSON for ${key}; KILN_JIRA_VIEW must name a command and the flags that make it print JSON`, { ref: key });
+  }
+  const ticket = jiraTicketOf(json);
+  if (ticket.unreadable !== void 0) throw new KilnError("KILN_JIRA_SHAPE", `the Jira command's output for ${key} has ${ticket.unreadable}. It saw these field names: ${ticket.keys.join(", ")}. ${JIRA_FORM}`, { ref: key, keys: ticket.keys });
+  return { ...ticket, raw };
+}
+function fetchJiraItem(key) {
+  try {
+    return readJiraTicket(key).body;
+  } catch (err) {
+    if (err instanceof KilnError) return null;
+    throw err;
+  }
+}
+function readGithubIssue(ref) {
   const { repo, number } = githubIssueOf(ref);
-  const issue = JSON.parse(gh(["issue", "view", String(number), "--repo", repo, "--json", "body,comments,title"]));
-  const newerItems = (issue.comments ?? []).filter((c) => since === null || c.createdAt > since).map((c) => `comment ${c.createdAt.slice(0, 10)}: ${c.body.split("\n")[0].slice(0, 120)}`);
-  return { body: normalizeBody(issue.body ?? ""), newerItems, comments: issue.comments ?? [], title: issue.title ?? null };
+  const raw = gh(["issue", "view", String(number), "--repo", repo, "--json", "body,comments,title"]);
+  const issue = JSON.parse(raw);
+  return { body: issue.body ?? "", comments: issue.comments ?? [], title: issue.title ?? null, raw };
+}
+function readTicketBody(ref, source, since) {
+  if (source === "markdown") {
+    const raw = readFileSync9(ref, "utf8");
+    return { body: normalizeBody(raw), newerItems: [], raw };
+  }
+  const read = source === "jira" ? readJiraTicket(ref) : readGithubIssue(ref);
+  const newerItems = read.comments.filter((c) => since === null || c.createdAt > since).map((c) => `comment ${c.createdAt.slice(0, 10)}: ${c.body.split("\n")[0].slice(0, 120)}`);
+  return { ...read, body: normalizeBody(read.body), newerItems };
 }
 function writeTicketBody(ref, source, body, stagePath) {
+  if (source === "jira") throw new KilnError("KILN_JIRA_WRITE_UNBUILT", "this release reads a Jira ticket and never writes one", { ref });
   if (source === "markdown") {
     writeFileAtomic(ref, body);
     return;
@@ -11596,7 +11877,7 @@ ${normalizeBody(item.body ?? "")}
   }
   return null;
 }
-function fetchLinked(paths, { ref, source, body, title, comments = [] }) {
+function fetchLinked(paths, { ref, source, body, title, comments = [], links = [], skipped = [] }) {
   const items = /* @__PURE__ */ new Map();
   const ownRepo = source === "github" ? githubIssueOf(ref).repo : null;
   if (source === "github") {
@@ -11609,6 +11890,26 @@ ${comments.map((c) => `
 comment ${c.createdAt}:
 ${c.body}`).join("\n")}`);
     items.set(ref, `fetched, ${own}`);
+  }
+  if (source === "jira") {
+    const own = path5.join(paths.fetched, "ticket.md");
+    writeFileAtomic(own, `${body}
+${comments.map((c) => `
+---
+comment ${c.createdAt}:
+${c.body}`).join("\n")}`);
+    items.set(ref, `fetched, ${own}${skipped.length > 0 ? ` (blocks not read: ${skipped.map((s) => `${s.kind} ${s.count}`).join(", ")})` : ""}`);
+    for (const key of links) {
+      if (key === ref || items.has(key)) continue;
+      const text = fetchJiraItem(key);
+      if (text === null) {
+        items.set(key, "not fetched");
+        continue;
+      }
+      const copy = path5.join(paths.fetched, `${key}.md`);
+      writeFileAtomic(copy, text);
+      items.set(key, `fetched, ${copy}`);
+    }
   }
   const ticketDir = source === "markdown" ? path5.dirname(path5.resolve(ref)) : null;
   const github = [];
@@ -11627,7 +11928,11 @@ ${c.body}`).join("\n")}`);
     items.set(g.label, `fetched, ${copy}`);
   }
   const githubUrls = new Set(github.map((g) => g.url).filter((u) => u !== void 0));
-  for (const m of body.matchAll(ANY_URL)) if (!githubUrls.has(m[0]) && !items.has(m[0])) items.set(m[0], "not fetched");
+  const fetchedBrowse = (url) => {
+    const m = /\/browse\/([A-Z][A-Z0-9]+-[0-9]+)$/.exec(url);
+    return m !== null && items.has(m[1]);
+  };
+  for (const m of body.matchAll(ANY_URL)) if (!githubUrls.has(m[0]) && !items.has(m[0]) && !fetchedBrowse(m[0])) items.set(m[0], "not fetched");
   if (ticketDir !== null) {
     for (const m of body.matchAll(LOCAL_PATH)) {
       const abs = path5.resolve(ticketDir, m[1]);
@@ -11774,6 +12079,10 @@ function bodyWithParts(body, state, parts) {
   for (const part of parts) next = writePart(next, part, scrubLines(renderPart(part, state.brief[part], today())), ticketFormat);
   return next;
 }
+function filledSections(state, parts) {
+  const rank = (part) => ticketFormat.layout.indexOf(FAMILY_OF_PART[part]);
+  return [...parts].sort((a, b) => rank(a) - rank(b)).map((part) => [`## ${ticketFormat.families[FAMILY_OF_PART[part]].heading}`, ...scrubLines(partLines(part, state.brief[part]))].join("\n")).join("\n\n");
+}
 function pendingTicketParts(state) {
   return (state.pendingWrite?.parts ?? []).filter((p) => TICKET_PARTS.includes(p));
 }
@@ -11794,18 +12103,27 @@ function ticketChangesFor(state, ticketBody) {
   }
   const body = withContextHeading(ticketBody, ticketFormat);
   const { brief } = readTicket(body, ticketFormat);
-  return { parts: partsChanged(state.brief, body, scrubLines, partsInFlux(state), ticketFormat), brief };
+  return { parts: partsChanged(state.brief, body, scrubLines, [...partsInFlux(state), ...state.ticket.unwritten ?? []], ticketFormat), brief };
+}
+function detailTicketBody(meta) {
+  try {
+    return { body: readTicketBody(meta.ticketRef, meta.source, null).body, notRead: null };
+  } catch (err) {
+    if (!(err instanceof KilnError) || !outwardOf(meta.source)) throw err;
+    return { body: null, notRead: `The ticket was not read (${err.code}), so this detail holds no comparison with the ticket. The next command reads the ticket again.` };
+  }
 }
 function questionDetail(meta, state) {
   const q = state.question;
-  const { body } = readTicketBody(meta.ticketRef, meta.source, null);
-  const changed = ticketChangesFor(state, body).parts.map((p) => sectionNameOf(body, p, ticketFormat));
-  const parts = changed.length === 0 ? [] : [`Changed on the ticket since the run read it: ${changed.join(", ")}.${takesChange(state) ? " Reply change to read the new text into the run and have the plan written again." : ""}`];
+  const { body, notRead } = detailTicketBody(meta);
+  const changed = body === null ? [] : ticketChangesFor(state, body).parts.map((p) => sectionNameOf(body, p, ticketFormat));
+  const parts = notRead !== null ? [notRead] : changed.length === 0 ? [] : [`Changed on the ticket since the run read it: ${changed.join(", ")}.${takesChange(state) ? " Reply change to read the new text into the run and have the plan written again." : ""}`];
   if (q.detail !== null) parts.push(q.detail);
   if (q.then === "write" || q.then === "build") {
     const written = pendingTicketParts(state);
     if (written.length === 0) parts.push(`Tasks:
 ${state.brief.tasks.plan.map((t) => `- ${t.taskId}: ${t.goal}`).join("\n")}`);
+    else if (meta.source === "jira" || body === null) parts.push(filledSections(state, written));
     else parts.push(positionalDiff(normalizeBody(body), bodyWithParts(body, state, written)));
   }
   if (q.then === "pr" || q.then === "verification") {
@@ -11932,6 +12250,9 @@ function againFor(paths) {
   if (!ENDED.has(status) && !isOldReleaseRun(state)) throw new KilnError("KILN_RUN_NOT_ENDED", `the run is ${status}; open --again only sets aside a run that ended abandoned or gap`, { status });
   return setRunAside(paths, (/* @__PURE__ */ new Date()).toISOString().replace(/[-:]/g, "").replace(/\.\d+Z$/, "Z"));
 }
+function openFillState(lines, source, ticketRead) {
+  return source === "jira" ? [...lines, `description form: ${ticketRead.form}`] : lines;
+}
 function issueLabelOf(ref) {
   const { repo, number } = githubIssueOf(ref);
   return `${repo}#${number}`;
@@ -11974,7 +12295,7 @@ ${v.idea.trim()}
       refuseOldRelease(paths, state2);
       const record2 = JSON.parse(readFileSync9(paths.party.record, "utf8"));
       const flow2 = flowFor(flowCtx(meta2));
-      return { resumed: true, dir: paths.dir, ...ENDED.has(state2.status) ? { again: `this run ended ${state2.status}; open --again sets it aside and starts a fresh run on this ticket` } : {}, fillState: fillStateLines({ brief: state2.brief, taskGoals, roster: record2.roster, changed: ticketChangesFor(state2, ticketRead.body).parts }), roster: { rowId: record2.roster.rowId, fielded: record2.roster.fielded.map((m) => m.classKey) }, next: nextSummary(flow2, state2, paths, meta2) };
+      return { resumed: true, dir: paths.dir, ...ENDED.has(state2.status) ? { again: `this run ended ${state2.status}; open --again sets it aside and starts a fresh run on this ticket` } : {}, fillState: openFillState(fillStateLines({ brief: state2.brief, taskGoals, roster: record2.roster, changed: ticketChangesFor(state2, ticketRead.body).parts }), source, ticketRead), roster: { rowId: record2.roster.rowId, fielded: record2.roster.fielded.map((m) => m.classKey) }, next: nextSummary(flow2, state2, paths, meta2) };
     }
     const profile = buildProfile(brief, { sizeBytes: Buffer.byteLength(body, "utf8") });
     const roster = selectRoster(rosterPolicy, profile);
@@ -11982,13 +12303,15 @@ ${v.idea.trim()}
     const bundle = buildBundle({ ticketText: body });
     const outward = outwardOf(source);
     const issueTitle = title === null && source === "github" ? ticketRead.title : title;
-    const extras = { runDir: paths.dir, cliPath: path5.resolve(process.argv[1]), ticket: { ref, source, outward, title: issueTitle, taskGoals, kind: ticketShape?.kind ?? "ticket", shape: ticketShape?.shape ?? null, readOnly: ticketShape !== null, ...documentParts === null ? {} : { documentParts } }, brief, repo: null, checkoutRoots, base: v.base ?? null, documents };
+    const extras = { runDir: paths.dir, cliPath: path5.resolve(process.argv[1]), ticket: { ref, source, outward, title: issueTitle, taskGoals, kind: ticketShape?.kind ?? "ticket", shape: ticketShape?.shape ?? null, readOnly: ticketShape !== null, ...source === "jira" ? { skipped: ticketRead.skipped, descriptionForm: ticketRead.form } : {}, ...documentParts === null ? {} : { documentParts } }, brief, repo: null, checkoutRoots, base: v.base ?? null, documents };
     const firstKind = route(baseStateOf({ bundle, roles, extras }), flowCtx({ ticketRef: ref, source, firstKind: null })).nextKind;
     const flow = flowFor(flowCtx({ ticketRef: ref, source, firstKind }));
     const state = createRun(flow, { bundle, loadout: LOADOUT, host: HOST, policy: null, roles, profile: PROFILE, extras });
-    const meta = { ticketRef: ref, source, outward, repo: null, branch: null, base: null, firstKind, createdAt: (/* @__PURE__ */ new Date()).toISOString() };
+    const original = path5.join(paths.original, `ticket.${source === "markdown" ? "md" : "json"}`);
+    const meta = { ticketRef: ref, source, outward, repo: null, branch: null, base: null, firstKind, original, createdAt: (/* @__PURE__ */ new Date()).toISOString() };
     createRunDir2(paths);
-    fetchLinked(paths, { ref, source, body, title: issueTitle, comments: ticketRead.comments ?? [] });
+    writeFileAtomic(original, ticketRead.raw);
+    fetchLinked(paths, { ref, source, body, title: issueTitle, comments: ticketRead.comments ?? [], links: ticketRead.links ?? [], skipped: ticketRead.skipped ?? [] });
     const bundleText = JSON.stringify(bundle, null, 2) + "\n";
     writeFileAtomic(paths.bundle, bundleText);
     const record = partyRecordFor({ slug: paths.slug, createdAt: meta.createdAt, ticketText: body, profile, roster, bundleSha256: sha256Utf8(bundleText) });
@@ -12002,7 +12325,7 @@ ${v.idea.trim()}
       pendingEvent(state)
     ]);
     writeRunMeta(paths, meta);
-    return { resumed: false, dir: paths.dir, ...setAside === null ? {} : { setAside }, fillState: fillStateLines({ brief, taskGoals, roster }), roster: { rowId: roster.rowId, fielded: roster.fielded.map((m) => m.classKey) }, next: nextSummary(flow, state, paths, meta) };
+    return { resumed: false, dir: paths.dir, ...setAside === null ? {} : { setAside }, fillState: openFillState(fillStateLines({ brief, taskGoals, roster }), source, ticketRead), roster: { rowId: roster.rowId, fielded: roster.fielded.map((m) => m.classKey) }, next: nextSummary(flow, state, paths, meta) };
   },
   next(args) {
     const v = flags(args, { root: { type: "string" }, ticket: { type: "string" } });
@@ -12047,7 +12370,7 @@ ${v.idea.trim()}
     const changes = parseReply(text).word === "change" && takesChange(state) ? { ticketChanges: ticketChangesFor(state, readTicketBody(meta.ticketRef, meta.source, null).body) } : {};
     const flow = flowFor(flowCtx(meta, changes));
     const toWrite = pendingTicketParts(state);
-    if ((q.then === "write" || q.then === "build") && isBareYes(text) && meta.outward && toWrite.length > 0 && state.ticket.readOnly !== true) writeParts(paths, meta, state, toWrite);
+    if ((q.then === "write" || q.then === "build") && isBareYes(text) && meta.outward && meta.source !== "jira" && toWrite.length > 0 && state.ticket.readOnly !== true) writeParts(paths, meta, state, toWrite);
     const { state: nextState, issues } = applyReceipt(flow, state, { actionId, rawOutput: text, hostMeta: {} });
     if (nextState === state) throw new KilnError(issues[0].code, issues[0].message);
     const { installed } = settleRepo({ paths, meta, state, nextState, apply: () => afterReceipt({ flow, paths, meta, state, nextState, actionId, pending, accepted: true }) });
@@ -12109,7 +12432,7 @@ ${v.idea.trim()}
     const { paths, meta, state } = openRun(v);
     if (state.status !== "complete") throw new KilnError("KILN_RUN_NOT_COMPLETE", `the run is ${state.status}; the evidence block is written after the pull request stop`);
     const scoreboard = computeScoreboard({ roles: state.roles, envelopes: readEnvelopes(paths), rations, priceTable, ledger: state.ledger });
-    const block = renderEvidenceBlock({ state, scoreboard, publicRepo: v.public === true, issue: meta.source === "github" ? issueLabelOf(meta.ticketRef) : null });
+    const block = renderEvidenceBlock({ state, scoreboard, publicRepo: v.public === true, issue: meta.source === "github" ? issueLabelOf(meta.ticketRef) : meta.source === "jira" ? meta.ticketRef : null });
     const { body } = readTicketBody(meta.ticketRef, meta.source, null);
     const allow = runAllowList({ meta, state, body });
     const blockLeaks = findLeaks(block, { allow });
@@ -12117,6 +12440,7 @@ ${v.idea.trim()}
     const title = scrubPaths(state.repo.prTitle, [state.repo.root, state.repo.checkout]);
     const titleLeaks = findLeaks(title, { allow });
     if (titleLeaks.length > 0) throw new KilnError("KILN_EVIDENCE_LEAK", `the pull request title still names ${titleLeaks.map((l) => `"${l.word}"`).join(", ")}; fix the source line, never the filter`, { leaks: titleLeaks });
+    if (ticketKeyIssue(state.ticket, state.repo.branch, title) !== null) throw new KilnError("KILN_PR_KEY_MISSING", `neither the branch "${state.repo.branch}" nor the pull request title "${title}" holds the ticket key ${meta.ticketRef}, so Jira cannot link the pull request`, { branch: state.repo.branch, title });
     writeFileAtomic(paths.evidenceBlock, block);
     writeFileAtomic(paths.prTitle, `${title}
 `);
