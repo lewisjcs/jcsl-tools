@@ -1,0 +1,11 @@
+{
+  "description": "Saves the answer of the session's Jira read tool for a kiln run that asked for the ticket. It does nothing for any other call.",
+  "hooks": {
+    "PreToolUse": [
+      { "matcher": "mcp__.*__getJiraIssue", "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/runtime/hosts/claude-code/bin/jira-capture.mjs\"" }] }
+    ],
+    "PostToolUse": [
+      { "matcher": "mcp__.*__getJiraIssue", "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/runtime/hosts/claude-code/bin/jira-capture.mjs\"" }] }
+    ]
+  }
+}
