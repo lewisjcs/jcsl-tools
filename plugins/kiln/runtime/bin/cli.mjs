@@ -1867,8 +1867,8 @@ var require_keyword = __commonJS({
       var _a;
       const { gen, keyword, schema, parentSchema, $data, it } = cxt;
       checkAsyncKeyword(it, def);
-      const validate = !$data && def.compile ? def.compile.call(it.self, schema, parentSchema, it) : def.validate;
-      const validateRef = useKeyword(gen, keyword, validate);
+      const validate2 = !$data && def.compile ? def.compile.call(it.self, schema, parentSchema, it) : def.validate;
+      const validateRef = useKeyword(gen, keyword, validate2);
       const valid = gen.let("valid");
       cxt.block$data(valid, validateKeyword);
       cxt.ok((_a = def.valid) !== null && _a !== void 0 ? _a : valid);
@@ -2941,28 +2941,28 @@ var require_compile = __commonJS({
         if (this.opts.code.process)
           sourceCode = this.opts.code.process(sourceCode, sch);
         const makeValidate = new Function(`${names_1.default.self}`, `${names_1.default.scope}`, sourceCode);
-        const validate = makeValidate(this, this.scope.get());
-        this.scope.value(validateName, { ref: validate });
-        validate.errors = null;
-        validate.schema = sch.schema;
-        validate.schemaEnv = sch;
+        const validate2 = makeValidate(this, this.scope.get());
+        this.scope.value(validateName, { ref: validate2 });
+        validate2.errors = null;
+        validate2.schema = sch.schema;
+        validate2.schemaEnv = sch;
         if (sch.$async)
-          validate.$async = true;
+          validate2.$async = true;
         if (this.opts.code.source === true) {
-          validate.source = { validateName, validateCode, scopeValues: gen._values };
+          validate2.source = { validateName, validateCode, scopeValues: gen._values };
         }
         if (this.opts.unevaluated) {
           const { props, items } = schemaCxt;
-          validate.evaluated = {
+          validate2.evaluated = {
             props: props instanceof codegen_1.Name ? void 0 : props,
             items: items instanceof codegen_1.Name ? void 0 : items,
             dynamicProps: props instanceof codegen_1.Name,
             dynamicItems: items instanceof codegen_1.Name
           };
-          if (validate.source)
-            validate.source.evaluated = (0, codegen_1.stringify)(validate.evaluated);
+          if (validate2.source)
+            validate2.source.evaluated = (0, codegen_1.stringify)(validate2.evaluated);
         }
-        sch.validate = validate;
+        sch.validate = validate2;
         return sch;
       } catch (e) {
         delete sch.validate;
@@ -3259,8 +3259,8 @@ var require_utils = __commonJS({
       }
       return ind;
     }
-    function removeDotSegments(path6) {
-      let input = path6;
+    function removeDotSegments(path8) {
+      let input = path8;
       const output = [];
       let nextSlash = -1;
       let len = 0;
@@ -3669,8 +3669,8 @@ var require_schemes = __commonJS({
       }
       if (wsComponent.resourceName) {
         const queryIndex = wsComponent.resourceName.indexOf("?");
-        const path6 = queryIndex === -1 ? wsComponent.resourceName : wsComponent.resourceName.slice(0, queryIndex);
-        wsComponent.path = path6 && path6 !== "/" ? path6 : void 0;
+        const path8 = queryIndex === -1 ? wsComponent.resourceName : wsComponent.resourceName.slice(0, queryIndex);
+        wsComponent.path = path8 && path8 !== "/" ? path8 : void 0;
         wsComponent.query = queryIndex === -1 ? void 0 : wsComponent.resourceName.slice(queryIndex + 1);
         wsComponent.resourceName = void 0;
       }
@@ -6406,8 +6406,8 @@ var require_dynamicAnchor = __commonJS({
       const { gen, it } = cxt;
       it.schemaEnv.root.dynamicAnchors[anchor] = true;
       const v = (0, codegen_1._)`${names_1.default.dynamicAnchors}${(0, codegen_1.getProperty)(anchor)}`;
-      const validate = it.errSchemaPath === "#" ? it.validateName : _getValidate(cxt);
-      gen.if((0, codegen_1._)`!${v}`, () => gen.assign(v, validate));
+      const validate2 = it.errSchemaPath === "#" ? it.validateName : _getValidate(cxt);
+      gen.if((0, codegen_1._)`!${v}`, () => gen.assign(v, validate2));
     }
     exports.dynamicAnchor = dynamicAnchor;
     function _getValidate(cxt) {
@@ -6456,11 +6456,11 @@ var require_dynamicRef = __commonJS({
           _callRef(it.validateName, valid)();
         }
       }
-      function _callRef(validate, valid) {
+      function _callRef(validate2, valid) {
         return valid ? () => gen.block(() => {
-          (0, ref_1.callRef)(cxt, validate);
+          (0, ref_1.callRef)(cxt, validate2);
           gen.let(valid, true);
-        }) : () => (0, ref_1.callRef)(cxt, validate);
+        }) : () => (0, ref_1.callRef)(cxt, validate2);
       }
     }
     exports.dynamicRef = dynamicRef;
@@ -7456,9 +7456,10 @@ var require__ = __commonJS({
 
 // src/cli.mjs
 import { parseArgs } from "node:util";
-import { readFileSync as readFileSync9, existsSync as existsSync2, writeFileSync as writeFileSync2, realpathSync as realpathSync2 } from "node:fs";
+import { randomBytes } from "node:crypto";
+import { readFileSync as readFileSync10, existsSync as existsSync2, writeFileSync as writeFileSync3, realpathSync as realpathSync2, rmSync as rmSync2, renameSync as renameSync3, mkdirSync as mkdirSync3, rmdirSync } from "node:fs";
 import { spawnSync } from "node:child_process";
-import path5 from "node:path";
+import path7 from "node:path";
 
 // node_modules/@lewisjcs/statblock/src/runtime/digest.mjs
 import { createHash } from "node:crypto";
@@ -7520,12 +7521,12 @@ var validatorsByContractId = new Map(
   })
 );
 function validateEngineContract(contractId, value) {
-  const validate = validatorsByContractId.get(contractId);
-  if (!validate) {
+  const validate2 = validatorsByContractId.get(contractId);
+  if (!validate2) {
     return { valid: false, issues: [{ message: `unknown contract: ${contractId}` }] };
   }
-  const valid = validate(value);
-  return { valid, issues: valid ? [] : validate.errors ?? [] };
+  const valid = validate2(value);
+  return { valid, issues: valid ? [] : validate2.errors ?? [] };
 }
 
 // node_modules/@lewisjcs/statblock/src/runtime/protocol.mjs
@@ -7810,16 +7811,16 @@ function recordFailure(protocol, state, { stage, attempt, buildRetryAction, fail
   };
 }
 var WRITES_AVAILABILITY = /* @__PURE__ */ new Set(["measured", "unavailable"]);
-function normalizeWritePath(path6) {
-  if (typeof path6 !== "string" || path6.length === 0) return null;
-  if (path6.startsWith("/") || path6.includes("\\")) return null;
-  const stripped = path6.startsWith("./") ? path6.slice(2) : path6;
+function normalizeWritePath(path8) {
+  if (typeof path8 !== "string" || path8.length === 0) return null;
+  if (path8.startsWith("/") || path8.includes("\\")) return null;
+  const stripped = path8.startsWith("./") ? path8.slice(2) : path8;
   const body = stripped.endsWith("/") ? stripped.slice(0, -1) : stripped;
   if (body.split("/").some((segment) => segment === ".." || segment === "." || segment === "")) return null;
   return stripped;
 }
-function insideBoundary(path6, allowedPaths) {
-  const normalized = normalizeWritePath(path6);
+function insideBoundary(path8, allowedPaths) {
+  const normalized = normalizeWritePath(path8);
   if (normalized === null) return false;
   return allowedPaths.some((entry) => entry.endsWith("/") ? normalized.startsWith(entry) : normalized === entry);
 }
@@ -8224,12 +8225,12 @@ var validateClass = ajv2.compile(loadSchema("class"));
 var validateParty = ajv2.compile(loadSchema("party"));
 var validateInvocation = ajv2.compile(loadSchema("invocation"));
 var validateOutcome = ajv2.compile(loadSchema("outcome"));
-function assertSchema(validate, value, kind2) {
-  if (validate(value)) return value;
+function assertSchema(validate2, value, kind2) {
+  if (validate2(value)) return value;
   throw new StatblockError(
     "SCHEMA_INVALID",
     `${kind2} does not satisfy the Statblock 1.0-kernel schema`,
-    { kind: kind2, errors: validate.errors ?? [] }
+    { kind: kind2, errors: validate2.errors ?? [] }
   );
 }
 function assertUniqueFeatIds(manifest) {
@@ -8312,12 +8313,12 @@ function isAudienceVisible(resourceAudience, consumerAudience) {
 function fail(code, message, details) {
   throw new StatblockError(code, message, details);
 }
-function isContained(path6, root) {
-  const pathFromRoot = relative(root, path6);
+function isContained(path8, root) {
+  const pathFromRoot = relative(root, path8);
   return pathFromRoot === "" || !pathFromRoot.startsWith(`..${sep}`) && pathFromRoot !== ".." && !isAbsolute(pathFromRoot);
 }
-function isSafeRelativePath(path6) {
-  return typeof path6 === "string" && path6.length > 0 && !isAbsolute(path6) && !path6.split(/[\\/]/).includes("..");
+function isSafeRelativePath(path8) {
+  return typeof path8 === "string" && path8.length > 0 && !isAbsolute(path8) && !path8.split(/[\\/]/).includes("..");
 }
 function resolveRoot(source) {
   if (typeof source.root !== "string" || !isAbsolute(source.root)) {
@@ -8379,9 +8380,9 @@ function resolveManifestPath(root, manifestPath, source, type) {
   }
 }
 function parseManifest(root, manifestPath, source, type) {
-  const path6 = resolveManifestPath(root, manifestPath, source, type);
+  const path8 = resolveManifestPath(root, manifestPath, source, type);
   try {
-    return JSON.parse(readFileSync5(path6, "utf8"));
+    return JSON.parse(readFileSync5(path8, "utf8"));
   } catch {
     fail("MANIFEST_PATH_INVALID", "Manifest file cannot be read and parsed", {
       sourceId: source.id,
@@ -8630,12 +8631,12 @@ var validatorsByContractId2 = new Map(
   })
 );
 function validatePartyContract(contractId, value) {
-  const validate = validatorsByContractId2.get(contractId);
-  if (!validate) {
+  const validate2 = validatorsByContractId2.get(contractId);
+  if (!validate2) {
     return { valid: false, issues: [{ message: `unknown contract: ${contractId}` }] };
   }
-  const valid = validate(value);
-  return { valid, issues: valid ? [] : validate.errors ?? [] };
+  const valid = validate2(value);
+  return { valid, issues: valid ? [] : validate2.errors ?? [] };
 }
 
 // node_modules/@lewisjcs/statblock/src/party/freeze.mjs
@@ -8927,8 +8928,8 @@ var CAPABILITY_KEYS = new Set(CAPABILITY_IDS);
 import { createHash as createHash2 } from "node:crypto";
 function computeProjectionSourceHash(records) {
   const hash = createHash2("sha256");
-  for (const { path: path6, bytes } of records) {
-    hash.update(path6, "utf8");
+  for (const { path: path8, bytes } of records) {
+    hash.update(path8, "utf8");
     hash.update("\0", "utf8");
     hash.update(createHash2("sha256").update(bytes).digest("hex"), "utf8");
     hash.update("\n", "utf8");
@@ -9035,14 +9036,21 @@ function readClassManifest(rel) {
   return JSON.parse(readFileSync7(new URL(`../${rel}`, import.meta.url), "utf8"));
 }
 var ajv4 = new import__4.default({ allErrors: true, strictTypes: false });
+var classManifests = CLASS_MANIFESTS.map(readClassManifest);
 var schemasByContractId = new Map([
   ...Object.entries(SCHEMA_FILE_BY_CONTRACT_ID3).map(([contractId, fileName]) => [contractId, readKilnSchema(fileName)]),
-  ...CLASS_MANIFESTS.map((rel) => {
-    const { contract } = readClassManifest(rel);
-    return [contract.output.id, contract.output.schema];
-  })
+  ...classManifests.map(({ contract }) => [contract.output.id, contract.output.schema])
 ]);
 var validatorsByContractId3 = new Map([...schemasByContractId].map(([contractId, schema]) => [contractId, ajv4.compile(schema)]));
+var inputSchemasByClassId = new Map(classManifests.map((manifest) => [manifest.id, manifest.contract.input.schema]));
+var inputValidatorsByClassId = /* @__PURE__ */ new Map();
+function validateClassInput(classId, value) {
+  const schema = inputSchemasByClassId.get(classId);
+  if (!schema) return { valid: false, issues: [{ instancePath: "", message: `unknown Class: ${classId}` }] };
+  if (!inputValidatorsByClassId.has(classId)) inputValidatorsByClassId.set(classId, ajv4.compile(schema));
+  const validate2 = inputValidatorsByClassId.get(classId);
+  return validate2(value) ? { valid: true, issues: [] } : { valid: false, issues: validate2.errors ?? [] };
+}
 function compileStatusBranches(schema) {
   if (!Array.isArray(schema.oneOf)) return null;
   const statuses = schema.oneOf.map((branch) => branch.properties?.status?.const);
@@ -9058,12 +9066,12 @@ function describeIssue(issue) {
   return issue;
 }
 function validateKilnContract(contractId, value) {
-  const validate = validatorsByContractId3.get(contractId);
-  if (!validate) {
+  const validate2 = validatorsByContractId3.get(contractId);
+  if (!validate2) {
     return { valid: false, issues: [{ instancePath: "", message: `unknown contract: ${contractId}` }] };
   }
-  if (validate(value)) return { valid: true, issues: [] };
-  const allIssues = validate.errors ?? [];
+  if (validate2(value)) return { valid: true, issues: [] };
+  const allIssues = validate2.errors ?? [];
   const branches = branchesByContractId.get(contractId);
   if (!branches || !value || typeof value !== "object") return { valid: false, issues: allIssues };
   const branch = branches.byStatus.get(value.status);
@@ -9228,8 +9236,8 @@ function githubIssueOf(ref) {
   const m = GITHUB_URL.exec(ref) ? /github\.com\/([\w.-]+\/[\w.-]+)\/issues\/([0-9]+)$/.exec(ref) : /^([\w.-]+\/[\w.-]+)#([0-9]+)$/.exec(ref);
   return { repo: m[1], number: Number(m[2]) };
 }
-function sectionRange(lines, heading) {
-  const start = lines.findIndex((l) => l.trim() === heading);
+function sectionRange(lines, heading2) {
+  const start = lines.findIndex((l) => l.trim() === heading2);
   if (start === -1) return null;
   let end = lines.length;
   for (let i = start + 1; i < lines.length; i += 1) {
@@ -9240,9 +9248,9 @@ function sectionRange(lines, heading) {
   }
   return { start, end };
 }
-function parseSection(body, heading) {
+function parseSection(body, heading2) {
   const lines = body.split("\n");
-  const range2 = sectionRange(lines, heading);
+  const range2 = sectionRange(lines, heading2);
   if (!range2) return [];
   return lines.slice(range2.start + 1, range2.end).filter((l) => l.startsWith("- ")).map((l) => l.slice(2));
 }
@@ -9289,9 +9297,9 @@ function outwardOf(source) {
 function normalizeBody(body) {
   return body.replace(/\r\n/g, "\n");
 }
-function sectionText(body, heading) {
+function sectionText(body, heading2) {
   const lines = body.split("\n");
-  const range2 = sectionRange(lines, heading);
+  const range2 = sectionRange(lines, heading2);
   if (!range2) return "";
   return lines.slice(range2.start + 1, range2.end).filter((l) => !MARKER.test(l)).join("\n").replace(/^\n+|\n+$/g, "");
 }
@@ -9448,8 +9456,8 @@ function withContextHeading(rawBody, format) {
   const titleLine = titleIdx === -1 ? null : preamble[titleIdx];
   const text = withoutTitleLine(preamble).join("\n").replace(/^\n+|\n+$/g, "");
   if (text.length === 0) return body;
-  const heading = `${"#".repeat(sectionLevelOf(body))} ${format.families.context.heading}`;
-  return joinBody(titleLine === null ? [] : [titleLine, ""], [heading, text, ""], rest2);
+  const heading2 = `${"#".repeat(sectionLevelOf(body))} ${format.families.context.heading}`;
+  return joinBody(titleLine === null ? [] : [titleLine, ""], [heading2, text, ""], rest2);
 }
 function insertionLineFor(body, family, format) {
   const present = sectionsOf(body).map((s) => ({ ...s, family: familyOf(s.name, format) })).filter((s) => s.family !== null && format.layout.includes(s.family));
@@ -9467,9 +9475,9 @@ function writeFamily(body, family, sectionLines, format) {
     const kept = taggedSectionLines(lines, existing, format).filter((t) => t.under).map((t) => t.line);
     return joinBody(lines.slice(0, existing.start + 1), [...sectionLines, ""], kept, lines.slice(existing.end));
   }
-  const heading = `${"#".repeat(sectionLevelOf(trimmed))} ${format.families[family].heading}`;
+  const heading2 = `${"#".repeat(sectionLevelOf(trimmed))} ${format.families[family].heading}`;
   const at = insertionLineFor(trimmed, family, format);
-  return joinBody(lines.slice(0, at), ["", heading, ...sectionLines, ""], lines.slice(at));
+  return joinBody(lines.slice(0, at), ["", heading2, ...sectionLines, ""], lines.slice(at));
 }
 function writePart(body, part, sectionLines, format) {
   return writeFamily(normalizeBody(body), FAMILY_OF_PART[part], sectionLines, format);
@@ -9785,7 +9793,7 @@ function renderDiscoverPrompt(state) {
     "- document: <its path> is a <plan|decision>, only when you found one",
     "When nothing names an answer, write `(source: none)` and still give your best value. When two sources name different values, write `(sources disagree: <A> says <X>, <B> says <Y>)` and give the value you favor.",
     "`## Signals` holds one bullet per routing signal you saw in the ticket or the fetched items, as `- <ORIENT|RESEARCH>: <what> (source: ticket:<lines> or <item>:<lines>)`. ORIENT signals: a stated root cause, test assertions, an approved decision document. RESEARCH signals: a reference that names a document but does not link it, a parent epic with a thin own description. A signal with no source is not counted.",
-    "`## Changes since the plan` holds, when a plan exists, one bullet per ticket comment newer than the plan and per merged pull request for the ticket key. Otherwise leave it empty.",
+    ...givenPlan?.approved ? ["`## Changes since the plan` holds one bullet per changed ticket, source hash, or repository fact. Classify each as `cosmetic`, `local`, or `premise`: `- <kind>: <what changed> (source: <citation>)`. A source you cannot read is a gap, never evidence that it stayed current. Leave this section empty only when the named sources show no change."] : ["`## Changes since the plan` holds, when a plan exists, one bullet per ticket comment newer than the plan and per merged pull request for the ticket key. Otherwise leave it empty."],
     "`## Gaps` holds one bullet per thing you could not settle that the keys above do not cover, as `- <what>: <your proposal>`.",
     checksSentence(DISCOVER_CHECKS(state)),
     NO_CD,
@@ -9836,6 +9844,7 @@ function renderPlannerPrompt(state) {
   const byPerson = replan && state.replan.by === "person";
   const fence = fenceFor(state);
   const { brief } = state;
+  const approved = state.documents?.plan?.approved ? state.documents.plan : null;
   const unbuilt = byPerson ? brief.tasks.plan.slice(state.cursor) : [];
   return [
     ...opening(`You are the planner (kiln:planner). ${replan ? "Re-plan the remaining work." : "Turn the decision into an ordered ticket plan whose every task has rerunnable checks."}`, fence),
@@ -9853,7 +9862,13 @@ function renderPlannerPrompt(state) {
     "",
     ...brief.decision === null && (state.mode ?? "RESEARCH") === "ORIENT" ? ["## The decision is empty", "In this run the planner fills it. Your summary is the approach: one paragraph that says what changes and why, in plain words. It goes on the ticket as the decision.", ""] : [],
     // A move to RESEARCH (premise drift, or a reform that names the Designer) voids the plan, so only EXECUTE and ORIENT copy from it.
-    ...state.documents?.plan !== null && state.documents?.plan !== void 0 && state.documents.plan.kind === "plan" && ["EXECUTE", "ORIENT"].includes(state.mode) ? [
+    ...approved !== null ? [
+      `## Approved kickoff plan: ${approved.path}`,
+      `Approved SHA-256: ${approved.sha256}`,
+      "Read the full approved plan. Copy its task count, order, heading text, and named file scope exactly. Use task-1 through task-N in that order. Add checks, dependencies, inputs, repository, branch, and acceptance coverage without changing an approved task.",
+      ...fenced(fence, approved.tasks.flatMap((task) => [task.heading, ...task.lines])),
+      ""
+    ] : state.documents?.plan !== null && state.documents?.plan !== void 0 && state.documents.plan.kind === "plan" && ["EXECUTE", "ORIENT"].includes(state.mode) ? [
       `## The plan to copy: ${state.documents.plan.path}`,
       (state.drift ?? []).length > 0 ? "Write a fresh plan from the plan to copy and these findings: drop the parts the findings show as merged or gone, and keep the rest." : "Keep its tasks, their order, and their scope. Add one or more rerunnable checks to each task. Make sure that every file and name the plan relies on exists in the worktree. When one does not exist in the worktree, stop and reply gap with one missing line per path as `drift local: <path> named by <task> does not exist in the worktree (source: <plan path:line>)`.",
       ""
@@ -9882,7 +9897,7 @@ function renderPlannerPrompt(state) {
     "Every task's repo and branch are these two values.",
     "",
     `Ticket: ${state.ticket.ref}`,
-    `Plan source: ${state.runDir}/bundle.json, sha256 ${sha256Utf8(JSON.stringify(state.bundle, null, 2) + "\n")}`,
+    `Plan source: ${approved?.path ?? `${state.runDir}/bundle.json`}, sha256 ${approved?.sha256 ?? sha256Utf8(JSON.stringify(state.bundle, null, 2) + "\n")}`,
     "",
     `## Your plan file: ${planPath}`,
     "A kiln:ticket-plan@1 document. Top level: contractId (kiln:ticket-plan@1), ticketRef (the Ticket line above, copied exactly), source ({path, sha256} from the Plan source line above), summary (one paragraph), drewOn (optional: absolute paths of pattern knowledge you read), tasks. Each task: taskId, goal, covers (verbatim acceptance lines), dependsOn, doneWhen (one or more checks, each {command, expect, repo}: command is one command in an absolute form: npm --prefix, git -C, node with an absolute path, or an absolute file path; no cd; no chain; expect is the result it must show; repo is the worktree), inputs (absolute paths to read), paths (the paths the changer may write, relative to the worktree, a directory ends in /), repo, branch. In re-plan mode, write only the new tasks.",
@@ -10100,7 +10115,7 @@ var SPEC_PATH = /\/specs\/[^/]*-design\.md$/;
 function lineNumbers(lines, re) {
   return lines.map((l, i) => re.test(l) ? i + 1 : 0).filter((n2) => n2 > 0);
 }
-function documentKindOf(rawText, path6) {
+function documentKindOf(rawText, path8) {
   const text = normalizeBody(rawText);
   const lines = text.split("\n");
   const sp = lineNumbers(lines, SP_TASK);
@@ -10110,7 +10125,7 @@ function documentKindOf(rawText, path6) {
   const status = lines.findIndex((l) => STATUS.test(l));
   const summary = lines.findIndex((l) => l.trim() === "## Summary");
   if (status !== -1 && summary !== -1) return { kind: "decision", shape: "designer-decision", lines: [status + 1, summary + 1] };
-  if (SPEC_PATH.test(path6)) return { kind: "decision", shape: "brainstorming-spec", lines: [] };
+  if (SPEC_PATH.test(path8)) return { kind: "decision", shape: "brainstorming-spec", lines: [] };
   return null;
 }
 function firstParagraph(lines) {
@@ -10128,7 +10143,7 @@ function boldField(lines, name) {
   const line = lines.find((l) => re.test(l));
   return line === void 0 ? null : re.exec(line)[1].trim();
 }
-function briefFromPlan(rawText, path6) {
+function briefFromPlan(rawText, path8) {
   const text = normalizeBody(rawText);
   const lines = text.split("\n");
   const taskRe = lines.some((l) => SP_TASK.test(l)) ? SP_TASK : KILN_TASK;
@@ -10146,19 +10161,23 @@ ${headings.map((h) => `- ${h}`).join("\n")}` : null].filter((t) => t !== null &&
       return;
     }
     const f = FILE_LINE.exec(l.trim());
-    if (f && current !== null) items.push({ fact: `${current} changes ${f[1]}`, source: `${path6}:${i + 1}` });
+    if (f && current !== null) items.push({ fact: `${current} changes ${f[1]}`, source: `${path8}:${i + 1}` });
   });
   return {
     intent: goal.length > 0 ? { by: "party", text: goal } : null,
     decision: decisionText.length > 0 ? { by: "party", text: decisionText } : null,
-    facts: { by: "party", items: items.length > 0 ? items : [{ fact: "the plan names no file; its tasks are the facts", source: `${path6}:1` }] },
+    facts: { by: "party", items: items.length > 0 ? items : [{ fact: "the plan names no file; its tasks are the facts", source: `${path8}:1` }] },
     taskGoals: headings.map((h) => h.replace(/^Task \d+: /, ""))
   };
 }
+function acceptanceFromApprovedPlan(acceptance, approved) {
+  if (acceptance === null) return { by: "party", lines: approved.acceptance };
+  return acceptance.lines.length === approved.acceptance.length && acceptance.lines.every((line, i) => line === approved.acceptance[i]) ? acceptance : null;
+}
 var NUMBERED = /^\d+\.\s+(.+)$/;
-function renamed(text, heading) {
-  const body = sectionText(text, heading);
-  return body.length === 0 ? null : `### ${heading.slice(3)}
+function renamed(text, heading2) {
+  const body = sectionText(text, heading2);
+  return body.length === 0 ? null : `### ${heading2.slice(3)}
 ${body}`;
 }
 function briefFromDecision(rawText) {
@@ -10258,6 +10277,13 @@ function setJiraCaptureAside(paths) {
 function clearJiraCapture(paths) {
   rmSync(paths.capture, { force: true });
   rmSync(paths.answer, { force: true });
+}
+function saveJiraPreview(store, key, sha2562, bytes) {
+  const dir = path4.join(store, key, "previews");
+  mkdirSync2(dir, { recursive: true });
+  const file = path4.join(dir, `${sha2562}.json`);
+  writeFileAtomic(file, bytes);
+  return file;
 }
 function runPathsFor(root, ref) {
   const slug = slugOf(ref);
@@ -10395,7 +10421,7 @@ function isBareYes(text) {
   return BARE_YES.test(text.trim());
 }
 function takesChange(state) {
-  return CHANGE_STOPS.has(state.question.then) && state.brief.tasks !== null;
+  return CHANGE_STOPS.has(state.question.then) && state.brief.tasks !== null && !state.documents?.plan?.approved;
 }
 function discoverSettled(state) {
   return state.repo !== null || state.discover !== void 0 && state.discover !== null;
@@ -10473,6 +10499,9 @@ function retriesExhausted(state, failure) {
 function retryStage(base, kindName, note, rejection2, baseline) {
   return { fields: { ...base, retry: { kind: kindName, note, rejection: rejection2 }, writeBaseline: baseline }, status: "filling", nextKind: kindName };
 }
+function approvedDriftQuestion(detail = null) {
+  return question("approved-drift", `The current sources changed the approved plan's scope. Return to kickoff and approve a revised plan before implementation. Reply abandon to end this run.`, ["abandon"], { detail });
+}
 function route(state, ctx) {
   const brief = state.brief;
   if (state.breach !== null) {
@@ -10481,6 +10510,9 @@ function route(state, ctx) {
   if (!discoverSettled(state)) {
     if (state.discoverGaps.length > 0) return ask(discoverQuestion(state));
     return { status: "filling", nextKind: "dispatch-discover", fields: withRole(state, ctx, "finder", "member-gap", "the repository, the base, and the branch are unread", {}) };
+  }
+  if (state.documents?.plan?.approved && state.mode !== null && state.mode !== "EXECUTE") {
+    return ask(approvedDriftQuestion((state.planChanges ?? []).join("\n")));
   }
   const mode = modeOf(state);
   const first = firstEmptyOf(brief);
@@ -10756,6 +10788,8 @@ The answer to ${repositoryGap.n} must be the absolute path of a folder directly 
       return consent ? accepted(state, ctx, { ...base, pendingWrite: null }) : reask();
     case "build":
       return consent ? accepted(state, ctx, { ...base, pendingWrite: null, buildApproved: true, ...unwrittenAtBuild(state) }) : reask();
+    case "approved-drift":
+      return reask();
     case "retry":
       return word === "retry" ? retryStage(base, q.retryKind, rest2, null, null) : reask();
     case "failed":
@@ -10933,7 +10967,7 @@ function readsAsDocument(state, draft) {
 }
 var NO_READS = Object.freeze({ reads: Object.freeze({ given: null, ticket: null, found: null }), unreadable: Object.freeze([]), unknown: Object.freeze([]) });
 function documentReads(state, ctx, draft, kindOpen) {
-  const read = (which, path6, kind2) => ({ which, path: path6, kind: kind2, ...ctx.readDocument(path6, kind2, draft.repository) });
+  const read = (which, path8, kind2) => ({ which, path: path8, kind: kind2, ...ctx.readDocument(path8, kind2, draft.repository) });
   const given = state.documents.plan;
   const all = {
     given: given !== null && given.kind !== null && !draft.givenDropped ? read("given", given.path, given.kind) : null,
@@ -11027,12 +11061,13 @@ function discoverBrief(state, draft, reads) {
   return { brief: { ...brief, facts: null }, filled: withoutFacts(filled), takes: { given: withoutFacts(takes.given), ticket: withoutFacts(takes.ticket), found: withoutFacts(takes.found) }, executes };
 }
 function documentsAfter(documents, reads, draft) {
-  const filed = (docs, doc) => doc.kind === "plan" ? { ...docs, plan: { path: doc.path, kind: "plan", shape: doc.shape } } : { ...docs, decision: { path: doc.path, approved: doc.approved } };
+  const filed = (docs, doc) => doc.kind === "plan" ? { ...docs, plan: { ...documents.plan?.path === doc.path ? documents.plan : {}, path: doc.path, kind: "plan", shape: doc.shape } } : { ...docs, decision: { path: doc.path, approved: doc.approved } };
   const opened = reads.given !== null || draft.givenDropped ? { ...documents, plan: null } : documents;
   const withGiven = reads.given === null ? opened : filed(opened, reads.given);
   return reads.found === null ? withGiven : filed(withGiven, reads.found);
 }
 function settleDiscover(state, ctx, draft, parsed, base) {
+  if (state.documents.plan?.approved && draft.givenDropped) return ask(approvedDriftQuestion("The approved plan was dropped during discovery."));
   const { gaps: found, facts, reads, brief, filled, takes, executes } = discoverGapsOf(state, ctx, draft, parsed);
   const invalid = draft.reviewed ? null : briefRejection(brief, "discover", "the brief from the discover report");
   if (invalid !== null) return invalid;
@@ -11051,7 +11086,18 @@ function settleDiscover(state, ctx, draft, parsed, base) {
   const asDocument = readsAsDocument(state, draft) ? { ...state.ticket, kind: draft.kind, readOnly: true, documentParts: Object.fromEntries(takes.ticket.map((part) => [part, reads.ticket.parts[part]])) } : state.ticket;
   const ticket = reads.given !== null && asDocument.taskGoals.length === 0 ? { ...asDocument, taskGoals: reads.given.taskGoals } : asDocument;
   const ticketText = state.bundle.components[0].inlineContent;
-  const { mode, reasons } = pickMode(ctx.modePolicy, { hasPlan: executes, signals: [...codeSignals(ticketText, ctx.ticketFormat), ...draft.signals] });
+  let { mode, reasons } = pickMode(ctx.modePolicy, { hasPlan: executes, signals: [...codeSignals(ticketText, ctx.ticketFormat), ...draft.signals] });
+  if (state.documents.plan?.approved && draft.planChanges.length > 0) {
+    const classified = parseDriftLines(draft.planChanges);
+    if (classified.length !== draft.planChanges.length) {
+      mode = "RESEARCH";
+      reasons = ["an unclassified change since the approved plan"];
+    } else {
+      const changed = applyDrift(ctx.modePolicy, "EXECUTE", classified);
+      mode = changed.mode;
+      if (changed.moved) reasons = changed.reasons;
+    }
+  }
   return accepted(state, ctx, {
     ...base,
     discover: { ...draft, kind: draft.kind ?? "ticket" },
@@ -11171,6 +11217,7 @@ function draftWithAnswers(draft, gaps, answers, ticket) {
 }
 function acceptDesigner(state, ctx, items) {
   const o = items[0];
+  if (o.status === "explored") return rejection({ code: "KILN_BUILD_NEEDS_DECISION", label: "the build Designer must return an approved decision", details: [], tag: "decision", reason: "exploration-only" });
   if (o.status === "gap") return ask(question("design", "The design session stopped before a decision. Where it stopped is in the detail. Reply continue to resume it.", ["continue"], { detail: o.decisionState }), { lastFilled: [], lastReform: null });
   if (o.status === "reform-party") return memberReform(state, ctx, o.requiredRole, o.reason, {});
   const evidence = checkEvidence({ outcome: o, doneWhen: DESIGNER_CHECKS(state), toolCalls: ctx.toolCalls });
@@ -11195,6 +11242,7 @@ function acceptDesigner(state, ctx, items) {
 }
 function acceptPlanner(state, ctx, items) {
   const o = items[0];
+  if (o.status === "planned") return rejection({ code: "KILN_BUILD_NEEDS_TICKET_PLAN", label: "the build Planner must return a ticket plan", details: [], tag: "plan", reason: "kickoff-plan-only" });
   if (o.status === "gap") {
     const findingOf = (l) => l.startsWith("drift ") ? parseDriftLines([l.slice("drift ".length)]) : [];
     const drift = o.missing.flatMap(findingOf);
@@ -11212,6 +11260,11 @@ function acceptPlanner(state, ctx, items) {
   if (attachment.value.issues.length > 0) return rejection({ code: "KILN_PLAN_INVALID", label: "the ticket plan file fails kiln:ticket-plan@1 or the absolute-command rule", details: attachment.value.issues.slice(0, 5).map((i) => i.message), tag: "plan", reason: "plan-invalid" });
   const plan = attachment.value.plan;
   const newTasks = plan.tasks;
+  const approved = state.documents.plan?.approved ? state.documents.plan : null;
+  if (approved !== null) {
+    const change = firstApprovedPlanChange(plan, approved, state.ticket.ref);
+    if (change !== null) return rejection({ code: "KILN_APPROVED_TASK_CHANGED", label: change, details: [], tag: "plan", reason: "approved-task-changed" });
+  }
   const offRepo = firstOffRepo(newTasks, state.repo);
   if (offRepo !== null) return rejection({ code: "KILN_PLAN_REPO", label: `every task's repo and branch, and every check's repo, must be the run's worktree ${state.repo.root} on ${state.repo.branch}`, details: [offRepo], tag: "plan", reason: "plan-repo" });
   const doneIds = new Set(state.done.map((d) => d.taskId));
@@ -11243,6 +11296,25 @@ function acceptPlanner(state, ctx, items) {
     pendingWrite: queuedWrite(state, filled),
     judgeDue: false
   }, "plan", outwardLeaks(ctx, [plan.summary], "the plan summary"));
+}
+function firstApprovedPlanChange(plan, approved, ticketRef) {
+  if (plan.ticketRef !== ticketRef) return `the runtime plan names ticket ${plan.ticketRef}, not ${ticketRef}`;
+  if (plan.source.path !== approved.path || plan.source.sha256 !== approved.sha256) return "the runtime plan does not name the approved plan path and SHA-256";
+  if (plan.tasks.length !== approved.tasks.length) return `task ${Math.min(plan.tasks.length, approved.tasks.length) + 1} changes the approved count: the runtime plan has ${plan.tasks.length} tasks; the approved plan has ${approved.tasks.length}`;
+  for (let i = 0; i < approved.tasks.length; i += 1) {
+    const task = plan.tasks[i];
+    const source = approved.tasks[i];
+    if (task.taskId !== `task-${i + 1}`) return `task ${i + 1} changed its number to ${task.taskId}`;
+    if (task.goal !== source.goal) return `task ${i + 1} changed its goal from ${source.goal}`;
+    if (task.covers.some((line) => !approved.acceptance.includes(line))) return `task ${i + 1} changed an approved acceptance line`;
+    for (const named of task.paths) {
+      const safe = !named.startsWith("/") && !named.split("/").includes("..") && !named.startsWith("./") && !named.includes("\\");
+      if (!safe || !source.files.some((file) => named === file || file.endsWith("/") && named.startsWith(file))) return `task ${i + 1} names ${named} outside its approved files`;
+    }
+  }
+  const covered = new Set(plan.tasks.flatMap((task) => task.covers));
+  if (covered.size !== approved.acceptance.length || approved.acceptance.some((line) => !covered.has(line))) return "the runtime plan changed or omitted an approved acceptance line";
+  return null;
 }
 function firstOffRepo(tasks, repo) {
   for (const t of tasks) {
@@ -11613,8 +11685,8 @@ ${description.text}
 // src/jira-capture.mjs
 var JIRA_FIELDS = Object.freeze(["summary", "description", "comment", "issuelinks", "parent"]);
 var REQUEST_TTL_MS = 6e5;
-function requestOf(key, now) {
-  return { key, at: new Date(now).toISOString(), fields: [...JIRA_FIELDS], responseContentFormat: "markdown", updateHistory: false };
+function requestOf(key, now, form = "markdown") {
+  return { key, at: new Date(now).toISOString(), fields: [...JIRA_FIELDS], responseContentFormat: form, updateHistory: false };
 }
 function requestOpen(request, key, now) {
   const at = Date.parse(request?.at);
@@ -11629,8 +11701,21 @@ function captureFault(capture, key) {
   if (capture.key !== key || capture.toolInput?.issueIdOrKey !== key) return "the capture is for another key";
   if (!(Date.parse(capture.savedAt) >= Date.parse(capture.request?.at))) return "the capture is older than its request";
   const asked = capture.toolInput?.fields;
-  if (!Array.isArray(asked) || JIRA_FIELDS.some((field) => !asked.includes(field)) || capture.toolInput.responseContentFormat !== "markdown") return "the tool was not asked for the fields and the form of the request";
+  const form = capture.request?.responseContentFormat;
+  if (!Array.isArray(asked) || JIRA_FIELDS.some((field) => !asked.includes(field)) || !["markdown", "adf"].includes(form) || capture.toolInput.responseContentFormat !== form) return "the tool was not asked for the fields and the form of the request";
   return null;
+}
+function blockKindsOf(doc) {
+  const kinds = /* @__PURE__ */ new Set();
+  function visit(node) {
+    for (const child of node.content) {
+      if (child === null || typeof child !== "object" || typeof child.type !== "string" || "content" in child && !Array.isArray(child.content)) return false;
+      kinds.add(child.type);
+      if (child.content && !visit(child)) return false;
+    }
+    return true;
+  }
+  return visit(doc) ? [...kinds].sort() : null;
 }
 function ticketNodeOf(json) {
   const node = json?.issues?.nodes?.[0];
@@ -11763,13 +11848,207 @@ function renderReadout({ state, scoreboard, prUrl = null }) {
   ].join("\n");
 }
 
+// src/kickoff-approval.mjs
+import { createHash as createHash3 } from "node:crypto";
+import { readFileSync as readFileSync9, writeFileSync as writeFileSync2 } from "node:fs";
+import path5 from "node:path";
+function readPlanBytes(planPath) {
+  try {
+    return readFileSync9(planPath);
+  } catch (error) {
+    throw new KilnError("KILN_PLAN_UNREADABLE", `the plan cannot be read: ${error.message}`, { planPath });
+  }
+}
+function sha256(bytes) {
+  return createHash3("sha256").update(bytes).digest("hex");
+}
+function planHash(planPath) {
+  return sha256(readPlanBytes(planPath));
+}
+function readPlanPreview(planPath) {
+  const absolute = path5.resolve(planPath);
+  const bytes = readPlanBytes(absolute);
+  const text = bytes.toString("utf8");
+  if (!Buffer.from(text, "utf8").equals(bytes)) {
+    throw new KilnError("KILN_PLAN_ENCODING", "the plan is not valid UTF-8", { planPath: absolute });
+  }
+  return { planPath: absolute, text, sha256: sha256(bytes) };
+}
+function writePlanApproval(planPath, displayedSha256) {
+  const absolute = path5.resolve(planPath);
+  if (!/^[0-9a-f]{64}$/.test(displayedSha256)) {
+    throw new KilnError("KILN_PLAN_APPROVAL_HASH_INVALID", "the displayed plan SHA-256 is invalid", { planPath: absolute });
+  }
+  const actualSha256 = planHash(absolute);
+  if (actualSha256 !== displayedSha256) {
+    throw new KilnError("KILN_PLAN_CHANGED_SINCE_DISPLAY", "the plan changed after display. Show it again before approval.", { planPath: absolute, displayedSha256, actualSha256 });
+  }
+  const approval = { planPath: absolute, sha256: actualSha256, approvedAt: (/* @__PURE__ */ new Date()).toISOString() };
+  writeFileSync2(`${absolute}.approval.json`, JSON.stringify(approval, null, 2) + "\n");
+  return approval;
+}
+function verifyPlanApproval(planPath) {
+  const absolute = path5.resolve(planPath);
+  const sidecarPath = `${absolute}.approval.json`;
+  let approval;
+  try {
+    approval = JSON.parse(readFileSync9(sidecarPath, "utf8"));
+  } catch (error) {
+    if (error.code === "ENOENT") return { valid: false, reason: "missing", planPath: absolute, sidecarPath };
+    return { valid: false, reason: "invalid", planPath: absolute, sidecarPath };
+  }
+  if (approval?.planPath !== absolute || !/^[0-9a-f]{64}$/.test(approval?.sha256) || !Number.isFinite(Date.parse(approval?.approvedAt))) {
+    return { valid: false, reason: "invalid", planPath: absolute, sidecarPath };
+  }
+  const actualSha256 = planHash(absolute);
+  if (actualSha256 !== approval.sha256) return { valid: false, reason: "stale", planPath: absolute, sidecarPath, approvedSha256: approval.sha256, actualSha256 };
+  return { valid: true, planPath: absolute, sha256: approval.sha256, approvedAt: approval.approvedAt };
+}
+
+// src/approved-plan.mjs
+import path6 from "node:path";
+var TASK = /^#{2,3} Task (\d+): (.+)$/;
+var SOURCE = /^Source ticket:\s*(\S.*?)\s*$/i;
+var FILE_ENTRY = /^(?:[-*]\s*)?(?:Files|Create|Modify|Test|Delete|Add):\s*/i;
+function shape(message, details = {}) {
+  throw new KilnError("KILN_APPROVED_PLAN_SHAPE", message, details);
+}
+function filePaths(lines) {
+  const files = [];
+  const fileLines = [];
+  for (const line of lines) {
+    if (!FILE_ENTRY.test(line.trim())) continue;
+    const names = [...line.matchAll(/`([^`]+)`/g)].map((match) => match[1]);
+    if (names.length === 0) shape("each task file line must name a path in backticks", { line });
+    fileLines.push(line);
+    for (const name of names) {
+      if (name.trim() !== name || name.length === 0 || path6.isAbsolute(name) || name.split("/").some((part) => part === "." || part === "..") || name.includes("//") || name.includes("\\") || /[\0\r\n]/.test(name)) shape("task files must be safe repository-relative paths", { path: name });
+      if (!files.includes(name)) files.push(name);
+    }
+  }
+  return { files, fileLines };
+}
+function readApprovedPlan(planPath, ticketRef) {
+  if (!path6.isAbsolute(planPath)) shape("the approved plan path must be absolute", { planPath });
+  const approval = verifyPlanApproval(planPath);
+  if (!approval.valid) {
+    const codes = { missing: "KILN_PLAN_APPROVAL_MISSING", invalid: "KILN_PLAN_APPROVAL_INVALID", stale: "KILN_PLAN_APPROVAL_STALE" };
+    throw new KilnError(codes[approval.reason], `the plan approval is ${approval.reason}`, approval);
+  }
+  const { text, sha256: sha2562 } = readPlanPreview(planPath);
+  if (sha2562 !== approval.sha256) throw new KilnError("KILN_PLAN_APPROVAL_STALE", "the plan changed during the read", { planPath });
+  const lines = text.replaceAll("\r\n", "\n").split("\n");
+  const source = lines.map((line) => SOURCE.exec(line)).filter(Boolean);
+  if (source.length !== 1) shape("the plan needs one Source ticket line");
+  const sourceTicket = source[0][1].trim();
+  if (ticketRef !== void 0 && path6.resolve(ticketRef) !== planPath && sourceTicket !== ticketRef) {
+    throw new KilnError("KILN_APPROVED_PLAN_TICKET", `the plan names ${sourceTicket}, not ${ticketRef}`, { sourceTicket, ticketRef });
+  }
+  const acceptanceStart = lines.findIndex((line) => line.trim() === "## Acceptance criteria");
+  if (acceptanceStart === -1) throw new KilnError("KILN_APPROVED_PLAN_ACCEPTANCE", "the plan needs ## Acceptance criteria");
+  const acceptanceEnd = lines.findIndex((line, index) => index > acceptanceStart && (/^## /.test(line) || TASK.test(line)));
+  const criteria = lines.slice(acceptanceStart + 1, acceptanceEnd === -1 ? void 0 : acceptanceEnd).map((line) => line.trim()).filter(Boolean);
+  const acceptance = criteria.map((line) => line.replace(/^(?:[-*]\s+|\d+\.\s+)/, ""));
+  if (acceptance.length === 0 || acceptance.some((line) => !/^(When|While|If|Where|The)\b.*\bshall\b/.test(line))) {
+    throw new KilnError("KILN_APPROVED_PLAN_ACCEPTANCE", "each acceptance line must use EARS form and contain shall");
+  }
+  const headings = lines.map((line, index) => ({ match: TASK.exec(line), index })).filter(({ match }) => match !== null);
+  if (headings.length === 0) shape("the plan needs at least one numbered task");
+  const tasks = headings.map(({ match, index }, position) => {
+    const number = Number(match[1]);
+    if (number !== position + 1) shape(`task ${number} is out of order or repeated`, { task: number, position: position + 1 });
+    const nextHeading = lines.findIndex((line, at) => at > index && /^## /.test(line));
+    const nextTask = headings[position + 1]?.index ?? lines.length;
+    const end = Math.min(nextHeading === -1 ? lines.length : nextHeading, nextTask);
+    const sourceLines = lines.slice(index + 1, end);
+    const { files, fileLines } = filePaths(sourceLines);
+    if (files.length === 0) shape(`task ${number} names no file`, { task: number });
+    return { number, heading: `Task ${number}: ${match[2].trim()}`, goal: match[2].trim(), lines: sourceLines, fileLines, files };
+  });
+  return { path: planPath, sha256: sha2562, sourceTicket, acceptance, tasks };
+}
+
+// src/jira-write.mjs
+var textOf2 = (node) => (node?.content ?? []).map((child) => child.text ?? "").join("");
+var paragraph = (text, marks) => ({ type: "paragraph", content: [{ type: "text", text, ...marks ? { marks } : {} }] });
+var heading = (text) => ({ type: "heading", attrs: { level: 1 }, content: [{ type: "text", text }] });
+function validate(doc, policy) {
+  if (doc?.type !== "doc" || !Array.isArray(doc.content)) throw new KilnError("KILN_JIRA_ADF_UNAVAILABLE", "the description is not an ADF document");
+  const allowed = new Set(policy.allowedTypes);
+  function visit(node) {
+    if (node === null || typeof node !== "object" || typeof node.type !== "string" || "content" in node && !Array.isArray(node.content)) throw new KilnError("KILN_JIRA_ADF_MALFORMED", "the description has a malformed block");
+    if (!allowed.has(node.type)) throw new KilnError("KILN_JIRA_BLOCK_UNSUPPORTED", `the description has an unsupported ${node.type} block`, { kind: node.type });
+    if (node.type === "text" && typeof node.text !== "string") throw new KilnError("KILN_JIRA_ADF_MALFORMED", "the description has a malformed text node");
+    for (const child of node.content ?? []) visit(child);
+  }
+  for (const block of doc.content) visit(block);
+}
+function proposalBlocks(proposal, section) {
+  const lines = proposal.replace(/\r\n/g, "\n").trimEnd().split("\n");
+  if (lines.every((line) => line.trim() === "")) throw new KilnError("KILN_JIRA_PROPOSAL_EMPTY", "the addition has no text");
+  const blocks = [];
+  let bullets2 = [];
+  const flush = () => {
+    if (bullets2.length > 0) blocks.push({ type: "bulletList", content: bullets2.map((text) => ({ type: "listItem", content: [paragraph(text)] })) });
+    bullets2 = [];
+  };
+  for (const line of lines) {
+    if (line === "") {
+      flush();
+      continue;
+    }
+    if (/^\s/.test(line) || /^(?:#|>|```|~~~|\* |\d+[.)] )/.test(line) || line.includes("](")) throw new KilnError("KILN_JIRA_PROPOSAL_UNSUPPORTED", "the addition contains Markdown that the simple converter cannot represent");
+    const bullet = line.startsWith("- ");
+    const value = bullet ? line.slice(2) : line;
+    if (value.trim() === "" || value !== value.trim()) throw new KilnError("KILN_JIRA_PROPOSAL_UNSUPPORTED", "the addition contains an empty or indented line");
+    if (section === "functional-requirements" && !/^(The|When|While|If|Where)\b.+\bshall\b.+[.!?]$/.test(value)) throw new KilnError("KILN_JIRA_EARS_REQUIRED", "new acceptance criteria must use EARS form");
+    if (bullet) bullets2.push(value);
+    else {
+      flush();
+      blocks.push(paragraph(value));
+    }
+  }
+  flush();
+  return blocks;
+}
+function familyOf2(block, format) {
+  if (block.type !== "heading" || block.attrs?.level !== 1) return null;
+  const name = textOf2(block).trim().toLowerCase();
+  return Object.entries(format.families).find(([, family]) => family.names.some((candidate) => candidate.toLowerCase() === name))?.[0] ?? null;
+}
+function previewText(block) {
+  if (block.type === "paragraph" || block.type === "codeBlock" || block.type === "heading") return textOf2(block);
+  if (block.type === "bulletList" || block.type === "orderedList") return (block.content ?? []).map((item) => `- ${(item.content ?? []).map(previewText).join(" ")}`).join("\n");
+  return "";
+}
+function prepareJiraAddition({ original, section, proposal, format, policy, date }) {
+  validate(original, policy);
+  if (!format.layout.includes(section) || !format.families[section]) throw new KilnError("KILN_JIRA_SECTION_UNKNOWN", `unknown Jira section family ${section}`);
+  const added = proposalBlocks(proposal, section);
+  const families = original.content.map((block) => familyOf2(block, format));
+  const start = families.indexOf(section);
+  const nextHeading = (from) => original.content.findIndex((block, i) => i > from && block.type === "heading" && block.attrs?.level === 1);
+  const end = start < 0 ? -1 : nextHeading(start);
+  const insertAt = start >= 0 ? end < 0 ? original.content.length : end : (() => {
+    const later = new Set(format.layout.slice(format.layout.indexOf(section) + 1));
+    const next = families.findIndex((family) => later.has(family));
+    return next < 0 ? original.content.length : next;
+  })();
+  const marker = paragraph(`Added on ${date}`, [{ type: "em" }]);
+  const insertedBlocks = [...start < 0 ? [heading(format.families[section].heading)] : [], marker, ...added];
+  const adf = { ...original, content: [...original.content.slice(0, insertAt), ...insertedBlocks, ...original.content.slice(insertAt)] };
+  const currentText = start < 0 ? "" : original.content.slice(start + 1, insertAt).map(previewText).filter(Boolean).join("\n");
+  return { adf, insertedBlocks, currentText, addedText: insertedBlocks.map(previewText).filter(Boolean).join("\n"), sectionHeading: format.families[section].heading };
+}
+
 // src/cli.mjs
-var priceTable = JSON.parse(readFileSync9(new URL("../policy/price-table-v1.json", import.meta.url), "utf8"));
-var rosterPolicy = JSON.parse(readFileSync9(new URL("../policy/roster-policy-v1.json", import.meta.url), "utf8"));
-var rations = JSON.parse(readFileSync9(new URL("../policy/rations-v1.json", import.meta.url), "utf8"));
-var hostBindings = JSON.parse(readFileSync9(new URL("../policy/host-bindings-v1.json", import.meta.url), "utf8")).hosts["claude-code"];
-var modePolicy = JSON.parse(readFileSync9(new URL("../policy/mode-policy-v1.json", import.meta.url), "utf8"));
-var ticketFormat = JSON.parse(readFileSync9(new URL("../policy/ticket-format-v1.json", import.meta.url), "utf8"));
+var priceTable = JSON.parse(readFileSync10(new URL("../policy/price-table-v1.json", import.meta.url), "utf8"));
+var rosterPolicy = JSON.parse(readFileSync10(new URL("../policy/roster-policy-v1.json", import.meta.url), "utf8"));
+var rations = JSON.parse(readFileSync10(new URL("../policy/rations-v1.json", import.meta.url), "utf8"));
+var hostBindings = JSON.parse(readFileSync10(new URL("../policy/host-bindings-v1.json", import.meta.url), "utf8")).hosts["claude-code"];
+var modePolicy = JSON.parse(readFileSync10(new URL("../policy/mode-policy-v1.json", import.meta.url), "utf8"));
+var ticketFormat = JSON.parse(readFileSync10(new URL("../policy/ticket-format-v1.json", import.meta.url), "utf8"));
+var jiraWritePolicy = JSON.parse(readFileSync10(new URL("../policy/jira-write-v1.json", import.meta.url), "utf8"));
 function checkoutRootsOf(env = process.env) {
   const raw = env.KILN_CHECKOUTS ?? "";
   const roots = raw.split(":").map((r) => r.trim()).filter((r) => r.length > 0);
@@ -11793,12 +12072,12 @@ function repoFactsFor() {
   };
 }
 function documentBriefFor(file, text, kind2) {
-  const shape = documentKindOf(text, file);
-  const resolvedKind = shape?.kind ?? kind2;
+  const shape2 = documentKindOf(text, file);
+  const resolvedKind = shape2?.kind ?? kind2;
   if (resolvedKind === null) return null;
   const mapped = resolvedKind === "plan" ? { ...briefFromPlan(text, file), acceptance: null, approved: null } : { ...briefFromDecision(text), facts: null, taskGoals: [] };
   const parts = { intent: mapped.intent, facts: mapped.facts, decision: mapped.decision, acceptance: mapped.acceptance };
-  return { kind: resolvedKind, shape: shape?.shape ?? "classified", approved: mapped.approved, parts, taskGoals: mapped.taskGoals };
+  return { kind: resolvedKind, shape: shape2?.shape ?? "classified", approved: mapped.approved, parts, taskGoals: mapped.taskGoals };
 }
 function documentReaderFor(ticketRef, source) {
   const wordsOf = /* @__PURE__ */ new Map();
@@ -11807,7 +12086,7 @@ function documentReaderFor(ticketRef, source) {
     if (file === ticketRef) text = readTicketBody(ticketRef, source, null).body;
     else {
       try {
-        text = readFileSync9(file, "utf8");
+        text = readFileSync10(file, "utf8");
       } catch (err) {
         return { unreadable: err.message.replace(`, ${err.syscall} '${file}'`, "") };
       }
@@ -11835,7 +12114,7 @@ function requireFlag(values, name) {
 function readInput(values, name) {
   const file = requireFlag(values, name);
   try {
-    return readFileSync9(file, "utf8");
+    return readFileSync10(file, "utf8");
   } catch (err) {
     throw new KilnError("KILN_INPUT_UNREADABLE", `--${name} file cannot be read: ${err.message}`, { flag: name, file });
   }
@@ -11902,6 +12181,133 @@ function jiraCaptured(key, { ask: ask2 }) {
   clearJiraRequest(found.paths);
   throw new KilnError("KILN_JIRA_NOT_READ", `no answer of the Jira read tool was saved for ${key}. One of three things happened. The session has no Jira read tool. The call failed, as it does with no login or no access to the ticket. Or the session started before the kiln plugin was updated and did not load its hook: start a new session. The next command asks for the read again.`, { ref: key });
 }
+function adfCapabilityOf(description, key) {
+  if (description?.type !== "doc" || !Array.isArray(description.content)) {
+    const form = typeof description === "string" ? "text" : description == null ? "empty" : "other";
+    throw new KilnError("KILN_JIRA_ADF_UNAVAILABLE", `Jira returned a ${form} description for ${key}; kickoff needs the ADF block tree`, { ref: key, form });
+  }
+  const blockKinds = blockKindsOf(description);
+  if (blockKinds === null) throw new KilnError("KILN_JIRA_ADF_UNAVAILABLE", `Jira returned malformed ADF blocks for ${key}`, { ref: key, form: "malformed" });
+  return { form: "tree", blockKinds };
+}
+function jiraCapability(key) {
+  if (jiraByCommand()) {
+    let issue;
+    try {
+      issue = JSON.parse(jiraView(key));
+    } catch (err) {
+      if (err instanceof KilnError) throw err;
+      throw new KilnError("KILN_JIRA_OUTPUT", `the Jira command did not print JSON for ${key}`, { ref: key });
+    }
+    if (issue?.key !== key) throw new KilnError("KILN_JIRA_SHAPE", `the Jira command returned another ticket for ${key}`, { ref: key });
+    return adfCapabilityOf(issue.fields?.description, key);
+  }
+  const paths = jiraCapturePaths(resolveJiraStore(), key);
+  const now = Date.now();
+  const request = readJiraRequest(paths);
+  const saved = readJiraCapture(paths);
+  if (saved?.capture?.request?.responseContentFormat !== "adf" && !(requestOpen(request, key, now) && request.responseContentFormat === "adf")) {
+    writeJiraRequest(paths, requestOf(key, now, "adf"));
+    throw jiraReadNeeded([key]);
+  }
+  const found = jiraCaptureOf(key, now);
+  if (found.state === "none") {
+    writeJiraRequest(paths, requestOf(key, now, "adf"));
+    throw jiraReadNeeded([key]);
+  }
+  if (found.state === "asked") jiraCaptured(key, { ask: false });
+  let json;
+  try {
+    json = JSON.parse(found.answer);
+  } catch {
+    setJiraCaptureAside(paths);
+    throw new KilnError("KILN_JIRA_CAPTURE", `the saved Jira answer for ${key} is not JSON`, { ref: key });
+  }
+  const node = ticketNodeOf(json);
+  if (node?.key !== key) {
+    setJiraCaptureAside(paths);
+    throw new KilnError("KILN_JIRA_CAPTURE", `the saved Jira answer is not for ${key}`, { ref: key });
+  }
+  try {
+    return adfCapabilityOf(node.fields?.description, key);
+  } finally {
+    clearJiraCapture(paths);
+  }
+}
+function kickoffIssue(key) {
+  if (!jiraByCommand()) throw new KilnError("KILN_JIRA_ADF_UNAVAILABLE", "kickoff needs an explicit KILN_JIRA_VIEW command that returns raw ADF");
+  let issue;
+  try {
+    issue = JSON.parse(jiraView(key));
+  } catch (err) {
+    if (err instanceof KilnError) throw err;
+    throw new KilnError("KILN_JIRA_OUTPUT", `the Jira command did not print JSON for ${key}`, { ref: key });
+  }
+  if (issue?.key !== key) throw new KilnError("KILN_JIRA_SHAPE", `the Jira command returned another ticket for ${key}`, { ref: key });
+  let site;
+  try {
+    site = new URL(issue.self).origin;
+  } catch {
+    throw new KilnError("KILN_JIRA_SITE_UNKNOWN", `the Jira command returned no site for ${key}`, { ref: key });
+  }
+  if (!site.startsWith("https://")) throw new KilnError("KILN_JIRA_SITE_UNKNOWN", `the Jira command returned a non-HTTPS site for ${key}`, { ref: key });
+  return { issue, site };
+}
+function kickoffPreview(file) {
+  const absolute = path7.resolve(file);
+  if (!absolute.startsWith(`${resolveJiraStore()}${path7.sep}`)) throw new KilnError("KILN_JIRA_PREVIEW_PATH", "the preview is outside the Jira state folder");
+  let bytes, record;
+  try {
+    bytes = readFileSync10(absolute, "utf8");
+    record = JSON.parse(bytes);
+  } catch {
+    throw new KilnError("KILN_JIRA_PREVIEW_UNREADABLE", "the preview cannot be read");
+  }
+  const sha2562 = sha256Utf8(bytes);
+  let siteOrigin;
+  try {
+    siteOrigin = new URL(record?.site).origin;
+  } catch {
+    siteOrigin = null;
+  }
+  if (sourceOf(record?.key) !== "jira" || absolute !== path7.join(jiraCapturePaths(resolveJiraStore(), record.key).dir, "previews", `${sha2562}.json`) || record.field !== "description" || siteOrigin !== record.site || !record.site.startsWith("https://") || !/^[0-9a-f]{32}$/.test(record.nonce ?? "") || typeof record.proposal !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(record.date ?? "") || record.originalAdf?.type !== "doc" || record.newAdf?.type !== "doc" || record.originalSha256 !== sha256Utf8(JSON.stringify(record.originalAdf)) || record.newSha256 !== sha256Utf8(JSON.stringify(record.newAdf))) {
+    throw new KilnError("KILN_JIRA_PREVIEW_INVALID", "the preview record and its prepared ADF do not match");
+  }
+  let prepared;
+  try {
+    prepared = prepareJiraAddition({ original: record.originalAdf, section: record.section, proposal: record.proposal, format: ticketFormat, policy: jiraWritePolicy, date: record.date });
+  } catch {
+    throw new KilnError("KILN_JIRA_PREVIEW_INVALID", "the preview cannot reproduce the prepared ADF");
+  }
+  const text = `Ticket: ${record.key}
+Site: ${record.site}
+Field: description
+Section: ${prepared.sectionHeading}
+Current section:
+${prepared.currentText || "(empty)"}
+New text:
+${prepared.addedText}`;
+  if (JSON.stringify(prepared.adf) !== JSON.stringify(record.newAdf) || JSON.stringify(prepared.insertedBlocks) !== JSON.stringify(record.insertedBlocks) || text !== record.text) throw new KilnError("KILN_JIRA_PREVIEW_INVALID", "the preview text and prepared ADF differ");
+  return { path: absolute, bytes, sha256: sha2562, record };
+}
+function unresolvedWrite(preview, message) {
+  writeFileAtomic(`${preview.path}.finish.json`, JSON.stringify({ status: "unresolved", message, at: (/* @__PURE__ */ new Date()).toISOString() }, null, 2) + "\n");
+  throw new KilnError("KILN_JIRA_WRITE_UNRESOLVED", message);
+}
+function withJiraStartLock(store, action) {
+  const lock = path7.join(store, "write-start.lock");
+  try {
+    mkdirSync3(lock);
+  } catch (err) {
+    if (err.code === "EEXIST") throw new KilnError("KILN_JIRA_WRITE_ALREADY_ATTEMPTED", "another Jira write start holds this ticket");
+    throw err;
+  }
+  try {
+    return action();
+  } finally {
+    rmdirSync(lock);
+  }
+}
 var jiraReads = /* @__PURE__ */ new Map();
 function readJiraTicket(key, { ask: ask2 = true } = {}) {
   const byCommand = jiraByCommand();
@@ -11961,7 +12367,7 @@ function readGithubIssue(ref) {
 }
 function readTicketBody(ref, source, since) {
   if (source === "markdown") {
-    const raw = readFileSync9(ref, "utf8");
+    const raw = readFileSync10(ref, "utf8");
     return { body: normalizeBody(raw), newerItems: [], raw };
   }
   const read = source === "jira" ? readJiraTicket(ref) : readGithubIssue(ref);
@@ -12007,7 +12413,7 @@ function fetchLinked(paths, { ref, source, body, title, comments = [], links = [
   const items = /* @__PURE__ */ new Map();
   const ownRepo = source === "github" ? githubIssueOf(ref).repo : null;
   if (source === "github") {
-    const own = path5.join(paths.fetched, "issue.md");
+    const own = path7.join(paths.fetched, "issue.md");
     writeFileAtomic(own, `# ${title ?? ""}
 
 ${body}
@@ -12018,7 +12424,7 @@ ${c.body}`).join("\n")}`);
     items.set(ref, `fetched, ${own}`);
   }
   if (source === "jira") {
-    const own = path5.join(paths.fetched, "ticket.md");
+    const own = path7.join(paths.fetched, "ticket.md");
     writeFileAtomic(own, `${body}
 ${comments.map((c) => `
 ---
@@ -12032,12 +12438,12 @@ ${c.body}`).join("\n")}`);
         items.set(key, "not fetched");
         continue;
       }
-      const copy = path5.join(paths.fetched, `${key}.md`);
+      const copy = path7.join(paths.fetched, `${key}.md`);
       writeFileAtomic(copy, text);
       items.set(key, `fetched, ${copy}`);
     }
   }
-  const ticketDir = source === "markdown" ? path5.dirname(path5.resolve(ref)) : null;
+  const ticketDir = source === "markdown" ? path7.dirname(path7.resolve(ref)) : null;
   const github = [];
   for (const m of body.matchAll(GITHUB_ITEM_URL)) github.push({ repo: m[1], number: Number(m[2]), label: `${m[1]}#${m[2]}`, url: m[0] });
   for (const m of body.matchAll(GITHUB_ITEM_REF)) github.push({ repo: m[1], number: Number(m[2]), label: m[0] });
@@ -12049,7 +12455,7 @@ ${c.body}`).join("\n")}`);
       items.set(g.label, "not fetched");
       continue;
     }
-    const copy = path5.join(paths.fetched, `${g.repo.replace("/", "-")}-${g.number}.md`);
+    const copy = path7.join(paths.fetched, `${g.repo.replace("/", "-")}-${g.number}.md`);
     writeFileAtomic(copy, text);
     items.set(g.label, `fetched, ${copy}`);
   }
@@ -12061,12 +12467,12 @@ ${c.body}`).join("\n")}`);
   for (const m of body.matchAll(ANY_URL)) if (!githubUrls.has(m[0]) && !items.has(m[0]) && !fetchedBrowse(m[0])) items.set(m[0], "not fetched");
   if (ticketDir !== null) {
     for (const m of body.matchAll(LOCAL_PATH)) {
-      const abs = path5.resolve(ticketDir, m[1]);
-      if (abs === path5.resolve(ref) || !existsSync2(abs)) continue;
+      const abs = path7.resolve(ticketDir, m[1]);
+      if (abs === path7.resolve(ref) || !existsSync2(abs)) continue;
       items.set(abs, "local, read in place");
     }
   }
-  writeFileAtomic(path5.join(paths.fetched, "index.md"), `# Fetched items
+  writeFileAtomic(path7.join(paths.fetched, "index.md"), `# Fetched items
 
 ${[...items.entries()].map(([k, v]) => `- ${k}: ${v}`).join("\n")}
 `);
@@ -12087,9 +12493,9 @@ function repoWordsOf(root) {
 }
 function runAllowList({ meta, state, body }) {
   const { checkout } = state.repo;
-  const repoNames = [...ticketRepoNames(meta.ticketRef, meta.source).map((r) => r.repo), path5.basename(checkout)];
+  const repoNames = [...ticketRepoNames(meta.ticketRef, meta.source).map((r) => r.repo), path7.basename(checkout)];
   const origin = spawnSync("git", ["-C", checkout, "remote", "get-url", "origin"], { encoding: "utf8" });
-  if (origin.status === 0) repoNames.push(path5.basename(origin.stdout.trim()).replace(/\.git$/, ""));
+  if (origin.status === 0) repoNames.push(path7.basename(origin.stdout.trim()).replace(/\.git$/, ""));
   return allowedWords({ ticketText: body, repoNames, repoWords: meta.repoWords });
 }
 function cleanTicketSection(sectionLines, { allow }) {
@@ -12119,7 +12525,7 @@ var INSTALL_COMMANDS = [
   { files: ["package.json"], argv: ["npm", "install"] }
 ];
 function installDependencies(worktree) {
-  const match = INSTALL_COMMANDS.find((c) => c.files.some((f) => existsSync2(path5.join(worktree, f))));
+  const match = INSTALL_COMMANDS.find((c) => c.files.some((f) => existsSync2(path7.join(worktree, f))));
   if (!match) return null;
   const [bin, ...args] = match.argv;
   const command = match.argv.join(" ");
@@ -12149,7 +12555,7 @@ function dirtyMap(repo) {
   const dirty = {};
   for (const entry of gitOut(repo, ["status", "--porcelain=v1", "-uall", "-z"]).split("\0").filter((e) => e.length > 0)) {
     const p = entry.slice(3);
-    dirty[p] = existsSync2(path5.join(repo, p)) ? gitOut(repo, ["hash-object", p]).trim() : "deleted";
+    dirty[p] = existsSync2(path7.join(repo, p)) ? gitOut(repo, ["hash-object", p]).trim() : "deleted";
   }
   return dirty;
 }
@@ -12181,6 +12587,15 @@ function openRun(v) {
   const state = loadState(paths);
   refuseOldRelease(paths, state);
   return { ref, root, paths, meta, state };
+}
+function checkSavedApprovedPlan(state) {
+  const approved = state.documents?.plan?.approved ? state.documents.plan : null;
+  if (approved === null) return null;
+  const approval = verifyPlanApproval(approved.path);
+  if (!approval.valid || approval.sha256 !== approved.sha256) {
+    throw new KilnError("KILN_APPROVED_PLAN_STALE", "the approved plan changed or its approval is missing; return to kickoff before build", { planPath: approved.path, savedSha256: approved.sha256, approval });
+  }
+  return approved;
 }
 function isOldReleaseRun(state) {
   return state.discover === void 0 && state.repo === null;
@@ -12306,7 +12721,7 @@ function attachmentsFor(rawOutput) {
   const out = {};
   const read = (p) => {
     try {
-      return readFileSync9(p, "utf8");
+      return readFileSync10(p, "utf8");
     } catch {
       return null;
     }
@@ -12343,7 +12758,7 @@ function visitOf(actionId) {
 function afterReceipt({ flow, paths, meta, state, nextState, actionId, pending, accepted: accepted2 }) {
   checkBriefValid(nextState.brief);
   const reform = accepted2 && nextState.lastReform !== null ? nextState.lastReform : null;
-  const reformedRecord = reform === null ? null : reformPartyRecord(JSON.parse(readFileSync9(paths.party.record, "utf8")), rosterPolicy, { actionId, trigger: reform.trigger, classKey: reform.classKey, reason: reform.reason });
+  const reformedRecord = reform === null ? null : reformPartyRecord(JSON.parse(readFileSync10(paths.party.record, "utf8")), rosterPolicy, { actionId, trigger: reform.trigger, classKey: reform.classKey, reason: reform.reason });
   const written = accepted2 ? nextState.lastFilled.filter((p) => TICKET_PARTS.includes(p)) : [];
   const writesTicket = written.length > 0 && nextState.pendingWrite === null && nextState.ticket.readOnly !== true;
   const nextBody = writesTicket ? ticketWriteFor(meta, nextState, written) : null;
@@ -12391,9 +12806,115 @@ function issueLabelOf(ref) {
   return `${repo}#${number}`;
 }
 var COMMANDS = {
+  "jira-approve"(args) {
+    const v = flags(args, { preview: { type: "string" }, sha256: { type: "string" } });
+    const preview = kickoffPreview(requireFlag(v, "preview"));
+    if (preview.sha256 !== requireFlag(v, "sha256")) throw new KilnError("KILN_JIRA_PREVIEW_CHANGED", "the preview changed after it was shown");
+    const { key, site, originalSha256, newSha256 } = preview.record;
+    writeFileAtomic(`${preview.path}.approval.json`, JSON.stringify({ sha256: preview.sha256, key, site, originalSha256, newSha256, approvedAt: (/* @__PURE__ */ new Date()).toISOString() }, null, 2) + "\n");
+    return { approved: true, previewPath: preview.path, sha256: preview.sha256 };
+  },
+  "jira-write-start"(args) {
+    const v = flags(args, { preview: { type: "string" } });
+    const preview = kickoffPreview(requireFlag(v, "preview"));
+    let approval;
+    try {
+      approval = JSON.parse(readFileSync10(`${preview.path}.approval.json`, "utf8"));
+    } catch {
+      throw new KilnError("KILN_JIRA_APPROVAL_MISSING", "the exact preview has no approval");
+    }
+    const { key, site, originalSha256, newSha256 } = preview.record;
+    if (approval.sha256 !== preview.sha256 || approval.key !== key || approval.site !== site || approval.originalSha256 !== originalSha256 || approval.newSha256 !== newSha256) throw new KilnError("KILN_JIRA_APPROVAL_STALE", "the approved preview no longer matches the prepared edit");
+    const store = jiraCapturePaths(resolveJiraStore(), key).dir;
+    return withJiraStartLock(store, () => {
+      const requestPath = path7.join(store, "write-request.json");
+      const attemptPath = path7.join(store, "write-attempt.json");
+      if (existsSync2(`${preview.path}.attempt.json`) || existsSync2(`${preview.path}.response.json`) || existsSync2(requestPath)) throw new KilnError("KILN_JIRA_WRITE_ALREADY_ATTEMPTED", "this approval already has a write attempt");
+      let previous = null;
+      if (existsSync2(attemptPath)) {
+        try {
+          previous = JSON.parse(readFileSync10(attemptPath, "utf8"));
+        } catch {
+          throw new KilnError("KILN_JIRA_WRITE_ALREADY_ATTEMPTED", "the prior Jira write attempt needs manual resolution");
+        }
+        let finish;
+        try {
+          const priorPreview = kickoffPreview(previous.previewPath);
+          finish = JSON.parse(readFileSync10(`${priorPreview.path}.finish.json`, "utf8"));
+          if (previous.previewSha256 !== priorPreview.sha256 || !/^[0-9a-f]{64}$/.test(previous.token ?? "") || typeof previous.toolUseId !== "string") throw new Error("invalid prior attempt");
+        } catch {
+          throw new KilnError("KILN_JIRA_WRITE_ALREADY_ATTEMPTED", "the prior Jira write attempt needs manual resolution");
+        }
+        if (previous.key !== key || previous.site !== site || previous.previewPath === preview.path || finish.status !== "unresolved" || !existsSync2(`${previous.previewPath}.response.json`)) throw new KilnError("KILN_JIRA_WRITE_ALREADY_ATTEMPTED", "the prior Jira write attempt needs manual resolution");
+      }
+      const current = kickoffIssue(key);
+      if (current.site !== site || sha256Utf8(JSON.stringify(current.issue.fields?.description)) !== originalSha256) throw new KilnError("KILN_JIRA_PREVIEW_STALE", "the Jira site or description changed after preview");
+      const token = sha256Utf8(`${preview.sha256}:${key}:${site}:${originalSha256}:${newSha256}:${randomBytes(32).toString("hex")}`);
+      if (previous !== null) renameSync3(attemptPath, path7.join(store, `write-attempt-${previous.token}.json`));
+      writeFileAtomic(requestPath, JSON.stringify({ token, previewPath: preview.path, previewSha256: preview.sha256, key, site, originalSha256, newSha256 }, null, 2) + "\n");
+      return { action: { cloudId: site, issueIdOrKey: key, fields: { __kiln_guard__: token }, contentFormat: "adf", responseContentFormat: "adf" } };
+    });
+  },
+  "jira-write-finish"(args) {
+    const v = flags(args, { preview: { type: "string" } });
+    const preview = kickoffPreview(requireFlag(v, "preview"));
+    const { key, site, newSha256 } = preview.record;
+    const store = jiraCapturePaths(resolveJiraStore(), key).dir;
+    let attempt, response;
+    try {
+      attempt = JSON.parse(readFileSync10(`${preview.path}.attempt.json`, "utf8"));
+      response = JSON.parse(readFileSync10(`${preview.path}.response.json`, "utf8"));
+    } catch {
+      throw new KilnError("KILN_JIRA_WRITE_UNRESOLVED", "the Jira write attempt has no complete hook response");
+    }
+    if (attempt.previewSha256 !== preview.sha256 || response.toolError || !response.injected) unresolvedWrite(preview, "the Jira write result is unresolved");
+    let current;
+    try {
+      current = kickoffIssue(key);
+    } catch (err) {
+      writeFileAtomic(`${preview.path}.readback-error.json`, JSON.stringify({ code: err.code ?? "KILN_UNEXPECTED", at: (/* @__PURE__ */ new Date()).toISOString() }, null, 2) + "\n");
+      unresolvedWrite(preview, "the Jira readback failed after the write attempt");
+    }
+    writeFileAtomic(`${preview.path}.readback.json`, JSON.stringify(current.issue, null, 2) + "\n");
+    if (current.site !== site || sha256Utf8(JSON.stringify(current.issue.fields?.description)) !== newSha256) unresolvedWrite(preview, "the Jira readback differs from the approved ADF");
+    writeFileAtomic(`${preview.path}.finish.json`, JSON.stringify({ status: "confirmed", at: (/* @__PURE__ */ new Date()).toISOString() }, null, 2) + "\n");
+    rmSync2(path7.join(store, "write-attempt.json"), { force: true });
+    return { status: "confirmed", key, site };
+  },
+  "jira-preview"(args) {
+    const v = flags(args, { ticket: { type: "string" }, section: { type: "string" }, file: { type: "string" } });
+    const key = requireFlag(v, "ticket");
+    const section = requireFlag(v, "section");
+    if (sourceOf(key) !== "jira") throw new KilnError("KILN_JIRA_KEY_REQUIRED", "jira-preview needs a Jira ticket key", { ref: key });
+    const { issue, site } = kickoffIssue(key);
+    const originalAdf = issue.fields?.description;
+    const proposal = readInput(v, "file");
+    const date = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+    const prepared = prepareJiraAddition({ original: originalAdf, section, proposal, format: ticketFormat, policy: jiraWritePolicy, date });
+    const text = `Ticket: ${key}
+Site: ${site}
+Field: description
+Section: ${prepared.sectionHeading}
+Current section:
+${prepared.currentText || "(empty)"}
+New text:
+${prepared.addedText}`;
+    const record = { key, site, field: "description", section, nonce: randomBytes(16).toString("hex"), proposal, date, originalAdf, originalSha256: sha256Utf8(JSON.stringify(originalAdf)), newAdf: prepared.adf, newSha256: sha256Utf8(JSON.stringify(prepared.adf)), insertedBlocks: prepared.insertedBlocks, text };
+    const bytes = JSON.stringify(record, null, 2) + "\n";
+    const sha2562 = sha256Utf8(bytes);
+    return { previewPath: saveJiraPreview(resolveJiraStore(), key, sha2562, bytes), sha256: sha2562, text };
+  },
+  "jira-capability"(args) {
+    const v = flags(args, { ticket: { type: "string" } });
+    const key = requireFlag(v, "ticket");
+    if (sourceOf(key) !== "jira") throw new KilnError("KILN_JIRA_KEY_REQUIRED", "jira-capability needs a Jira ticket key", { ref: key });
+    return jiraCapability(key);
+  },
   open(args) {
-    const v = flags(args, { root: { type: "string" }, ticket: { type: "string" }, idea: { type: "string" }, again: { type: "boolean" }, base: { type: "string" }, plan: { type: "string" } });
+    const v = flags(args, { root: { type: "string" }, ticket: { type: "string" }, idea: { type: "string" }, again: { type: "boolean" }, base: { type: "string" }, plan: { type: "string" }, "approved-plan": { type: "string" } });
     const ref = requireFlag(v, "ticket");
+    if (v.plan !== void 0 && v["approved-plan"] !== void 0) throw new KilnError("KILN_PLAN_FLAGS_CONFLICT", "use either --plan or --approved-plan");
+    const approvedPlan = v["approved-plan"] === void 0 ? null : readApprovedPlan(v["approved-plan"], ref);
     const source = sourceOf(ref);
     const checkoutRoots = checkoutRootsOf();
     const root = resolveRunsRoot({ flag: v.root });
@@ -12415,19 +12936,26 @@ ${v.idea.trim()}
     const fromTicket = ticketShape === null ? readTicket(body, ticketFormat) : null;
     const ticketDoc = ticketShape === null ? null : documentBriefFor(ref, ticketRead.body, null);
     const documentParts = ticketDoc === null ? null : Object.fromEntries(Object.entries(ticketDoc.parts).filter(([, v2]) => v2 !== null));
-    const brief = ticketShape === null ? fromTicket.brief : { ...emptyBrief(), ...documentParts };
+    const ticketBrief = ticketShape === null ? fromTicket.brief : { ...emptyBrief(), ...documentParts };
+    const approvedAcceptance = approvedPlan === null ? ticketBrief.acceptance : acceptanceFromApprovedPlan(ticketBrief.acceptance, approvedPlan);
+    if (approvedPlan !== null && approvedAcceptance === null) throw new KilnError("KILN_APPROVED_PLAN_ACCEPTANCE_MISMATCH", "the ticket acceptance differs from the approved plan; return to kickoff", { ticket: ref, planPath: approvedPlan.path });
+    const brief = { ...ticketBrief, acceptance: approvedAcceptance };
     const taskGoals = ticketShape === null ? [] : ticketDoc.taskGoals;
     const title = ticketShape === null ? fromTicket.title : titleOf(body);
-    const planPath = v.plan === void 0 ? null : path5.resolve(v.plan);
+    const planPath = approvedPlan?.path ?? (v.plan === void 0 ? null : path7.resolve(v.plan));
     const planShape = planPath === null ? null : documentKindOf(readInput({ plan: planPath }, "plan"), planPath);
-    const documents = { plan: planPath === null ? null : { path: planPath, kind: planShape?.kind ?? null, shape: planShape?.shape ?? null }, decision: null };
+    const documents = { plan: planPath === null ? null : { path: planPath, kind: planShape?.kind ?? null, shape: planShape?.shape ?? null, ...approvedPlan === null ? {} : { ...approvedPlan, approved: true } }, decision: null };
     const registry = getRegistry();
     const setAside = v.again === true && runExists(paths) ? againFor(paths) : null;
     if (runExists(paths)) {
       const meta2 = readRunMeta(paths);
       const state2 = loadState(paths);
       refuseOldRelease(paths, state2);
-      const record2 = JSON.parse(readFileSync9(paths.party.record, "utf8"));
+      if (approvedPlan !== null && (state2.documents?.plan?.approved !== true || state2.documents.plan.path !== approvedPlan.path || state2.documents.plan.sha256 !== approvedPlan.sha256)) {
+        throw new KilnError("KILN_APPROVED_PLAN_RUN_MISMATCH", "this existing run does not hold the selected approved plan; end it before opening a new run", { planPath: approvedPlan.path, runDir: paths.dir });
+      }
+      checkSavedApprovedPlan(state2);
+      const record2 = JSON.parse(readFileSync10(paths.party.record, "utf8"));
       const flow2 = flowFor(flowCtx(meta2));
       return { resumed: true, dir: paths.dir, ...ENDED.has(state2.status) ? { again: `this run ended ${state2.status}; open --again sets it aside and starts a fresh run on this ticket` } : {}, fillState: openFillState(fillStateLines({ brief: state2.brief, taskGoals, roster: record2.roster, changed: ticketChangesFor(state2, ticketRead.body).parts }), source, ticketRead), roster: { rowId: record2.roster.rowId, fielded: record2.roster.fielded.map((m) => m.classKey) }, next: nextSummary(flow2, state2, paths, meta2) };
     }
@@ -12437,11 +12965,11 @@ ${v.idea.trim()}
     const bundle = buildBundle({ ticketText: body });
     const outward = outwardOf(source);
     const issueTitle = title === null && source === "github" ? ticketRead.title : title;
-    const extras = { runDir: paths.dir, cliPath: path5.resolve(process.argv[1]), ticket: { ref, source, outward, title: issueTitle, taskGoals, kind: ticketShape?.kind ?? "ticket", shape: ticketShape?.shape ?? null, readOnly: ticketShape !== null, ...source === "jira" ? { skipped: ticketRead.skipped, descriptionForm: ticketRead.form } : {}, ...documentParts === null ? {} : { documentParts } }, brief, repo: null, checkoutRoots, base: v.base ?? null, documents };
+    const extras = { runDir: paths.dir, cliPath: path7.resolve(process.argv[1]), ticket: { ref, source, outward, title: issueTitle, taskGoals, kind: ticketShape?.kind ?? "ticket", shape: ticketShape?.shape ?? null, readOnly: ticketShape !== null, ...source === "jira" ? { skipped: ticketRead.skipped, descriptionForm: ticketRead.form } : {}, ...documentParts === null ? {} : { documentParts } }, brief, repo: null, checkoutRoots, base: v.base ?? null, documents };
     const firstKind = route(baseStateOf({ bundle, roles, extras }), flowCtx({ ticketRef: ref, source, firstKind: null })).nextKind;
     const flow = flowFor(flowCtx({ ticketRef: ref, source, firstKind }));
     const state = createRun(flow, { bundle, loadout: LOADOUT, host: HOST, policy: null, roles, profile: PROFILE, extras });
-    const original = path5.join(paths.original, `ticket.${source === "markdown" ? "md" : "json"}`);
+    const original = path7.join(paths.original, `ticket.${source === "markdown" ? "md" : "json"}`);
     const meta = { ticketRef: ref, source, outward, repo: null, branch: null, base: null, firstKind, original, createdAt: (/* @__PURE__ */ new Date()).toISOString() };
     createRunDir2(paths);
     writeFileAtomic(original, ticketRead.raw);
@@ -12501,6 +13029,13 @@ ${v.idea.trim()}
     if (pending.kind !== "ask-person") throw new KilnError("KILN_REPLY_IS_RECEIPT", "the pending action is a dispatch; use receipt");
     const text = v.text !== void 0 ? v.text : readInput(v, "file");
     const q = state.question;
+    if (q.then === "build" && isBareYes(text)) {
+      const approved = checkSavedApprovedPlan(state);
+      if (approved !== null && meta.ticketRef !== approved.path) {
+        const current = readTicket(withContextHeading(readTicketBody(meta.ticketRef, meta.source, null).body, ticketFormat), ticketFormat).brief.acceptance;
+        if (current !== null && acceptanceFromApprovedPlan(current, approved) === null) throw new KilnError("KILN_APPROVED_PLAN_ACCEPTANCE_MISMATCH", "the ticket acceptance changed since the approved plan; return to kickoff", { ticket: meta.ticketRef, planPath: approved.path });
+      }
+    }
     const changes = parseReply(text).word === "change" && takesChange(state) ? { ticketChanges: ticketChangesFor(state, readTicketBody(meta.ticketRef, meta.source, null).body) } : {};
     const flow = flowFor(flowCtx(meta, changes));
     const toWrite = pendingTicketParts(state);
@@ -12542,16 +13077,47 @@ ${v.idea.trim()}
     if (!valid) throw new KilnError("KILN_TICKET_PLAN_INVALID", "the file fails kiln:ticket-plan@1", { issues });
     return { valid: true, tasks: plan.tasks.length };
   },
+  "class-check"(args) {
+    const v = flags(args, { class: { type: "string" }, input: { type: "string" }, output: { type: "string" } });
+    const registry = getRegistry();
+    const classId = requireFlag(v, "class");
+    const entry = registry[classId];
+    if (!entry || entry.borrowed) throw new KilnError("KILN_CLASS_UNKNOWN", `${classId} is not a local Class`, { classId });
+    if (v.input === void 0 === (v.output === void 0)) throw new KilnError("KILN_CLASS_CHECK_KIND", "provide exactly one of --input or --output");
+    const kind2 = v.input === void 0 ? "output" : "input";
+    const value = readJsonInput(v, kind2);
+    if (kind2 === "input" && classId !== "kiln:prospector" && value?.mode !== "kickoff") throw new KilnError("KILN_CLASS_MODE_REQUIRED", "a direct Class input needs mode kickoff", { classId });
+    const checked = kind2 === "input" ? validateClassInput(classId, value) : validateKilnContract(entry.outputContractId, value);
+    if (!checked.valid) throw new KilnError("KILN_CLASS_CHECK_INVALID", `${classId} ${kind2} fails its contract`, { classId, kind: kind2, issues: checked.issues });
+    return { valid: true, classId, kind: kind2 };
+  },
+  "plan-preview"(args) {
+    const v = flags(args, { file: { type: "string" } });
+    return readPlanPreview(requireFlag(v, "file"));
+  },
+  "plan-approve"(args) {
+    const v = flags(args, { file: { type: "string" }, sha256: { type: "string" } });
+    return writePlanApproval(requireFlag(v, "file"), requireFlag(v, "sha256"));
+  },
+  "plan-approval-check"(args) {
+    const v = flags(args, { file: { type: "string" } });
+    const result = verifyPlanApproval(requireFlag(v, "file"));
+    if (!result.valid) {
+      const codes = { missing: "KILN_PLAN_APPROVAL_MISSING", invalid: "KILN_PLAN_APPROVAL_INVALID", stale: "KILN_PLAN_APPROVAL_STALE" };
+      throw new KilnError(codes[result.reason], `the plan approval is ${result.reason}`, result);
+    }
+    return result;
+  },
   borrowed(args) {
     const v = flags(args, { result: { type: "string" }, evidence: { type: "string" }, scope: { type: "string" }, lens: { type: "string" } });
     const result = readJsonInput(v, "result");
     const evidence = readJsonInput(v, "evidence");
-    return mapBorrowedReview({ result, evidence, lens: v.lens ?? "adversarial-review", scope: v.scope ?? "branch", runId: path5.basename(path5.dirname(requireFlag(v, "result"))), resultPath: requireFlag(v, "result") });
+    return mapBorrowedReview({ result, evidence, lens: v.lens ?? "adversarial-review", scope: v.scope ?? "branch", runId: path7.basename(path7.dirname(requireFlag(v, "result"))), resultPath: requireFlag(v, "result") });
   },
   show(args) {
     const v = flags(args, { root: { type: "string" }, ticket: { type: "string" } });
     const { paths, meta, state } = openRun(v);
-    const record = JSON.parse(readFileSync9(paths.party.record, "utf8"));
+    const record = JSON.parse(readFileSync10(paths.party.record, "utf8"));
     return { dir: paths.dir, status: state.status, fillState: fillStateLines({ brief: state.brief, taskGoals: state.ticket.taskGoals, roster: record.roster }), cursor: state.cursor, done: state.done, repo: state.repo, ledger: state.ledger.slice(-5).map((e) => ({ actionId: e.actionId, outcome: e.outcome })), next: nextSummary(flowFor(flowCtx(meta)), state, paths, meta) };
   },
   readout(args) {
@@ -12590,7 +13156,7 @@ ${v.idea.trim()}
     const nextBody = writes ? bodyWithReferencesLink(meta, state, url) : null;
     const scoreboard = computeScoreboard({ roles: state.roles, envelopes: readEnvelopes(paths), rations, priceTable, ledger: state.ledger });
     const readout = renderReadout({ state, scoreboard, prUrl: url });
-    const record = JSON.parse(readFileSync9(paths.party.record, "utf8"));
+    const record = JSON.parse(readFileSync10(paths.party.record, "utf8"));
     const reportedAt = (/* @__PURE__ */ new Date()).toISOString();
     const completed = completePartyRecord(record, { laneRuns: record.laneRuns.map((l) => ({ ...l, executionStatus: "complete" })), cost: scoreboard.cost, report: { path: paths.party.report, sha256: sha256Utf8(readout) }, reportedAt });
     if (nextBody !== null) writeTicketBody(meta.ticketRef, meta.source, nextBody, paths.ticketBody);

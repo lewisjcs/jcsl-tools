@@ -1,0 +1,5 @@
+{
+  "kind": "jira-write-policy",
+  "version": "1.0.0",
+  "allowedTypes": ["heading", "paragraph", "bulletList", "orderedList", "listItem", "codeBlock", "text"]
+}

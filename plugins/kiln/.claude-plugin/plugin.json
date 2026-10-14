@@ -1,7 +1,7 @@
 {
   "name": "kiln",
-  "version": "3.5.0",
-  "description": "The Kiln build run. Ships the build skill (one run per ticket: it fills the ticket's brief, builds its tasks one change at a time, has a judge rule on the whole, and opens the pull request on the person's yes), the shape skill (a three-lens design dialogue that ends at a written decision), and the Classes the run dispatches: the Crafter, the Designer, the Planner, the Inspector, and the Prospector. Carries the runtime bundle, the roster policy, the rations, the host bindings, the price table, and the borrowed-review pins.",
+  "version": "3.6.0",
+  "description": "Kiln answers questions, explores ideas, and prepares reviewed plans through /kiln:kickoff. /kiln:build starts a separate implementation run from an approved plan or ticket. The plugin ships five Classes, host skills, and the runtime that validates their contracts.",
   "author": {
     "name": "Josh C.S. Lewis"
   },
