@@ -10,7 +10,7 @@
       "name": "kiln",
       "source": "./plugins/kiln",
       "displayName": "The Kiln",
-      "description": "The Kiln build run: the build skill takes one ticket, fills its brief, builds its tasks one change at a time, has a judge rule on the whole, and opens the pull request on the person's yes. Ships the shape skill, the Crafter, Designer, Planner, Inspector, and Prospector Classes, the runtime bundle, and the policies.",
+      "description": "Kiln answers questions, explores ideas, and prepares reviewed plans through /kiln:kickoff. /kiln:build starts a separate implementation run from an approved plan or ticket. The plugin ships five Classes, host skills, and its runtime.",
       "author": {
         "name": "Josh C.S. Lewis"
       },
@@ -18,6 +18,8 @@
       "keywords": [
         "kiln",
         "build",
+        "kickoff",
+        "planning",
         "crafter",
         "designer",
         "planner",

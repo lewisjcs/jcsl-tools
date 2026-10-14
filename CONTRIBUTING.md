@@ -55,7 +55,7 @@ There's no repo-wide test command — verification is per-component, where a com
 
 | Component | Verify with |
 |---|---|
-| Kiln payload | Generated: verify in the kiln repository (`npm test`, then the packager), and confirm `plugins/kiln/PROVENANCE.json` names the merged source commit. Nothing here is tested in place. |
+| Kiln payload | Run `npm test` in the Kiln repository. Generate the payload from the merged source commit. Compare its files and `PROVENANCE.json` with `plugins/kiln/`. Run `claude plugin validate plugins/kiln`. |
 | Gauntlet finder/validator agents | `bash plugins/gauntlet/agents/check-grounding-parity.sh` — asserts the shared grounding-contract sentinel block is byte-identical across the checked finder/validator agent files. |
 | Context Economy hooks | `bash plugins/context-economy/hooks/<hook-name>.test.sh` for each of `cost-statusline`, `telemetry-record`, `handoff-nudge`, `context-reset-nudge`. Exits non-zero on any failure. |
 | Context Economy behavioral fixtures | Five operator-in-the-loop scenarios in `plugins/context-economy/fixtures/` (`CE-01`–`CE-05`), each with a `prompt.md` + `expected.md` checkbox rubric. See `fixtures/README.md`. Target ≥3/5 pass before shipping a change that touches Steward/Assembler/Delegator behavior. |

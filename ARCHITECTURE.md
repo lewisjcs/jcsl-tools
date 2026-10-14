@@ -9,7 +9,7 @@ jcsl-tools/
 ├── .claude-plugin/
 │   └── marketplace.json      # marketplace manifest — lists all 5 plugins below
 └── plugins/
-    ├── kiln/                 # the Kiln build run and its Classes (generated payload)
+    ├── kiln/                 # Kiln kickoff, build, and Classes (generated payload)
     ├── gauntlet/              # multi-skill review harness
     ├── prospector/            # discovery-first research harness
     ├── context-economy/       # context-spend discipline Party
@@ -32,11 +32,11 @@ A plugin's version is bumped independently in its own `plugin.json` — the mark
 
 ## The five plugins
 
-### Kiln — the build run and its Classes
+### Kiln: kickoff, build, and Classes
 
-Entry: `/kiln:build <ticket>`. The `build` skill is the host of one run per ticket. It opens the run through the runtime bundle, dispatches the agent Classes (`kiln:crafter`, `kiln:planner`, `kiln:inspector`, `kiln:prospector`) by Class as the runtime names each next action, measures each dispatch, and appends the receipt. The Classes are never invoked standalone. The Designer is the `shape` skill. When the runtime hands the run a design step, it runs in the main thread as `/kiln:shape --ticket <ref> --cli <path>`. With no run, it runs as `/kiln:shape "<idea>"`.
+`/kiln:kickoff` answers a question, explores an idea, or prepares a reviewed plan. It can call a Class directly when that Class's separate result helps. It stops before implementation. `/kiln:build` starts a separate Party run from an approved plan or ticket. The runtime chooses each next action, and the build skill performs the host call. `/kiln:shape` also opens the Designer without a run.
 
-Kiln ships five Classes of the Kiln runtime. The **Crafter** builds exactly one task from the run's ticket plan, checks its own work against every numbered done-when check, commits on the branch, and ends with a typed outcome that carries a required deviations list. The **Designer** holds a one-question-at-a-time design dialogue and ends at a written, approved decision file. The **Planner** turns a decision into a ticket plan of ordered tasks with rerunnable checks. The **Inspector** rules once per run, last, on whether the Crafter commits conform to the ticket plan, and names the consequence it observed. The **Prospector** is a bounded researcher that invokes the research skill by name and returns a cited report within its ration. The plugin is a generated payload, not a source tree. The kiln repository's packager writes every part of it from a merged commit: `agents/` (the four agent bodies), `skills/build/SKILL.md` (the host skill), `skills/shape/SKILL.md` (the Designer's skill body), `hooks/hooks.json` (the hook file, which runs a script of the runtime before and after the session's Jira read tool and saves the tool's answer for a run that asked for the ticket), `references/` (files a body loads through `${CLAUDE_PLUGIN_ROOT}`), `classes/` (the five Class manifests the runtime registers), `policy/` (the roster policy, the rations, the host bindings, the price table, and the borrowed-review pins), `runtime/` (the bundled command `runtime/bin/cli.mjs` with the data it reads beside it), and `PROVENANCE.json` (the source repository, the source commit, and a hash over the payload). Edit the canon there and repackage. A hand edit here drifts from the manifest the runtime checks against the installed agent. The previous Kiln (2.17, the conductor with lanes, guard hooks, and the Compounds engine) is archived whole at `plugins/_archive/kiln-2.17/` and is not listed in the marketplace.
+Kiln ships five Classes: Crafter, Designer, Planner, Inspector, and Prospector. Each Class has a manifest and a Claude Code entry point. The host skills are `kickoff`, `build`, and `shape`. The Kiln packager copies those files, their references, the hooks, policy, and the bundled runtime from the merged Kiln source. `PROVENANCE.json` records the source commit and payload hash. Edit the canonical files in Kiln, then generate this payload again. The marketplace owns only `plugins/kiln/.claude-plugin/plugin.json`.
 
 ### Gauntlet — multi-skill review harness
 
@@ -52,7 +52,7 @@ A decommissioned component moves to `_archive/` (e.g. `_archive/v1-adversarial-r
 
 Entry: `/prospector:research`
 
-Smallest plugin (~290 lines total): one skill (`skills/research/`) implementing a discover → deepen → verify → synthesize method across Glean, GitHub, Jira, and the web. `sources.md`, `method.md`, and `output-shapes.md` load progressively rather than all at once, same discipline as Kiln's `fire` skill.
+The Prospector plugin has one research skill under `skills/research/`. It finds sources before it reads them, then checks claims and returns citations. Kiln's Prospector Class can call this skill by name when its brief does not name exact places to read.
 
 ### Context Economy — context-spend discipline Party
 

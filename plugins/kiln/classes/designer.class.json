@@ -2,7 +2,7 @@
   "kind": "class",
   "schemaVersion": "1.0-kernel",
   "id": "kiln:designer",
-  "version": "2.3.0",
+  "version": "2.4.0",
   "audience": "personal",
   "identity": {
     "name": "Designer",
@@ -40,15 +40,58 @@
       "id": "kiln:designer-brief@2",
       "schema": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["intent", "facts", "decisionPath", "checks"],
-        "properties": {
-          "intent": { "type": "string", "minLength": 1 },
-          "facts": { "type": "array", "items": { "type": "object", "additionalProperties": false, "required": ["fact", "source"], "properties": { "fact": { "type": "string", "minLength": 1 }, "source": { "type": "string", "minLength": 1 } } } },
-          "decisionPath": { "type": "string", "minLength": 1 },
-          "checks": { "type": "array", "minItems": 1, "items": { "type": "object", "additionalProperties": false, "required": ["command", "expect"], "properties": { "command": { "type": "string", "minLength": 1 }, "expect": { "type": "string", "minLength": 1 } } } }
-        }
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["intent", "facts", "decisionPath", "checks"],
+            "properties": {
+              "intent": { "type": "string", "minLength": 1 },
+              "facts": { "type": "array", "items": { "type": "object", "additionalProperties": false, "required": ["fact", "source"], "properties": { "fact": { "type": "string", "minLength": 1 }, "source": { "type": "string", "minLength": 1 } } } },
+              "decisionPath": { "type": "string", "minLength": 1 },
+              "checks": { "type": "array", "minItems": 1, "items": { "type": "object", "additionalProperties": false, "required": ["command", "expect"], "properties": { "command": { "type": "string", "minLength": 1 }, "expect": { "type": "string", "minLength": 1 } } } }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "mode",
+              "intent",
+              "facts"
+            ],
+            "properties": {
+              "mode": {
+                "const": "kickoff"
+              },
+              "intent": {
+                "type": "string",
+                "minLength": 1
+              },
+              "facts": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "fact",
+                    "source"
+                  ],
+                  "properties": {
+                    "fact": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "source": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ]
       }
     },
     "output": {
@@ -100,6 +143,58 @@
           {
             "type": "object",
             "additionalProperties": false,
+            "required": [
+              "status",
+              "classId",
+              "outputContractId",
+              "output"
+            ],
+            "properties": {
+              "status": {
+                "const": "explored"
+              },
+              "classId": {
+                "const": "kiln:designer"
+              },
+              "outputContractId": {
+                "const": "kiln:designer-outcome@1"
+              },
+              "output": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "summary"
+                ],
+                "properties": {
+                  "summary": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "note": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "path",
+                      "sha256"
+                    ],
+                    "properties": {
+                      "path": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "sha256": {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{64}$"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
             "required": ["status", "classId", "missing", "decisionState"],
             "properties": {
               "status": { "const": "gap" },
@@ -129,7 +224,7 @@
       "path": "hosts/claude-code/skills/shape/SKILL.md",
       "projection": {
         "canonicalSources": ["hosts/claude-code/skills/shape/SKILL.md", "references/ears.md", "references/brainstorming.md", "references/architecture.md"],
-        "sourceHash": "2d53d4463ae5cc8ab66260fabbddceb80ec77a5c40d30a9671a3c3398f1adb0f"
+        "sourceHash": "654d5f6fd265ef4b082e2e36bb084dba72498044f704e6ba6e1499bdc9403e40"
       }
     }
   },
