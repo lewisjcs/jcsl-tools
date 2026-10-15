@@ -7,7 +7,7 @@ Josh C.S. Lewis's personal Claude Code marketplace has six independently install
 | Plugin | What it does | Entry point |
 |---|---|---|
 | [`kiln`](plugins/kiln/) | Kickoff answers questions, explores ideas, and prepares reviewed plans. Build starts a separate implementation run from an approved plan or ticket. Five Classes provide research, design, planning, coding, and review. | `/kiln:kickoff <question, idea, ticket, or plan>` starts preparation. `/kiln:build <ticket or plan>` starts implementation. `/kiln:shape <idea>` opens the Designer directly. |
-| [`gauntlet`](plugins/gauntlet/) | Multi-skill AI review harness. A thin host over a deterministic Party runtime that detects an artifact's type (code diff, plan, doc, skill, directive) and fields the review lanes it supports today (adversarial review, code-quality audit, threat review on a security signal, revision review on a re-review); lanes it doesn't yet field are reported as gaps and offered as operator-invoked follow-ups. | `/gauntlet [<pr-url>\|<path>]` |
+| [`gauntlet`](plugins/gauntlet/) | Multi-skill AI review harness. A thin host over a deterministic Party runtime that detects an artifact's type (code diff, plan, doc, skill, directive) and fields the review lanes it supports today (adversarial review, code-quality audit, threat review on a security signal, revision review on a re-review); lanes it doesn't yet field are reported as gaps and offered as operator-invoked follow-ups. | `/gauntlet:run [<pr-url>\|<path>]` |
 | [`prospector`](plugins/prospector/) | Discovery-first research harness. Finds where an answer lives across Glean, GitHub, Jira, and the web before reading anything — then verifies every load-bearing claim and synthesizes a cited answer. | `/prospector:research` |
 | [`context-economy`](plugins/context-economy/) | Six-Class Party (Steward, Assembler, Delegator, Chronicler, Enforcer, Observer) for spending Claude Code's context window economically — hard-gates before broad reads/greps, nudges a handoff before context fills, tracks session cost. | Fires automatically on trigger phrases; no slash command |
 | [`cartographer`](plugins/cartographer/) | Repository cartographer — analyzes a repo's structure and evidence to draft a grounded, claim-classified README enrichment, flagging unsupported claims and stale content. | `cartograph-report` skill (auto-discovered; no slash command) |
@@ -38,6 +38,7 @@ claude plugin install gauntlet@jcsl-tools
 claude plugin install prospector@jcsl-tools
 claude plugin install context-economy@jcsl-tools
 claude plugin install cartographer@jcsl-tools
+claude plugin install herald@jcsl-tools
 ```
 
 Restart Claude Code after installing or after any change to a plugin's `hooks.json` or `plugin.json`.

@@ -41,7 +41,7 @@ Kiln ships five Classes: Crafter, Designer, Planner, Inspector, and Prospector. 
 
 ### Gauntlet — multi-skill review harness
 
-Entry: `/gauntlet:run [<pr-url> | <path>] [--type <type>] [--go-live] [--no-go-live] [--force-lane <class>] [--skip-lane <class>]`
+Entry: `/gauntlet:run [<pr-url> | <path>] [--type <type>] [--full] [--go-live] [--no-go-live] [--force-lane <class>] [--skip-lane <class>]`. `--full` asks for a full re-review instead of a revision review.
 
 Gauntlet is a thin host over a deterministic Party runtime (`runtime/bin/cli.mjs`). The runtime detects an artifact's type and picks the review lanes that fit it (the roster, read off `runtime/policy/roster-policy-v1.json`); the skill drives each lane the runtime fielded — today `adversarial-review`, `code-quality-audit`, `threat-review` (fielded on a security signal, runtime-driven), and, on a re-review of a pull request the gauntlet already posted for, `revision-review` (a single verifier that rules on the fate of every open prior finding), all runtime-driven Classes (a deterministic bundle → init → dispatch → receipt → result handshake) — and places the report the runtime wrote via `party-report`. Lanes the runtime does not yet field (`plan-review`, `doc-review`, `skill-audit`, `directive-review`, `go-live-review`) come back as typed gaps with the runtime's reason and are offered as operator-invoked follow-ups, never dispatched automatically; `--go-live` runs the go-live readiness lane. Most of those gap-lane skills still dispatch a **finder/validator pair** of agents in `agents/` — the finder proposes findings, the validator tries to disprove them, and only survivors reach the final report. `agents/check-grounding-parity.sh` verifies a shared sentinel-delimited contract block is byte-identical across those finder/validator agent files (6 typed finder/validator files across plan, doc, and directive review), so the "propose then adversarially verify" grounding rules can't silently drift between review lanes. `adversarial-review`, `code-quality-audit`, `threat-review`, and `revision-review` sit outside that parity script's checked set — their agents are vendored from the runtime bundle rather than authored to the sentinel-contract pattern.
 
@@ -64,13 +64,15 @@ Not invoked via a slash command — its `context-economy` skill fires on a `<HAR
 | Steward | Router — names the lever before high-token actions | `skills/context-economy` |
 | Assembler | Scopes context before it hits the main thread | `skills/context-assembly` |
 | Delegator | Pushes bounded work off-thread via a four-part dispatch contract | `skills/delegating-to-subagents` |
-| Chronicler | Checkpoints before `/clear` | `skills/handoff` |
+| Chronicler | Checkpoints before `/clear`; stamps the real session ID into each handoff file | `skills/handoff`, `hooks/handoff-stamp.sh` |
 | Enforcer | Fires a mid-session handoff nudge + turn-count Stop backstop | `hooks/handoff-nudge.sh`, `hooks/context-reset-nudge.sh` |
 | Observer | Records telemetry, surfaces cost/cache-read on the statusline | `hooks/telemetry-record.sh`, `hooks/cost-statusline.py` |
 
+The `context-economy-retro` skill is a read-only retrospective over the recorded telemetry. It proposes advisory changes and never edits a skill or opens a PR.
+
 `classes/*.class.json` are descriptive manifests (constraints, grounding citations, calibration fixture IDs) per Class — not executable config, just documentation of each Class's design rationale. `fixtures/` holds five operator-in-loop verification scenarios (`CE-01` through `CE-05`) with a `prompt.md`/`expected.md` pass-criteria pair each.
 
-Context-economy was the first plugin with its own hook test suite (`*.test.sh` files alongside each hook script) and its own nested `README.md`/`SETUP.md`, and Herald follows the same pattern. Hooks that run unconditionally on every session deserve a heavier documentation footprint than plugins that run only on explicit invocation.
+Context-economy was the first plugin with its own hook test suite (`*.test.sh` files alongside each hook script) and its own nested `README.md`/`SETUP.md`. Herald follows the same pattern with its own tests and `README.md`. Hooks that run unconditionally on every session deserve a heavier documentation footprint than plugins that run only on explicit invocation.
 
 ### Cartographer — repository documentation cartographer
 
@@ -95,4 +97,3 @@ Herald is one prose source for two registers: natural English for replies, and a
 
 - `.worktrees/` — git worktrees created per the "always use worktrees for impl work" convention; ephemeral.
 - `.superpowers/sdd/` — spec-driven-development scratch artifacts (task briefs/reports, review diffs) from past sessions; entirely gitignored (`*`).
-- `plugins/_archive/kiln-2.17/skills/smith/langfuse/.env` / `local.env` — local Langfuse credentials from the previous Kiln's Smith; still gitignored.
