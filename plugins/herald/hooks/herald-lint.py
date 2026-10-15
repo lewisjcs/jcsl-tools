@@ -10,7 +10,6 @@ prints the same report to stdout, with the tier line even at 0 hits.
 
 Standard library only. Every word list, glob, and limit comes from rules.json.
 """
-import fnmatch
 import json
 import os
 import pathlib
@@ -243,18 +242,19 @@ def is_document_path(path):
 
 def ears_content(text):
     """True when three or more list items carry the word shall: an EARS requirements file."""
-    items = [line for line in text.split("\n") if LIST_ITEM.match(line)]
+    items = [line for line in prose_only(text).split("\n") if LIST_ITEM.match(line)]
     return sum(1 for line in items if re.search(r"\sshall\s", line, re.I)) >= RULES["ears_min_items"]
 
 
-def tier_for(path, text):
+def tier_for(path, text, cwd=None):
     """document or universal for a file that is not skipped. Explicit frontmatter wins over the path."""
     marker = frontmatter_value(text, "herald")
     if marker == "document":
         return "document"
-    if not is_document_path(path):
+    rel = checked_path(path, cwd)
+    if not is_document_path(rel):
         return "universal"
-    if {p.lower() for p in path.parts} & set(RULES["deny_segments"]):
+    if {p.lower() for p in rel.parts} & set(RULES["deny_segments"]):
         return "universal"
     if ears_content(text):
         return "universal"
@@ -265,7 +265,18 @@ def tier_for(path, text):
 
 def absolute(raw, cwd):
     """The path as an absolute path. A relative path resolves against cwd from the event."""
-    return pathlib.Path(cwd or os.getcwd(), pathlib.Path(raw).expanduser()).absolute()
+    return pathlib.Path(os.path.normpath(pathlib.Path(cwd or os.getcwd(), pathlib.Path(raw).expanduser()).absolute()))
+
+
+def checked_path(path, cwd):
+    """The path relative to cwd when it is inside cwd, else unchanged. Folders above the project do not count."""
+    if cwd:
+        base = absolute(cwd, None)
+        for root in (base, base.resolve()):
+            for candidate in (path, path.resolve()):
+                if candidate.is_relative_to(root):
+                    return candidate.relative_to(root)
+    return path
 
 
 def forms(path):
@@ -273,28 +284,28 @@ def forms(path):
     return {pathlib.Path(os.path.normpath(path)), path.resolve()}
 
 
-def skipped(path, text):
+def skipped(path, text, cwd=None):
     """True for files inside an agent configuration folder, an excluded glob, or with herald: off."""
     config_dirs = set()
-    for raw in (os.environ.get("CLAUDE_CONFIG_DIR") or "~/.claude", "~/.claude-personal", "~/.codex", "~/.cursor"):
+    for raw in (os.environ.get("CLAUDE_CONFIG_DIR") or "~/.claude", "~/.codex", "~/.cursor"):
         config_dirs |= forms(pathlib.Path(raw).expanduser().absolute())
-    patterns = [os.path.expanduser(p) for p in os.environ.get("HERALD_EXCLUDE", "").split(os.pathsep) if p]
+    patterns = [glob_regex(os.path.expanduser(p)) for p in os.environ.get("HERALD_EXCLUDE", "").split(os.pathsep) if p]
     for form in forms(path):
-        if set(form.parts) & set(RULES["config_segments"]):
+        if set(checked_path(form, cwd).parts) & set(RULES["config_segments"]):
             return True
         if any(form == d or form.is_relative_to(d) for d in config_dirs):
             return True
-        if any(fnmatch.fnmatch(str(form), p) for p in patterns):
+        if any(p.match(form.as_posix()) for p in patterns):
             return True
     return frontmatter_value(text, "herald") == "off"
 
 
 # --- reports ----------------------------------------------------------------
 
-def lint_text(path, text, tier):
+def lint_text(path, text, tier, cwd=None):
     """(tier, hits) for one file's text. tier is auto, document, or universal."""
     if tier == "auto":
-        tier = tier_for(path, text)
+        tier = tier_for(path, text, cwd)
     prose = prose_only(text)
     hits = universal_hits(prose)
     if tier == "document":
@@ -317,10 +328,10 @@ def command(argv):
     path = pathlib.Path(argv[argv.index("--file") + 1]).expanduser().absolute()
     tier = argv[argv.index("--tier") + 1] if "--tier" in argv else "auto"
     text = path.read_text(encoding="utf-8")
-    if tier == "auto" and skipped(path, text):
+    if tier == "auto" and skipped(path, text, os.getcwd()):
         print(f"herald: {path.name}, skipped.")
         return 0
-    tier, hits = lint_text(path, text, tier)
+    tier, hits = lint_text(path, text, tier, os.getcwd())
     print(report(path, tier, hits, nudge=False))
     return 0
 
