@@ -11725,7 +11725,8 @@ function blockKindsOf(doc) {
 }
 function ticketNodeOf(json) {
   const node = json?.issues?.nodes?.[0];
-  return node !== null && typeof node === "object" ? node : null;
+  if (node !== null && typeof node === "object" && !Array.isArray(node)) return node;
+  return typeof json?.key === "string" && json.fields !== null && typeof json.fields === "object" && !Array.isArray(json.fields) ? json : null;
 }
 
 // src/writes.mjs
@@ -12348,7 +12349,11 @@ function readJiraTicket(key, { ask: ask2 = true } = {}) {
   const node = byCommand ? json : ticketNodeOf(json);
   if (node === null) {
     const keys = json !== null && typeof json === "object" ? Object.keys(json).sort() : [];
-    throw new KilnError("KILN_JIRA_SHAPE", `${origin} for ${key} holds no ticket at issues.nodes[0]. It saw these field names: ${keys.join(", ")}.`, { ref: key, keys });
+    throw new KilnError("KILN_JIRA_SHAPE", `${origin} for ${key} holds no Jira issue at the root or at issues.nodes[0]. It saw these field names: ${keys.join(", ")}.`, { ref: key, keys });
+  }
+  if (node.key !== key) {
+    const keys = Object.keys(node).sort();
+    throw new KilnError("KILN_JIRA_SHAPE", `${origin} for ${key} does not name that ticket. It saw these field names: ${keys.join(", ")}.${byCommand ? ` ${JIRA_FORM}` : ""}`, { ref: key, keys });
   }
   const ticket = jiraTicketOf(node);
   if (ticket.unreadable !== void 0) throw new KilnError("KILN_JIRA_SHAPE", `${origin} for ${key} has ${ticket.unreadable}. It saw these field names: ${ticket.keys.join(", ")}.${byCommand ? ` ${JIRA_FORM}` : ""}`, { ref: key, keys: ticket.keys });
