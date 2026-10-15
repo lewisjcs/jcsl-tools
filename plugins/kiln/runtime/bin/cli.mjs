@@ -9225,8 +9225,12 @@ function validateTicketPlan(plan) {
 
 // src/ticket.mjs
 var JIRA_KEY = /^[A-Z][A-Z0-9]+-[0-9]+$/;
+var JIRA_KEY_WITH_LINK = /^([A-Z][A-Z0-9]+-[0-9]+) \(https:\/\/[^/\s)]+\/browse\/\1\)$/;
 var GITHUB_REF = /^[\w.-]+\/[\w.-]+#[0-9]+$/;
 var GITHUB_URL = /^https:\/\/github\.com\/[\w.-]+\/[\w.-]+\/issues\/[0-9]+$/;
+function canonicalTicketRef(ref) {
+  return JIRA_KEY_WITH_LINK.exec(ref)?.[1] ?? ref;
+}
 function sourceOf(ref) {
   if (JIRA_KEY.test(ref)) return "jira";
   if (GITHUB_REF.test(ref) || GITHUB_URL.test(ref)) return "github";
@@ -9423,13 +9427,13 @@ function readTicket(rawBody, format) {
   const context = sectionFor(body, "context", format);
   const intentText = context === null ? preambleOf(body) : familyText(body, "context", format);
   const decisionText = familyText(body, "detailed-solution", format);
-  const acceptanceLines = familyBullets(body, "functional-requirements", format);
+  const acceptanceLines2 = familyBullets(body, "functional-requirements", format);
   return {
     brief: {
       intent: intentText.length > 0 ? { by: context === null ? "person" : familyBy(body, "context", format), text: intentText } : null,
       facts: null,
       decision: decisionText.length > 0 ? { by: familyBy(body, "detailed-solution", format), text: decisionText } : null,
-      acceptance: acceptanceLines.length > 0 ? { by: familyBy(body, "functional-requirements", format), lines: acceptanceLines } : null,
+      acceptance: acceptanceLines2.length > 0 ? { by: familyBy(body, "functional-requirements", format), lines: acceptanceLines2 } : null,
       tasks: null
     },
     title
@@ -9830,7 +9834,7 @@ function renderDesignerPrompt(state) {
     `Branch: ${state.repo.branch}`,
     "",
     `## Your decision file: ${decisionPath}`,
-    "Sections in order: a status line, `## Summary` (the decision in prose, this section goes on the ticket), `## Ships / does not ship`, `## Rulings`, `## Requirements` (EARS lines), `## Design`, `## Set aside`, `## Open questions`. No tool names, no local paths.",
+    "Sections in order: a status line, `## Summary`, `## Ships / does not ship`, `## Rulings`, `## Requirements`, `## Design`, `## Set aside`, `## Open questions`. State each requirement as an observable result in plain English. Keep tool names and local paths out of the decision.",
     checksSentence(DESIGNER_CHECKS(state)),
     NO_CD,
     REPLY_RULE,
@@ -9877,7 +9881,7 @@ function renderPlannerPrompt(state) {
     ...(state.drift ?? []).length > 0 ? ["## Drift findings", ...fenced(fence, state.drift.map((d) => `- ${d.kind}: ${d.text} (source: ${d.source})`)), ""] : [],
     `Drift that cannot move the mode is not a reason to withhold a plan: cosmetic drift never moves it, local drift moves only EXECUTE, and this run is in ${state.mode ?? "RESEARCH"}.`,
     "",
-    ...brief.acceptance === null ? ["## Acceptance", ...fenced(fence, ["(empty: write the EARS lines yourself, and quote each one verbatim in a task's covers)"])] : [acceptanceOpen(state) ? "## Acceptance (from the last plan: keep each line that still holds, word for word, write a new line only where the change needs one, and quote every line a task serves verbatim in covers)" : "## Acceptance (given, quote these lines verbatim in covers)", ...fenced(fence, brief.acceptance.lines.map((l) => `- ${l}`))],
+    ...brief.acceptance === null ? ["## Acceptance", ...fenced(fence, ["(empty: write observable results in plain English, and quote each one verbatim in a task's covers)"])] : [acceptanceOpen(state) ? "## Acceptance (from the last plan: keep each line that still holds, word for word, write a new line only where the change needs one, and quote every line a task serves verbatim in covers)" : "## Acceptance (given, quote these lines verbatim in covers)", ...fenced(fence, brief.acceptance.lines.map((l) => `- ${l}`))],
     "",
     ...state.ticket.taskGoals.length > 0 ? ["## Task goals the ticket lists", ...fenced(fence, state.ticket.taskGoals.map((g) => `- ${g}`)), ""] : [],
     ...replan ? [
@@ -10170,9 +10174,14 @@ ${headings.map((h) => `- ${h}`).join("\n")}` : null].filter((t) => t !== null &&
     taskGoals: headings.map((h) => h.replace(/^Task \d+: /, ""))
   };
 }
-function acceptanceFromApprovedPlan(acceptance, approved) {
-  if (acceptance === null) return { by: "party", lines: approved.acceptance };
-  return acceptance.lines.length === approved.acceptance.length && acceptance.lines.every((line, i) => line === approved.acceptance[i]) ? acceptance : null;
+function acceptanceFromApprovedPlan(approved) {
+  return { by: "party", lines: approved.acceptance };
+}
+function matchesApprovedTicketAcceptance(current, approved) {
+  const lines = current?.lines ?? null;
+  const saved = approved.ticketAcceptance === void 0 ? approved.acceptance : approved.ticketAcceptance;
+  if (approved.ticketAcceptance === void 0 && lines === null) return true;
+  return lines === null ? saved === null : Array.isArray(saved) && lines.length === saved.length && lines.every((line, i) => line === saved[i]);
 }
 var NUMBERED = /^\d+\.\s+(.+)$/;
 function renamed(text, heading2) {
@@ -10193,7 +10202,6 @@ function briefFromDecision(rawText) {
     acceptance: requirements.length > 0 ? { by: "party", lines: requirements } : null
   };
 }
-var EARS = /^-?\s*(When|While|If|Where|The)\b.*\bshall\b/;
 var CITATION = /\b[\w./-]+\.[A-Za-z]{1,5}:\d+\b/;
 var THIN_CHARS = 120;
 function range(numbers) {
@@ -10205,19 +10213,17 @@ function codeSignals(rawBody, format) {
   const signals = [];
   const text = lines.filter((l) => !/^# /.test(l)).join("\n").trim();
   if (text.length < THIN_CHARS) return [{ mode: "RESEARCH", text: "a title-only or thin ticket", source: range([Math.max(1, lines.findIndex((l) => /^# /.test(l)) + 1)]) }];
-  const ears = lineNumbers(lines, EARS);
-  if (ears.length > 0) signals.push({ mode: "ORIENT", text: "EARS lines", source: range(ears) });
+  const criteria = sectionFor(body, "functional-requirements", format);
+  if (criteria !== null) {
+    const bullets2 = lines.slice(criteria.start + 1, criteria.end).map((l, i) => l.startsWith("- ") ? criteria.start + 2 + i : 0).filter((n2) => n2 > 0);
+    if (bullets2.length > 0) signals.push({ mode: "ORIENT", text: "acceptance criteria", source: range(bullets2) });
+  }
   const cited = lineNumbers(lines, CITATION);
   if (cited.length > 0) signals.push({ mode: "ORIENT", text: "file paths with line numbers", source: range(cited) });
   const solution = sectionFor(body, "detailed-solution", format);
   if (solution !== null && readTicket(body, format).brief.decision !== null) {
     const filled = lines.slice(solution.start + 1, solution.end).map((l, i) => l.trim().length > 0 ? solution.start + 2 + i : 0).filter((n2) => n2 > 0);
     signals.push({ mode: "ORIENT", text: "a filled Detailed Solution section", source: range(filled) });
-  }
-  const criteria = sectionFor(body, "functional-requirements", format);
-  if (criteria !== null && ears.length === 0 && cited.length === 0) {
-    const bullets2 = lines.slice(criteria.start + 1, criteria.end).map((l, i) => l.startsWith("- ") ? criteria.start + 2 + i : 0).filter((n2) => n2 > 0);
-    if (bullets2.length > 0) signals.push({ mode: "RESEARCH", text: "acceptance bullets with no paths", source: range(bullets2) });
   }
   return signals;
 }
@@ -11909,7 +11915,7 @@ function verifyPlanApproval(planPath) {
 import path6 from "node:path";
 var TASK = /^#{2,3} Task (\d+): (.+)$/;
 var SOURCE = /^Source ticket:\s*(\S.*?)\s*$/i;
-var FILE_ENTRY = /^(?:[-*]\s*)?(?:Files|Create|Modify|Test|Delete|Add):\s*/i;
+var FILE_ENTRY = /^(?:[-*]\s*)?(Files|Create|Modify|Test|Delete|Add):\s*/i;
 function shape(message, details = {}) {
   throw new KilnError("KILN_APPROVED_PLAN_SHAPE", message, details);
 }
@@ -11917,8 +11923,10 @@ function filePaths(lines) {
   const files = [];
   const fileLines = [];
   for (const line of lines) {
-    if (!FILE_ENTRY.test(line.trim())) continue;
-    const names = [...line.matchAll(/`([^`]+)`/g)].map((match) => match[1]);
+    const entry = FILE_ENTRY.exec(line.trim());
+    if (entry === null) continue;
+    const spans = [...line.matchAll(/`([^`]+)`/g)].map((match) => match[1]);
+    const names = entry[1].toLowerCase() === "files" ? spans : spans.slice(0, 1);
     if (names.length === 0) shape("each task file line must name a path in backticks", { line });
     fileLines.push(line);
     for (const name of names) {
@@ -11927,6 +11935,25 @@ function filePaths(lines) {
     }
   }
   return { files, fileLines };
+}
+function acceptanceLines(lines) {
+  const entries = lines.map((line) => line.trim());
+  const firstList = entries.findIndex((line) => /^(?:[-*]|\d+\.)\s+/.test(line));
+  if (firstList === -1) {
+    const first = entries.findIndex(Boolean);
+    if (first === -1) return [];
+    const end = entries.findIndex((line, at) => at > first && line === "");
+    return entries.slice(first, end === -1 ? void 0 : end);
+  }
+  const marker = /^\d+\.\s+/.test(entries[firstList]) ? /^\d+\.\s+(.+)$/ : /^[-*]\s+(.+)$/;
+  const criteria = [];
+  for (const line of entries.slice(firstList)) {
+    if (line === "") continue;
+    const match = marker.exec(line);
+    if (match === null) break;
+    criteria.push(match[1].trim());
+  }
+  return criteria;
 }
 function readApprovedPlan(planPath, ticketRef) {
   if (!path6.isAbsolute(planPath)) shape("the approved plan path must be absolute", { planPath });
@@ -11941,16 +11968,15 @@ function readApprovedPlan(planPath, ticketRef) {
   const source = lines.map((line) => SOURCE.exec(line)).filter(Boolean);
   if (source.length !== 1) shape("the plan needs one Source ticket line");
   const sourceTicket = source[0][1].trim();
-  if (ticketRef !== void 0 && path6.resolve(ticketRef) !== planPath && sourceTicket !== ticketRef) {
+  if (ticketRef !== void 0 && path6.resolve(ticketRef) !== planPath && canonicalTicketRef(sourceTicket) !== canonicalTicketRef(ticketRef)) {
     throw new KilnError("KILN_APPROVED_PLAN_TICKET", `the plan names ${sourceTicket}, not ${ticketRef}`, { sourceTicket, ticketRef });
   }
   const acceptanceStart = lines.findIndex((line) => line.trim() === "## Acceptance criteria");
   if (acceptanceStart === -1) throw new KilnError("KILN_APPROVED_PLAN_ACCEPTANCE", "the plan needs ## Acceptance criteria");
   const acceptanceEnd = lines.findIndex((line, index) => index > acceptanceStart && (/^## /.test(line) || TASK.test(line)));
-  const criteria = lines.slice(acceptanceStart + 1, acceptanceEnd === -1 ? void 0 : acceptanceEnd).map((line) => line.trim()).filter(Boolean);
-  const acceptance = criteria.map((line) => line.replace(/^(?:[-*]\s+|\d+\.\s+)/, ""));
-  if (acceptance.length === 0 || acceptance.some((line) => !/^(When|While|If|Where|The)\b.*\bshall\b/.test(line))) {
-    throw new KilnError("KILN_APPROVED_PLAN_ACCEPTANCE", "each acceptance line must use EARS form and contain shall");
+  const acceptance = acceptanceLines(lines.slice(acceptanceStart + 1, acceptanceEnd === -1 ? void 0 : acceptanceEnd));
+  if (acceptance.length === 0 || acceptance.some((line) => line.length === 0)) {
+    throw new KilnError("KILN_APPROVED_PLAN_ACCEPTANCE", "the plan needs acceptance criteria");
   }
   const headings = lines.map((line, index) => ({ match: TASK.exec(line), index })).filter(({ match }) => match !== null);
   if (headings.length === 0) shape("the plan needs at least one numbered task");
@@ -12001,7 +12027,6 @@ function proposalBlocks(proposal, section) {
     const bullet = line.startsWith("- ");
     const value = bullet ? line.slice(2) : line;
     if (value.trim() === "" || value !== value.trim()) throw new KilnError("KILN_JIRA_PROPOSAL_UNSUPPORTED", "the addition contains an empty or indented line");
-    if (section === "functional-requirements" && !/^(The|When|While|If|Where)\b.+\bshall\b.+[.!?]$/.test(value)) throw new KilnError("KILN_JIRA_EARS_REQUIRED", "new acceptance criteria must use EARS form");
     if (bullet) bullets2.push(value);
     else {
       flush();
@@ -12579,7 +12604,7 @@ function hostBindingFor(state, action, registry) {
   return play.kind === "skill" ? { kind: "skill", invoke: play.invoke, model: hostBindings[classId] } : { kind: "agent", agentType: play.agentType, model: hostBindings[classId] };
 }
 function openRun(v) {
-  const ref = requireFlag(v, "ticket");
+  const ref = canonicalTicketRef(requireFlag(v, "ticket"));
   const root = resolveRunsRoot({ flag: v.root });
   const paths = runPathsFor(root, ref);
   if (!runExists(paths)) throw new KilnError("KILN_RUN_MISSING", `no run for this ticket; run open first`, { ticket: ref });
@@ -12639,12 +12664,18 @@ function ticketChangesFor(state, ticketBody) {
     const doc = documentBriefFor(state.ticket.ref, ticketBody, state.ticket.kind);
     const taken = state.ticket.documentParts;
     const text = (part, value) => value === null ? "" : partLines(part, value).join("\n");
-    const parts = Object.keys(taken).filter((part) => TICKET_PARTS.includes(part) && text(part, taken[part]) !== text(part, doc.parts[part]));
-    return { parts, brief: { ...emptyBrief(), ...Object.fromEntries(Object.keys(taken).map((part) => [part, doc.parts[part]])) } };
+    const parts2 = Object.keys(taken).filter((part) => TICKET_PARTS.includes(part) && text(part, taken[part]) !== text(part, doc.parts[part]));
+    return { parts: parts2, brief: { ...emptyBrief(), ...Object.fromEntries(Object.keys(taken).map((part) => [part, doc.parts[part]])) } };
   }
   const body = withContextHeading(ticketBody, ticketFormat);
   const { brief } = readTicket(body, ticketFormat);
-  return { parts: partsChanged(state.brief, body, scrubLines, [...partsInFlux(state), ...state.ticket.unwritten ?? []], ticketFormat), brief };
+  const parts = partsChanged(state.brief, body, scrubLines, [...partsInFlux(state), ...state.ticket.unwritten ?? []], ticketFormat);
+  const approved = state.documents?.plan?.approved ? state.documents.plan : null;
+  if (approved !== null) {
+    const changed = !matchesApprovedTicketAcceptance(brief.acceptance, approved);
+    return { parts: [...parts.filter((part) => part !== "acceptance"), ...changed ? ["acceptance"] : []], brief };
+  }
+  return { parts, brief };
 }
 function detailTicketBody(meta) {
   try {
@@ -12912,7 +12943,7 @@ ${prepared.addedText}`;
   },
   open(args) {
     const v = flags(args, { root: { type: "string" }, ticket: { type: "string" }, idea: { type: "string" }, again: { type: "boolean" }, base: { type: "string" }, plan: { type: "string" }, "approved-plan": { type: "string" } });
-    const ref = requireFlag(v, "ticket");
+    const ref = canonicalTicketRef(requireFlag(v, "ticket"));
     if (v.plan !== void 0 && v["approved-plan"] !== void 0) throw new KilnError("KILN_PLAN_FLAGS_CONFLICT", "use either --plan or --approved-plan");
     const approvedPlan = v["approved-plan"] === void 0 ? null : readApprovedPlan(v["approved-plan"], ref);
     const source = sourceOf(ref);
@@ -12937,14 +12968,13 @@ ${v.idea.trim()}
     const ticketDoc = ticketShape === null ? null : documentBriefFor(ref, ticketRead.body, null);
     const documentParts = ticketDoc === null ? null : Object.fromEntries(Object.entries(ticketDoc.parts).filter(([, v2]) => v2 !== null));
     const ticketBrief = ticketShape === null ? fromTicket.brief : { ...emptyBrief(), ...documentParts };
-    const approvedAcceptance = approvedPlan === null ? ticketBrief.acceptance : acceptanceFromApprovedPlan(ticketBrief.acceptance, approvedPlan);
-    if (approvedPlan !== null && approvedAcceptance === null) throw new KilnError("KILN_APPROVED_PLAN_ACCEPTANCE_MISMATCH", "the ticket acceptance differs from the approved plan; return to kickoff", { ticket: ref, planPath: approvedPlan.path });
+    const approvedAcceptance = approvedPlan === null ? ticketBrief.acceptance : acceptanceFromApprovedPlan(approvedPlan);
     const brief = { ...ticketBrief, acceptance: approvedAcceptance };
     const taskGoals = ticketShape === null ? [] : ticketDoc.taskGoals;
     const title = ticketShape === null ? fromTicket.title : titleOf(body);
     const planPath = approvedPlan?.path ?? (v.plan === void 0 ? null : path7.resolve(v.plan));
     const planShape = planPath === null ? null : documentKindOf(readInput({ plan: planPath }, "plan"), planPath);
-    const documents = { plan: planPath === null ? null : { path: planPath, kind: planShape?.kind ?? null, shape: planShape?.shape ?? null, ...approvedPlan === null ? {} : { ...approvedPlan, approved: true } }, decision: null };
+    const documents = { plan: planPath === null ? null : { path: planPath, kind: planShape?.kind ?? null, shape: planShape?.shape ?? null, ...approvedPlan === null ? {} : { ...approvedPlan, approved: true, ticketAcceptance: ticketBrief.acceptance?.lines ?? null } }, decision: null };
     const registry = getRegistry();
     const setAside = v.again === true && runExists(paths) ? againFor(paths) : null;
     if (runExists(paths)) {
@@ -12953,6 +12983,9 @@ ${v.idea.trim()}
       refuseOldRelease(paths, state2);
       if (approvedPlan !== null && (state2.documents?.plan?.approved !== true || state2.documents.plan.path !== approvedPlan.path || state2.documents.plan.sha256 !== approvedPlan.sha256)) {
         throw new KilnError("KILN_APPROVED_PLAN_RUN_MISMATCH", "this existing run does not hold the selected approved plan; end it before opening a new run", { planPath: approvedPlan.path, runDir: paths.dir });
+      }
+      if (approvedPlan !== null && !matchesApprovedTicketAcceptance(ticketBrief.acceptance, state2.documents.plan)) {
+        throw new KilnError("KILN_APPROVED_PLAN_ACCEPTANCE_MISMATCH", "the ticket acceptance changed since the run opened; return to kickoff", { ticket: ref, planPath: approvedPlan.path });
       }
       checkSavedApprovedPlan(state2);
       const record2 = JSON.parse(readFileSync10(paths.party.record, "utf8"));
@@ -13033,7 +13066,7 @@ ${v.idea.trim()}
       const approved = checkSavedApprovedPlan(state);
       if (approved !== null && meta.ticketRef !== approved.path) {
         const current = readTicket(withContextHeading(readTicketBody(meta.ticketRef, meta.source, null).body, ticketFormat), ticketFormat).brief.acceptance;
-        if (current !== null && acceptanceFromApprovedPlan(current, approved) === null) throw new KilnError("KILN_APPROVED_PLAN_ACCEPTANCE_MISMATCH", "the ticket acceptance changed since the approved plan; return to kickoff", { ticket: meta.ticketRef, planPath: approved.path });
+        if (!matchesApprovedTicketAcceptance(current, approved)) throw new KilnError("KILN_APPROVED_PLAN_ACCEPTANCE_MISMATCH", "the ticket acceptance changed since the run opened; return to kickoff", { ticket: meta.ticketRef, planPath: approved.path });
       }
     }
     const changes = parseReply(text).word === "change" && takesChange(state) ? { ticketChanges: ticketChangesFor(state, readTicketBody(meta.ticketRef, meta.source, null).body) } : {};

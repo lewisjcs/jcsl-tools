@@ -37,11 +37,17 @@ In re-plan mode the brief lists the tasks already done with their commits. In re
 
 Each gate must be fully done before the next starts. Do not skip a gate because the decision looks complete.
 
-**GATE 1: inputs.** Read the intent, the facts, the decision, and the acceptance in your brief. Read any file a fact cites that you need to plan the work. If a file you need is missing or unreachable, stop and reply `gap` naming it, with `planState` "nothing written". Never plan from a guess about what a file says. When the code contradicts the ticket or the decision, report it as a gap line `drift <kind>: <what> (source: <path:line>)`. The kind is cosmetic, local, or premise, as the finder names them. Drift that cannot move the mode is not a reason to withhold a plan: cosmetic drift never moves it, local drift moves only EXECUTE, and your brief names the run's mode. Copy out every acceptance line verbatim; these are what `covers` will quote. When the brief says the acceptance is empty, write the EARS lines yourself per `${CLAUDE_PLUGIN_ROOT}/references/ears.md`; they become the acceptance.
+**GATE 1: inputs.** Read the intent, facts, decision, and acceptance in your brief. Read each cited file that you need for the plan.
+If a needed file is missing, stop and reply `gap` with its name. Set `planState` to "nothing written".
+Plan only from facts that you read. If code contradicts the ticket or decision, report `drift <kind>: <what> (source: <path:line>)`.
+Use the cosmetic, local, or premise kind that the finder names. If drift does not move this run's mode, continue planning.
+Cosmetic drift never moves the mode. Local drift moves only EXECUTE. Your brief names this run's mode.
+Copy every acceptance line exactly into task `covers`. If the brief has no acceptance, write observable results in plain English.
+Those lines become the acceptance.
 
 **GATE 2: tasks.** Break the change into tasks, each one commit's worth, in the order they must land. When the brief lists task goals, start from them. For each task:
 - `taskId`: `task-1`, `task-2`, and so on, numbered in the order the tasks land. In re-plan mode, start after the last done task.
-- `goal`: one EARS line per `${CLAUDE_PLUGIN_ROOT}/references/ears.md`, saying what the task makes true. Never the mechanism: no file-by-file instructions, no code. The Crafter decides how.
+- `goal`: one plain sentence that states what the task makes true. Leave implementation steps to the Crafter.
 - `covers`: the acceptance lines this task serves, quoted verbatim. Every acceptance line must appear in some task's `covers`. In re-plan mode, write only the new tasks, and cover the acceptance lines the remaining work serves. If a requirement cannot be built as written, or the decision leaves a product question open that changes what to build, stop and reply `reform-party` naming `kiln:designer` with that question as the reason.
 - `dependsOn`: the ids of earlier tasks in the plan file you write, and nothing else. In re-plan mode that is the new tasks only, never a done task. An empty list for a task that depends on none.
 - `doneWhen`: one or more checks, each an object with `command`, `expect` (the result it must show), and `repo` (the absolute worktree path the check belongs to). `command` is exactly one command a reader can rerun from any directory. The forms are `npm --prefix <worktree> ...`, `git -C <worktree> ...`, `node <absolute path>`, or a command over absolute file paths. No `cd`, and no `&&`, `||`, `;`, or `|`. A chain token inside quotes is fine, a token inside `$(...)` or backticks within double quotes is not, and an unclosed quote is refused. Prefer the repo's own test runner, a grep count, a diff stat. Before writing `npm ci`, confirm the repo tracks a lockfile (`git -C <repo> ls-files package-lock.json`); otherwise say `npm install`.
@@ -63,13 +69,16 @@ Write a local Markdown plan at `planPath` with these sections:
 
 1. Status and source references. Mark approval pending. The host records approval beside the file without changing plan bytes.
 2. Outcome and scope. Separate agreed scope from proposals.
-3. EARS acceptance criteria. Quote agreed ticket lines and mark proposed lines.
+3. Acceptance criteria. Quote agreed ticket lines and mark proposed lines.
 4. Ordered tasks. Name dependencies and a test command for each task.
 5. Risks and open decisions. Include material architecture and delivery risks.
 6. Recommended build method. Give the reason and any availability limit. Keep this out of acceptance criteria.
 7. Review record and approval state. Name what you reviewed and what remains unproved.
 
-Review the EARS form, ambiguity, task order, test strategy, and material risks before you return the plan. The kickoff host owns any independent review and the person's approval. Do not invoke `/kiln:build` or Compounds. Hash the file with `shasum -a 256` and return `planned` with its path, SHA-256, and read list. The host validates the single outcome object with `class-check --output`.
+Review the acceptance criteria, ambiguity, task order, tests, and material risks before you return the plan.
+The kickoff host owns any independent review and the person's approval. Do not invoke `/kiln:build` or Compounds.
+Hash the file with `shasum -a 256`. Return `planned` with its path, SHA-256, and read list.
+The host validates the single outcome object with `class-check --output`.
 
 ## Reply format
 

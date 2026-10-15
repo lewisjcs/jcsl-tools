@@ -224,7 +224,7 @@
       "path": "hosts/claude-code/skills/shape/SKILL.md",
       "projection": {
         "canonicalSources": ["hosts/claude-code/skills/shape/SKILL.md", "references/ears.md", "references/brainstorming.md", "references/architecture.md"],
-        "sourceHash": "654d5f6fd265ef4b082e2e36bb084dba72498044f704e6ba6e1499bdc9403e40"
+        "sourceHash": "6e805f4371090ac285536ad23de0521060d63991ef30771a0ecef93d96b00e22"
       }
     }
   },
