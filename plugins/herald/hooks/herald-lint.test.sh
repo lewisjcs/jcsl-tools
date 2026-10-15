@@ -159,5 +159,41 @@ MD
 out="$(python3 "$SCRIPT" --file "$TMP/repo/README-table.md" --tier document)"
 assert_contains "table rows produce zero hits" "$out" "0 hits"
 
+# Fix round 1: hyphenated compounds, May as a month, one-line hit text.
+cat > "$TMP/repo/README-perfect.md" <<'MD'
+# Perfect
+
+The server has read-only access and has built-in caching.
+
+The team has completed it.
+MD
+out="$(python3 "$SCRIPT" --file "$TMP/repo/README-perfect.md" --tier document)"
+assert_contains "has completed is a present perfect hit" "$out" "present perfect: has completed"
+assert_eq "hyphenated compounds are not present perfect" "1" "$(grep -c 'present perfect' <<<"$out")"
+
+cat > "$TMP/repo/README-may.md" <<'MD'
+# May
+
+Support ends in May.
+The release shipped on 15 May, after the freeze.
+May 2026 is the target.
+You may run it.
+MD
+out="$(python3 "$SCRIPT" --file "$TMP/repo/README-may.md" --tier document)"
+assert_eq "May as a month: exactly one modal hit" "1" "$(grep -c 'banned modal' <<<"$out")"
+assert_contains "the modal hit is the may line" "$out" "line 6"
+
+cat > "$TMP/repo/README-wrap.md" <<'MD'
+# Wrap
+
+One sentence that runs on and on with many words so that it goes over
+the twenty five word limit set by the document rules for descriptive
+text here.
+MD
+out="$(python3 "$SCRIPT" --file "$TMP/repo/README-wrap.md" --tier document)"
+assert_contains "wrapped sentence over limit" "$out" "sentence over 25 words"
+n="$(sed -n 's/.*document tier, \([0-9]*\) hit.*/\1/p' <<<"$out")"
+assert_eq "hit text stays on one line" "$n" "$(grep -c '^  line' <<<"$out")"
+
 echo "PASS/FAIL summary:"; [ "$fail" -eq 0 ] && echo "ALL PASS" || echo "FAILURES"
 exit "$fail"

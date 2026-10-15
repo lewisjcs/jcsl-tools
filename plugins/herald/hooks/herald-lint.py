@@ -109,7 +109,7 @@ def line_text(prose, offset):
 
 
 def hit(prose, offset, category, text):
-    return {"line": prose.count("\n", 0, offset) + 1, "category": category, "text": text.strip()[:80]}
+    return {"line": prose.count("\n", 0, offset) + 1, "category": category, "text": " ".join(text.split())[:80]}
 
 
 # --- universal checks ------------------------------------------------------
@@ -162,9 +162,19 @@ def universal_hits(prose):
 # --- document checks (Task 4) -------------------------------------------------
 
 MODALS = re.compile(r"\b(" + "|".join(RULES["modals"]) + r")\b", re.I)
-PERFECT = re.compile(r"\b(?:has|have|had)\s+(?:\w+ed|" + "|".join(RULES["irregular_participles"]) + r")\b", re.I)
+PERFECT = re.compile(r"\b(?:has|have|had)\s+(?:\w+ed|" + "|".join(RULES["irregular_participles"]) + r")(?![\w-])", re.I)
 CONTRACTIONS = re.compile(r"\b(?:" + "|".join(re.escape(c) for c in RULES["contractions"]) + r")\b|\b\w+n't\b", re.I)
 ING_AFTER_COMMA = re.compile(r",\s*(?:" + "|".join(RULES["ing_after_comma"]) + r")\b", re.I)
+
+
+def is_month(prose, m):
+    """A capital "May" is the month when a digit follows it, or when it does not
+    start a sentence (the text before it on its line is non-empty and does not
+    end with . ! ? or :)."""
+    if re.match(r"\s+\d", prose[m.end(): m.end() + 6]):
+        return True
+    before = prose[prose.rfind("\n", 0, m.start()) + 1: m.start()].replace(" ", "")
+    return bool(before) and before[-1] not in ".!?:"
 
 
 def document_hits(prose):
@@ -173,9 +183,9 @@ def document_hits(prose):
         limit = LIMITS["list_item_sentence_words"] if numbered else LIMITS["sentence_words"]
         count = len(sentence.split())
         if count > limit:
-            hits.append({"line": line, "category": f"sentence over {limit} words ({count})", "text": sentence[:80]})
+            hits.append({"line": line, "category": f"sentence over {limit} words ({count})", "text": " ".join(sentence.split())[:80]})
     for m in MODALS.finditer(prose):
-        if m.group(0) == "May" and re.match(r"\s+\d", prose[m.end(): m.end() + 6]):
+        if m.group(0) == "May" and is_month(prose, m):
             continue
         hits.append(hit(prose, m.start(), "banned modal", line_text(prose, m.start())))
     for m in PERFECT.finditer(prose):
