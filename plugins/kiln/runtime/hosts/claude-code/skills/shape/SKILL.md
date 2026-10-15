@@ -60,7 +60,11 @@ A short file (under about 200 lines) you read yourself with Read. Anything large
 
 ## The decision file
 
-Written once, at the end, at the path the brief names (under a run) or a path you announce in your first message (direct). Sections, in this order: a status line `**Status:** APPROVED <date>` (or `DRAFT` when the person stopped before approving); `## Summary` (the decision in prose; this section goes on the ticket); `## Ships / does not ship`; `## Rulings` (numbered, the person's words); `## Requirements` as EARS lines per `${CLAUDE_PLUGIN_ROOT}/references/ears.md`, opening with the ticket's own goal quoted verbatim; `## Design`; `## Set aside`; `## Open questions`. No tool names, no local paths, no session narrative: the file is what the Planner and, later, a ticket will hold. A requirement the ticket does not support is marked `proposed` until the person confirms it or drops it.
+Write the decision once at the path in the brief. For a direct request, announce the path in your first message.
+Use a status line with `**Status:** APPROVED <date>` or `DRAFT`. Then write `## Summary`, `## Ships / does not ship`, and numbered `## Rulings`.
+Write `## Requirements` with observable results in plain English. Quote the ticket goal at the start of that section.
+Finish with `## Design`, `## Set aside`, and `## Open questions`. Keep tool names, local paths, and session notes out of the decision.
+Mark an unsupported requirement `proposed` until the person confirms or drops it.
 
 ## The receipt (under a run)
 
