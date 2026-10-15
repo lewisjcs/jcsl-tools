@@ -38,6 +38,7 @@ claude plugin install gauntlet@jcsl-tools
 claude plugin install prospector@jcsl-tools
 claude plugin install context-economy@jcsl-tools
 claude plugin install cartographer@jcsl-tools
+claude plugin install herald@jcsl-tools
 ```
 
 Restart Claude Code after installing or after any change to a `hooks.json` or `plugin.json` — component and hook registration happens at plugin-enable time, not live.
@@ -57,7 +58,7 @@ There's no repo-wide test command — verification is per-component, where a com
 |---|---|
 | Kiln payload | Run `npm test` in the Kiln repository. Generate the payload from the merged source commit. Compare its files and `PROVENANCE.json` with `plugins/kiln/`. Run `claude plugin validate plugins/kiln`. |
 | Gauntlet finder/validator agents | `bash plugins/gauntlet/agents/check-grounding-parity.sh` — asserts the shared grounding-contract sentinel block is byte-identical across the checked finder/validator agent files. |
-| Context Economy hooks | `bash plugins/context-economy/hooks/<hook-name>.test.sh` for each of `cost-statusline`, `telemetry-record`, `handoff-nudge`, `context-reset-nudge`. Exits non-zero on any failure. |
+| Context Economy hooks | `bash plugins/context-economy/hooks/<hook-name>.test.sh` for each of `ce-langfuse-cost`, `context-reset-nudge`, `cost-statusline`, `handoff-nudge`, `handoff-stamp`, `retro-harvest`, `retro-roi`, `telemetry-record`. Exits non-zero on any failure. |
 | Context Economy behavioral fixtures | Five operator-in-the-loop scenarios in `plugins/context-economy/fixtures/` (`CE-01`–`CE-05`), each with a `prompt.md` + `expected.md` checkbox rubric. See `fixtures/README.md`. Target ≥3/5 pass before shipping a change that touches Steward/Assembler/Delegator behavior. |
 | Cartographer grounding checker | `bash plugins/cartographer/skills/cartograph-report/scripts/check-knowledge-grounding.sh` — fixture-driven unit tests via `bash plugins/cartographer/tests/check-knowledge-grounding.test.sh`. Validates rules (a), (b), (c), (c′), (d) per RC-1 through RC-5. Note: `plugins/cartographer/tests/fixtures/` contains synthetic test manifests (permitted per RC-12); the repo-root invariant in § Prerequisites is unchanged. |
 | Cartographer provenance checker | `bash plugins/cartographer/skills/cartograph-report/scripts/check-grounding-provenance.sh` — ancestry-based ordering enforcement per RC-15/RC-24. Included in the `check-knowledge-grounding.test.sh` fixture suite. |
@@ -68,7 +69,7 @@ There's no repo-wide test command — verification is per-component, where a com
 | Cartographer promotion script | `bash plugins/cartographer/tools/promote.sh <target-dir>` — copies the skill root's parity set and writes `PROVENANCE.md`; deterministic, doubles as the drift detector. Tested via `bash plugins/cartographer/tests/promote.test.sh`. |
 | Herald linter | `bash plugins/herald/hooks/herald-lint.test.sh` — fixture-driven: asserts exit code, tier, and hit categories for the ten spec fixtures plus the env-var and host-output cases. Exits non-zero on any failure. |
 | Herald rules parity | `bash plugins/herald/tests/check-rules-parity.sh` — asserts every word and limit in `hooks/rules.json` appears in `output-styles/herald.md` and back, that `rules/herald.mdc` carries the same body, and that the style body is under the token limit in `rules.json`. |
-| Kiln/Gauntlet skills generally | No automated harness — verify by exercising the skill's entry point (`/kiln:build`, `/gauntlet`, etc.) against a real or fixture scenario. |
+| Kiln/Gauntlet skills generally | No automated harness — verify by exercising the skill's entry point (`/kiln:build`, `/gauntlet:run`, etc.) against a real or fixture scenario. |
 
 There is no CI pipeline (`.github/workflows/`) wired up yet — these checks are run manually before a commit lands on `main`.
 
@@ -82,13 +83,12 @@ Branch names follow `<type>/<plugin-or-scope>[-description]`, e.g. `feat/kiln-dr
 
 ## Pull Requests
 
-Nearly every commit on `main` (29 of 36 at last count) carries a `(#N)` suffix — PRs are the norm, not direct pushes, even for a single-person repo. No PR template exists yet.
+Nearly every commit on `main` carries a `(#N)` suffix — PRs are the norm, not direct pushes, even for a single-person repo. No PR template exists yet.
 
 ## File-Level Guidance
 
 | Path | Why restricted |
 |---|---|
-| `plugins/_archive/kiln-2.17/skills/smith/langfuse/.env`, `local.env` | Local Langfuse credentials from the previous Kiln — gitignored, never commit |
 | `.compounds/`, `.worktrees/` | Local machine state — gitignored, regenerated per machine |
 | `.claude/settings.json` (repo root) | Personal `enabledPlugins` state — gitignored |
 | `plugins/kiln/` | Generated payload — hand edits drift from the manifests the runtime checks; edit the kiln repository and repackage |

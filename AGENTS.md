@@ -12,7 +12,7 @@
 - Every hook script path in a `hooks.json` MUST use `${CLAUDE_PLUGIN_ROOT}`, never a hardcoded or relative path — plugins install to different locations depending on install method.
 - `.compounds/` and `.worktrees/` are gitignored local state — never propose committing their contents.
 - `plugins/kiln/` is a generated payload: the kiln repository's packager writes every file in it from a merged commit. Never hand-edit it; edit the canon there and repackage.
-- `plugins/_archive/kiln-2.17/` is the previous Kiln, kept whole and unlisted. Never wire it back into the marketplace, and never commit anything under its `skills/smith/langfuse/` except `docker-compose.yml`.
+- `plugins/_archive/kiln-2.17/` is the previous Kiln, kept whole and unlisted. Never wire it back into the marketplace.
 
 ## Safety & Permissions
 

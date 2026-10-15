@@ -33,7 +33,7 @@ Key patterns to respect:
 
 ## Sharp Edges
 
-- `plugins/_archive/kiln-2.17/` is the previous Kiln, kept whole and unlisted in the marketplace. Its `skills/smith/langfuse/` mixes a tracked `docker-compose.yml` with gitignored `.env`/`local.env` — never commit the latter two.
+- `plugins/_archive/kiln-2.17/` is the previous Kiln, kept whole and unlisted in the marketplace.
 - No CI is wired up. Manual verification (see Commands above) is the only gate before a PR merges.
 
 ## Testing
