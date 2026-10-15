@@ -6,12 +6,12 @@ Josh C.S. Lewis's personal Claude Code marketplace has six independently install
 
 | Plugin | What it does | Entry point |
 |---|---|---|
-| [`kiln`](plugins/kiln/) | Kickoff answers questions, explores ideas, and prepares reviewed plans. Build starts a separate implementation run from an approved plan or ticket. Five Classes provide research, design, planning, coding, and review. | `/kiln:kickoff <question, idea, ticket, or plan>` starts preparation. `/kiln:build <ticket or plan>` starts implementation. `/kiln:shape <idea>` opens the Designer directly. |
-| [`gauntlet`](plugins/gauntlet/) | Multi-skill AI review harness. A thin host over a deterministic Party runtime that detects an artifact's type (code diff, plan, doc, skill, directive) and fields the review lanes it supports today (adversarial review, code-quality audit, threat review on a security signal, revision review on a re-review); lanes it doesn't yet field are reported as gaps and offered as operator-invoked follow-ups. | `/gauntlet:run [<pr-url>\|<path>]` |
-| [`prospector`](plugins/prospector/) | Discovery-first research harness. Finds where an answer lives across Glean, GitHub, Jira, and the web before reading anything — then verifies every load-bearing claim and synthesizes a cited answer. | `/prospector:research` |
-| [`context-economy`](plugins/context-economy/) | Six-Class Party (Steward, Assembler, Delegator, Chronicler, Enforcer, Observer) for spending Claude Code's context window economically — hard-gates before broad reads/greps, nudges a handoff before context fills, tracks session cost. | Fires automatically on trigger phrases; no slash command |
-| [`cartographer`](plugins/cartographer/) | Repository cartographer — analyzes a repo's structure and evidence to draft a grounded, claim-classified README enrichment, flagging unsupported claims and stale content. | `cartograph-report` skill (auto-discovered; no slash command) |
-| [`herald`](plugins/herald/) | Plain-English output style for Claude Code, Codex, and Cursor: natural replies that explain the why, a stricter register for README, docs, runbooks, CHANGELOG, and release notes, a PostToolUse markdown nudge, and a rewrite skill. | No slash command. The style applies whenever the plugin is enabled; the hook runs after every markdown write; the `herald` skill answers "rewrite in plain English". |
+| [`kiln`](plugins/kiln/) | Kickoff answers questions, explores ideas, and prepares reviewed plans. Build starts a separate implementation run from an approved plan or ticket. Five Classes (roles that each do one job) provide research, design, planning, coding, and review. | `/kiln:kickoff <question, idea, ticket, or plan>` starts preparation. `/kiln:build <ticket or plan>` starts implementation. `/kiln:shape <idea>` opens the Designer directly. |
+| [`gauntlet`](plugins/gauntlet/) | A multi-skill AI review harness. It is a thin host over a deterministic Party runtime (a program that runs a team of Classes). The runtime detects the artifact type (code diff, plan, doc, skill, or directive) and picks the review lanes (kinds of review) that fit it. Today it runs adversarial review, code-quality audit, threat review on a security signal, and revision review on a re-review. The runtime reports other lanes as gaps, and you can start each gap lane yourself. | `/gauntlet:run [<pr-url>\|<path>]` |
+| [`prospector`](plugins/prospector/) | A discovery-first research harness. It finds where an answer lives across Glean, GitHub, Jira, and the web before it reads anything. Then it verifies every claim that the answer depends on and writes a cited answer. | `/prospector:research` |
+| [`context-economy`](plugins/context-economy/) | A six-Class Party (Steward, Assembler, Delegator, Chronicler, Enforcer, Observer) that spends the Claude Code context window with care. It gates broad reads and searches until it names a cheaper option. It nudges you to write a handoff before the context window fills, and it tracks session cost. | No slash command. It starts when your words match a trigger phrase. |
+| [`cartographer`](plugins/cartographer/) | A repository cartographer. It analyzes the structure and evidence of a repository and drafts a grounded, claim-classified README enrichment. It flags unsupported claims and stale content. | The `cartograph-report` skill. Claude Code finds it on its own, and it has no slash command. |
+| [`herald`](plugins/herald/) | A plain-English output style for Claude Code, Codex, and Cursor. Replies read as natural English that explains the why. README files, docs, runbooks, CHANGELOG files, and release notes follow a stricter register. A PostToolUse hook nudges after markdown writes, and a rewrite skill applies the stricter register. | No slash command. The style applies whenever the plugin is enabled. The hook runs after every markdown write. Ask the `herald` skill to "rewrite in plain English". |
 
 See each plugin's own README/SKILL.md for full usage. [ARCHITECTURE.md](./ARCHITECTURE.md) covers how the six plugins relate and the conventions shared across all of them (`${CLAUDE_PLUGIN_ROOT}` usage, progressive disclosure, finder/validator pairing).
 
@@ -30,7 +30,7 @@ Register this repo as a local marketplace in `~/.claude/settings.json`:
 }
 ```
 
-Then install whichever plugins you want:
+Then install the plugins that you want:
 
 ```sh
 claude plugin install kiln@jcsl-tools
@@ -53,7 +53,7 @@ Restart Claude Code after installing or after any change to a plugin's `hooks.js
 
 ## License
 
-MIT — see [LICENSE](./LICENSE).
+MIT. See [LICENSE](./LICENSE).
 
 ## For AI Agents
 
