@@ -1,0 +1,47 @@
+{
+  "limits": {
+    "sentence_words": 25,
+    "list_item_sentence_words": 20,
+    "max_hits": 12,
+    "reports_per_file": 2,
+    "style_tokens": 650
+  },
+  "slop": [
+    "simply", "seamlessly", "robust", "comprehensive", "leverage", "crucial",
+    "delve", "utilize", "streamline", "cutting-edge", "game-changer",
+    "in order to", "it is worth noting", "it is important to note"
+  ],
+  "modals": ["should", "would", "may", "might", "could"],
+  "openers": ["Certainly", "Great question", "Sure!"],
+  "closers": ["I hope this helps", "Let me know if", "Feel free to"],
+  "contractions": [
+    "it's", "that's", "there's", "here's", "what's", "who's", "let's",
+    "i'm", "i've", "i'll", "i'd", "you're", "you've", "you'll", "you'd",
+    "we're", "we've", "we'll", "we'd", "they're", "they've", "they'll", "they'd",
+    "he's", "she's", "he'll", "she'll", "he'd", "she'd"
+  ],
+  "irregular_participles": [
+    "been", "become", "begun", "bought", "broken", "brought", "built", "caught",
+    "chosen", "come", "done", "driven", "eaten", "fallen", "forgotten", "found",
+    "given", "gone", "gotten", "grown", "held", "hidden", "kept", "known", "led",
+    "left", "lost", "made", "meant", "met", "paid", "put", "read", "run", "said",
+    "seen", "sent", "set", "shown", "spoken", "spent", "stood", "taken", "taught",
+    "thought", "told", "understood", "won", "worn", "written"
+  ],
+  "ing_after_comma": [
+    "making", "allowing", "enabling", "ensuring", "creating", "providing",
+    "offering", "helping", "reducing", "improving", "leading", "causing",
+    "resulting", "giving", "letting", "keeping", "using", "running", "adding",
+    "removing", "setting", "returning", "showing", "highlighting"
+  ],
+  "document_globs": [
+    "README*.md", "CHANGELOG*.md", "**/docs/**/*.md", "**/runbooks/**/*.md",
+    "**/release-notes*/**", "**/releases/**/*.md", "**/RELEASE*.md"
+  ],
+  "deny_segments": [
+    "adr", "adrs", "rfc", "rfcs", "decisions", "decision-records", "plans",
+    "handoffs", ".handoffs", "tickets", "specs"
+  ],
+  "config_segments": [".claude", ".codex", ".cursor"],
+  "ears_min_items": 3
+}
