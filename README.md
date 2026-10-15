@@ -1,6 +1,6 @@
 # jcsl-tools
 
-Josh C.S. Lewis's personal Claude Code marketplace has five independently installable plugins. Kiln handles kickoff and builds. The other plugins cover review, research, context use, and repository documentation. Each plugin carries files that Claude Code loads directly. This repository does not build those files.
+Josh C.S. Lewis's personal Claude Code marketplace has six independently installable plugins. Kiln handles kickoff and builds. The other plugins cover review, research, context use, repository documentation, and plain-English writing. Each plugin carries files that Claude Code loads directly. This repository does not build those files.
 
 ## Plugins
 
@@ -11,8 +11,9 @@ Josh C.S. Lewis's personal Claude Code marketplace has five independently instal
 | [`prospector`](plugins/prospector/) | Discovery-first research harness. Finds where an answer lives across Glean, GitHub, Jira, and the web before reading anything — then verifies every load-bearing claim and synthesizes a cited answer. | `/prospector:research` |
 | [`context-economy`](plugins/context-economy/) | Six-Class Party (Steward, Assembler, Delegator, Chronicler, Enforcer, Observer) for spending Claude Code's context window economically — hard-gates before broad reads/greps, nudges a handoff before context fills, tracks session cost. | Fires automatically on trigger phrases; no slash command |
 | [`cartographer`](plugins/cartographer/) | Repository cartographer — analyzes a repo's structure and evidence to draft a grounded, claim-classified README enrichment, flagging unsupported claims and stale content. | `cartograph-report` skill (auto-discovered; no slash command) |
+| [`herald`](plugins/herald/) | Plain-English output style for Claude Code, Codex, and Cursor: natural replies that explain the why, a stricter register for README, docs, runbooks, CHANGELOG, and release notes, a PostToolUse markdown nudge, and a rewrite skill. | No slash command. The style applies whenever the plugin is enabled; the hook runs after every markdown write; the `herald` skill answers "rewrite in plain English". |
 
-See each plugin's own README/SKILL.md for full usage. [ARCHITECTURE.md](./ARCHITECTURE.md) covers how the five plugins relate and the conventions shared across all of them (`${CLAUDE_PLUGIN_ROOT}` usage, progressive disclosure, finder/validator pairing).
+See each plugin's own README/SKILL.md for full usage. [ARCHITECTURE.md](./ARCHITECTURE.md) covers how the six plugins relate and the conventions shared across all of them (`${CLAUDE_PLUGIN_ROOT}` usage, progressive disclosure, finder/validator pairing).
 
 ## Installation
 
