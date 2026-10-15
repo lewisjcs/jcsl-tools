@@ -7,13 +7,14 @@
 ```
 jcsl-tools/
 ├── .claude-plugin/
-│   └── marketplace.json      # marketplace manifest — lists all 5 plugins below
+│   └── marketplace.json      # marketplace manifest — lists all 6 plugins below
 └── plugins/
     ├── kiln/                 # Kiln kickoff, build, and Classes (generated payload)
     ├── gauntlet/              # multi-skill review harness
     ├── prospector/            # discovery-first research harness
     ├── context-economy/       # context-spend discipline Party
     ├── cartographer/          # repository documentation cartographer
+    ├── herald/                # plain-English output style, markdown nudge, rewrite skill
     └── _archive/kiln-2.17/    # the previous Kiln, kept whole, not listed
 ```
 
@@ -30,7 +31,7 @@ Two different `.claude-plugin/plugin.json`-shaped files exist at two levels — 
 
 A plugin's version is bumped independently in its own `plugin.json` — the marketplace manifest doesn't carry version numbers at all, only routing (`source`) and display metadata.
 
-## The five plugins
+## The six plugins
 
 ### Kiln: kickoff, build, and Classes
 
@@ -69,13 +70,19 @@ Not invoked via a slash command — its `context-economy` skill fires on a `<HAR
 
 `classes/*.class.json` are descriptive manifests (constraints, grounding citations, calibration fixture IDs) per Class — not executable config, just documentation of each Class's design rationale. `fixtures/` holds five operator-in-loop verification scenarios (`CE-01` through `CE-05`) with a `prompt.md`/`expected.md` pass-criteria pair each.
 
-This is the only plugin with its own hook test suite (`*.test.sh` files alongside each hook script) and its own nested `README.md`/`SETUP.md` — a heavier documentation footprint than the other plugins in this repo, reflecting that it ships hooks that run unconditionally on every session rather than only on explicit invocation.
+Context-economy was the first plugin with its own hook test suite (`*.test.sh` files alongside each hook script) and its own nested `README.md`/`SETUP.md`, and Herald follows the same pattern. Hooks that run unconditionally on every session deserve a heavier documentation footprint than plugins that run only on explicit invocation.
 
 ### Cartographer — repository documentation cartographer
 
 Entry: `cartograph-report` skill (auto-discovered; no slash command)
 
 Cartographer's pipeline reads a repository's own evidence — tracked files, manifests, CI configuration, and history — and turns it into a claim-classified README draft/patch, or a report of what it could not support. The skill folder `skills/cartograph-report/` is deliberately self-contained (`SKILL.md` + `core/` + `scripts/`): it is the promoted unit an external package manager copies whole, with provenance recorded by `tools/promote.sh` and org-neutrality of the shipped set enforced by `scripts/check-core-neutrality.sh`. Org-specific content enters only through the `profile/` seam defined in `core/profile-contract.md` — four fixed entry filenames that add evidence sources and conventions but can never override a core gate. `core/` holds the claim model, README ownership model, and six-stage pipeline; local validation (`scripts/check-readme-patch.sh`) and stage-5 verification (`scripts/check-verification-report.sh`) gate a draft before it is reported ready. Tests and fixtures live outside the skill folder in `tests/`, including a portability guard (`tests/check-portability.sh`) that keeps the skill folder free of harness-specific tokens.
+
+### Herald — plain-English output style, markdown nudge, rewrite skill
+
+Entry: none. The output style applies whenever the plugin is enabled (`force-for-plugin: true` in `output-styles/herald.md`), the PostToolUse hook runs after every markdown write, and the `herald` skill is auto-discovered.
+
+Herald is one prose source for two registers: natural English for replies, and a stricter technical-writing register for a few named kinds of document. The source, `output-styles/herald.md`, holds both registers, with the stricter one covering README files, docs and runbooks folders, CHANGELOG files, and release notes. It is the plugin with three manifests: `.claude-plugin/` (output style, `hooks/hooks.json`), `.codex-plugin/` (skills and `hooks/hooks.codex.json`, whose SessionStart prints the style body through `hooks/herald-style.py`), and `.cursor-plugin/` (rules and skills; `rules/herald.mdc` is a byte-identical copy of the style body with Cursor frontmatter). `hooks/herald-lint.py` is a standard-library Python linter whose word lists, tier globs, and limits come from `hooks/rules.json`; `tests/check-rules-parity.sh` asserts the rules file, the style, and the Cursor rule agree. The hook returns `additionalContext` and exits 0 on every path, so it nudges and never blocks. Output styles never reach subagents, so the Kiln and Gauntlet Classes keep their own voice; the PostToolUse nudge does run on their markdown writes.
 
 ## Cross-plugin conventions
 

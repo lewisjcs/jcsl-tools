@@ -1,0 +1,12 @@
+{
+  "name": "herald",
+  "displayName": "Herald",
+  "version": "0.1.0",
+  "description": "Natural English replies that explain the why, a stricter technical-writing register for README, docs, runbooks, CHANGELOG, and release notes, and a rewrite skill.",
+  "author": { "name": "Josh C.S. Lewis" },
+  "repository": "https://github.com/lewisjcs/jcsl-tools",
+  "license": "MIT",
+  "keywords": ["writing", "plain-english", "documentation"],
+  "rules": "./rules/",
+  "skills": "./skills/"
+}

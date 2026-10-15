@@ -1,0 +1,13 @@
+{
+  "description": "Herald nudge: after a markdown write, reports plain-English misses in the file as additional context. Fails open, never blocks.",
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          { "type": "command", "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/herald-lint.py\"", "timeout": 10 }
+        ]
+      }
+    ]
+  }
+}
