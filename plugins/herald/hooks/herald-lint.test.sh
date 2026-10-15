@@ -103,7 +103,7 @@ assert_eq "one local path in a link" "1" "$(grep -c 'local machine path' <<<"$ou
 assert_missing "no em-dash from a URL target" "$out" "em-dash"
 
 # A bare URL keeps the period that ends its sentence.
-res="$(python3 -c '
+res="$(python3 -B -c '
 import importlib.util, sys
 spec = importlib.util.spec_from_file_location("hl", sys.argv[1]); m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
 src = "See https://example.com. Then run it."
