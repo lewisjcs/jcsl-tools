@@ -9561,12 +9561,12 @@ function partLine(part, value, taskGoals, changed) {
   const goals = part === "tasks" && taskGoals.length > 0 ? ` (${taskGoals.length} goals listed on the ticket)` : "";
   return `${part}: empty, ${FILLER[part]}${goals}`;
 }
-function fillStateLines({ brief, taskGoals = [], roster, changed = [] }) {
+function fillStateLines({ brief, taskGoals = [], roster, changed = [], ready = false }) {
   return [
     ...BRIEF_PARTS.map((p) => partLine(p, brief[p], taskGoals, changed)),
     `first: ${firstEmptyOf(brief)}`,
     `roster: ${roster.fielded.map((m) => m.classKey).join(", ")} (row ${roster.rowId})`,
-    `forecast: ${forecastOf(brief)} dispatches before the plan, then one per task and one judge`
+    ready ? "forecast: build approval, then one dispatch per task and one judge" : `forecast: ${forecastOf(brief)} dispatches before the plan, then one per task and one judge`
   ];
 }
 function partsChanged(stateBrief, ticketBody, scrub, pending, format) {
@@ -9586,8 +9586,8 @@ function borrowedRole() {
   if (pin === void 0) throw new KilnError("KILN_BORROWED_PIN_MISSING", `policy/borrowed-classes-v1.json has no pin for ${BORROWED_CLASS_ID}`);
   return { roleId: BORROWED_CLASS_ID, roleSourceHash: sha256Utf8(canonicalJson(pin)) };
 }
-function selectRoster(policy, profile) {
-  return evaluateRoster(policy, profile);
+function selectRoster(policy, profile, options) {
+  return evaluateRoster(policy, profile, options);
 }
 function roleFor(classKey, registry) {
   const classId = CLASS_OF_ROLE[classKey];
@@ -9743,7 +9743,11 @@ var DISCOVER_COMMANDS = Object.freeze([
   "git -C <checkout> branch -r --format='%(refname:short)'",
   "git -C <checkout> show origin/<base>:<path>",
   "git -C <checkout> log --oneline -n 20 origin/<base>",
-  "git -C <checkout> rev-parse --abbrev-ref origin/HEAD"
+  "git -C <checkout> rev-parse --abbrev-ref origin/HEAD",
+  "git -C <checkout> worktree list --porcelain",
+  "git -C <worktree> status --porcelain",
+  "git -C <worktree> diff --no-ext-diff --no-textconv",
+  "git -C <worktree> diff --no-ext-diff --no-textconv --stat"
 ]);
 function renderDiscoverPrompt(state) {
   const reportPath = `${state.runDir}/discover-report.md`;
@@ -10911,7 +10915,7 @@ var ANSWER = /^([a-z-]+): (.*?)\s*\((source: (.+)|sources disagree: (.+))\)$/;
 var REQUIRED_ANSWERS = ["repository", "base", "branch", "title", "kind"];
 var SIGNAL = /^(ORIENT|RESEARCH): (.+?)\s*\(source: (.+)\)$/;
 var DOCUMENT_ANSWER = /^(\S+)(?: is an? (plan|decision))?$/;
-var DISCOVER_COMMAND_HEADS = [/^gh (pr list|pr view|issue view|repo view)\b/, /^git -C \S+ (remote get-url|fetch|ls-remote|branch -r|show|log|rev-parse)\b/, /^(test|grep|shasum) /];
+var DISCOVER_COMMAND_HEADS = [/^gh (pr list|pr view|issue view|repo view)\b/, /^git -C \S+ (remote get-url|fetch|ls-remote|branch -r|show|log|rev-parse)\b/, /^git -C \S+ status --porcelain$/, /^git -C \S+ diff --no-ext-diff --no-textconv(?: --stat)?$/, /^git -C \S+ worktree list --porcelain$/, /^(test|grep|shasum) /];
 function parseDiscoverReport(text) {
   const answers = {};
   const bad = [];
@@ -11432,8 +11436,8 @@ function baseStateOf({ bundle, roles, extras }) {
     discover: null,
     discoverGaps: [],
     discoverDraft: null,
-    mode: null,
-    modeLog: [],
+    mode: extras.mode ?? null,
+    modeLog: extras.mode === void 0 ? [] : [{ mode: extras.mode, reasons: ["approved plan ready for build"] }],
     planChanges: [],
     unread: [],
     drift: [],
@@ -12702,6 +12706,13 @@ function questionDetail(meta, state) {
 ${state.brief.tasks.plan.map((t) => `- ${t.taskId}: ${t.goal}`).join("\n")}`);
     else if (meta.source === "jira" || body === null) parts.push(filledSections(state, written));
     else parts.push(positionalDiff(normalizeBody(body), bodyWithParts(body, state, written)));
+    if (q.then === "build" && state.documents?.plan?.approved && state.mode === "EXECUTE") {
+      parts.push(`Approved plan: ${state.documents.plan.path}
+Worktree: ${state.repo.root}
+Base: ${state.repo.base}
+Chosen task checks:
+${state.brief.tasks.plan.flatMap((task) => task.doneWhen.map((check) => `- ${task.taskId}: ${check.command} expects ${check.expect}`)).join("\n")}`);
+    }
   }
   if (q.then === "pr" || q.then === "verification") {
     const rulings = rulingLines(state.judge.rulings);
@@ -12828,11 +12839,41 @@ function modeLineFor(state, nextState) {
   return modeLine(entry.mode, entry.reasons, after.length > 1 ? after.at(-2).mode : null);
 }
 var ENDED = /* @__PURE__ */ new Set(["abandoned", "gap"]);
-function againFor(paths) {
+function againFor(paths, replacingUnbuilt = false) {
   const state = loadState(paths);
   const { status } = state;
-  if (!ENDED.has(status) && !isOldReleaseRun(state)) throw new KilnError("KILN_RUN_NOT_ENDED", `the run is ${status}; open --again only sets aside a run that ended abandoned or gap`, { status });
+  const unbuilt = replacingUnbuilt && !state.buildApproved && state.done.length === 0 && state.cursor === 0;
+  if (!ENDED.has(status) && !isOldReleaseRun(state) && !unbuilt) throw new KilnError("KILN_RUN_NOT_ENDED", `the run is ${status}; open --again can replace it only before build approval and code tasks`, { status });
   return setRunAside(paths, (/* @__PURE__ */ new Date()).toISOString().replace(/[-:]/g, "").replace(/\.\d+Z$/, "Z"));
+}
+function repoForApprovedTasks(plan, roots, baseFlag, title, ref) {
+  const rootPath = plan.tasks[0].repo;
+  if (!path7.isAbsolute(rootPath) || !existsSync2(rootPath)) throw new KilnError("KILN_APPROVED_WORKTREE", "the task plan must name an existing worktree", { root: rootPath });
+  const root = realpathSync2(rootPath);
+  if (gitOut(root, ["rev-parse", "--show-toplevel"]).trim() !== root) throw new KilnError("KILN_APPROVED_WORKTREE", "the task plan repo is not the worktree root", { root });
+  const common = gitOut(root, ["rev-parse", "--path-format=absolute", "--git-common-dir"]).trim();
+  const checkout = realpathSync2(path7.dirname(common));
+  if (!roots.some((parent) => path7.dirname(checkout) === realpathSync2(parent)) || !isCheckout(checkout)) throw new KilnError("KILN_APPROVED_REPOSITORY", "the worktree checkout must be a repository directly under KILN_CHECKOUTS", { checkout });
+  const registered = gitOut(checkout, ["worktree", "list", "--porcelain"]).split("\n").filter((line) => line.startsWith("worktree ")).map((line) => line.slice(9));
+  if (!registered.includes(root)) throw new KilnError("KILN_APPROVED_WORKTREE", "the task plan repo is not a registered worktree", { root, checkout });
+  const branch = gitOut(root, ["symbolic-ref", "--short", "HEAD"]).trim();
+  const sameRoot = (candidate) => {
+    try {
+      return realpathSync2(candidate) === root;
+    } catch {
+      return false;
+    }
+  };
+  if (plan.tasks.some((task) => !sameRoot(task.repo) || task.branch !== branch || task.doneWhen.some((check) => !sameRoot(check.repo)))) throw new KilnError("KILN_PLAN_REPO", "each task and check must name the selected worktree and branch", { root, branch });
+  const facts = repoFactsFor()(checkout, baseFlag ?? null);
+  if (facts.defaultBranch === null) throw new KilnError("KILN_APPROVED_BASE", "the checkout does not name an origin default branch", { checkout });
+  if (!facts.baseOnRemote) throw new KilnError("KILN_APPROVED_BASE", "the selected base is not on the remote", { base: baseFlag });
+  if (branch === facts.defaultBranch) throw new KilnError("KILN_APPROVED_WORKTREE_BRANCH", "build cannot commit on the default branch", { branch });
+  const dirty = Object.keys(dirtyMap(root));
+  if (dirty.length > 0) throw new KilnError("KILN_APPROVED_WORKTREE_DIRTY", "the worktree has uncommitted changes; preserve or commit them before this new run", { root, paths: dirty });
+  const prTitle = title ?? plan.summary;
+  const issue = ticketKeyIssue({ source: sourceOf(ref), ref }, branch, prTitle);
+  return { checkout, root, branch, base: baseFlag ?? facts.defaultBranch, prTitle: issue === null ? prTitle : `${ref} ${prTitle}` };
 }
 function openFillState(lines, source, ticketRead) {
   return source === "jira" ? [...lines, `description form: ${ticketRead.form}`] : lines;
@@ -12947,10 +12988,12 @@ ${prepared.addedText}`;
     return jiraCapability(key);
   },
   open(args) {
-    const v = flags(args, { root: { type: "string" }, ticket: { type: "string" }, idea: { type: "string" }, again: { type: "boolean" }, base: { type: "string" }, plan: { type: "string" }, "approved-plan": { type: "string" } });
+    const v = flags(args, { root: { type: "string" }, ticket: { type: "string" }, idea: { type: "string" }, again: { type: "boolean" }, base: { type: "string" }, plan: { type: "string" }, "approved-plan": { type: "string" }, "ticket-plan": { type: "string" } });
     const ref = canonicalTicketRef(requireFlag(v, "ticket"));
     if (v.plan !== void 0 && v["approved-plan"] !== void 0) throw new KilnError("KILN_PLAN_FLAGS_CONFLICT", "use either --plan or --approved-plan");
     const approvedPlan = v["approved-plan"] === void 0 ? null : readApprovedPlan(v["approved-plan"], ref);
+    if (v["ticket-plan"] !== void 0 && approvedPlan === null) throw new KilnError("KILN_TICKET_PLAN_NEEDS_APPROVAL", "--ticket-plan requires --approved-plan");
+    const taskPlan = v["ticket-plan"] === void 0 ? null : readJsonInput(v, "ticket-plan");
     const source = sourceOf(ref);
     const checkoutRoots = checkoutRootsOf();
     const root = resolveRunsRoot({ flag: v.root });
@@ -12981,11 +13024,24 @@ ${v.idea.trim()}
     const planShape = planPath === null ? null : documentKindOf(readInput({ plan: planPath }, "plan"), planPath);
     const documents = { plan: planPath === null ? null : { path: planPath, kind: planShape?.kind ?? null, shape: planShape?.shape ?? null, ...approvedPlan === null ? {} : { ...approvedPlan, approved: true, ticketAcceptance: ticketBrief.acceptance?.lines ?? null } }, decision: null };
     const registry = getRegistry();
-    const setAside = v.again === true && runExists(paths) ? againFor(paths) : null;
+    const issueTitle = title === null && source === "github" ? ticketRead.title : title;
+    let directRepo = null;
+    if (taskPlan !== null && (!runExists(paths) || v.again === true)) {
+      const validation = validateTicketPlan(taskPlan);
+      if (!validation.valid) throw new KilnError("KILN_TICKET_PLAN_INVALID", "the host task plan fails kiln:ticket-plan@1", { issues: validation.issues });
+      const change = firstApprovedPlanChange(taskPlan, approvedPlan, ref);
+      if (change !== null) throw new KilnError("KILN_APPROVED_TASK_CHANGED", change);
+      directRepo = repoForApprovedTasks(taskPlan, checkoutRoots, v.base ?? null, issueTitle, ref);
+    }
+    if (approvedPlan !== null && taskPlan === null && !runExists(paths)) throw new KilnError("KILN_APPROVED_TASK_PLAN_REQUIRED", "build must translate this approved plan into a validated task plan before opening a run");
+    const setAside = v.again === true && runExists(paths) ? againFor(paths, directRepo !== null) : null;
     if (runExists(paths)) {
       const meta2 = readRunMeta(paths);
       const state2 = loadState(paths);
       refuseOldRelease(paths, state2);
+      if (taskPlan !== null && state2.documents?.plan?.approved && state2.brief.tasks === null) {
+        throw new KilnError("KILN_APPROVED_RUN_NEEDS_RESTART", "this saved run still waits on discovery or planning; use open --again to keep its record and start the approved task route", { runDir: paths.dir });
+      }
       if (approvedPlan !== null && (state2.documents?.plan?.approved !== true || state2.documents.plan.path !== approvedPlan.path || state2.documents.plan.sha256 !== approvedPlan.sha256)) {
         throw new KilnError("KILN_APPROVED_PLAN_RUN_MISMATCH", "this existing run does not hold the selected approved plan; end it before opening a new run", { planPath: approvedPlan.path, runDir: paths.dir });
       }
@@ -12997,18 +13053,25 @@ ${v.idea.trim()}
       const flow2 = flowFor(flowCtx(meta2));
       return { resumed: true, dir: paths.dir, ...ENDED.has(state2.status) ? { again: `this run ended ${state2.status}; open --again sets it aside and starts a fresh run on this ticket` } : {}, fillState: openFillState(fillStateLines({ brief: state2.brief, taskGoals, roster: record2.roster, changed: ticketChangesFor(state2, ticketRead.body).parts }), source, ticketRead), roster: { rowId: record2.roster.rowId, fielded: record2.roster.fielded.map((m) => m.classKey) }, next: nextSummary(flow2, state2, paths, meta2) };
     }
-    const profile = buildProfile(brief, { sizeBytes: Buffer.byteLength(body, "utf8") });
-    const roster = selectRoster(rosterPolicy, profile);
+    const planBrief = directRepo === null ? null : briefFromPlan(readInput({ plan: approvedPlan.path }, "plan"), approvedPlan.path);
+    const readyBrief = directRepo === null ? brief : {
+      ...brief,
+      intent: brief.intent ?? planBrief.intent ?? { by: "party", text: taskPlan.summary },
+      facts: planBrief.facts,
+      decision: planBrief.decision ?? { by: "party", text: taskPlan.summary },
+      tasks: { by: "party", summary: taskPlan.summary, plan: taskPlan.tasks.map((task) => ({ ...task, repo: directRepo.root, doneWhen: task.doneWhen.map((check) => ({ ...check, repo: directRepo.root })) })) }
+    };
+    const profile = buildProfile(readyBrief, { sizeBytes: Buffer.byteLength(body, "utf8") });
+    const roster = selectRoster(rosterPolicy, profile, directRepo === null ? void 0 : { skipLanes: ["finder"] });
     const roles = rolesFor(roster, registry);
     const bundle = buildBundle({ ticketText: body });
     const outward = outwardOf(source);
-    const issueTitle = title === null && source === "github" ? ticketRead.title : title;
-    const extras = { runDir: paths.dir, cliPath: path7.resolve(process.argv[1]), ticket: { ref, source, outward, title: issueTitle, taskGoals, kind: ticketShape?.kind ?? "ticket", shape: ticketShape?.shape ?? null, readOnly: ticketShape !== null, ...source === "jira" ? { skipped: ticketRead.skipped, descriptionForm: ticketRead.form } : {}, ...documentParts === null ? {} : { documentParts } }, brief, repo: null, checkoutRoots, base: v.base ?? null, documents };
+    const extras = { runDir: paths.dir, cliPath: path7.resolve(process.argv[1]), ticket: { ref, source, outward, title: issueTitle, taskGoals, kind: ticketShape?.kind ?? "ticket", shape: ticketShape?.shape ?? null, readOnly: ticketShape !== null, ...source === "jira" ? { skipped: ticketRead.skipped, descriptionForm: ticketRead.form } : {}, ...documentParts === null ? {} : { documentParts } }, brief: readyBrief, repo: directRepo, checkoutRoots, base: v.base ?? null, documents, ...directRepo === null ? {} : { mode: "EXECUTE" } };
     const firstKind = route(baseStateOf({ bundle, roles, extras }), flowCtx({ ticketRef: ref, source, firstKind: null })).nextKind;
     const flow = flowFor(flowCtx({ ticketRef: ref, source, firstKind }));
     const state = createRun(flow, { bundle, loadout: LOADOUT, host: HOST, policy: null, roles, profile: PROFILE, extras });
     const original = path7.join(paths.original, `ticket.${source === "markdown" ? "md" : "json"}`);
-    const meta = { ticketRef: ref, source, outward, repo: null, branch: null, base: null, firstKind, original, createdAt: (/* @__PURE__ */ new Date()).toISOString() };
+    const meta = { ticketRef: ref, source, outward, repo: directRepo?.root ?? null, branch: directRepo?.branch ?? null, base: directRepo?.base ?? null, ...directRepo === null ? {} : { repoWords: repoWordsOf(directRepo.root) }, firstKind, original, createdAt: (/* @__PURE__ */ new Date()).toISOString() };
     createRunDir2(paths);
     writeFileAtomic(original, ticketRead.raw);
     fetchLinked(paths, { ref, source, body, title: issueTitle, comments: ticketRead.comments ?? [], links: ticketRead.links ?? [], skipped: ticketRead.skipped ?? [] });
@@ -13025,7 +13088,7 @@ ${v.idea.trim()}
       pendingEvent(state)
     ]);
     writeRunMeta(paths, meta);
-    return { resumed: false, dir: paths.dir, ...setAside === null ? {} : { setAside }, fillState: openFillState(fillStateLines({ brief, taskGoals, roster }), source, ticketRead), roster: { rowId: roster.rowId, fielded: roster.fielded.map((m) => m.classKey) }, next: nextSummary(flow, state, paths, meta) };
+    return { resumed: false, dir: paths.dir, ...setAside === null ? {} : { setAside }, fillState: openFillState(fillStateLines({ brief: readyBrief, taskGoals, roster, ready: directRepo !== null }), source, ticketRead), roster: { rowId: roster.rowId, fielded: roster.fielded.map((m) => m.classKey) }, next: nextSummary(flow, state, paths, meta) };
   },
   next(args) {
     const v = flags(args, { root: { type: "string" }, ticket: { type: "string" } });
