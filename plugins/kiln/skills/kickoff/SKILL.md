@@ -60,6 +60,8 @@ Choose a durable path in the associated OS project folder. Use `projects/active/
 
 Ask Planner for a local plan only after the needed outcome is settled. Compare its acceptance criteria with the ticket. Review scope, ambiguity, task order, dependencies, test commands, and material risks. Use an independent review when consequence or uncertainty warrants its cost. Record the review and any unproved host behavior in the plan.
 
+Write each task so build can follow it without a second planning pass. Name its goal, acceptance coverage, dependencies, file scope, and observable result. Add a rerunnable command when the repository already makes one clear. Build can select a command later when the plan states the result but leaves the tool choice open. Keep the plan readable as Markdown.
+
 Record the recommended build method, its reason, and any availability limit in the plan. Keep that recommendation out of ticket acceptance criteria. Do not start Compounds or implementation. If a ticket change remains unresolved, state that build must wait for ticket agreement.
 
 Before `plan-preview`, write one `Source ticket:` line with the CLI reference. For Jira, use the bare key. For an idea without a ticket, write `Source ticket: none`. Put each acceptance criterion on a numbered or bulleted line under `## Acceptance criteria`. State observable results in plain English. Number tasks as `Task 1` through `Task N`. Name each task file or directory in backticks on a `Files:` or `Create:`, `Modify:`, `Test:`, or `Delete:` line. Read the saved plan and make sure that these fields are present before you show it for approval.

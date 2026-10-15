@@ -1,7 +1,7 @@
 {
   "name": "kiln",
-  "version": "3.6.2",
-  "description": "Kiln answers questions, explores ideas, and prepares reviewed plans through /kiln:kickoff. /kiln:build starts a separate implementation run from an approved plan or ticket. The plugin ships five Classes, host skills, and the runtime that validates their contracts.",
+  "version": "3.6.3",
+  "description": "Kiln answers questions and prepares approved plans through /kiln:kickoff. /kiln:build carries out an approved plan without repeating research or planning. Statblock tracks tasks, receipts, and write limits.",
   "author": {
     "name": "Josh C.S. Lewis"
   },
