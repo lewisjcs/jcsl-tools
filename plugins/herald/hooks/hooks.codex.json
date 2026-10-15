@@ -5,7 +5,7 @@
       {
         "matcher": "startup|resume|clear|compact",
         "hooks": [
-          { "type": "command", "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/herald-style.py\"", "timeout": 5, "statusMessage": "Loading Herald..." }
+          { "type": "command", "command": "python3 \"${CLAUDE_PLUGIN_ROOT:-$PLUGIN_ROOT}/hooks/herald-style.py\" || true", "timeout": 5, "statusMessage": "Loading Herald..." }
         ]
       }
     ],
@@ -13,7 +13,7 @@
       {
         "matcher": "apply_patch",
         "hooks": [
-          { "type": "command", "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/herald-lint.py\"", "timeout": 10 }
+          { "type": "command", "command": "python3 \"${CLAUDE_PLUGIN_ROOT:-$PLUGIN_ROOT}/hooks/herald-lint.py\" || true", "timeout": 10 }
         ]
       }
     ]

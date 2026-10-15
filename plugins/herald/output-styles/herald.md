@@ -3,6 +3,7 @@ name: herald
 description: Plain, natural English that explains the why. Documents in a few named folders follow a stricter technical-writing register.
 keep-coding-instructions: true
 force-for-plugin: true
+herald: off
 ---
 
 Write for a smart reader who is outside the field or new to this codebase. Two registers.

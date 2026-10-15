@@ -47,6 +47,13 @@ def _code_word(match):
     return ("CODE" + " " * len(span))[: len(span)]
 
 
+def _blank_url(m):
+    """Blank a bare URL but give trailing punctuation back."""
+    url = m.group(0)
+    trail = len(url) - len(url.rstrip(".,;:!?)]"))
+    return " " * (len(url) - trail) + url[len(url) - trail:]
+
+
 def prose_only(text):
     """The text with frontmatter, fenced code, inline code, tables, and link targets blanked."""
     text = text.replace("\r\n", "\n").replace("’", "'")
@@ -55,7 +62,7 @@ def prose_only(text):
     text = re.sub(r"`[^`\n]+`", _code_word, text)
     text = re.sub(r"^[ \t]*\|.*$", _blank, text, flags=re.M)
     text = re.sub(r"\]\([a-zA-Z][a-zA-Z0-9+.-]*:[^)\n]*\)", _blank, text)
-    text = re.sub(r"https?://[^\s<>()]+?(?=[.,;:!?)\]]*(?:\s|$))", _blank, text)
+    text = re.sub(r"https?://[^\s<>()]+", _blank_url, text)
     return text
 
 
@@ -170,7 +177,7 @@ def universal_hits(prose):
     return hits
 
 
-# --- document checks (Task 4) -------------------------------------------------
+# --- document checks -------------------------------------------------
 
 MODALS = re.compile(r"\b(" + "|".join(RULES["modals"]) + r")\b", re.I)
 PERFECT = re.compile(r"\b(?:has|have|had)\s+(?:\w+ed|" + "|".join(RULES["irregular_participles"]) + r")(?![\w-])", re.I)
@@ -210,7 +217,7 @@ def document_hits(prose):
     return hits
 
 
-# --- tier and exclusions (Task 5) -------------------------------------------
+# --- tier and exclusions -------------------------------------------
 
 FRONTMATTER = re.compile(r"\A---\n(.*?)\n---\n", re.S)
 
@@ -332,7 +339,7 @@ def report(path, tier, hits, nudge):
     if len(hits) > LIMITS["max_hits"]:
         lines.append(f"  and {len(hits) - LIMITS['max_hits']} more.")
     if nudge and hits:
-        lines.append("Fix these in the file you just wrote, then continue.")
+        lines.append("Fix the ones in text you wrote or changed. Leave older text unless the task covers it.")
     return "\n".join(lines)
 
 

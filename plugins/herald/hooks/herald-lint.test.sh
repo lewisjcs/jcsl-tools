@@ -29,7 +29,7 @@ assert_eq "handoff exit 0" "0" "$rc"
 assert_contains "handoff universal tier" "$out" "universal tier"
 assert_contains "handoff em-dash" "$out" "em-dash"
 assert_contains "handoff hard wrap" "$out" "hard-wrapped paragraph"
-assert_contains "handoff two hits" "$out" "2 hits"
+assert_contains "handoff two hits" "$out" ", 2 hits."
 assert_eq "handoff em-dash on line 3" "1" "$(grep -c 'line 3, em-dash' <<<"$out")"
 
 # Universal word checks: slop, opener, closer, local path, name.
@@ -66,7 +66,7 @@ simply — /Users/x
 Inline `simply — /Users/x` and [link](https://example.com/Users/x/simply).
 MD
 out="$(python3 "$SCRIPT" --file "$TMP/notes/blank.md")"
-assert_contains "blanked file has zero hits" "$out" "0 hits"
+assert_contains "blanked file has zero hits" "$out" ", 0 hits."
 
 # Fences: indented and tilde fences are blanked; the closing run must match.
 cat > "$TMP/notes/fences.md" <<'MD'
@@ -111,6 +111,12 @@ out = m.prose_only(src)
 print(out.rstrip().endswith("Then run it.") and out[src.index("com") + 3] == ".")
 ' "$SCRIPT")"
 assert_eq "period after a bare URL survives" "True" "$res"
+
+# A long run of dots after a URL lints in linear time.
+python3 -B -c 'print("https://x" + "." * 40000)' > "$TMP/dots.md"
+SECONDS=0; python3 "$SCRIPT" --file "$TMP/dots.md" >/dev/null
+[ "$SECONDS" -lt 5 ] && fast=yes || fast=no
+assert_eq "long dot run after a URL lints fast" "yes" "$fast"
 
 # 1. A README with one over-limit sentence, one "should", one "has completed",
 #    one contraction, one semicolon: document tier, five categories.
@@ -157,9 +163,9 @@ cat > "$TMP/repo/README-table.md" <<'MD'
 | run | One cell that is very long and holds many words so that a naive sentence counter would flag it as over the limit for sure. |
 MD
 out="$(python3 "$SCRIPT" --file "$TMP/repo/README-table.md" --tier document)"
-assert_contains "table rows produce zero hits" "$out" "0 hits"
+assert_contains "table rows produce zero hits" "$out" ", 0 hits."
 
-# Fix round 1: hyphenated compounds, May as a month, one-line hit text.
+# Hyphenated compounds, May as a month, one-line hit text.
 cat > "$TMP/repo/README-perfect.md" <<'MD'
 # Perfect
 
@@ -247,7 +253,7 @@ printf '# M\n\nYou should run it.\n' > "$TMP/repo/manual/intro.md"
 assert_contains "extra glob makes document tier" "$(HERALD_DOCUMENT_GLOBS="**/manual/**/*.md" python3 "$SCRIPT" --file "$TMP/repo/manual/intro.md")" "document tier"
 assert_contains "without extra glob it is universal" "$(python3 "$SCRIPT" --file "$TMP/repo/manual/intro.md")" "universal tier"
 
-# Fix round 1: segments and globs run relative to cwd.
+# Segments and globs run relative to cwd.
 mkdir -p "$TMP/repo/.claude/worktrees/feat" "$TMP/docs/myrepo/src" "$TMP/repo/.codex"
 printf '# W\n\nYou should run it.\n' > "$TMP/repo/.claude/worktrees/feat/README.md"
 out="$(cd "$TMP/repo/.claude/worktrees/feat" && python3 "$SCRIPT" --file "$TMP/repo/.claude/worktrees/feat/README.md")"
@@ -289,9 +295,14 @@ PY
 )"
 out="$(printf '%s' "$event" | python3 "$SCRIPT")"
 assert_contains "relative path resolved against cwd" "$out" "README.md, document tier"
-assert_contains "hook output nudges" "$out" "Fix these in the file you just wrote"
+assert_contains "hook output nudges" "$out" "Fix the ones in text you wrote or changed"
 
 # --host cursor prints additional_context instead.
+event="$(python3 -B - "$TMP/codex" <<'PY'
+import json, sys
+print(json.dumps({"hook_event_name": "PostToolUse", "session_id": "s2c", "cwd": sys.argv[1], "tool_name": "Write", "tool_input": {"file_path": "README.md", "content": "x"}}))
+PY
+)"
 out="$(printf '%s' "$event" | python3 "$SCRIPT" --host cursor)"
 assert_contains "cursor output key" "$out" "additional_context"
 assert_missing "cursor output has no claude key" "$out" "hookSpecificOutput"

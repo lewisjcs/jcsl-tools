@@ -26,6 +26,8 @@ The universal checks are slop words, em-dashes, filler openers and closers, hard
 
 A report holds at most 12 hits. After two reports for one file in one session the linter stays silent for that file. Any error exits 0 with no output.
 
+The linter skips files inside an agent configuration folder. These are the Claude configuration folder, `~/.codex`, and `~/.cursor`. The linter also skips any file under a `.claude`, `.codex`, or `.cursor` folder of the project. It judges folder names relative to the session's working folder, so a project that lives under a `docs` folder is not all document tier. In a glob, `*` stays inside one folder and `**` crosses folders, and a glob can match at any folder. The path separator is a colon on macOS and Linux. The linter needs Python 3.9 or later.
+
 Environment variables:
 
 - `HERALD_EXCLUDE`: extra globs to skip, separated by the path separator.
