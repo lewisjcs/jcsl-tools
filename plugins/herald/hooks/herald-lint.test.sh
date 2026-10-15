@@ -235,7 +235,7 @@ assert_contains "frontmatter off" "$(python3 "$SCRIPT" --file "$TMP/repo/README-
 
 # Config folders are skipped by segment and by CLAUDE_CONFIG_DIR.
 mkdir -p "$TMP/.claude" "$TMP/cfg/sub"
-printf 'You should.\n' > "$TMP/.claude/notes.md"
+printf 'We simply run it.\n' > "$TMP/.claude/notes.md"
 printf 'You should.\n' > "$TMP/cfg/sub/README.md"
 assert_contains "dot-claude segment skipped" "$(python3 "$SCRIPT" --file "$TMP/.claude/notes.md")" "skipped"
 assert_contains "config dir skipped" "$(CLAUDE_CONFIG_DIR="$TMP/cfg" python3 "$SCRIPT" --file "$TMP/cfg/sub/README.md")" "skipped"
@@ -331,6 +331,32 @@ printf 'not json' > "$TMP/badrules/rules.json"
 out="$(printf '{"session_id":"s7","tool_name":"Edit","tool_input":{"file_path":"%s"}}' "$TMP/codex/README.md" | python3 -B "$TMP/badrules/herald-lint.py")"; rc=$?
 assert_eq "corrupt rules exit 0" "0" "$rc"
 assert_eq "corrupt rules no output" "" "$out"
+
+# Corrupt rules.json: a rules file that parses but lacks keys also exits 0 with no output.
+printf '{}' > "$TMP/badrules/rules.json"
+out="$(printf '{"session_id":"s7","tool_name":"Edit","tool_input":{"file_path":"%s"}}' "$TMP/codex/README.md" | python3 -B "$TMP/badrules/herald-lint.py")"; rc=$?
+assert_eq "short rules exit 0" "0" "$rc"
+assert_eq "short rules no output" "" "$out"
+
+# A non-UTF-8 file in a patch is skipped; the other file still reports.
+printf '# B\n\nCaf\xe9 should.\n' > "$TMP/codex/docs/b.md"
+event="$(python3 -B - "$TMP/codex" <<'PY'
+import json, sys
+patch = "*** Begin Patch\n*** Update File: docs/b.md\n+x\n*** Update File: README.md\n+x\n*** End Patch"
+print(json.dumps({"hook_event_name": "PostToolUse", "session_id": "s8", "cwd": sys.argv[1], "tool_name": "apply_patch", "tool_input": {"command": patch}}))
+PY
+)"
+out="$(printf '%s' "$event" | python3 "$SCRIPT")"; rc=$?
+assert_eq "latin-1 file exit 0" "0" "$rc"
+assert_contains "latin-1 file does not drop the README report" "$out" "README.md, document tier"
+
+# The hook passes cwd through: the same file is universal tier in its own repo and document tier from a parent.
+mkdir -p "$TMP/docs/myrepo2/src"
+printf '# N\n\nYou should run it.\n' > "$TMP/docs/myrepo2/src/notes.md"
+out="$(printf '{"session_id":"s9","cwd":"%s","tool_name":"Write","tool_input":{"file_path":"%s"}}' "$TMP/docs/myrepo2" "$TMP/docs/myrepo2/src/notes.md" | python3 "$SCRIPT")"
+assert_eq "cwd inside repo: no hits" "" "$out"
+out="$(printf '{"session_id":"s10","cwd":"%s","tool_name":"Write","tool_input":{"file_path":"%s"}}' "$TMP" "$TMP/docs/myrepo2/src/notes.md" | python3 "$SCRIPT")"
+assert_contains "cwd above repo: document tier modal" "$out" "banned modal"
 
 # The Codex style printer prints the body without frontmatter.
 style="$(python3 -B "$HERE/herald-style.py")"

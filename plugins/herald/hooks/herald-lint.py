@@ -22,6 +22,15 @@ try:
     RULES = json.loads((HERE / "rules.json").read_text(encoding="utf-8"))
 except Exception:  # noqa: BLE001  advisory: a missing or malformed rules file must never block the session
     sys.exit(0)
+try:
+    # Every key the module reads at import or run time: a short rules file exits 0 before any regex is built.
+    for _key in ("limits", "slop", "modals", "openers", "closers", "contractions", "irregular_participles",
+                 "ing_after_comma", "document_globs", "deny_segments", "config_segments", "ears_min_items"):
+        RULES[_key]
+    for _key in ("sentence_words", "list_item_sentence_words", "max_hits", "reports_per_file"):
+        RULES["limits"][_key]
+except Exception:  # noqa: BLE001  advisory: a short rules file must never block the session
+    sys.exit(0)
 LIMITS = RULES["limits"]
 
 
@@ -365,13 +374,14 @@ def guard_dir():
     for key in ("CLAUDE_PLUGIN_DATA", "PLUGIN_DATA"):
         if os.environ.get(key):
             return pathlib.Path(os.environ[key])
-    return pathlib.Path(tempfile.gettempdir()) / "herald"
+    getuid = getattr(os, "getuid", None)
+    return pathlib.Path(tempfile.gettempdir()) / (f"herald-{getuid()}" if getuid else "herald")
 
 
 def guard_allows(session_id, path):
     """True when this file has had fewer than the allowed reports this session. Counts this one."""
     folder = guard_dir()
-    folder.mkdir(parents=True, exist_ok=True)
+    folder.mkdir(parents=True, exist_ok=True, mode=0o700)
     store = folder / "loop-guard.json"
     try:
         data = json.loads(store.read_text(encoding="utf-8"))
@@ -385,8 +395,9 @@ def guard_allows(session_id, path):
     if count >= LIMITS["reports_per_file"]:
         return False
     per_session[key] = count + 1
-    temp = store.with_suffix(".tmp")
-    temp.write_text(json.dumps(data), encoding="utf-8")
+    fd, temp = tempfile.mkstemp(dir=folder, prefix="loop-guard-", suffix=".tmp")
+    with os.fdopen(fd, "w", encoding="utf-8") as handle:
+        handle.write(json.dumps(data))
     os.replace(temp, store)
     return True
 
@@ -402,7 +413,7 @@ def hook(event, host):
     for path in event_paths(event):
         try:
             text = path.read_text(encoding="utf-8")
-        except OSError:
+        except (OSError, ValueError):
             continue
         if skipped(path, text, event.get("cwd")):
             continue
