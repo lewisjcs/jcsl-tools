@@ -63,10 +63,54 @@ title: it's — simply
 simply — /Users/x
 ```
 
-Inline `simply — /Users/x` and [link](/Users/x/simply).
+Inline `simply — /Users/x` and [link](https://example.com/Users/x/simply).
 MD
 out="$(python3 "$SCRIPT" --file "$TMP/notes/blank.md")"
 assert_contains "blanked file has zero hits" "$out" "0 hits"
+
+# Fences: indented and tilde fences are blanked; the closing run must match.
+cat > "$TMP/notes/fences.md" <<'MD'
+Steps:
+
+1. Run the setup.
+
+   ```bash
+   cd ~/code/project — simply
+   git checkout -- notes.md
+   ```
+
+2. Then check it.
+
+~~~
+em-dash — here, ~/code/project, git checkout -- notes.md
+~~~
+
+````
+```
+simply — /Users/x
+```
+````
+MD
+out="$(python3 "$SCRIPT" --file "$TMP/notes/fences.md")"
+assert_contains "indented and tilde fences blanked" "$out" ", 0 hits."
+
+# Link targets: a local path stays visible, a scheme target is blanked.
+cat > "$TMP/notes/links.md" <<'MD'
+See [notes](/Users/name/notes.md) and [site](https://example.com/a—b).
+MD
+out="$(python3 "$SCRIPT" --file "$TMP/notes/links.md")"
+assert_eq "one local path in a link" "1" "$(grep -c 'local machine path' <<<"$out")"
+assert_missing "no em-dash from a URL target" "$out" "em-dash"
+
+# A bare URL keeps the period that ends its sentence.
+res="$(python3 -c '
+import importlib.util, sys
+spec = importlib.util.spec_from_file_location("hl", sys.argv[1]); m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+src = "See https://example.com. Then run it."
+out = m.prose_only(src)
+print(out.rstrip().endswith("Then run it.") and out[src.index("com") + 3] == ".")
+' "$SCRIPT")"
+assert_eq "period after a bare URL survives" "True" "$res"
 
 echo "PASS/FAIL summary:"; [ "$fail" -eq 0 ] && echo "ALL PASS" || echo "FAILURES"
 exit "$fail"

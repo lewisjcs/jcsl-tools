@@ -40,11 +40,11 @@ def prose_only(text):
     """The text with frontmatter, fenced code, inline code, tables, and link targets blanked."""
     text = text.replace("\r\n", "\n").replace("’", "'")
     text = re.sub(r"\A---\n.*?\n---\n", _blank, text, flags=re.S)
-    text = re.sub(r"^```.*?^```[^\n]*", _blank, text, flags=re.S | re.M)
+    text = re.sub(r"^[ \t]*(`{3,}|~{3,})[^\n]*\n.*?^[ \t]*\1[^\n]*", _blank, text, flags=re.S | re.M)
     text = re.sub(r"`[^`\n]+`", _code_word, text)
     text = re.sub(r"^[ \t]*\|.*$", _blank, text, flags=re.M)
-    text = re.sub(r"\]\([^)\n]*\)", _blank, text)
-    text = re.sub(r"https?://\S+", _blank, text)
+    text = re.sub(r"\]\([a-zA-Z][a-zA-Z0-9+.-]*:[^)\n]*\)", _blank, text)
+    text = re.sub(r"https?://[^\s<>()]+?(?=[.,;:!?)\]]*(?:\s|$))", _blank, text)
     return text
 
 
