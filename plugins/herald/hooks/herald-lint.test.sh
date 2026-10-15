@@ -112,5 +112,52 @@ print(out.rstrip().endswith("Then run it.") and out[src.index("com") + 3] == "."
 ' "$SCRIPT")"
 assert_eq "period after a bare URL survives" "True" "$res"
 
+# 1. A README with one over-limit sentence, one "should", one "has completed",
+#    one contraction, one semicolon: document tier, five categories.
+mkdir -p "$TMP/repo"
+cat > "$TMP/repo/README.md" <<'MD'
+# Demo
+
+This sentence should be flagged for a modal. The team has completed the migration and it’s done; the rest follows.
+
+One sentence that runs on and on with many words so that it goes over the twenty five word limit set by the document rules for descriptive text here.
+
+The release ships in May 2026, and the team uses the tool.
+MD
+out="$(python3 "$SCRIPT" --file "$TMP/repo/README.md" --tier document)"
+assert_contains "readme document tier" "$out" "document tier"
+assert_contains "readme sentence over limit" "$out" "sentence over 25 words"
+assert_contains "readme banned modal" "$out" "banned modal"
+assert_contains "readme present perfect" "$out" "present perfect"
+assert_contains "readme contraction (typographic apostrophe)" "$out" "contraction"
+assert_contains "readme semicolon" "$out" "semicolon"
+assert_eq "readme exactly five hits" "5" "$(grep -c '^  line' <<<"$out")"
+assert_missing "May 2026 is not a modal" "$out" "banned modal: The release"
+
+# Numbered list items use the 20-word limit; -ing after a comma is a hit.
+cat > "$TMP/repo/CHANGELOG.md" <<'MD'
+# Changes
+
+1. Run the installer on the host that holds the data, then restart the service that reads it, then read the log file.
+2. Restart it.
+
+The tool retries the upload, making the data safe.
+MD
+out="$(python3 "$SCRIPT" --file "$TMP/repo/CHANGELOG.md" --tier document)"
+assert_contains "numbered item over 20 words" "$out" "sentence over 20 words"
+assert_contains "ing after comma" "$out" "-ing verb after a comma"
+assert_eq "changelog exactly two hits" "2" "$(grep -c '^  line' <<<"$out")"
+
+# A README whose only long lines are table rows: no sentence hits.
+cat > "$TMP/repo/README-table.md" <<'MD'
+# Table
+
+| Command | What it does |
+|---|---|
+| run | One cell that is very long and holds many words so that a naive sentence counter would flag it as over the limit for sure. |
+MD
+out="$(python3 "$SCRIPT" --file "$TMP/repo/README-table.md" --tier document)"
+assert_contains "table rows produce zero hits" "$out" "0 hits"
+
 echo "PASS/FAIL summary:"; [ "$fail" -eq 0 ] && echo "ALL PASS" || echo "FAILURES"
 exit "$fail"

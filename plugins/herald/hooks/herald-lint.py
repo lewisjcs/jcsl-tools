@@ -161,8 +161,32 @@ def universal_hits(prose):
 
 # --- document checks (Task 4) -------------------------------------------------
 
+MODALS = re.compile(r"\b(" + "|".join(RULES["modals"]) + r")\b", re.I)
+PERFECT = re.compile(r"\b(?:has|have|had)\s+(?:\w+ed|" + "|".join(RULES["irregular_participles"]) + r")\b", re.I)
+CONTRACTIONS = re.compile(r"\b(?:" + "|".join(re.escape(c) for c in RULES["contractions"]) + r")\b|\b\w+n't\b", re.I)
+ING_AFTER_COMMA = re.compile(r",\s*(?:" + "|".join(RULES["ing_after_comma"]) + r")\b", re.I)
+
+
 def document_hits(prose):
-    return []
+    hits = []
+    for line, numbered, sentence in sentences(prose):
+        limit = LIMITS["list_item_sentence_words"] if numbered else LIMITS["sentence_words"]
+        count = len(sentence.split())
+        if count > limit:
+            hits.append({"line": line, "category": f"sentence over {limit} words ({count})", "text": sentence[:80]})
+    for m in MODALS.finditer(prose):
+        if m.group(0) == "May" and re.match(r"\s+\d", prose[m.end(): m.end() + 6]):
+            continue
+        hits.append(hit(prose, m.start(), "banned modal", line_text(prose, m.start())))
+    for m in PERFECT.finditer(prose):
+        hits.append(hit(prose, m.start(), "present perfect", m.group(0)))
+    for m in CONTRACTIONS.finditer(prose):
+        hits.append(hit(prose, m.start(), "contraction", m.group(0)))
+    for m in re.finditer(";", prose):
+        hits.append(hit(prose, m.start(), "semicolon", line_text(prose, m.start())))
+    for m in ING_AFTER_COMMA.finditer(prose):
+        hits.append(hit(prose, m.start(), "-ing verb after a comma", line_text(prose, m.start())))
+    return hits
 
 
 # --- tier and exclusions (Task 5) -------------------------------------------
