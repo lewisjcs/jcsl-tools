@@ -201,12 +201,92 @@ def document_hits(prose):
 
 # --- tier and exclusions (Task 5) -------------------------------------------
 
+FRONTMATTER = re.compile(r"\A---\n(.*?)\n---\n", re.S)
+
+
+def frontmatter_value(text, key):
+    """The frontmatter value for key, lowercased, or None."""
+    m = FRONTMATTER.match(text.replace("\r\n", "\n"))
+    if not m:
+        return None
+    found = re.search(r"^%s:\s*(\S+)\s*$" % re.escape(key), m.group(1), re.M)
+    return found.group(1).strip("\"'").lower() if found else None
+
+
+def glob_regex(glob):
+    """A regex for one glob. ** crosses folders, * stays inside one, and a match may start at any folder."""
+    parts, i = [], 0
+    while i < len(glob):
+        if glob.startswith("**/", i):
+            parts.append("(?:.*/)?")
+            i += 3
+        elif glob.startswith("**", i):
+            parts.append(".*")
+            i += 2
+        elif glob[i] == "*":
+            parts.append("[^/]*")
+            i += 1
+        elif glob[i] == "?":
+            parts.append("[^/]")
+            i += 1
+        else:
+            parts.append(re.escape(glob[i]))
+            i += 1
+    return re.compile(r"(?:^|.*/)" + "".join(parts) + r"$", re.I)
+
+
+def is_document_path(path):
+    extra = [g for g in os.environ.get("HERALD_DOCUMENT_GLOBS", "").split(os.pathsep) if g]
+    posix = path.as_posix()
+    return any(glob_regex(g).match(posix) for g in RULES["document_globs"] + extra)
+
+
+def ears_content(text):
+    """True when three or more list items carry the word shall: an EARS requirements file."""
+    items = [line for line in text.split("\n") if LIST_ITEM.match(line)]
+    return sum(1 for line in items if re.search(r"\sshall\s", line, re.I)) >= RULES["ears_min_items"]
+
+
 def tier_for(path, text):
-    return "universal"
+    """document or universal for a file that is not skipped. Explicit frontmatter wins over the path."""
+    marker = frontmatter_value(text, "herald")
+    if marker == "document":
+        return "document"
+    if not is_document_path(path):
+        return "universal"
+    if {p.lower() for p in path.parts} & set(RULES["deny_segments"]):
+        return "universal"
+    if ears_content(text):
+        return "universal"
+    if marker == "universal":
+        return "universal"
+    return "document"
+
+
+def absolute(raw, cwd):
+    """The path as an absolute path. A relative path resolves against cwd from the event."""
+    return pathlib.Path(cwd or os.getcwd(), pathlib.Path(raw).expanduser()).absolute()
+
+
+def forms(path):
+    """The path as written and with symlinks resolved. An exclusion matches either form."""
+    return {pathlib.Path(os.path.normpath(path)), path.resolve()}
 
 
 def skipped(path, text):
-    return False
+    """True for files inside an agent configuration folder, an excluded glob, or with herald: off."""
+    config_dirs = set()
+    for raw in (os.environ.get("CLAUDE_CONFIG_DIR") or "~/.claude", "~/.claude-personal", "~/.codex", "~/.cursor"):
+        config_dirs |= forms(pathlib.Path(raw).expanduser().absolute())
+    patterns = [os.path.expanduser(p) for p in os.environ.get("HERALD_EXCLUDE", "").split(os.pathsep) if p]
+    for form in forms(path):
+        if set(form.parts) & set(RULES["config_segments"]):
+            return True
+        if any(form == d or form.is_relative_to(d) for d in config_dirs):
+            return True
+        if any(fnmatch.fnmatch(str(form), p) for p in patterns):
+            return True
+    return frontmatter_value(text, "herald") == "off"
 
 
 # --- reports ----------------------------------------------------------------

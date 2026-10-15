@@ -195,5 +195,57 @@ assert_contains "wrapped sentence over limit" "$out" "sentence over 25 words"
 n="$(sed -n 's/.*document tier, \([0-9]*\) hit.*/\1/p' <<<"$out")"
 assert_eq "hit text stays on one line" "$n" "$(grep -c '^  line' <<<"$out")"
 
+# 2. An EARS ticket under docs/tickets/: universal by the deny list, no modal or length hits.
+mkdir -p "$TMP/repo/docs/tickets" "$TMP/repo/docs/features" "$TMP/repo/docs/adr" "$TMP/repo/docs/guide"
+cat > "$TMP/repo/docs/tickets/T-1.md" <<'MD'
+# T-1
+
+- The system shall retry the upload when the network fails, and the system should log the retry count every time it happens for the operator to read later on the console page.
+- The system shall keep the data.
+- The system shall report the result.
+MD
+out="$(python3 "$SCRIPT" --file "$TMP/repo/docs/tickets/T-1.md")"
+assert_contains "ticket universal tier" "$out" "universal tier"
+assert_missing "ticket no modal hits" "$out" "banned modal"
+assert_missing "ticket no length hits" "$out" "sentence over"
+
+# 3. Five shall bullets under docs/ with no deny-listed segment: universal by the EARS pull-back.
+cp "$TMP/repo/docs/tickets/T-1.md" "$TMP/repo/docs/features/login.md"
+out="$(python3 "$SCRIPT" --file "$TMP/repo/docs/features/login.md")"
+assert_contains "ears pull-back universal" "$out" "universal tier"
+
+# A docs file with no shall bullets is document tier.
+printf '# Guide\n\nYou should run it.\n' > "$TMP/repo/docs/guide/run.md"
+out="$(python3 "$SCRIPT" --file "$TMP/repo/docs/guide/run.md")"
+assert_contains "docs guide document tier" "$out" "document tier"
+assert_contains "docs guide modal hit" "$out" "banned modal"
+
+# 4. An ADR under docs/adr/: universal by the deny list.
+printf '# ADR 1\n\nWe should use Postgres.\n' > "$TMP/repo/docs/adr/0001-db.md"
+out="$(python3 "$SCRIPT" --file "$TMP/repo/docs/adr/0001-db.md")"
+assert_contains "adr universal" "$out" "universal tier"
+
+# Frontmatter: herald: universal pulls back, herald: document forces, herald: off skips.
+printf -- '---\nherald: universal\n---\n\n# R\n\nYou should run it.\n' > "$TMP/repo/README-u.md"
+assert_contains "frontmatter universal" "$(python3 "$SCRIPT" --file "$TMP/repo/README-u.md")" "universal tier"
+printf -- '---\nherald: document\n---\n\n# N\n\nYou should run it.\n' > "$TMP/repo/notes.md"
+assert_contains "frontmatter document" "$(python3 "$SCRIPT" --file "$TMP/repo/notes.md")" "document tier"
+printf -- '---\nherald: off\n---\n\n# R\n\nYou should run it.\n' > "$TMP/repo/README-off.md"
+assert_contains "frontmatter off" "$(python3 "$SCRIPT" --file "$TMP/repo/README-off.md")" "skipped"
+
+# Config folders are skipped by segment and by CLAUDE_CONFIG_DIR.
+mkdir -p "$TMP/.claude" "$TMP/cfg/sub"
+printf 'You should.\n' > "$TMP/.claude/notes.md"
+printf 'You should.\n' > "$TMP/cfg/sub/README.md"
+assert_contains "dot-claude segment skipped" "$(python3 "$SCRIPT" --file "$TMP/.claude/notes.md")" "skipped"
+assert_contains "config dir skipped" "$(CLAUDE_CONFIG_DIR="$TMP/cfg" python3 "$SCRIPT" --file "$TMP/cfg/sub/README.md")" "skipped"
+
+# HERALD_EXCLUDE and HERALD_DOCUMENT_GLOBS.
+assert_contains "exclude glob skipped" "$(HERALD_EXCLUDE="$TMP/repo/docs/guide/*" python3 "$SCRIPT" --file "$TMP/repo/docs/guide/run.md")" "skipped"
+mkdir -p "$TMP/repo/manual"
+printf '# M\n\nYou should run it.\n' > "$TMP/repo/manual/intro.md"
+assert_contains "extra glob makes document tier" "$(HERALD_DOCUMENT_GLOBS="**/manual/**/*.md" python3 "$SCRIPT" --file "$TMP/repo/manual/intro.md")" "document tier"
+assert_contains "without extra glob it is universal" "$(python3 "$SCRIPT" --file "$TMP/repo/manual/intro.md")" "universal tier"
+
 echo "PASS/FAIL summary:"; [ "$fail" -eq 0 ] && echo "ALL PASS" || echo "FAILURES"
 exit "$fail"
