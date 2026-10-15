@@ -265,5 +265,77 @@ assert_contains "symlink skipped via resolved form" "$(python3 "$SCRIPT" --file 
 printf 'You should.\n' > "$TMP/repo/.codex/x.md"
 assert_contains "dot-codex segment skipped" "$(cd "$TMP/repo" && python3 "$SCRIPT" --file "$TMP/repo/.codex/x.md")" "skipped"
 
+# 6. A Codex apply_patch payload updating a README: document tier, path parsed from the patch.
+mkdir -p "$TMP/codex/docs"
+printf '# R\n\nYou should run it.\n' > "$TMP/codex/README.md"
+printf '# N\n\nYou should run it.\n' > "$TMP/codex/docs/my notes.md"
+event="$(python3 -B - "$TMP/codex" <<'PY'
+import json, sys
+patch = "*** Begin Patch\n*** Update File: README.md\n@@\n+You should run it.\n*** Add File: docs/my notes.md\n+# N\n*** End Patch"
+print(json.dumps({"hook_event_name": "PostToolUse", "session_id": "s1", "cwd": sys.argv[1], "tool_name": "apply_patch", "tool_input": {"command": patch}}))
+PY
+)"
+out="$(printf '%s' "$event" | python3 "$SCRIPT")"; rc=$?
+assert_eq "codex exit 0" "0" "$rc"
+assert_contains "codex output is hookSpecificOutput" "$out" "hookSpecificOutput"
+assert_contains "codex README document tier" "$out" "README.md, document tier"
+assert_contains "codex patch name with a space" "$out" "my notes.md, document tier"
+
+# Claude Code Write with a relative path and cwd: resolved and document tier.
+event="$(python3 -B - "$TMP/codex" <<'PY'
+import json, sys
+print(json.dumps({"hook_event_name": "PostToolUse", "session_id": "s2", "cwd": sys.argv[1], "tool_name": "Write", "tool_input": {"file_path": "README.md", "content": "x"}}))
+PY
+)"
+out="$(printf '%s' "$event" | python3 "$SCRIPT")"
+assert_contains "relative path resolved against cwd" "$out" "README.md, document tier"
+assert_contains "hook output nudges" "$out" "Fix these in the file you just wrote"
+
+# --host cursor prints additional_context instead.
+out="$(printf '%s' "$event" | python3 "$SCRIPT" --host cursor)"
+assert_contains "cursor output key" "$out" "additional_context"
+assert_missing "cursor output has no claude key" "$out" "hookSpecificOutput"
+
+# 7. A file under a .claude folder: skipped, no output. Non-markdown and missing files: silent.
+for fp in "$TMP/.claude/notes.md" "$TMP/codex/main.py" "$TMP/codex/missing.md"; do
+  out="$(printf '{"session_id":"s3","tool_name":"Write","tool_input":{"file_path":"%s"}}' "$fp" | python3 "$SCRIPT")"; rc=$?
+  assert_eq "silent exit for $fp" "0" "$rc"
+  assert_eq "no output for $fp" "" "$out"
+done
+
+# 8. Frontmatter herald: off on a README reached through the hook: skipped.
+out="$(printf '{"session_id":"s3","tool_name":"Write","tool_input":{"file_path":"%s"}}' "$TMP/repo/README-off.md" | python3 "$SCRIPT")"
+assert_eq "herald off is silent" "" "$out"
+
+# 9. The loop guard: the third run on the same file in the same session prints nothing.
+ev="$(printf '{"session_id":"s4","tool_name":"Edit","tool_input":{"file_path":"%s"}}' "$TMP/codex/README.md")"
+one="$(printf '%s' "$ev" | python3 "$SCRIPT")"; two="$(printf '%s' "$ev" | python3 "$SCRIPT")"; three="$(printf '%s' "$ev" | python3 "$SCRIPT")"
+assert_contains "guard first report" "$one" "document tier"
+assert_contains "guard second report" "$two" "document tier"
+assert_eq "guard third run silent" "" "$three"
+other="$(printf '{"session_id":"s5","tool_name":"Edit","tool_input":{"file_path":"%s"}}' "$TMP/codex/README.md" | python3 "$SCRIPT")"
+assert_contains "guard is per session" "$other" "document tier"
+printf 'not json' > "$CLAUDE_PLUGIN_DATA/loop-guard.json"
+corrupt="$(printf '{"session_id":"s6","tool_name":"Edit","tool_input":{"file_path":"%s"}}' "$TMP/codex/README.md" | python3 "$SCRIPT")"
+assert_contains "corrupt guard file means zero" "$corrupt" "document tier"
+
+# 10. Malformed stdin: exit 0, no output.
+out="$(printf 'not json{' | python3 "$SCRIPT")"; rc=$?
+assert_eq "malformed stdin exit 0" "0" "$rc"
+assert_eq "malformed stdin no output" "" "$out"
+
+# Corrupt rules.json: the script exits 0 with no output (tested on a temp copy).
+mkdir -p "$TMP/badrules"
+cp "$SCRIPT" "$TMP/badrules/herald-lint.py"
+printf 'not json' > "$TMP/badrules/rules.json"
+out="$(printf '{"session_id":"s7","tool_name":"Edit","tool_input":{"file_path":"%s"}}' "$TMP/codex/README.md" | python3 -B "$TMP/badrules/herald-lint.py")"; rc=$?
+assert_eq "corrupt rules exit 0" "0" "$rc"
+assert_eq "corrupt rules no output" "" "$out"
+
+# The Codex style printer prints the body without frontmatter.
+style="$(python3 -B "$HERE/herald-style.py")"
+assert_contains "style body starts with the first sentence" "$style" "Write for a smart reader"
+assert_missing "style body has no frontmatter" "$style" "force-for-plugin"
+
 echo "PASS/FAIL summary:"; [ "$fail" -eq 0 ] && echo "ALL PASS" || echo "FAILURES"
 exit "$fail"

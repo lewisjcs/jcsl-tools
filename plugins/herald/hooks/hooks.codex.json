@@ -1,0 +1,21 @@
+{
+  "description": "Herald for Codex: the style body as developer context at session start, and the markdown nudge after apply_patch. Fails open, never blocks.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [
+          { "type": "command", "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/herald-style.py\"", "timeout": 5, "statusMessage": "Loading Herald..." }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "apply_patch",
+        "hooks": [
+          { "type": "command", "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/herald-lint.py\"", "timeout": 10 }
+        ]
+      }
+    ]
+  }
+}

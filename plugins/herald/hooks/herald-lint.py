@@ -18,7 +18,10 @@ import sys
 import tempfile
 
 HERE = pathlib.Path(__file__).resolve().parent
-RULES = json.loads((HERE / "rules.json").read_text(encoding="utf-8"))
+try:
+    RULES = json.loads((HERE / "rules.json").read_text(encoding="utf-8"))
+except Exception:  # noqa: BLE001  advisory: a missing or malformed rules file must never block the session
+    sys.exit(0)
 LIMITS = RULES["limits"]
 
 
@@ -336,11 +339,87 @@ def command(argv):
     return 0
 
 
+# --- hook mode -----------------------------------------------------------------
+
+PATCH_FILE = re.compile(r"^\*\*\* (?:Update|Add) File: (.+?)\s*$", re.M)
+
+
+def event_paths(event):
+    """The markdown files the tool wrote: Claude Code's file_path, or the files named in a Codex apply_patch."""
+    tool_input = event.get("tool_input") or {}
+    if not isinstance(tool_input, dict):
+        return []
+    if tool_input.get("file_path"):
+        raw = [str(tool_input["file_path"])]
+    elif event.get("tool_name") == "apply_patch":
+        command = tool_input.get("command") or ""
+        if isinstance(command, list):
+            command = "\n".join(str(c) for c in command)
+        raw = PATCH_FILE.findall(str(command))
+    else:
+        raw = []
+    return [absolute(p, event.get("cwd")) for p in raw if p.endswith(".md")]
+
+
+def guard_dir():
+    for key in ("CLAUDE_PLUGIN_DATA", "PLUGIN_DATA"):
+        if os.environ.get(key):
+            return pathlib.Path(os.environ[key])
+    return pathlib.Path(tempfile.gettempdir()) / "herald"
+
+
+def guard_allows(session_id, path):
+    """True when this file has had fewer than the allowed reports this session. Counts this one."""
+    folder = guard_dir()
+    folder.mkdir(parents=True, exist_ok=True)
+    store = folder / "loop-guard.json"
+    try:
+        data = json.loads(store.read_text(encoding="utf-8"))
+        if not isinstance(data, dict):
+            data = {}
+    except (OSError, ValueError):
+        data = {}
+    per_session = data.setdefault(str(session_id or "no-session"), {})
+    key = str(path.resolve())
+    count = per_session.get(key, 0)
+    if count >= LIMITS["reports_per_file"]:
+        return False
+    per_session[key] = count + 1
+    temp = store.with_suffix(".tmp")
+    temp.write_text(json.dumps(data), encoding="utf-8")
+    os.replace(temp, store)
+    return True
+
+
+def output_for_host(text, host):
+    if host == "cursor":
+        return {"additional_context": text}
+    return {"hookSpecificOutput": {"hookEventName": "PostToolUse", "additionalContext": text}}
+
+
+def hook(event, host):
+    reports = []
+    for path in event_paths(event):
+        try:
+            text = path.read_text(encoding="utf-8")
+        except OSError:
+            continue
+        if skipped(path, text, event.get("cwd")):
+            continue
+        tier, hits = lint_text(path, text, "auto", event.get("cwd"))
+        if hits and guard_allows(event.get("session_id"), path):
+            reports.append(report(path, tier, hits, nudge=True))
+    if reports:
+        print(json.dumps(output_for_host("\n".join(reports), host)))
+    return 0
+
+
 def main(argv):
     try:
         if "--file" in argv:
             return command(argv)
-        return 0
+        host = argv[argv.index("--host") + 1] if "--host" in argv else "claude"
+        return hook(json.load(sys.stdin), host)
     except Exception:  # noqa: BLE001  advisory: a crash must never block the session
         return 0
 
