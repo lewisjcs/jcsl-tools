@@ -2,7 +2,7 @@
   "kind": "class",
   "schemaVersion": "1.0-kernel",
   "id": "kiln:planner",
-  "version": "1.5.1",
+  "version": "1.6.0",
   "audience": "personal",
   "identity": {
     "name": "Planner",
@@ -99,6 +99,10 @@
                 }
               },
               "planPath": {
+                "type": "string",
+                "minLength": 1
+              },
+              "changeNote": {
                 "type": "string",
                 "minLength": 1
               }
@@ -272,7 +276,7 @@
       "path": "hosts/claude-code/agents/planner.md",
       "projection": {
         "canonicalSources": ["hosts/claude-code/agents/planner.md", "references/ears.md"],
-        "sourceHash": "942dccc46342003556f218e255a4af45f8d8ca5ee508258190d785f8b95fad35"
+        "sourceHash": "8148d1162c84bc8278133a2123d6e4d50e6ed99dde5273519dcdaa57a4641907"
       }
     }
   },
