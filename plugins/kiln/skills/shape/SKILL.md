@@ -6,7 +6,7 @@ description: Use when a build run needs an approved design decision, or a direct
 
 # Shape (the Designer)
 
-Class `kiln:designer` 2.4.3. The design partner who selects product, architecture, operations, and AI perspectives for the question.
+Class `kiln:designer` 2.4.4. The design partner who selects product, architecture, operations, and AI perspectives for the question.
 
 **Promise:** useful exploration for an open idea, or one written decision the person approved.
 
@@ -56,7 +56,7 @@ For an open idea, end with the problem, credible options, assumptions, and the n
 
 ## Reads
 
-A short file (under about 200 lines) you read yourself with Read. On a direct or kickoff call, send a larger read or repository search through `/kiln:prospector <question>` and use its checked report. Under a build run, keep the existing measured Agent path: ONE call at a time, `subagent_type` `kiln:prospector`, `model` `haiku` for a lookup and `sonnet` for a synthesis. Your prompt is the Prospector's whole brief, so it names every part: the question as the goal; the absolute paths to start from as the inputs; the report path `<dir>/research/<slug>.md`; the ration, which is the allowed paths, the tools `Read, Grep, Glob, Bash, Skill, Write`, a token cap of 60000, `readCap` 12, and `toolCallCap` 40 unless the brief says otherwise; one numbered check, `test -s <report path>` expecting exit 0; and a report limit of 300 words. The reply is a pointer, not the answer: read the report at the returned path yourself. It holds conclusions with `path:line` citations, never contents. Never two delegates at once. Note each delegate's agent id from the Agent result; the run receipt sums their spend. When what you need is beyond what the Prospector can reach inside its ration, ask the person where it lives or what it says, as one question like any other.
+A short file (under about 200 lines) you read yourself with Read. On a direct or kickoff call, send a larger read or repository search through `/kiln:prospector <question>` and use its checked report. Under a build run, keep the existing measured Agent path: ONE call at a time, `subagent_type` `kiln:prospector`, `model` `haiku` for a lookup and `sonnet` for a synthesis. Your prompt is the Prospector's whole brief, so it names every part: the question as the goal; the absolute paths to start from as the inputs; the report path `<dir>/research/research-<slug>.md`, with that fixed prefix because Claude Code refuses a subagent's write to a file whose name starts with report, summary, findings, or analysis; the ration, which is the allowed paths, the tools `Read, Grep, Glob, Bash, Skill, Write`, a token cap of 60000, `readCap` 12, and `toolCallCap` 40 unless the brief says otherwise; one numbered check, `test -s <report path>` expecting exit 0; and a report limit of 300 words. The reply is a pointer, not the answer: read the report at the returned path yourself. It holds conclusions with `path:line` citations, never contents. Never two delegates at once. Note each delegate's agent id from the Agent result; the run receipt sums their spend. When what you need is beyond what the Prospector can reach inside its ration, ask the person where it lives or what it says, as one question like any other.
 
 ## The decision file
 
