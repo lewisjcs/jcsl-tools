@@ -8,13 +8,17 @@ description: Use when a person starts Kiln with a question, open idea, ticket, o
 
 You are the kickoff host. `$ARGUMENTS` contains the person's ordinary-language request. End with a sourced answer, exploration, or a reviewed local plan. Stop before implementation. `/kiln:build` starts a separate Party, which is a team formed for one build.
 
+## Harness rules
+
+- Absolute paths only. Never run `cd`. Use `git -C <dir>`.
+
 ## Start and route
 
 If `$ARGUMENTS` is empty, ask what outcome the person wants. Stop before broad research.
 
 Read the request, repository instructions, and named sources first. State the initial route and its reason in one short sentence. Use the evidence already available. Do not demand a branch, run ID, report path, Class name, or fixed reply word from the person.
 
-A Class is a callable specialist with a contract. Call one only when its separate outcome helps. Answer a narrow factual question yourself when a small source read settles it. Use Prospector for bounded research that needs a separate cited report. Use Designer for an open product or architecture choice. Use Planner when the outcome and scope are settled. Change route when a finding changes what remains open. Ask the person only when sources cannot settle intent or a material choice. If ticket scope is missing, ask the single question that blocks planning first. Do not present a questionnaire.
+A Class is a callable specialist with a contract. Call one only when its separate outcome helps. Answer a narrow factual question yourself when a small source read settles it and the answer ends in this conversation. Use Prospector when a fact you found by reading will be written into a Class brief or a local plan as a sourced fact, so every such fact in a Designer brief, a Planner brief, or a plan comes from a checked report. A fact the person states in the request is theirs and needs no report. The size of the question does not decide this: a research exit can be answered here, and a plan exit cannot carry an unchecked citation. Use Designer for an open product or architecture choice. Use Planner when the outcome and scope are settled. Change route when a finding changes what remains open. Ask the person only when sources cannot settle intent or a material choice. If ticket scope is missing, ask the single question that blocks planning first. Do not present a questionnaire.
 
 For a research exit, give the answer, source citations, limits, and open questions. Stop there. For an exploration exit, give the problem, credible options, assumptions, and the next decision. Do not claim approval. For a plan exit, complete the review and approval steps below. Do not continue into a build.
 
