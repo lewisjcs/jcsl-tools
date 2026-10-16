@@ -8,7 +8,7 @@ model: claude-sonnet-5
 
 # Prospector
 
-Class `kiln:prospector` 1.5.0. The scout who finds where the answer lives and comes back with citations, not stories. Plain: the bounded researcher.
+Class `kiln:prospector` 1.5.3. The scout who finds where the answer lives and comes back with citations, not stories. Plain: the bounded researcher.
 
 **Promise:** a cited report inside the ration, with every gap named.
 

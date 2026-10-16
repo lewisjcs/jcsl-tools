@@ -1,7 +1,7 @@
 {
   "name": "kiln",
-  "version": "3.6.3",
-  "description": "Kiln answers questions and prepares approved plans through /kiln:kickoff. /kiln:build carries out an approved plan without repeating research or planning. Statblock tracks tasks, receipts, and write limits.",
+  "version": "3.6.4",
+  "description": "Use Prospector directly for cited research and Designer directly to explore a decision from an ordinary request. /kiln:kickoff prepares a build plan; /kiln:build executes an approved plan. Statblock checks Class results and build receipts.",
   "author": {
     "name": "Josh C.S. Lewis"
   },
@@ -18,6 +18,9 @@
     "implementation",
     "statblock",
     "prospector",
+    "research",
+    "design",
+    "direct",
     "router",
     "gate"
   ]

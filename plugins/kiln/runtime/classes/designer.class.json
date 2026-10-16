@@ -2,7 +2,7 @@
   "kind": "class",
   "schemaVersion": "1.0-kernel",
   "id": "kiln:designer",
-  "version": "2.4.0",
+  "version": "2.4.3",
   "audience": "personal",
   "identity": {
     "name": "Designer",
@@ -96,6 +96,7 @@
     },
     "output": {
       "id": "kiln:designer-outcome@1",
+      "schemaTarget": "outcome",
       "schema": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "oneOf": [
@@ -224,7 +225,7 @@
       "path": "hosts/claude-code/skills/shape/SKILL.md",
       "projection": {
         "canonicalSources": ["hosts/claude-code/skills/shape/SKILL.md", "references/ears.md", "references/brainstorming.md", "references/architecture.md"],
-        "sourceHash": "6e805f4371090ac285536ad23de0521060d63991ef30771a0ecef93d96b00e22"
+        "sourceHash": "6ed37a5bf0cab7f708b5d225ffd1f473e895b8b72fb6cc348dd0afcbc67e61f8"
       }
     }
   },

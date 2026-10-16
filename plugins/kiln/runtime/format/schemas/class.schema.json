@@ -101,7 +101,7 @@
       "required": ["input", "output"],
       "properties": {
         "input": { "$ref": "#/$defs/contractEndpoint" },
-        "output": { "$ref": "#/$defs/contractEndpoint" }
+        "output": { "$ref": "#/$defs/outputContractEndpoint" }
       }
     },
     "entrypoints": {
@@ -166,6 +166,16 @@
       "properties": {
         "id": { "$ref": "#/$defs/contractId" },
         "schema": { "type": "object" }
+      }
+    },
+    "outputContractEndpoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "schema"],
+      "properties": {
+        "id": { "$ref": "#/$defs/contractId" },
+        "schema": { "type": "object" },
+        "schemaTarget": { "enum": ["payload", "outcome"] }
       }
     }
   }
