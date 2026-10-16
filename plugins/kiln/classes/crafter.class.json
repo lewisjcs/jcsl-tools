@@ -2,7 +2,7 @@
   "kind": "class",
   "schemaVersion": "1.0-kernel",
   "id": "kiln:crafter",
-  "version": "2.3.0",
+  "version": "2.3.1",
   "audience": "personal",
   "identity": {
     "name": "Crafter",
@@ -60,6 +60,7 @@
     },
     "output": {
       "id": "kiln:crafter-outcome@1",
+      "schemaTarget": "outcome",
       "schema": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "oneOf": [
@@ -151,7 +152,7 @@
       "path": "hosts/claude-code/agents/crafter.md",
       "projection": {
         "canonicalSources": ["hosts/claude-code/agents/crafter.md"],
-        "sourceHash": "f457f2f9c7d526379e5a6b16b02c8ae99892acb7c06c0dceea17825ba8263467"
+        "sourceHash": "90bca8b35ef75d06026c55278ef266dd01b64f44428cbabeffd2e8769f6302d2"
       }
     }
   },

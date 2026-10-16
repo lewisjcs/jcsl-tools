@@ -8,7 +8,7 @@ model: claude-sonnet-5
 
 # Inspector
 
-Class `kiln:inspector` 1.3.0. The skeptic who accepts evidence, never assurances. Plain: the plan-conformance reviewer.
+Class `kiln:inspector` 1.3.1. The skeptic who accepts evidence, never assurances. Plain: the plan-conformance reviewer.
 
 **Promise:** a verdict on whether the commits followed the plan, with one ruling per deviation.
 

@@ -2232,8 +2232,8 @@ var require_resolve = __commonJS({
       }
       return count2;
     }
-    function getFullPath(resolver, id = "", normalize) {
-      if (normalize !== false)
+    function getFullPath(resolver, id = "", normalize2) {
+      if (normalize2 !== false)
         id = normalizeId(id);
       const p = resolver.parse(id);
       return _getFullPath(resolver, p);
@@ -2981,7 +2981,7 @@ var require_compile = __commonJS({
       const schOrFunc = root.refs[ref];
       if (schOrFunc)
         return schOrFunc;
-      let _sch = resolve2.call(this, root, ref);
+      let _sch = resolve3.call(this, root, ref);
       if (_sch === void 0) {
         const schema = (_a = root.localRefs) === null || _a === void 0 ? void 0 : _a[ref];
         const { schemaId } = this.opts;
@@ -3008,7 +3008,7 @@ var require_compile = __commonJS({
     function sameSchemaEnv(s1, s2) {
       return s1.schema === s2.schema && s1.root === s2.root && s1.baseId === s2.baseId;
     }
-    function resolve2(root, ref) {
+    function resolve3(root, ref) {
       let sch;
       while (typeof (sch = this.refs[ref]) == "string")
         ref = sch;
@@ -3828,7 +3828,7 @@ var require_fast_uri = __commonJS({
       }
       return decodedScheme;
     }
-    function normalize(uri, options) {
+    function normalize2(uri, options) {
       if (typeof uri === "string") {
         uri = /** @type {T} */
         normalizeString(uri, options);
@@ -3838,7 +3838,7 @@ var require_fast_uri = __commonJS({
       }
       return uri;
     }
-    function resolve2(baseURI, relativeURI, options) {
+    function resolve3(baseURI, relativeURI, options) {
       const schemelessOptions = options ? Object.assign({ scheme: "null" }, options) : { scheme: "null" };
       const {
         parsed: baseParsed,
@@ -3871,49 +3871,49 @@ var require_fast_uri = __commonJS({
       schemelessOptions.skipEscape = true;
       return serialize(resolved, schemelessOptions);
     }
-    function resolveComponent(base, relative2, options, skipNormalization) {
+    function resolveComponent(base, relative3, options, skipNormalization) {
       const target = {};
       if (!skipNormalization) {
         base = parse(serialize(base, options), options);
-        relative2 = parse(serialize(relative2, options), options);
+        relative3 = parse(serialize(relative3, options), options);
       }
       options = options || {};
-      if (!options.tolerant && relative2.scheme) {
-        target.scheme = relative2.scheme;
-        target.userinfo = relative2.userinfo;
-        target.host = relative2.host;
-        target.port = relative2.port;
-        target.path = removeDotSegments(relative2.path || "");
-        target.query = relative2.query;
+      if (!options.tolerant && relative3.scheme) {
+        target.scheme = relative3.scheme;
+        target.userinfo = relative3.userinfo;
+        target.host = relative3.host;
+        target.port = relative3.port;
+        target.path = removeDotSegments(relative3.path || "");
+        target.query = relative3.query;
       } else {
-        if (relative2.userinfo !== void 0 || relative2.host !== void 0 || relative2.port !== void 0) {
-          target.userinfo = relative2.userinfo;
-          target.host = relative2.host;
-          target.port = relative2.port;
-          target.path = removeDotSegments(relative2.path || "");
-          target.query = relative2.query;
+        if (relative3.userinfo !== void 0 || relative3.host !== void 0 || relative3.port !== void 0) {
+          target.userinfo = relative3.userinfo;
+          target.host = relative3.host;
+          target.port = relative3.port;
+          target.path = removeDotSegments(relative3.path || "");
+          target.query = relative3.query;
         } else {
-          if (!relative2.path) {
+          if (!relative3.path) {
             target.path = base.path;
-            if (relative2.query !== void 0) {
-              target.query = relative2.query;
+            if (relative3.query !== void 0) {
+              target.query = relative3.query;
             } else {
               target.query = base.query;
             }
           } else {
-            if (relative2.path[0] === "/") {
-              target.path = removeDotSegments(relative2.path);
+            if (relative3.path[0] === "/") {
+              target.path = removeDotSegments(relative3.path);
             } else {
               if ((base.userinfo !== void 0 || base.host !== void 0 || base.port !== void 0) && !base.path) {
-                target.path = "/" + relative2.path;
+                target.path = "/" + relative3.path;
               } else if (!base.path) {
-                target.path = relative2.path;
+                target.path = relative3.path;
               } else {
-                target.path = base.path.slice(0, base.path.lastIndexOf("/") + 1) + relative2.path;
+                target.path = base.path.slice(0, base.path.lastIndexOf("/") + 1) + relative3.path;
               }
               target.path = removeDotSegments(target.path);
             }
-            target.query = relative2.query;
+            target.query = relative3.query;
           }
           target.userinfo = base.userinfo;
           target.host = base.host;
@@ -3921,7 +3921,7 @@ var require_fast_uri = __commonJS({
         }
         target.scheme = base.scheme;
       }
-      target.fragment = relative2.fragment;
+      target.fragment = relative3.fragment;
       return target;
     }
     function equal(uriA, uriB, options) {
@@ -4206,8 +4206,8 @@ var require_fast_uri = __commonJS({
     }
     var fastUri = {
       SCHEMES,
-      normalize,
-      resolve: resolve2,
+      normalize: normalize2,
+      resolve: resolve3,
       resolveComponent,
       equal,
       serialize,
@@ -7457,7 +7457,7 @@ var require__ = __commonJS({
 // src/cli.mjs
 import { parseArgs } from "node:util";
 import { randomBytes } from "node:crypto";
-import { readFileSync as readFileSync10, existsSync as existsSync2, writeFileSync as writeFileSync3, realpathSync as realpathSync2, rmSync as rmSync2, renameSync as renameSync3, mkdirSync as mkdirSync3, rmdirSync } from "node:fs";
+import { readFileSync as readFileSync11, existsSync as existsSync2, writeFileSync as writeFileSync3, realpathSync as realpathSync3, rmSync as rmSync2, renameSync as renameSync3, mkdirSync as mkdirSync3, rmdirSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import path7 from "node:path";
 
@@ -8278,19 +8278,275 @@ function validateClassManifest(value) {
 function validatePartyManifest(value) {
   return assertSchema(validateParty, value, "Party");
 }
+function validateInvocationEnvelope(value) {
+  return assertSchema(validateInvocation, value, "Invocation");
+}
+function validateOutcomeEnvelope(value) {
+  return assertSchema(validateOutcome, value, "Outcome");
+}
 
 // node_modules/@lewisjcs/statblock/src/contracts.mjs
 var payloadValidators = /* @__PURE__ */ new WeakMap();
-function admitClassContracts(classRecord) {
-  const cached = payloadValidators.get(classRecord);
+var invocationClassRecords = /* @__PURE__ */ new WeakMap();
+function fail(code, message, details) {
+  throw new StatblockError(code, message, details);
+}
+function deepFreeze3(value) {
+  if (value && typeof value === "object" && !Object.isFrozen(value)) {
+    for (const child of Object.values(value)) deepFreeze3(child);
+    Object.freeze(value);
+  }
+  return value;
+}
+function normalize(value) {
+  return deepFreeze3(structuredClone(value));
+}
+function appendInstancePath(instancePath, property) {
+  return `${instancePath}/${property.replaceAll("~", "~0").replaceAll("/", "~1")}`;
+}
+function jsonValueError(instancePath, reason) {
+  return {
+    instancePath,
+    keyword: "jsonValue",
+    params: { reason },
+    message: "must be a JSON value"
+  };
+}
+function invalidJsonValue(value, instancePath = "", ancestors = /* @__PURE__ */ new Set()) {
+  if (value === null || typeof value === "string" || typeof value === "boolean") return null;
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? null : jsonValueError(instancePath, "non-finite-number");
+  }
+  if (typeof value !== "object") return jsonValueError(instancePath, typeof value);
+  if (ancestors.has(value)) return jsonValueError(instancePath, "cycle");
+  const prototype = Object.getPrototypeOf(value);
+  if (Array.isArray(value)) {
+    ancestors.add(value);
+    for (let index = 0; index < value.length; index += 1) {
+      const property = String(index);
+      const descriptor = Object.getOwnPropertyDescriptor(value, property);
+      if (!descriptor) {
+        ancestors.delete(value);
+        return jsonValueError(appendInstancePath(instancePath, property), "array-hole");
+      }
+      if (!descriptor.enumerable) {
+        ancestors.delete(value);
+        return jsonValueError(appendInstancePath(instancePath, property), "non-enumerable-property");
+      }
+      if (!("value" in descriptor)) {
+        ancestors.delete(value);
+        return jsonValueError(appendInstancePath(instancePath, property), "accessor");
+      }
+      const error = invalidJsonValue(
+        descriptor.value,
+        appendInstancePath(instancePath, property),
+        ancestors
+      );
+      if (error) {
+        ancestors.delete(value);
+        return error;
+      }
+    }
+    for (const property of Object.getOwnPropertyNames(value)) {
+      if (property !== "length" && (!/^(0|[1-9]\d*)$/.test(property) || Number(property) >= value.length)) {
+        ancestors.delete(value);
+        return jsonValueError(appendInstancePath(instancePath, property), "array-property");
+      }
+    }
+    if (Object.getOwnPropertySymbols(value).length > 0) {
+      ancestors.delete(value);
+      return jsonValueError(instancePath, "symbol-key");
+    }
+    ancestors.delete(value);
+    return null;
+  }
+  if (prototype !== Object.prototype && prototype !== null) {
+    return jsonValueError(instancePath, "non-plain-object");
+  }
+  ancestors.add(value);
+  for (const property of Object.getOwnPropertyNames(value)) {
+    const descriptor = Object.getOwnPropertyDescriptor(value, property);
+    const propertyPath = appendInstancePath(instancePath, property);
+    if (!descriptor.enumerable) {
+      ancestors.delete(value);
+      return jsonValueError(propertyPath, "non-enumerable-property");
+    }
+    if (!("value" in descriptor)) {
+      ancestors.delete(value);
+      return jsonValueError(propertyPath, "accessor");
+    }
+    const error = invalidJsonValue(descriptor.value, propertyPath, ancestors);
+    if (error) {
+      ancestors.delete(value);
+      return error;
+    }
+  }
+  if (Object.getOwnPropertySymbols(value).length > 0) {
+    ancestors.delete(value);
+    return jsonValueError(instancePath, "symbol-key");
+  }
+  ancestors.delete(value);
+  return null;
+}
+function assertJsonValue(value, code, message, contractId) {
+  let error;
+  try {
+    error = invalidJsonValue(value);
+  } catch {
+    error = jsonValueError("", "inspection-failed");
+  }
+  if (error) fail(code, message, { contractId, errors: [error] });
+  try {
+    structuredClone(value);
+  } catch {
+    fail(code, message, {
+      contractId,
+      errors: [jsonValueError("", "clone-ineligible")]
+    });
+  }
+}
+function validatorsFor(classRecord2) {
+  const validators = payloadValidators.get(classRecord2);
+  if (!validators) {
+    fail("SCHEMA_INVALID", "Class payload contracts were not admitted", {
+      classId: classRecord2.manifest.id
+    });
+  }
+  return validators;
+}
+function admitClassContracts(classRecord2) {
+  const cached = payloadValidators.get(classRecord2);
   if (cached) return cached;
-  const { input, output } = classRecord.manifest.contract;
+  const { input, output } = classRecord2.manifest.contract;
   const validators = Object.freeze({
     input: compilePayloadSchema(input.schema, input.id, "input"),
     output: compilePayloadSchema(output.schema, output.id, "output")
   });
-  payloadValidators.set(classRecord, validators);
+  payloadValidators.set(classRecord2, validators);
   return validators;
+}
+function assertSubset(values, available, code, label) {
+  const allowed = new Set(available);
+  const unavailable = values.find((value) => !allowed.has(value));
+  if (unavailable !== void 0) {
+    fail(code, `${label} is not declared by the Class`, { value: unavailable });
+  }
+}
+function assertInvocationClassContract(classRecord2, envelope) {
+  const { manifest } = classRecord2;
+  if (envelope.classId !== manifest.id || envelope.inputContractId !== manifest.contract.input.id) {
+    fail("INPUT_CONTRACT_MISMATCH", "Invocation does not match the Class input contract", {
+      classId: envelope.classId,
+      inputContractId: envelope.inputContractId
+    });
+  }
+}
+function validateInvocation2(classRecord2, envelope) {
+  validateInvocationEnvelope(envelope);
+  assertInvocationClassContract(classRecord2, envelope);
+  const { manifest } = classRecord2;
+  assertSubset(
+    envelope.loadout.featIds,
+    manifest.availableFeats.map(({ id }) => id),
+    "FEAT_NOT_AVAILABLE",
+    "Feat"
+  );
+  assertSubset(envelope.loadout.tools, manifest.boundaries.tools.allow, "TOOL_NOT_ALLOWED", "Tool");
+  assertSubset(
+    envelope.loadout.references,
+    manifest.members.references,
+    "REFERENCE_NOT_AVAILABLE",
+    "Reference"
+  );
+  if (!manifest.modelRequirements.includes(envelope.loadout.modelRequirement)) {
+    fail("MODEL_REQUIREMENT_NOT_DECLARED", "Model requirement is not declared by the Class", {
+      modelRequirement: envelope.loadout.modelRequirement
+    });
+  }
+  assertJsonValue(
+    envelope.input,
+    "INPUT_INVALID",
+    "Invocation input does not satisfy the Class input schema",
+    manifest.contract.input.id
+  );
+  const validateInput = validatorsFor(classRecord2).input;
+  if (!validateInput(envelope.input)) {
+    fail("INPUT_INVALID", "Invocation input does not satisfy the Class input schema", {
+      contractId: manifest.contract.input.id,
+      errors: validateInput.errors ?? []
+    });
+  }
+  const invocation = normalize(envelope);
+  invocationClassRecords.set(invocation, classRecord2);
+  return invocation;
+}
+function isInvocationValidatedForClass(classRecord2, invocation) {
+  return invocationClassRecords.get(invocation) === classRecord2;
+}
+function validateOutcome2(classRecord2, outcome) {
+  const { manifest } = classRecord2;
+  if (manifest.contract.output.schemaTarget === "outcome") {
+    assertJsonValue(
+      outcome,
+      "OUTPUT_INVALID",
+      "Outcome does not satisfy the Class output schema",
+      manifest.contract.output.id
+    );
+    if (outcome === null || typeof outcome !== "object" || Array.isArray(outcome) || typeof outcome.status !== "string" || outcome.status.length === 0) {
+      fail("OUTPUT_INVALID", "Outcome does not satisfy the Class output schema", {
+        contractId: manifest.contract.output.id
+      });
+    }
+    if (outcome.classId !== manifest.id) {
+      fail("OUTCOME_CLASS_MISMATCH", "Outcome does not belong to the Class", {
+        classId: outcome.classId,
+        expectedClassId: manifest.id
+      });
+    }
+    if (outcome.outputContractId !== void 0 && outcome.outputContractId !== manifest.contract.output.id) {
+      fail("OUTPUT_CONTRACT_MISMATCH", "Outcome does not match the Class output contract", {
+        outputContractId: outcome.outputContractId,
+        expectedOutputContractId: manifest.contract.output.id
+      });
+    }
+    const validateOutput = validatorsFor(classRecord2).output;
+    if (!validateOutput(outcome)) {
+      fail("OUTPUT_INVALID", "Outcome does not satisfy the Class output schema", {
+        contractId: manifest.contract.output.id,
+        errors: validateOutput.errors ?? []
+      });
+    }
+    return normalize(outcome);
+  }
+  validateOutcomeEnvelope(outcome);
+  if (outcome.classId !== manifest.id) {
+    fail("OUTCOME_CLASS_MISMATCH", "Outcome does not belong to the Class", {
+      classId: outcome.classId,
+      expectedClassId: manifest.id
+    });
+  }
+  if (outcome.status === "complete") {
+    if (outcome.outputContractId !== manifest.contract.output.id) {
+      fail("OUTPUT_CONTRACT_MISMATCH", "Outcome does not match the Class output contract", {
+        outputContractId: outcome.outputContractId,
+        expectedOutputContractId: manifest.contract.output.id
+      });
+    }
+    assertJsonValue(
+      outcome.output,
+      "OUTPUT_INVALID",
+      "Outcome output does not satisfy the Class output schema",
+      manifest.contract.output.id
+    );
+    const validateOutput = validatorsFor(classRecord2).output;
+    if (!validateOutput(outcome.output)) {
+      fail("OUTPUT_INVALID", "Outcome output does not satisfy the Class output schema", {
+        contractId: manifest.contract.output.id,
+        errors: validateOutput.errors ?? []
+      });
+    }
+  }
+  return normalize(outcome);
 }
 
 // node_modules/@lewisjcs/statblock/src/catalog.mjs
@@ -8310,7 +8566,7 @@ var VISIBLE_TO = Object.freeze({
 function isAudienceVisible(resourceAudience, consumerAudience) {
   return VISIBLE_TO[consumerAudience]?.has(resourceAudience) ?? false;
 }
-function fail(code, message, details) {
+function fail2(code, message, details) {
   throw new StatblockError(code, message, details);
 }
 function isContained(path8, root) {
@@ -8322,24 +8578,24 @@ function isSafeRelativePath(path8) {
 }
 function resolveRoot(source) {
   if (typeof source.root !== "string" || !isAbsolute(source.root)) {
-    fail("MANIFEST_PATH_INVALID", "Catalog source root must be an absolute path", { sourceId: source.id });
+    fail2("MANIFEST_PATH_INVALID", "Catalog source root must be an absolute path", { sourceId: source.id });
   }
   try {
     const root = realpathSync(source.root);
     if (!statSync(root).isDirectory()) {
-      fail("MANIFEST_PATH_INVALID", "Catalog source root must be a directory", { sourceId: source.id });
+      fail2("MANIFEST_PATH_INVALID", "Catalog source root must be a directory", { sourceId: source.id });
     }
     return root;
   } catch (error) {
     if (error instanceof StatblockError) throw error;
-    fail("MANIFEST_PATH_INVALID", "Catalog source root does not resolve to a directory", {
+    fail2("MANIFEST_PATH_INVALID", "Catalog source root does not resolve to a directory", {
       sourceId: source.id
     });
   }
 }
 function resolveManifestPath(root, manifestPath, source, type) {
   if (!isSafeRelativePath(manifestPath)) {
-    fail("MANIFEST_PATH_INVALID", "Manifest path must be relative and contained by its source root", {
+    fail2("MANIFEST_PATH_INVALID", "Manifest path must be relative and contained by its source root", {
       sourceId: source.id,
       type,
       path: manifestPath
@@ -8347,7 +8603,7 @@ function resolveManifestPath(root, manifestPath, source, type) {
   }
   const candidate = resolve(root, manifestPath);
   if (!isContained(candidate, root)) {
-    fail("MANIFEST_PATH_INVALID", "Manifest path escapes its source root", {
+    fail2("MANIFEST_PATH_INVALID", "Manifest path escapes its source root", {
       sourceId: source.id,
       type,
       path: manifestPath
@@ -8356,14 +8612,14 @@ function resolveManifestPath(root, manifestPath, source, type) {
   try {
     const resolved = realpathSync(candidate);
     if (!isContained(resolved, root)) {
-      fail("MANIFEST_PATH_INVALID", "Manifest path resolves outside its source root", {
+      fail2("MANIFEST_PATH_INVALID", "Manifest path resolves outside its source root", {
         sourceId: source.id,
         type,
         path: manifestPath
       });
     }
     if (!statSync(resolved).isFile()) {
-      fail("MANIFEST_PATH_INVALID", "Manifest path must resolve to a regular file", {
+      fail2("MANIFEST_PATH_INVALID", "Manifest path must resolve to a regular file", {
         sourceId: source.id,
         type,
         path: manifestPath
@@ -8372,7 +8628,7 @@ function resolveManifestPath(root, manifestPath, source, type) {
     return resolved;
   } catch (error) {
     if (error instanceof StatblockError) throw error;
-    fail("MANIFEST_PATH_INVALID", "Manifest path does not resolve", {
+    fail2("MANIFEST_PATH_INVALID", "Manifest path does not resolve", {
       sourceId: source.id,
       type,
       path: manifestPath
@@ -8384,7 +8640,7 @@ function parseManifest(root, manifestPath, source, type) {
   try {
     return JSON.parse(readFileSync5(path8, "utf8"));
   } catch {
-    fail("MANIFEST_PATH_INVALID", "Manifest file cannot be read and parsed", {
+    fail2("MANIFEST_PATH_INVALID", "Manifest file cannot be read and parsed", {
       sourceId: source.id,
       type,
       path: manifestPath
@@ -8393,7 +8649,7 @@ function parseManifest(root, manifestPath, source, type) {
 }
 function resolveMemberPath(root, memberPath, source, category) {
   if (!isSafeRelativePath(memberPath)) {
-    fail("MEMBER_PATH_INVALID", "Member path must be relative and contained by its source root", {
+    fail2("MEMBER_PATH_INVALID", "Member path must be relative and contained by its source root", {
       sourceId: source.id,
       category,
       path: memberPath
@@ -8401,7 +8657,7 @@ function resolveMemberPath(root, memberPath, source, category) {
   }
   const candidate = resolve(root, memberPath);
   if (!isContained(candidate, root)) {
-    fail("MEMBER_PATH_INVALID", "Member path escapes its source root", {
+    fail2("MEMBER_PATH_INVALID", "Member path escapes its source root", {
       sourceId: source.id,
       category,
       path: memberPath
@@ -8410,7 +8666,7 @@ function resolveMemberPath(root, memberPath, source, category) {
   try {
     const resolved = realpathSync(candidate);
     if (!isContained(resolved, root)) {
-      fail("MEMBER_PATH_INVALID", "Member path resolves outside its source root", {
+      fail2("MEMBER_PATH_INVALID", "Member path resolves outside its source root", {
         sourceId: source.id,
         category,
         path: memberPath
@@ -8418,7 +8674,7 @@ function resolveMemberPath(root, memberPath, source, category) {
     }
     const member = statSync(resolved);
     if (!member.isFile() && !member.isDirectory()) {
-      fail("MEMBER_PATH_INVALID", "Member path must resolve to a regular file or directory", {
+      fail2("MEMBER_PATH_INVALID", "Member path must resolve to a regular file or directory", {
         sourceId: source.id,
         category,
         path: memberPath
@@ -8427,7 +8683,7 @@ function resolveMemberPath(root, memberPath, source, category) {
     return resolved;
   } catch (error) {
     if (error instanceof StatblockError) throw error;
-    fail("MEMBER_DANGLING", "Declared member does not resolve", {
+    fail2("MEMBER_DANGLING", "Declared member does not resolve", {
       sourceId: source.id,
       category,
       path: memberPath
@@ -8436,7 +8692,7 @@ function resolveMemberPath(root, memberPath, source, category) {
 }
 function resolveEntrypointPath(root, entrypoint, source, host) {
   if (!isSafeRelativePath(entrypoint.path)) {
-    fail("ENTRYPOINT_INVALID", "Entry point path must be relative and contained by its source root", {
+    fail2("ENTRYPOINT_INVALID", "Entry point path must be relative and contained by its source root", {
       sourceId: source.id,
       host,
       path: entrypoint.path
@@ -8444,7 +8700,7 @@ function resolveEntrypointPath(root, entrypoint, source, host) {
   }
   const candidate = resolve(root, entrypoint.path);
   if (!isContained(candidate, root)) {
-    fail("ENTRYPOINT_INVALID", "Entry point path escapes its source root", {
+    fail2("ENTRYPOINT_INVALID", "Entry point path escapes its source root", {
       sourceId: source.id,
       host,
       path: entrypoint.path
@@ -8453,14 +8709,14 @@ function resolveEntrypointPath(root, entrypoint, source, host) {
   try {
     const resolved = realpathSync(candidate);
     if (!isContained(resolved, root)) {
-      fail("ENTRYPOINT_INVALID", "Entry point resolves outside its source root", {
+      fail2("ENTRYPOINT_INVALID", "Entry point resolves outside its source root", {
         sourceId: source.id,
         host,
         path: entrypoint.path
       });
     }
     if (!statSync(resolved).isFile()) {
-      fail("ENTRYPOINT_INVALID", "Entry point must resolve to a regular file", {
+      fail2("ENTRYPOINT_INVALID", "Entry point must resolve to a regular file", {
         sourceId: source.id,
         host,
         path: entrypoint.path
@@ -8469,7 +8725,7 @@ function resolveEntrypointPath(root, entrypoint, source, host) {
     return resolved;
   } catch (error) {
     if (error instanceof StatblockError) throw error;
-    fail("ENTRYPOINT_INVALID", "Entry point does not resolve", {
+    fail2("ENTRYPOINT_INVALID", "Entry point does not resolve", {
       sourceId: source.id,
       host,
       path: entrypoint.path
@@ -8488,13 +8744,13 @@ function freeze(value) {
 }
 function validateSource(source) {
   if (!source || typeof source !== "object" || Array.isArray(source) || Reflect.ownKeys(source).length !== SOURCE_KEYS.size || !Reflect.ownKeys(source).every((key) => SOURCE_KEYS.has(key)) || typeof source.id !== "string" || source.id.length === 0 || !AUDIENCES.has(source.audience) || !Array.isArray(source.classManifestPaths) || !Array.isArray(source.partyManifestPaths)) {
-    fail("MANIFEST_PATH_INVALID", "Catalog source has an invalid shape", { source });
+    fail2("MANIFEST_PATH_INVALID", "Catalog source has an invalid shape", { source });
   }
 }
 function validateDataAudience(manifest, source) {
   for (const dataAudience of manifest.boundaries.data.allow) {
     if (!isAudienceVisible(dataAudience, manifest.audience)) {
-      fail("DATA_AUDIENCE_VIOLATION", "Class data boundary exceeds its audience visibility", {
+      fail2("DATA_AUDIENCE_VIOLATION", "Class data boundary exceeds its audience visibility", {
         sourceId: source.id,
         classId: manifest.id,
         dataAudience,
@@ -8511,7 +8767,7 @@ function makeClassRecord(manifest, source, root) {
   for (const [host, entrypoint] of Object.entries(manifest.entrypoints)) {
     const resolvedEntrypoint = resolveEntrypointPath(root, entrypoint, source, host);
     if (!isDeclaredEntrypoint(resolvedEntrypoint, resolvedMembers[`${entrypoint.kind}s`] ?? [])) {
-      fail("ENTRYPOINT_INVALID", "Entry point is not declared by a matching member", {
+      fail2("ENTRYPOINT_INVALID", "Entry point is not declared by a matching member", {
         sourceId: source.id,
         classId: manifest.id,
         host,
@@ -8539,12 +8795,12 @@ var Catalog = class {
   }
   getClass(id) {
     const record = this.#classes.get(id);
-    if (!record) fail("CLASS_NOT_FOUND", "Class is not registered in this catalog", { id });
+    if (!record) fail2("CLASS_NOT_FOUND", "Class is not registered in this catalog", { id });
     return record;
   }
   getParty(id) {
     const record = this.#parties.get(id);
-    if (!record) fail("PARTY_NOT_FOUND", "Party is not registered in this catalog", { id });
+    if (!record) fail2("PARTY_NOT_FOUND", "Party is not registered in this catalog", { id });
     return record;
   }
   listClasses({ audience } = {}) {
@@ -8555,7 +8811,7 @@ var Catalog = class {
 };
 function createCatalog({ sources } = {}) {
   if (!Array.isArray(sources)) {
-    fail("MANIFEST_PATH_INVALID", "Catalog sources must be an explicit array", { sources });
+    fail2("MANIFEST_PATH_INVALID", "Catalog sources must be an explicit array", { sources });
   }
   const classes = /* @__PURE__ */ new Map();
   const parties = /* @__PURE__ */ new Map();
@@ -8572,7 +8828,7 @@ function createCatalog({ sources } = {}) {
     for (const manifestPath of source.classManifestPaths) {
       const manifest = validateClassManifest(parseManifest(root, manifestPath, source, "class"));
       if (manifest.audience !== source.audience) {
-        fail("SOURCE_AUDIENCE_MISMATCH", "Source cannot distribute a Class from another audience", {
+        fail2("SOURCE_AUDIENCE_MISMATCH", "Source cannot distribute a Class from another audience", {
           sourceId: source.id,
           sourceAudience: source.audience,
           classId: manifest.id,
@@ -8581,14 +8837,14 @@ function createCatalog({ sources } = {}) {
       }
       validateDataAudience(manifest, source);
       if (classes.has(manifest.id)) {
-        fail("CLASS_DUPLICATE", "Class ID is already registered in this catalog", { id: manifest.id });
+        fail2("CLASS_DUPLICATE", "Class ID is already registered in this catalog", { id: manifest.id });
       }
       classes.set(manifest.id, makeClassRecord(manifest, frozenSource, root));
     }
     for (const manifestPath of source.partyManifestPaths) {
       const manifest = validatePartyManifest(parseManifest(root, manifestPath, source, "party"));
       if (manifest.audience !== source.audience) {
-        fail("SOURCE_AUDIENCE_MISMATCH", "Source cannot distribute a Party from another audience", {
+        fail2("SOURCE_AUDIENCE_MISMATCH", "Source cannot distribute a Party from another audience", {
           sourceId: source.id,
           sourceAudience: source.audience,
           partyId: manifest.id,
@@ -8596,7 +8852,7 @@ function createCatalog({ sources } = {}) {
         });
       }
       if (parties.has(manifest.id)) {
-        fail("PARTY_DUPLICATE", "Party ID is already registered in this catalog", { id: manifest.id });
+        fail2("PARTY_DUPLICATE", "Party ID is already registered in this catalog", { id: manifest.id });
       }
       parties.set(manifest.id, makePartyRecord(manifest, frozenSource));
     }
@@ -8916,16 +9172,131 @@ var KilnError = class extends Error {
 };
 
 // src/classes.mjs
-import { readFileSync as readFileSync6 } from "node:fs";
+import { readFileSync as readFileSync7 } from "node:fs";
 import path3 from "node:path";
 import { fileURLToPath } from "node:url";
 
 // node_modules/@lewisjcs/statblock/src/hosts/adapter.mjs
+var ADAPTER_KEYS = /* @__PURE__ */ new Set(["id", "guarantees", "capabilities", "bind"]);
+var GUARANTEE_KEYS = /* @__PURE__ */ new Set(["tools", "paths", "data"]);
 var CAPABILITY_IDS = Object.freeze(["isolated-dispatch"]);
 var CAPABILITY_KEYS = new Set(CAPABILITY_IDS);
+function fail3(details) {
+  throw new StatblockError("HOST_ADAPTER_INVALID", "Host adapter has an invalid shape", details);
+}
+function hasExactKeys(value, keys) {
+  const ownKeys = Reflect.ownKeys(value);
+  return ownKeys.length === keys.size && ownKeys.every((key) => keys.has(key));
+}
+function hasBooleanDataProperties(value, keys) {
+  return [...keys].every((key) => {
+    const descriptor = Object.getOwnPropertyDescriptor(value, key);
+    return Object.hasOwn(descriptor, "value") && typeof descriptor.value === "boolean";
+  });
+}
+function isFrozenBooleanRecord(value, keys) {
+  return value && typeof value === "object" && !Array.isArray(value) && Object.isFrozen(value) && hasExactKeys(value, keys) && hasBooleanDataProperties(value, keys);
+}
+function assertHostAdapter(adapter) {
+  if (!adapter || typeof adapter !== "object" || Array.isArray(adapter) || !hasExactKeys(adapter, ADAPTER_KEYS) || typeof adapter.id !== "string" || adapter.id.length === 0 || !isFrozenBooleanRecord(adapter.guarantees, GUARANTEE_KEYS) || !isFrozenBooleanRecord(adapter.capabilities, CAPABILITY_KEYS) || typeof adapter.bind !== "function") {
+    fail3({ adapter });
+  }
+  return adapter;
+}
 
 // node_modules/@lewisjcs/statblock/src/hosts/binding.mjs
 import { createHash as createHash2 } from "node:crypto";
+import { readFileSync as readFileSync6, realpathSync as realpathSync2, statSync as statSync2 } from "node:fs";
+import { isAbsolute as isAbsolute2, relative as relative2, resolve as resolve2, sep as sep2 } from "node:path";
+function fail4(code, message, details) {
+  throw new StatblockError(code, message, details);
+}
+function deepFreeze4(value) {
+  if (value && typeof value === "object" && !Object.isFrozen(value)) {
+    for (const child of Object.values(value)) deepFreeze4(child);
+    Object.freeze(value);
+  }
+  return value;
+}
+function isContained2(path8, root) {
+  const pathFromRoot = relative2(root, path8);
+  return pathFromRoot === "" || !pathFromRoot.startsWith(`..${sep2}`) && pathFromRoot !== ".." && !isAbsolute2(pathFromRoot);
+}
+function resolveSourceFile(root, path8, type) {
+  if (typeof root !== "string" || !isAbsolute2(root) || typeof path8 !== "string" || path8.length === 0 || isAbsolute2(path8)) {
+    fail4("HOST_ENTRYPOINT_MISSING", "Host source file is missing or invalid", { type, path: path8 });
+  }
+  const candidate = resolve2(root, path8);
+  if (!isContained2(candidate, root)) {
+    fail4("HOST_ENTRYPOINT_MISSING", "Host source file escapes its catalog root", { type, path: path8 });
+  }
+  try {
+    const resolved = realpathSync2(candidate);
+    if (!isContained2(resolved, root) || !statSync2(resolved).isFile()) {
+      fail4("HOST_ENTRYPOINT_MISSING", "Host source file is missing or invalid", { type, path: path8 });
+    }
+    return resolved;
+  } catch (error) {
+    if (error instanceof StatblockError) throw error;
+    fail4("HOST_ENTRYPOINT_MISSING", "Host source file is missing or invalid", { type, path: path8 });
+  }
+}
+function capabilityStatusFor(manifest, capabilities) {
+  if (manifest.capabilities === void 0) return void 0;
+  const statuses = {};
+  for (const [capability, enforcement] of Object.entries(manifest.capabilities)) {
+    if (!capabilities[capability]) {
+      if (enforcement === "required") {
+        fail4("HOST_CAPABILITY_UNAVAILABLE", "Host cannot provide a required Class capability", {
+          capability
+        });
+      }
+      statuses[capability] = "degraded";
+    } else {
+      statuses[capability] = "guaranteed";
+    }
+  }
+  return statuses;
+}
+function enforcementFor(manifest, guarantees, capabilities) {
+  const degradations = [];
+  for (const boundary of ["tools", "paths", "data"]) {
+    if (!guarantees[boundary]) {
+      if (manifest.boundaries.enforcement[boundary] === "required") {
+        fail4("HOST_GUARANTEE_UNAVAILABLE", "Host cannot provide a required Class guarantee", {
+          boundary
+        });
+      }
+      degradations.push(boundary);
+    }
+  }
+  degradations.sort((left, right) => left.localeCompare(right));
+  const capabilityStatuses = capabilityStatusFor(manifest, capabilities);
+  const degradedCapability = capabilityStatuses !== void 0 && Object.values(capabilityStatuses).includes("degraded");
+  const enforcement = {
+    mode: degradations.length === 0 && !degradedCapability ? "trusted" : "degraded",
+    pathRules: {
+      read: [...manifest.boundaries.paths.read],
+      write: [...manifest.boundaries.paths.write]
+    },
+    dataScopes: [...manifest.boundaries.data.allow],
+    degradations
+  };
+  if (capabilityStatuses !== void 0) enforcement.capabilities = capabilityStatuses;
+  return enforcement;
+}
+function cloneGuarantees(guarantees) {
+  return deepFreeze4({
+    tools: guarantees?.tools,
+    paths: guarantees?.paths,
+    data: guarantees?.data
+  });
+}
+function cloneCapabilities(capabilities) {
+  return deepFreeze4(Object.fromEntries(
+    CAPABILITY_IDS.map((capability) => [capability, capabilities?.[capability]])
+  ));
+}
 function computeProjectionSourceHash(records) {
   const hash = createHash2("sha256");
   for (const { path: path8, bytes } of records) {
@@ -8936,12 +9307,166 @@ function computeProjectionSourceHash(records) {
   }
   return hash.digest("hex");
 }
+function projectionFor(manifest, source, entrypoint) {
+  if (entrypoint.projection === void 0) return void 0;
+  const { canonicalSources, sourceHash } = entrypoint.projection;
+  const resolved = canonicalSources.map((path8) => resolveSourceFile(source.root, path8, "projection-source"));
+  const actualSourceHash = computeProjectionSourceHash(canonicalSources.map((path8, index) => ({
+    path: path8,
+    bytes: readFileSync6(resolved[index])
+  })));
+  if (actualSourceHash !== sourceHash) {
+    fail4("HOST_PROJECTION_STALE", "Projected entry point no longer matches its canonical sources", {
+      classId: manifest.id,
+      expectedSourceHash: sourceHash,
+      actualSourceHash
+    });
+  }
+  return { canonicalSources: resolved, sourceHash };
+}
+function invalidPartyContext(reason, details) {
+  fail4("HOST_ADAPTER_INVALID", "Host adapter received invalid Party binding context", {
+    context: "party",
+    reason,
+    ...details
+  });
+}
+function invalidInvocationContext(reason, details) {
+  fail4("HOST_ADAPTER_INVALID", "Host adapter received invalid invocation binding context", {
+    context: "invocation",
+    reason,
+    ...details
+  });
+}
+function assertInvocationContext(classRecord2, invocation) {
+  const expectedClassId = classRecord2.manifest.id;
+  const expectedInputContractId = classRecord2.manifest.contract.input.id;
+  if (invocation.classId !== expectedClassId || invocation.inputContractId !== expectedInputContractId) {
+    invalidInvocationContext("class-or-contract-mismatch", {
+      expectedClassId,
+      actualClassId: invocation.classId,
+      expectedInputContractId,
+      actualInputContractId: invocation.inputContractId
+    });
+  }
+  if (!isInvocationValidatedForClass(classRecord2, invocation)) {
+    invalidInvocationContext("class-record-mismatch", {
+      expectedClassId,
+      actualClassId: invocation.classId,
+      expectedInputContractId,
+      actualInputContractId: invocation.inputContractId
+    });
+  }
+}
+function partyIdForBinding(classRecord2, invocation, partyFormation) {
+  const expectedPartyId = invocation.partyId;
+  if (expectedPartyId === void 0) {
+    if (partyFormation !== void 0) {
+      invalidPartyContext("direct-formation-forbidden", {
+        actualPartyId: partyFormation?.party?.manifest?.id,
+        actualClassId: classRecord2.manifest.id
+      });
+    }
+    return void 0;
+  }
+  if (partyFormation == null) {
+    invalidPartyContext("party-formation-required", {
+      expectedPartyId,
+      expectedClassId: classRecord2.manifest.id
+    });
+  }
+  const actualPartyId = partyFormation.party.manifest.id;
+  if (actualPartyId !== expectedPartyId) {
+    invalidPartyContext("party-id-mismatch", {
+      expectedPartyId,
+      actualPartyId,
+      expectedClassId: classRecord2.manifest.id
+    });
+  }
+  if (!partyFormation.roster.includes(classRecord2)) {
+    invalidPartyContext("class-not-in-party-roster", {
+      expectedPartyId,
+      actualPartyId,
+      expectedClassId: classRecord2.manifest.id,
+      actualClassIds: partyFormation.roster.map((record) => record.manifest.id)
+    });
+  }
+  return expectedPartyId;
+}
+function createHostAdapter({
+  hostId,
+  hostLabel,
+  entrypointKey,
+  resolveModelBinding,
+  guarantees,
+  capabilities
+}) {
+  const hostGuarantees = cloneGuarantees(guarantees);
+  const hostCapabilities = cloneCapabilities(capabilities);
+  const adapter = {
+    id: hostId,
+    guarantees: hostGuarantees,
+    capabilities: hostCapabilities,
+    bind({ classRecord: classRecord2, invocation, partyFormation } = {}) {
+      const { manifest, source } = classRecord2;
+      assertInvocationContext(classRecord2, invocation);
+      const partyId = partyIdForBinding(classRecord2, invocation, partyFormation);
+      const entrypoint = manifest.entrypoints[entrypointKey];
+      if (!entrypoint) {
+        fail4("HOST_ENTRYPOINT_MISSING", `Class does not declare a ${hostLabel} entry point`, {
+          classId: manifest.id
+        });
+      }
+      const absolutePath = resolveSourceFile(source.root, entrypoint.path, "entrypoint");
+      const projection = projectionFor(manifest, source, entrypoint);
+      const references = invocation.loadout.references.map((path8) => resolveSourceFile(source.root, path8, "reference"));
+      const descriptor = {
+        host: hostId,
+        classId: manifest.id,
+        classVersion: manifest.version,
+        entrypoint: { kind: entrypoint.kind, absolutePath },
+        tools: [...invocation.loadout.tools],
+        references,
+        model: resolveModelBinding(invocation.loadout.modelRequirement),
+        budget: { ...invocation.loadout.budget },
+        enforcement: enforcementFor(manifest, hostGuarantees, hostCapabilities)
+      };
+      if (projection !== void 0) descriptor.projection = projection;
+      if (partyId !== void 0) descriptor.partyId = partyId;
+      return deepFreeze4(descriptor);
+    }
+  };
+  return assertHostAdapter(Object.freeze(adapter));
+}
+
+// node_modules/@lewisjcs/statblock/src/hosts/claudeCode.mjs
+function createClaudeCodeAdapter({ modelBindings, guarantees, capabilities } = {}) {
+  const bindings = Object.freeze({ ...modelBindings });
+  return createHostAdapter({
+    hostId: "claude-code",
+    hostLabel: "Claude Code",
+    entrypointKey: "claude-code",
+    guarantees,
+    capabilities,
+    resolveModelBinding(modelRequirement) {
+      const model = bindings[modelRequirement];
+      if (!Object.hasOwn(bindings, modelRequirement) || typeof model !== "string" || model.length === 0) {
+        throw new StatblockError(
+          "HOST_MODEL_UNBOUND",
+          "Host has no concrete model binding for this requirement",
+          { modelRequirement }
+        );
+      }
+      return model;
+    }
+  });
+}
 
 // src/classes.mjs
 var PLUGIN_NAMESPACE = "kiln";
 var CLASS_MANIFESTS = Object.freeze(["classes/crafter.class.json", "classes/designer.class.json", "classes/planner.class.json", "classes/inspector.class.json", "classes/prospector.class.json"]);
 var REPO_ROOT = path3.resolve(path3.dirname(fileURLToPath(import.meta.url)), "..");
-var BORROWED_PINS = Object.freeze(JSON.parse(readFileSync6(new URL("../policy/borrowed-classes-v1.json", import.meta.url), "utf8")).classes);
+var BORROWED_PINS = Object.freeze(JSON.parse(readFileSync7(new URL("../policy/borrowed-classes-v1.json", import.meta.url), "utf8")).classes);
 function claudeCodeEntry(manifest) {
   return manifest.entrypoints["claude-code"];
 }
@@ -8957,7 +9482,7 @@ function manifestHash(manifest) {
 }
 function projectionHashFor(root, manifest) {
   const sources = claudeCodeEntry(manifest).projection.canonicalSources;
-  return computeProjectionSourceHash(sources.map((p) => ({ path: p, bytes: readFileSync6(path3.join(root, p)) })));
+  return computeProjectionSourceHash(sources.map((p) => ({ path: p, bytes: readFileSync7(path3.join(root, p)) })));
 }
 function entryFor(record, root) {
   const { manifest } = record;
@@ -8998,8 +9523,11 @@ function borrowedEntry(pin) {
     installedManifest: pin.manifest
   });
 }
+function loadClassCatalog(root = REPO_ROOT, manifests = CLASS_MANIFESTS) {
+  return createCatalog({ sources: [{ id: "kiln", audience: "personal", root, classManifestPaths: [...manifests], partyManifestPaths: [] }] });
+}
 function loadClassRegistry(root = REPO_ROOT, manifests = CLASS_MANIFESTS) {
-  const catalog = createCatalog({ sources: [{ id: "kiln", audience: "personal", root, classManifestPaths: [...manifests], partyManifestPaths: [] }] });
+  const catalog = loadClassCatalog(root, manifests);
   return Object.freeze({
     ...Object.fromEntries(catalog.listClasses({ audience: "personal" }).map((record) => [record.manifest.id, entryFor(record, root)])),
     ...Object.fromEntries(BORROWED_PINS.map((pin) => [pin.classId, borrowedEntry(pin)]))
@@ -9007,22 +9535,22 @@ function loadClassRegistry(root = REPO_ROOT, manifests = CLASS_MANIFESTS) {
 }
 function verifyInstalledBody(entry, installedPath, root = REPO_ROOT) {
   if (entry.borrowed) {
-    const manifest = JSON.parse(readFileSync6(installedPath, "utf8"));
+    const manifest = JSON.parse(readFileSync7(installedPath, "utf8"));
     const major = Number(String(manifest.version ?? "").split(".")[0]);
     const matches = manifest.id === entry.classId && major === Number(entry.version.split(".")[0]);
     return { classId: entry.classId, installedPath, expected: entry.version, actual: `${manifest.id}@${manifest.version}`, matches };
   }
   const [bodyRel, ...others] = entry.canonicalSources;
   const actual = computeProjectionSourceHash([
-    { path: bodyRel, bytes: readFileSync6(installedPath) },
-    ...others.map((p) => ({ path: p, bytes: readFileSync6(path3.join(root, p)) }))
+    { path: bodyRel, bytes: readFileSync7(installedPath) },
+    ...others.map((p) => ({ path: p, bytes: readFileSync7(path3.join(root, p)) }))
   ]);
   return { classId: entry.classId, installedPath, expected: entry.projectionSourceHash, actual, matches: actual === entry.projectionSourceHash };
 }
 
 // src/contracts.mjs
 var import__4 = __toESM(require__(), 1);
-import { readFileSync as readFileSync7 } from "node:fs";
+import { readFileSync as readFileSync8 } from "node:fs";
 var SCHEMA_FILE_BY_CONTRACT_ID3 = {
   "kiln:step-outcome@1": "step-outcome.schema.json",
   "kiln:ticket-plan@1": "ticket-plan.schema.json",
@@ -9030,10 +9558,10 @@ var SCHEMA_FILE_BY_CONTRACT_ID3 = {
   "kiln:brief@1": "brief.schema.json"
 };
 function readKilnSchema(fileName) {
-  return JSON.parse(readFileSync7(new URL(`../format/schemas/${fileName}`, import.meta.url), "utf8"));
+  return JSON.parse(readFileSync8(new URL(`../format/schemas/${fileName}`, import.meta.url), "utf8"));
 }
 function readClassManifest(rel) {
-  return JSON.parse(readFileSync7(new URL(`../${rel}`, import.meta.url), "utf8"));
+  return JSON.parse(readFileSync8(new URL(`../${rel}`, import.meta.url), "utf8"));
 }
 var ajv4 = new import__4.default({ allErrors: true, strictTypes: false });
 var classManifests = CLASS_MANIFESTS.map(readClassManifest);
@@ -9633,6 +10161,31 @@ var DESIGNER_CHECKS = Object.freeze((state) => {
   const decisionPath = `${state.runDir}/decision.md`;
   return [{ command: `test -f ${decisionPath}`, expect: "exit 0" }, { command: `grep -c '^\\*\\*Status:\\*\\* APPROVED' ${decisionPath}`, expect: "1" }];
 });
+function partyClassInputFor(state, kind2) {
+  if (kind2 === "dispatch-discover" || kind2 === "dispatch-finder") {
+    const discover = kind2 === "dispatch-discover";
+    return {
+      classId: "kiln:prospector",
+      input: {
+        intent: state.brief.intent?.text ?? state.ticket.title ?? state.bundle.components[0].inlineContent,
+        reportPath: `${state.runDir}/${discover ? "discover" : "facts"}-report.md`,
+        checks: discover ? DISCOVER_CHECKS(state) : FINDER_CHECKS(state)
+      }
+    };
+  }
+  if (kind2 === "dispatch-designer") {
+    return {
+      classId: "kiln:designer",
+      input: {
+        intent: state.brief.intent.text,
+        facts: state.brief.facts?.items ?? [],
+        decisionPath: `${state.runDir}/decision.md`,
+        checks: DESIGNER_CHECKS(state)
+      }
+    };
+  }
+  return null;
+}
 var PLANNER_CHECKS = Object.freeze((state) => [{ command: `node ${state.cliPath} plan-check --file ${state.runDir}/ticket-plan.json`, expect: "`valid`" }]);
 function checksSentence(checks) {
   return `Your checks: ${checks.map((c, i) => `${i + 1}. \`${c.command}\` expects ${c.expect}.`).join(" ")}`;
@@ -10233,7 +10786,7 @@ function codeSignals(rawBody, format) {
 }
 
 // src/runs.mjs
-import { mkdirSync as mkdirSync2, existsSync, readFileSync as readFileSync8, readdirSync as readdirSync2, rmSync, renameSync as renameSync2 } from "node:fs";
+import { mkdirSync as mkdirSync2, existsSync, readFileSync as readFileSync9, readdirSync as readdirSync2, rmSync, renameSync as renameSync2 } from "node:fs";
 import { homedir } from "node:os";
 import path4 from "node:path";
 var SLUG_SAFE = (s) => s.toLowerCase().replace(/[._]/g, "-");
@@ -10258,7 +10811,7 @@ function jiraCapturePaths(store, key) {
 }
 function readJsonOrNull(file) {
   try {
-    return JSON.parse(readFileSync8(file, "utf8"));
+    return JSON.parse(readFileSync9(file, "utf8"));
   } catch {
     return null;
   }
@@ -10277,7 +10830,7 @@ function clearJiraRequest(paths) {
 function readJiraCapture(paths) {
   const capture = readJsonOrNull(paths.capture);
   if (capture === null) return null;
-  return { capture, answer: existsSync(paths.answer) ? readFileSync8(paths.answer, "utf8") : null };
+  return { capture, answer: existsSync(paths.answer) ? readFileSync9(paths.answer, "utf8") : null };
 }
 function setJiraCaptureAside(paths) {
   renameSync2(paths.capture, paths.refusedCapture);
@@ -10316,6 +10869,7 @@ function runPathsFor(root, ref) {
     readout: path4.join(dir, "readout.md"),
     prTitle: path4.join(dir, "pr-title.txt"),
     envelope: (actionId) => path4.join(dir, envelopeBasename(actionId)),
+    classInput: (actionId) => path4.join(dir, actionId + ".class-input.json"),
     before: (actionId) => path4.join(dir, "writes", `${actionId}.before.json`),
     question: (actionId) => path4.join(dir, `${actionId}.question.md`),
     brief: (actionId) => path4.join(dir, `${actionId}.brief.md`)
@@ -10338,18 +10892,18 @@ function writeRunMeta(paths, meta) {
   writeFileAtomic(paths.meta, JSON.stringify(meta, null, 2) + "\n");
 }
 function readRunMeta(paths) {
-  return JSON.parse(readFileSync8(paths.meta, "utf8"));
+  return JSON.parse(readFileSync9(paths.meta, "utf8"));
 }
 function saveState(paths, state) {
   writeFileAtomic(paths.state, JSON.stringify(state, null, 2) + "\n");
 }
 function loadState(paths) {
-  return JSON.parse(readFileSync8(paths.state, "utf8"));
+  return JSON.parse(readFileSync9(paths.state, "utf8"));
 }
 var ENVELOPE_SUFFIX = ".envelope.json";
 function readEnvelopes(paths) {
   const order = /* @__PURE__ */ new Map();
-  for (const line of readFileSync8(paths.events, "utf8").split("\n")) {
+  for (const line of readFileSync9(paths.events, "utf8").split("\n")) {
     if (line.length === 0) continue;
     const event = JSON.parse(line);
     if (event.kind === "action-pending" && !order.has(event.data.actionId)) order.set(event.data.actionId, order.size);
@@ -10361,7 +10915,7 @@ function readEnvelopes(paths) {
     const ib = indexOf(b);
     return ia !== ib ? ia - ib : a < b ? -1 : a > b ? 1 : 0;
   });
-  return files.map((f) => JSON.parse(readFileSync8(path4.join(paths.dir, f), "utf8")));
+  return files.map((f) => JSON.parse(readFileSync9(path4.join(paths.dir, f), "utf8")));
 }
 function pendingEvent(state) {
   const { kind: kind2, attempt, actionId } = state.pendingAction;
@@ -11861,11 +12415,11 @@ function renderReadout({ state, scoreboard, prUrl = null }) {
 
 // src/kickoff-approval.mjs
 import { createHash as createHash3 } from "node:crypto";
-import { readFileSync as readFileSync9, writeFileSync as writeFileSync2 } from "node:fs";
+import { readFileSync as readFileSync10, writeFileSync as writeFileSync2 } from "node:fs";
 import path5 from "node:path";
 function readPlanBytes(planPath) {
   try {
-    return readFileSync9(planPath);
+    return readFileSync10(planPath);
   } catch (error) {
     throw new KilnError("KILN_PLAN_UNREADABLE", `the plan cannot be read: ${error.message}`, { planPath });
   }
@@ -11903,7 +12457,7 @@ function verifyPlanApproval(planPath) {
   const sidecarPath = `${absolute}.approval.json`;
   let approval;
   try {
-    approval = JSON.parse(readFileSync9(sidecarPath, "utf8"));
+    approval = JSON.parse(readFileSync10(sidecarPath, "utf8"));
   } catch (error) {
     if (error.code === "ENOENT") return { valid: false, reason: "missing", planPath: absolute, sidecarPath };
     return { valid: false, reason: "invalid", planPath: absolute, sidecarPath };
@@ -12071,14 +12625,43 @@ function prepareJiraAddition({ original, section, proposal, format, policy, date
   return { adf, insertedBlocks, currentText, addedText: insertedBlocks.map(previewText).filter(Boolean).join("\n"), sectionHeading: format.families[section].heading };
 }
 
+// src/direct-class.mjs
+function classRecord(catalog, classId) {
+  const record = catalog.getClass(classId);
+  if (!record) throw new KilnError("KILN_CLASS_UNKNOWN", `${classId} is not a registered local Class`, { classId });
+  return record;
+}
+function bindDirectClass({ catalog, classId, input, loadout, adapter }) {
+  const record = classRecord(catalog, classId);
+  const invocation = validateInvocation2(record, {
+    classId,
+    inputContractId: record.manifest.contract.input.id,
+    input,
+    loadout
+  });
+  return adapter.bind({ classRecord: record, invocation });
+}
+function checkDirectClassReply({ catalog, classId, raw }) {
+  let reply;
+  try {
+    reply = JSON.parse(raw);
+  } catch (err) {
+    throw new KilnError("KILN_CLASS_REPLY_INVALID", `Class reply is not JSON: ${err.message}`, { classId });
+  }
+  if (!Array.isArray(reply) || reply.length !== 1) {
+    throw new KilnError("KILN_CLASS_REPLY_COUNT", "Class reply must be a one-element JSON array", { classId, count: Array.isArray(reply) ? reply.length : null });
+  }
+  return validateOutcome2(classRecord(catalog, classId), reply[0]);
+}
+
 // src/cli.mjs
-var priceTable = JSON.parse(readFileSync10(new URL("../policy/price-table-v1.json", import.meta.url), "utf8"));
-var rosterPolicy = JSON.parse(readFileSync10(new URL("../policy/roster-policy-v1.json", import.meta.url), "utf8"));
-var rations = JSON.parse(readFileSync10(new URL("../policy/rations-v1.json", import.meta.url), "utf8"));
-var hostBindings = JSON.parse(readFileSync10(new URL("../policy/host-bindings-v1.json", import.meta.url), "utf8")).hosts["claude-code"];
-var modePolicy = JSON.parse(readFileSync10(new URL("../policy/mode-policy-v1.json", import.meta.url), "utf8"));
-var ticketFormat = JSON.parse(readFileSync10(new URL("../policy/ticket-format-v1.json", import.meta.url), "utf8"));
-var jiraWritePolicy = JSON.parse(readFileSync10(new URL("../policy/jira-write-v1.json", import.meta.url), "utf8"));
+var priceTable = JSON.parse(readFileSync11(new URL("../policy/price-table-v1.json", import.meta.url), "utf8"));
+var rosterPolicy = JSON.parse(readFileSync11(new URL("../policy/roster-policy-v1.json", import.meta.url), "utf8"));
+var rations = JSON.parse(readFileSync11(new URL("../policy/rations-v1.json", import.meta.url), "utf8"));
+var hostBindings = JSON.parse(readFileSync11(new URL("../policy/host-bindings-v1.json", import.meta.url), "utf8")).hosts["claude-code"];
+var modePolicy = JSON.parse(readFileSync11(new URL("../policy/mode-policy-v1.json", import.meta.url), "utf8"));
+var ticketFormat = JSON.parse(readFileSync11(new URL("../policy/ticket-format-v1.json", import.meta.url), "utf8"));
+var jiraWritePolicy = JSON.parse(readFileSync11(new URL("../policy/jira-write-v1.json", import.meta.url), "utf8"));
 function checkoutRootsOf(env = process.env) {
   const raw = env.KILN_CHECKOUTS ?? "";
   const roots = raw.split(":").map((r) => r.trim()).filter((r) => r.length > 0);
@@ -12090,7 +12673,7 @@ function checkoutRootsOf(env = process.env) {
 function isCheckout(dir) {
   if (!existsSync2(dir)) return false;
   const top = spawnSync("git", ["-C", dir, "rev-parse", "--show-toplevel"], { encoding: "utf8" });
-  return top.status === 0 && top.stdout.trim() === realpathSync2(dir);
+  return top.status === 0 && top.stdout.trim() === realpathSync3(dir);
 }
 function repoFactsFor() {
   return (checkout, base) => {
@@ -12116,7 +12699,7 @@ function documentReaderFor(ticketRef, source) {
     if (file === ticketRef) text = readTicketBody(ticketRef, source, null).body;
     else {
       try {
-        text = readFileSync10(file, "utf8");
+        text = readFileSync11(file, "utf8");
       } catch (err) {
         return { unreadable: err.message.replace(`, ${err.syscall} '${file}'`, "") };
       }
@@ -12144,7 +12727,7 @@ function requireFlag(values, name) {
 function readInput(values, name) {
   const file = requireFlag(values, name);
   try {
-    return readFileSync10(file, "utf8");
+    return readFileSync11(file, "utf8");
   } catch (err) {
     throw new KilnError("KILN_INPUT_UNREADABLE", `--${name} file cannot be read: ${err.message}`, { flag: name, file });
   }
@@ -12288,7 +12871,7 @@ function kickoffPreview(file) {
   if (!absolute.startsWith(`${resolveJiraStore()}${path7.sep}`)) throw new KilnError("KILN_JIRA_PREVIEW_PATH", "the preview is outside the Jira state folder");
   let bytes, record;
   try {
-    bytes = readFileSync10(absolute, "utf8");
+    bytes = readFileSync11(absolute, "utf8");
     record = JSON.parse(bytes);
   } catch {
     throw new KilnError("KILN_JIRA_PREVIEW_UNREADABLE", "the preview cannot be read");
@@ -12401,7 +12984,7 @@ function readGithubIssue(ref) {
 }
 function readTicketBody(ref, source, since) {
   if (source === "markdown") {
-    const raw = readFileSync10(ref, "utf8");
+    const raw = readFileSync11(ref, "utf8");
     return { body: normalizeBody(raw), newerItems: [], raw };
   }
   const read = source === "jira" ? readJiraTicket(ref) : readGithubIssue(ref);
@@ -12727,6 +13310,19 @@ function nextSummary(flow, state, paths, meta) {
   const pending = nextAction(flow, state);
   if (pending.terminal) return { terminal: true, status: state.status };
   const out = { terminal: false, actionId: pending.actionId, kind: pending.kind, attempt: pending.attempt, promptBody: pending.promptBody, hostBinding: hostBindingFor(state, pending, getRegistry()) };
+  const member = partyClassInputFor(state, pending.kind);
+  if (member !== null) {
+    const record = loadClassCatalog(process.env.KILN_CLASSES_ROOT).getClass(member.classId);
+    const checked = validateClassInput(member.classId, member.input);
+    if (!checked.valid) throw new KilnError("KILN_PARTY_CLASS_INPUT_INVALID", `${member.classId} Party input fails its admitted Class contract`, { classId: member.classId, inputContractId: record.manifest.contract.input.id, issues: checked.issues });
+    const classInputText = JSON.stringify(member.input, null, 2) + "\n";
+    const classInputPath = paths.classInput(pending.actionId);
+    writeFileAtomic(classInputPath, classInputText);
+    out.classId = member.classId;
+    out.inputContractId = record.manifest.contract.input.id;
+    out.classInputPath = classInputPath;
+    out.classInputSha256 = sha256Utf8(classInputText);
+  }
   if (pending.write) {
     out.write = pending.write;
     const baseline = state.writeBaseline ?? null;
@@ -12768,7 +13364,7 @@ function attachmentsFor(rawOutput) {
   const out = {};
   const read = (p) => {
     try {
-      return readFileSync10(p, "utf8");
+      return readFileSync11(p, "utf8");
     } catch {
       return null;
     }
@@ -12805,7 +13401,7 @@ function visitOf(actionId) {
 function afterReceipt({ flow, paths, meta, state, nextState, actionId, pending, accepted: accepted2 }) {
   checkBriefValid(nextState.brief);
   const reform = accepted2 && nextState.lastReform !== null ? nextState.lastReform : null;
-  const reformedRecord = reform === null ? null : reformPartyRecord(JSON.parse(readFileSync10(paths.party.record, "utf8")), rosterPolicy, { actionId, trigger: reform.trigger, classKey: reform.classKey, reason: reform.reason });
+  const reformedRecord = reform === null ? null : reformPartyRecord(JSON.parse(readFileSync11(paths.party.record, "utf8")), rosterPolicy, { actionId, trigger: reform.trigger, classKey: reform.classKey, reason: reform.reason });
   const written = accepted2 ? nextState.lastFilled.filter((p) => TICKET_PARTS.includes(p)) : [];
   const writesTicket = written.length > 0 && nextState.pendingWrite === null && nextState.ticket.readOnly !== true;
   const nextBody = writesTicket ? ticketWriteFor(meta, nextState, written) : null;
@@ -12849,17 +13445,17 @@ function againFor(paths, replacingUnbuilt = false) {
 function repoForApprovedTasks(plan, roots, baseFlag, title, ref) {
   const rootPath = plan.tasks[0].repo;
   if (!path7.isAbsolute(rootPath) || !existsSync2(rootPath)) throw new KilnError("KILN_APPROVED_WORKTREE", "the task plan must name an existing worktree", { root: rootPath });
-  const root = realpathSync2(rootPath);
+  const root = realpathSync3(rootPath);
   if (gitOut(root, ["rev-parse", "--show-toplevel"]).trim() !== root) throw new KilnError("KILN_APPROVED_WORKTREE", "the task plan repo is not the worktree root", { root });
   const common = gitOut(root, ["rev-parse", "--path-format=absolute", "--git-common-dir"]).trim();
-  const checkout = realpathSync2(path7.dirname(common));
-  if (!roots.some((parent) => path7.dirname(checkout) === realpathSync2(parent)) || !isCheckout(checkout)) throw new KilnError("KILN_APPROVED_REPOSITORY", "the worktree checkout must be a repository directly under KILN_CHECKOUTS", { checkout });
+  const checkout = realpathSync3(path7.dirname(common));
+  if (!roots.some((parent) => path7.dirname(checkout) === realpathSync3(parent)) || !isCheckout(checkout)) throw new KilnError("KILN_APPROVED_REPOSITORY", "the worktree checkout must be a repository directly under KILN_CHECKOUTS", { checkout });
   const registered = gitOut(checkout, ["worktree", "list", "--porcelain"]).split("\n").filter((line) => line.startsWith("worktree ")).map((line) => line.slice(9));
   if (!registered.includes(root)) throw new KilnError("KILN_APPROVED_WORKTREE", "the task plan repo is not a registered worktree", { root, checkout });
   const branch = gitOut(root, ["symbolic-ref", "--short", "HEAD"]).trim();
   const sameRoot = (candidate) => {
     try {
-      return realpathSync2(candidate) === root;
+      return realpathSync3(candidate) === root;
     } catch {
       return false;
     }
@@ -12896,7 +13492,7 @@ var COMMANDS = {
     const preview = kickoffPreview(requireFlag(v, "preview"));
     let approval;
     try {
-      approval = JSON.parse(readFileSync10(`${preview.path}.approval.json`, "utf8"));
+      approval = JSON.parse(readFileSync11(`${preview.path}.approval.json`, "utf8"));
     } catch {
       throw new KilnError("KILN_JIRA_APPROVAL_MISSING", "the exact preview has no approval");
     }
@@ -12910,14 +13506,14 @@ var COMMANDS = {
       let previous = null;
       if (existsSync2(attemptPath)) {
         try {
-          previous = JSON.parse(readFileSync10(attemptPath, "utf8"));
+          previous = JSON.parse(readFileSync11(attemptPath, "utf8"));
         } catch {
           throw new KilnError("KILN_JIRA_WRITE_ALREADY_ATTEMPTED", "the prior Jira write attempt needs manual resolution");
         }
         let finish;
         try {
           const priorPreview = kickoffPreview(previous.previewPath);
-          finish = JSON.parse(readFileSync10(`${priorPreview.path}.finish.json`, "utf8"));
+          finish = JSON.parse(readFileSync11(`${priorPreview.path}.finish.json`, "utf8"));
           if (previous.previewSha256 !== priorPreview.sha256 || !/^[0-9a-f]{64}$/.test(previous.token ?? "") || typeof previous.toolUseId !== "string") throw new Error("invalid prior attempt");
         } catch {
           throw new KilnError("KILN_JIRA_WRITE_ALREADY_ATTEMPTED", "the prior Jira write attempt needs manual resolution");
@@ -12939,8 +13535,8 @@ var COMMANDS = {
     const store = jiraCapturePaths(resolveJiraStore(), key).dir;
     let attempt, response;
     try {
-      attempt = JSON.parse(readFileSync10(`${preview.path}.attempt.json`, "utf8"));
-      response = JSON.parse(readFileSync10(`${preview.path}.response.json`, "utf8"));
+      attempt = JSON.parse(readFileSync11(`${preview.path}.attempt.json`, "utf8"));
+      response = JSON.parse(readFileSync11(`${preview.path}.response.json`, "utf8"));
     } catch {
       throw new KilnError("KILN_JIRA_WRITE_UNRESOLVED", "the Jira write attempt has no complete hook response");
     }
@@ -13049,7 +13645,7 @@ ${v.idea.trim()}
         throw new KilnError("KILN_APPROVED_PLAN_ACCEPTANCE_MISMATCH", "the ticket acceptance changed since the run opened; return to kickoff", { ticket: ref, planPath: approvedPlan.path });
       }
       checkSavedApprovedPlan(state2);
-      const record2 = JSON.parse(readFileSync10(paths.party.record, "utf8"));
+      const record2 = JSON.parse(readFileSync11(paths.party.record, "utf8"));
       const flow2 = flowFor(flowCtx(meta2));
       return { resumed: true, dir: paths.dir, ...ENDED.has(state2.status) ? { again: `this run ended ${state2.status}; open --again sets it aside and starts a fresh run on this ticket` } : {}, fillState: openFillState(fillStateLines({ brief: state2.brief, taskGoals, roster: record2.roster, changed: ticketChangesFor(state2, ticketRead.body).parts }), source, ticketRead), roster: { rowId: record2.roster.rowId, fielded: record2.roster.fielded.map((m) => m.classKey) }, next: nextSummary(flow2, state2, paths, meta2) };
     }
@@ -13192,6 +13788,37 @@ ${v.idea.trim()}
     if (!checked.valid) throw new KilnError("KILN_CLASS_CHECK_INVALID", `${classId} ${kind2} fails its contract`, { classId, kind: kind2, issues: checked.issues });
     return { valid: true, classId, kind: kind2 };
   },
+  "class-bind"(args) {
+    const v = flags(args, { class: { type: "string" }, input: { type: "string" }, "host-config": { type: "string" }, installed: { type: "string" }, launcher: { type: "string" } });
+    const classId = requireFlag(v, "class");
+    const entry = getRegistry()[classId];
+    if (!entry || entry.borrowed) throw new KilnError("KILN_CLASS_UNKNOWN", `${classId} is not a registered local Class`, { classId });
+    readInput(v, "installed");
+    const installed = verifyInstalledBody(entry, v.installed, process.env.KILN_CLASSES_ROOT);
+    if (!installed.matches) throw new KilnError("KILN_CLASS_AGENT_STALE", `${classId}: the installed body does not match canon`, installed);
+    const catalog = loadClassCatalog(process.env.KILN_CLASSES_ROOT);
+    const launcherPaths = entry.play.kind === "agent" ? catalog.getClass(classId).manifest.members.skills : [];
+    if (launcherPaths.length > 0) {
+      if (launcherPaths.length !== 1) throw new KilnError("KILN_CLASS_LAUNCHER_AMBIGUOUS", `${classId} declares more than one skill launcher`, { classId, launcherPaths });
+      if (v.launcher === void 0) throw new KilnError("KILN_CLASS_LAUNCHER_MISSING", `${classId} needs its installed launcher skill for direct binding`, { classId });
+      const actual = readInput(v, "launcher");
+      const expected = readFileSync11(path7.join(catalog.getClass(classId).source.root, launcherPaths[0]), "utf8");
+      if (actual !== expected) throw new KilnError("KILN_CLASS_LAUNCHER_STALE", `${classId}: the installed launcher skill does not match canon`, { classId, launcher: v.launcher });
+    }
+    const input = readJsonInput(v, "input");
+    const config = readJsonInput(v, "host-config");
+    for (const field of ["modelBindings", "guarantees", "capabilities", "loadout"]) {
+      if (config?.[field] === void 0) throw new KilnError("KILN_HOST_CONFIG_MISSING", `host config must state ${field}`, { field });
+    }
+    const adapter = createClaudeCodeAdapter(config);
+    return bindDirectClass({ catalog, classId, input, loadout: config.loadout, adapter });
+  },
+  "class-outcome"(args) {
+    const v = flags(args, { class: { type: "string" }, output: { type: "string" } });
+    const classId = requireFlag(v, "class");
+    const raw = readInput(v, "output");
+    return checkDirectClassReply({ catalog: loadClassCatalog(process.env.KILN_CLASSES_ROOT), classId, raw });
+  },
   "plan-preview"(args) {
     const v = flags(args, { file: { type: "string" } });
     return readPlanPreview(requireFlag(v, "file"));
@@ -13218,7 +13845,7 @@ ${v.idea.trim()}
   show(args) {
     const v = flags(args, { root: { type: "string" }, ticket: { type: "string" } });
     const { paths, meta, state } = openRun(v);
-    const record = JSON.parse(readFileSync10(paths.party.record, "utf8"));
+    const record = JSON.parse(readFileSync11(paths.party.record, "utf8"));
     return { dir: paths.dir, status: state.status, fillState: fillStateLines({ brief: state.brief, taskGoals: state.ticket.taskGoals, roster: record.roster }), cursor: state.cursor, done: state.done, repo: state.repo, ledger: state.ledger.slice(-5).map((e) => ({ actionId: e.actionId, outcome: e.outcome })), next: nextSummary(flowFor(flowCtx(meta)), state, paths, meta) };
   },
   readout(args) {
@@ -13257,7 +13884,7 @@ ${v.idea.trim()}
     const nextBody = writes ? bodyWithReferencesLink(meta, state, url) : null;
     const scoreboard = computeScoreboard({ roles: state.roles, envelopes: readEnvelopes(paths), rations, priceTable, ledger: state.ledger });
     const readout = renderReadout({ state, scoreboard, prUrl: url });
-    const record = JSON.parse(readFileSync10(paths.party.record, "utf8"));
+    const record = JSON.parse(readFileSync11(paths.party.record, "utf8"));
     const reportedAt = (/* @__PURE__ */ new Date()).toISOString();
     const completed = completePartyRecord(record, { laneRuns: record.laneRuns.map((l) => ({ ...l, executionStatus: "complete" })), cost: scoreboard.cost, report: { path: paths.party.report, sha256: sha256Utf8(readout) }, reportedAt });
     if (nextBody !== null) writeTicketBody(meta.ticketRef, meta.source, nextBody, paths.ticketBody);

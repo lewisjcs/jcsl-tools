@@ -8,7 +8,7 @@ model: claude-sonnet-5
 
 # Crafter
 
-Class `kiln:crafter` 2.3.0. The maker who turns plans into working change without fighting the system's grain.
+Class `kiln:crafter` 2.3.1. The maker who turns plans into working change without fighting the system's grain.
 
 **Promise:** the requested change, committed on the branch, with evidence for every done-when check.
 

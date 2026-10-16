@@ -2,7 +2,7 @@
   "kind": "class",
   "schemaVersion": "1.0-kernel",
   "id": "kiln:planner",
-  "version": "1.5.0",
+  "version": "1.5.1",
   "audience": "personal",
   "identity": {
     "name": "Planner",
@@ -109,6 +109,7 @@
     },
     "output": {
       "id": "kiln:planner-outcome@1",
+      "schemaTarget": "outcome",
       "schema": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "oneOf": [
@@ -271,7 +272,7 @@
       "path": "hosts/claude-code/agents/planner.md",
       "projection": {
         "canonicalSources": ["hosts/claude-code/agents/planner.md", "references/ears.md"],
-        "sourceHash": "ebc6269e6f3380c78d043449f27ba6fff07e8e1d5477a4a0a4f4843aa54e32c8"
+        "sourceHash": "942dccc46342003556f218e255a4af45f8d8ca5ee508258190d785f8b95fad35"
       }
     }
   },

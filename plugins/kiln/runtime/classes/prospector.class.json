@@ -2,7 +2,7 @@
   "kind": "class",
   "schemaVersion": "1.0-kernel",
   "id": "kiln:prospector",
-  "version": "1.5.0",
+  "version": "1.5.3",
   "audience": "personal",
   "identity": {
     "name": "Prospector",
@@ -21,7 +21,7 @@
   },
   "functionRole": "researcher",
   "members": {
-    "skills": [],
+    "skills": ["hosts/claude-code/skills/prospector/SKILL.md"],
     "agents": ["hosts/claude-code/agents/prospector.md"],
     "references": []
   },
@@ -49,6 +49,7 @@
     },
     "output": {
       "id": "kiln:prospector-outcome@1",
+      "schemaTarget": "outcome",
       "schema": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "oneOf": [
@@ -105,7 +106,7 @@
       "path": "hosts/claude-code/agents/prospector.md",
       "projection": {
         "canonicalSources": ["hosts/claude-code/agents/prospector.md"],
-        "sourceHash": "164bee341fa9a0b4055d57383dae0de4f9da8b6fc7b4ddff5463da1b0f3ba951"
+        "sourceHash": "5722294d55c2a35ea8477f6dcccc26de65823ecf070dbca7ded3f4994160bdd9"
       }
     }
   },
