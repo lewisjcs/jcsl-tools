@@ -7,6 +7,15 @@ each lens and how the Validator disproves one, for a code diff specifically.
 
 ## Finder application
 
+### Revision scope
+
+For a narrow revision, read the new patch and prior findings first. Inspect
+the changed definitions and named immediate callers or imports only when a
+specific claim needs them. Keep each search tied to a symbol in that patch
+or a prior finding. Record the expanded path in the finding's evidence.
+When the patch is seven lines, a survey of every package or test in the
+repository is outside this review's scope.
+
 ### Post-image anchoring
 
 Before emitting a finding, confirm its evidence appears on the `+`
