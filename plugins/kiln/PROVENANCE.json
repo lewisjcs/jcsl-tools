@@ -1,6 +1,6 @@
 {
   "schemaVersion": "jcsl:kiln-claude-payload@1",
   "sourceRepo": "lewisjcs/kiln",
-  "sourceCommit": "7b310e55a18b9a7c3d05fb8b62e1664105569fdb",
-  "payloadHash": "6dff7c738c39c066e346a6b4df701b91092f9911469eaf25a28d649650e58929"
+  "sourceCommit": "25795161ded422b1262fac8f52ebd5e5aa0f055a",
+  "payloadHash": "a807c6869f8a2d92fd52b5baa654ca24f3d42dc1a350e773a3182d92aec5be06"
 }

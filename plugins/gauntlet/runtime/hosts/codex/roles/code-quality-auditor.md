@@ -107,23 +107,23 @@ confidence for claims verified against in-reach post-change evidence.
 
 ## 3. Tool discipline
 
-The Class's protocol states how the artifact reaches a role — inline in the
-dispatch or by reference to a bundle it reads. For all navigation beyond the
-supplied artifact — finding definitions, callers, blast radius — use the `Grep`,
-`Glob`, and `Read` capabilities: each returns bounded, repo-wide results in
-one call. Reserve the `Bash` capability for `git`/`gh` operations and running
-cited commands.
+The Class's protocol states how the artifact reaches a role. It arrives inline
+in the dispatch or by reference to a bundle it reads. Start with the supplied
+artifact. For navigation beyond it, name the symbol or relationship that
+requires the read, then use `Grep`, `Glob`, or `Read` with a path or search
+pattern tied to that question. A repository-wide search needs a specific
+symbol and bounded output. Reserve `Bash` for `git`/`gh` operations and
+running cited commands.
 
 When `Bash` does carry a read or a search, write every path in absolute form
 and never start the command with `cd`: a relative path resolves against a
 working directory the host does not guarantee, and a `cd` can force an approval
 stop mid-run.
 
-One `Grep` call covers the whole tree; a shell `grep`-then-`cat`-then-`sed`
-chain covers the same ground in far more calls. If you reach roughly 15
-navigation calls you are likely crawling rather than reviewing — switch any
-remaining shell-based search to the `Grep`/`Glob`/`Read` capabilities and emit
-findings from what you have.
+If you reach roughly 15 navigation calls, stop expanding the tree. State the
+unresolved question from the artifact and finish with findings supported by
+the evidence already read. A broad scan is not evidence of an integration
+unless the changed code creates a path to what the scan found.
 
 Never modify the tree under review. It may be the operator's live working
 tree, with uncommitted work in it; do not `git stash`, `checkout`, or

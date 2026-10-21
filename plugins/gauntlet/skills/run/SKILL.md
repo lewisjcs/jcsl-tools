@@ -26,7 +26,7 @@ One artifact per run. The runtime reviews one file per party run and refuses a d
 
 ## 1. Preflight
 
-**Host.** The Party runs under Claude Code: step 6 dispatches with the Agent tool against the `claude-code` host binding, and no other host binding is wired at the Party level. If this session is not Claude Code (no Agent tool with `subagent_type`; a `codex` CLI session, for instance), stop here and say so: the single-lane sibling skills listed under **When NOT to use** above are what such a host can run, one artifact at a time, each on the hosts that skill itself supports. Never form a party on a host that cannot drive it.
+**Host.** The Party runs under Claude Code. Step 6 uses the packaged Claude dispatch wrapper with the `claude-code` host binding. If this session is not Claude Code, stop here and name the supported single-lane sibling skills. Before forming a party, check that `${CLAUDE_PLUGIN_ROOT}/runtime/bin/dispatch.mjs` exists. A missing wrapper means this installed plugin cannot enforce the turn limit.
 
 **Sibling-name check.** Run `ls ${CLAUDE_PLUGIN_ROOT}/skills/` and note the sibling skill names. Another plugin, or a local skill of the same bare name, can shadow one of them. Every sibling dispatch in this skill therefore uses the plugin-qualified form — `Skill: gauntlet:<name>` — never the bare name.
 
@@ -117,7 +117,7 @@ Roster (<roster.rowId>): fielded <classKey>… · skipped <classKey> (<reason>)�
 
 Name every fielded lane, every skipped lane with the runtime's reason, and every gap with its reason. Write `none` for an empty group. Do not editorialize, re-order, or drop a group — the skipped and gap entries are what tell the operator which coverage this run does *not* have.
 
-When `revision` is not null, the runtime linked this party to an earlier posted one. Add a line under the roster: `revision <number> of <priorPartyRunId> · narrow|full`, and when the mode is `full` without the operator asking for it, append the runtime's `fallbackReason`. In `narrow` mode the verifier lane reads a range-diff against the prior head and the other lanes read the pull-request diff scoped to the files the push touched (`revision.files`); do not re-derive or second-guess the mode.
+When `revision` is not null, the runtime linked this party to an earlier posted one. Add a line under the roster: `revision <number> of <priorPartyRunId> · narrow|full`, and when the mode is `full` without the operator asking for it, append the runtime's `fallbackReason`. In `narrow` mode the verifier reads a range-diff and the other lanes read only the patch added since the prior reviewed head (`revision.files`). A changed base or rewritten history selects `full` with an explicit reason.
 
 ## 5. The go-live question
 
@@ -139,40 +139,39 @@ The go-live lane's SHIP / HOLD / NEEDS-INFO verdict is a separate verdict system
 
 ## 6. Drive the fielded lanes
 
-Each lane already has its own run directory with `bundle.json` staged by `party-form` — stage nothing yourself, and never create a run directory. Lanes share nothing writable: `init`, `receipt`, and `result` touch only their own run directory. So drive them **at the same time**: start every fielded lane's first dispatch at once, and from then on treat each lane as its own handshake — when one lane's dispatch returns, receipt it and start that lane's next dispatch without waiting on any other lane. Within a lane the order is the runtime's, untouched. Move to step 7 only when every lane is terminal and has run `result`.
+Each lane has its own staged `bundle.json` and run directory. Start fielded lanes in parallel, then advance each lane only when its current dispatch and receipt finish. A lane's pending action supplies `hostBinding.agent`, `hostBinding.model`, and `hostBinding.maxTurns`. The agent name selects `${CLAUDE_PLUGIN_ROOT}/agents/<name without gauntlet: prefix>.md`. Save `next.promptBody` verbatim to `<runDir>/<actionId>-prompt.md`.
 
-Some artifacts field no lanes at all: a skill file and an agent-instruction file have no admitted Class today, so their whole roster is gaps. When `lanes` is empty there is nothing to drive — go straight to step 7, and let step 9 offer the gaps.
+Initialize each lane before its first dispatch. Read the prefixed `artifactFamily` from its `bundle.json` and run `node "${CLAUDE_PLUGIN_ROOT}/runtime/bin/cli.mjs" init --bundle <runDir>/bundle.json --family <artifactFamily> --host claude-code --class <classKey> --out <runDir>/state.json`. Use the returned `next` and `hostBinding`. For later actions, use the `next` and `hostBinding` returned by `receipt`, or run `next --state <runDir>/state.json` after an interruption.
 
-```
-node "${CLAUDE_PLUGIN_ROOT}/runtime/bin/cli.mjs" init --bundle <runDir>/bundle.json --family <family> --host claude-code --class <classKey> --out <runDir>/state.json
-# stdout: {issues, next, hostBinding} — next is the pending action or {terminal: true}; hostBinding is {agent, model} or null once terminal
-# loop while next.terminal is not true:
-#   Agent tool: subagent_type = hostBinding.agent, prompt = next.promptBody verbatim
-#   role key = next.kind with the leading "dispatch-" removed (finder, validator, auditor, verifier, …)
-#   write <runDir>/<role>-output-<attempt>.json (raw) and <runDir>/<role>-host-meta-<attempt>.json = {"modelBinding": {"<role>": {"model": hostBinding.model}}, "usage": {"inputTokens", "cacheWriteTokens", "cacheReadTokens", "turns": <summed from the dispatch transcript, see below>, "latencySeconds": <wall seconds>}}
-#   receipt --state <runDir>/state.json --action next.actionId --output <raw> --host-meta <meta>   → prints the same {issues, next, hostBinding} shape
-node ... result --state <runDir>/state.json --out <runDir>/result.json --evidence <runDir>/evidence.json
-```
-
-**`--family` takes the prefixed form.** `init` wants the value `bundle.json` records as `artifactFamily` — `jcsl:artifact-family:code-diff`, not the bare `code-diff` that the lane's `family` field carries. Read it off `<runDir>/bundle.json`. Passing the bare id is a hard refusal, not a warning.
-
-**Which agent for which action.** The runtime names it: every `init`, `next`, and `receipt` reply carries `hostBinding.agent`, the `subagent_type` to dispatch, and `hostBinding.model`, the model that agent is bound to. Dispatch to exactly that agent and pass `next.promptBody` verbatim; never paste artifact content into a prompt yourself — the prompt already tells the agent to read the artifact from the run directory — and never pick an agent from memory: a lane you have not seen before is just a lane whose binding you read off the reply.
-
-**Dispatching side by side.** Start every lane's first dispatch as separate Agent calls in the same turn — one dispatch per call, never two roles in one call — and let them run in the background. As each returns, receipt its lane and issue that lane's next call. A lane waiting on its dispatch never blocks another lane's receipt.
-
-**Host metadata on every receipt.** Always pass `--host-meta`. The role key is `next.kind` without its `dispatch-` prefix. Record `hostBinding.model` as the model — it is the same value the agent file pins, read from the bindings the runtime loaded; the Agent tool does not report which model ran, so the pinned value is the only measurable one. Where the dispatch also pins a reasoning effort, record it in the same object under `reasoningEffort`. Add a `usage` object (`inputTokens`, `cacheWriteTokens`, `cacheReadTokens`, `turns`, `latencySeconds`) — no `outputTokens`, see below. Measure `latencySeconds` per dispatch, from that lane's own Agent call to its own return; when overlapping dispatches make a lane's wall time unmeasurable, leave the field out. The Agent tool's own result reports one unsplit token total, which the pricer cannot use; the real split is in the dispatch's transcript. Each Agent call writes `<config-dir>/projects/<project-slug>/<session-id>/subagents/agent-<agentId>.jsonl`, where `agentId` is the id the Agent tool result names — read the split from there:
+Run one process for each pending action:
 
 ```
-jq -s '[.[] | select(.type=="assistant")] | group_by(.message.id) | map(last)
-  | {inputTokens: (map(.message.usage.input_tokens)|add), cacheWriteTokens: (map(.message.usage.cache_creation_input_tokens)|add), cacheReadTokens: (map(.message.usage.cache_read_input_tokens)|add), turns: length}' <transcript>
+node "${CLAUDE_PLUGIN_ROOT}/runtime/bin/dispatch.mjs" \
+  --agent-file "${CLAUDE_PLUGIN_ROOT}/agents/<agent-name>.md" \
+  --prompt-file <runDir>/<actionId>-prompt.md \
+  --bundle <runDir>/bundle.json \
+  --model <hostBinding.model> \
+  --role <next.kind without dispatch- prefix> \
+  --max-turns <hostBinding.maxTurns> \
+  --output <runDir>/<role>-output-<attempt>.json \
+  --meta <runDir>/<role>-host-meta-<attempt>.json
 ```
 
-The `group_by(.message.id) | map(last)` step is load-bearing: a transcript records several `assistant` lines per message as the reply streams in, each carrying that message's usage so far, and summing every line over-counts the lane two to three times. Keep the last line per message id. Pass the three split fields exactly as the query prints them; the pricer reads them unchanged. **Never record `outputTokens`.** A subagent transcript carries only the stream-start placeholder for `output_tokens` (a single-digit count on a message thousands of characters long), and no other host source has the final figure — the Agent tool reports one unsplit total, and transcript-reading tools such as ccusage sum the same placeholder. Leave the field out: the pricer books zero for output and the report's cost block lists `outputTokens` as unavailable for that role — the honest figure. Only when the transcript cannot be found do you fall back to the Agent tool's total, recorded as `totalTokens` in the same `usage` object with the split fields left out — never guess a split. A metric you cannot measure is left out — the runtime records it as a named omission rather than a guess, and a run with no `modelBinding` receipt produces an unverifiable evidence record.
+The wrapper runs a fresh Claude SDK query with the role's model and a host-enforced turn cap. For a pinned pull request, it starts in the reviewed worktree and refuses a mismatched commit. Its stdout lists read targets. Inspect unusually broad targets before launching another lane. It writes the raw member reply and host metadata, including actual turns, usage, and tool calls. The SDK result `error_max_turns` becomes raw host-failure output; never interpret it as a clean finding set.
 
-**Run `result` once `next` reports `terminal: true`**, at the exact paths above — `party-report` (step 7) reads a lane's findings from `<runDir>/result.json`, so a result written anywhere else leaves the lane unreadable and the party reports it as failed. A lane that ended in a gap is still terminal: run `result` anyway and let the other lanes finish. Do not retry it, do not substitute a lane, and do not stop the party — step 7's report renders a failed lane as a blocker on its own.
+Pass those files to the runtime unchanged:
+
+```
+node "${CLAUDE_PLUGIN_ROOT}/runtime/bin/cli.mjs" receipt \
+  --state <runDir>/state.json --action <actionId> \
+  --output <runDir>/<role>-output-<attempt>.json \
+  --host-meta <runDir>/<role>-host-meta-<attempt>.json
+```
+
+Follow the returned `next` action for that lane, including the runtime's single retry. If the wrapper process fails before writing output, report the process error and stop that lane. When `next` reports `terminal: true`, run `result --state <runDir>/state.json --out <runDir>/result.json --evidence <runDir>/evidence.json` once. A lane that ended in a gap is still terminal; run `result` and let the Party report that gap. If no lanes were fielded, continue to step 7.
 
 <HARD-GATE>
-The host never reorders, collapses, or skips a stage; never decides whether a second Finder or Validator pass runs; and never invents, drops, or re-labels a candidate or verdict ID. One dispatch per Agent call — never the Finder and the Validator from a single call. Each dispatch is a fresh, isolated context with no shared history and no visibility into the other role's reasoning. Running lanes side by side changes none of this: each lane's handshake is still the runtime's order, receipt by receipt. Do not adjudicate, filter, re-rank, or re-severity anything: adjudication is the runtime's job, not the host's. Do not skip `receipt`, and do not infer a result before `next` reports `terminal: true`. An out-of-order, substituted, stale, or wrong-digest receipt is a typed refusal the runtime raises itself — surface it; never work around it or retry outside the runtime's own one-retry-per-stage rule.
+Never reorder or skip a stage. Never place two roles in one dispatch. Never change the member's output, invent a finding, or adjudicate a lane yourself. Each wrapper process gets only its own role, prompt, and staged artifact. Run `receipt` for every completed dispatch before acting on the next one.
 </HARD-GATE>
 
 ## 7. Close the party

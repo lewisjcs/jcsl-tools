@@ -3259,8 +3259,8 @@ var require_utils = __commonJS({
       }
       return ind;
     }
-    function removeDotSegments(path8) {
-      let input = path8;
+    function removeDotSegments(path9) {
+      let input = path9;
       const output = [];
       let nextSlash = -1;
       let len = 0;
@@ -3669,8 +3669,8 @@ var require_schemes = __commonJS({
       }
       if (wsComponent.resourceName) {
         const queryIndex = wsComponent.resourceName.indexOf("?");
-        const path8 = queryIndex === -1 ? wsComponent.resourceName : wsComponent.resourceName.slice(0, queryIndex);
-        wsComponent.path = path8 && path8 !== "/" ? path8 : void 0;
+        const path9 = queryIndex === -1 ? wsComponent.resourceName : wsComponent.resourceName.slice(0, queryIndex);
+        wsComponent.path = path9 && path9 !== "/" ? path9 : void 0;
         wsComponent.query = queryIndex === -1 ? void 0 : wsComponent.resourceName.slice(queryIndex + 1);
         wsComponent.resourceName = void 0;
       }
@@ -7459,7 +7459,7 @@ import { parseArgs } from "node:util";
 import { randomBytes } from "node:crypto";
 import { readFileSync as readFileSync11, existsSync as existsSync2, writeFileSync as writeFileSync3, realpathSync as realpathSync3, rmSync as rmSync2, renameSync as renameSync3, mkdirSync as mkdirSync3, rmdirSync } from "node:fs";
 import { spawnSync } from "node:child_process";
-import path7 from "node:path";
+import path8 from "node:path";
 
 // node_modules/@lewisjcs/statblock/src/runtime/digest.mjs
 import { createHash } from "node:crypto";
@@ -7811,16 +7811,16 @@ function recordFailure(protocol, state, { stage, attempt, buildRetryAction, fail
   };
 }
 var WRITES_AVAILABILITY = /* @__PURE__ */ new Set(["measured", "unavailable"]);
-function normalizeWritePath(path8) {
-  if (typeof path8 !== "string" || path8.length === 0) return null;
-  if (path8.startsWith("/") || path8.includes("\\")) return null;
-  const stripped = path8.startsWith("./") ? path8.slice(2) : path8;
+function normalizeWritePath(path9) {
+  if (typeof path9 !== "string" || path9.length === 0) return null;
+  if (path9.startsWith("/") || path9.includes("\\")) return null;
+  const stripped = path9.startsWith("./") ? path9.slice(2) : path9;
   const body = stripped.endsWith("/") ? stripped.slice(0, -1) : stripped;
   if (body.split("/").some((segment) => segment === ".." || segment === "." || segment === "")) return null;
   return stripped;
 }
-function insideBoundary(path8, allowedPaths) {
-  const normalized = normalizeWritePath(path8);
+function insideBoundary(path9, allowedPaths) {
+  const normalized = normalizeWritePath(path9);
   if (normalized === null) return false;
   return allowedPaths.some((entry) => entry.endsWith("/") ? normalized.startsWith(entry) : normalized === entry);
 }
@@ -8569,12 +8569,12 @@ function isAudienceVisible(resourceAudience, consumerAudience) {
 function fail2(code, message, details) {
   throw new StatblockError(code, message, details);
 }
-function isContained(path8, root) {
-  const pathFromRoot = relative(root, path8);
+function isContained(path9, root) {
+  const pathFromRoot = relative(root, path9);
   return pathFromRoot === "" || !pathFromRoot.startsWith(`..${sep}`) && pathFromRoot !== ".." && !isAbsolute(pathFromRoot);
 }
-function isSafeRelativePath(path8) {
-  return typeof path8 === "string" && path8.length > 0 && !isAbsolute(path8) && !path8.split(/[\\/]/).includes("..");
+function isSafeRelativePath(path9) {
+  return typeof path9 === "string" && path9.length > 0 && !isAbsolute(path9) && !path9.split(/[\\/]/).includes("..");
 }
 function resolveRoot(source) {
   if (typeof source.root !== "string" || !isAbsolute(source.root)) {
@@ -8636,9 +8636,9 @@ function resolveManifestPath(root, manifestPath, source, type) {
   }
 }
 function parseManifest(root, manifestPath, source, type) {
-  const path8 = resolveManifestPath(root, manifestPath, source, type);
+  const path9 = resolveManifestPath(root, manifestPath, source, type);
   try {
-    return JSON.parse(readFileSync5(path8, "utf8"));
+    return JSON.parse(readFileSync5(path9, "utf8"));
   } catch {
     fail2("MANIFEST_PATH_INVALID", "Manifest file cannot be read and parsed", {
       sourceId: source.id,
@@ -9218,27 +9218,27 @@ function deepFreeze4(value) {
   }
   return value;
 }
-function isContained2(path8, root) {
-  const pathFromRoot = relative2(root, path8);
+function isContained2(path9, root) {
+  const pathFromRoot = relative2(root, path9);
   return pathFromRoot === "" || !pathFromRoot.startsWith(`..${sep2}`) && pathFromRoot !== ".." && !isAbsolute2(pathFromRoot);
 }
-function resolveSourceFile(root, path8, type) {
-  if (typeof root !== "string" || !isAbsolute2(root) || typeof path8 !== "string" || path8.length === 0 || isAbsolute2(path8)) {
-    fail4("HOST_ENTRYPOINT_MISSING", "Host source file is missing or invalid", { type, path: path8 });
+function resolveSourceFile(root, path9, type) {
+  if (typeof root !== "string" || !isAbsolute2(root) || typeof path9 !== "string" || path9.length === 0 || isAbsolute2(path9)) {
+    fail4("HOST_ENTRYPOINT_MISSING", "Host source file is missing or invalid", { type, path: path9 });
   }
-  const candidate = resolve2(root, path8);
+  const candidate = resolve2(root, path9);
   if (!isContained2(candidate, root)) {
-    fail4("HOST_ENTRYPOINT_MISSING", "Host source file escapes its catalog root", { type, path: path8 });
+    fail4("HOST_ENTRYPOINT_MISSING", "Host source file escapes its catalog root", { type, path: path9 });
   }
   try {
     const resolved = realpathSync2(candidate);
     if (!isContained2(resolved, root) || !statSync2(resolved).isFile()) {
-      fail4("HOST_ENTRYPOINT_MISSING", "Host source file is missing or invalid", { type, path: path8 });
+      fail4("HOST_ENTRYPOINT_MISSING", "Host source file is missing or invalid", { type, path: path9 });
     }
     return resolved;
   } catch (error) {
     if (error instanceof StatblockError) throw error;
-    fail4("HOST_ENTRYPOINT_MISSING", "Host source file is missing or invalid", { type, path: path8 });
+    fail4("HOST_ENTRYPOINT_MISSING", "Host source file is missing or invalid", { type, path: path9 });
   }
 }
 function capabilityStatusFor(manifest, capabilities) {
@@ -9299,8 +9299,8 @@ function cloneCapabilities(capabilities) {
 }
 function computeProjectionSourceHash(records) {
   const hash = createHash2("sha256");
-  for (const { path: path8, bytes } of records) {
-    hash.update(path8, "utf8");
+  for (const { path: path9, bytes } of records) {
+    hash.update(path9, "utf8");
     hash.update("\0", "utf8");
     hash.update(createHash2("sha256").update(bytes).digest("hex"), "utf8");
     hash.update("\n", "utf8");
@@ -9310,9 +9310,9 @@ function computeProjectionSourceHash(records) {
 function projectionFor(manifest, source, entrypoint) {
   if (entrypoint.projection === void 0) return void 0;
   const { canonicalSources, sourceHash } = entrypoint.projection;
-  const resolved = canonicalSources.map((path8) => resolveSourceFile(source.root, path8, "projection-source"));
-  const actualSourceHash = computeProjectionSourceHash(canonicalSources.map((path8, index) => ({
-    path: path8,
+  const resolved = canonicalSources.map((path9) => resolveSourceFile(source.root, path9, "projection-source"));
+  const actualSourceHash = computeProjectionSourceHash(canonicalSources.map((path9, index) => ({
+    path: path9,
     bytes: readFileSync6(resolved[index])
   })));
   if (actualSourceHash !== sourceHash) {
@@ -9419,7 +9419,7 @@ function createHostAdapter({
       }
       const absolutePath = resolveSourceFile(source.root, entrypoint.path, "entrypoint");
       const projection = projectionFor(manifest, source, entrypoint);
-      const references = invocation.loadout.references.map((path8) => resolveSourceFile(source.root, path8, "reference"));
+      const references = invocation.loadout.references.map((path9) => resolveSourceFile(source.root, path9, "reference"));
       const descriptor = {
         host: hostId,
         classId: manifest.id,
@@ -10676,7 +10676,7 @@ var SPEC_PATH = /\/specs\/[^/]*-design\.md$/;
 function lineNumbers(lines, re) {
   return lines.map((l, i) => re.test(l) ? i + 1 : 0).filter((n2) => n2 > 0);
 }
-function documentKindOf(rawText, path8) {
+function documentKindOf(rawText, path9) {
   const text = normalizeBody(rawText);
   const lines = text.split("\n");
   const sp = lineNumbers(lines, SP_TASK);
@@ -10686,7 +10686,7 @@ function documentKindOf(rawText, path8) {
   const status = lines.findIndex((l) => STATUS.test(l));
   const summary = lines.findIndex((l) => l.trim() === "## Summary");
   if (status !== -1 && summary !== -1) return { kind: "decision", shape: "designer-decision", lines: [status + 1, summary + 1] };
-  if (SPEC_PATH.test(path8)) return { kind: "decision", shape: "brainstorming-spec", lines: [] };
+  if (SPEC_PATH.test(path9)) return { kind: "decision", shape: "brainstorming-spec", lines: [] };
   return null;
 }
 function firstParagraph(lines) {
@@ -10704,7 +10704,7 @@ function boldField(lines, name) {
   const line = lines.find((l) => re.test(l));
   return line === void 0 ? null : re.exec(line)[1].trim();
 }
-function briefFromPlan(rawText, path8) {
+function briefFromPlan(rawText, path9) {
   const text = normalizeBody(rawText);
   const lines = text.split("\n");
   const taskRe = lines.some((l) => SP_TASK.test(l)) ? SP_TASK : KILN_TASK;
@@ -10722,12 +10722,12 @@ ${headings.map((h) => `- ${h}`).join("\n")}` : null].filter((t) => t !== null &&
       return;
     }
     const f = FILE_LINE.exec(l.trim());
-    if (f && current !== null) items.push({ fact: `${current} changes ${f[1]}`, source: `${path8}:${i + 1}` });
+    if (f && current !== null) items.push({ fact: `${current} changes ${f[1]}`, source: `${path9}:${i + 1}` });
   });
   return {
     intent: goal.length > 0 ? { by: "party", text: goal } : null,
     decision: decisionText.length > 0 ? { by: "party", text: decisionText } : null,
-    facts: { by: "party", items: items.length > 0 ? items : [{ fact: "the plan names no file; its tasks are the facts", source: `${path8}:1` }] },
+    facts: { by: "party", items: items.length > 0 ? items : [{ fact: "the plan names no file; its tasks are the facts", source: `${path9}:1` }] },
     taskGoals: headings.map((h) => h.replace(/^Task \d+: /, ""))
   };
 }
@@ -11531,7 +11531,7 @@ function readsAsDocument(state, draft) {
 }
 var NO_READS = Object.freeze({ reads: Object.freeze({ given: null, ticket: null, found: null }), unreadable: Object.freeze([]), unknown: Object.freeze([]) });
 function documentReads(state, ctx, draft, kindOpen) {
-  const read = (which, path8, kind2) => ({ which, path: path8, kind: kind2, ...ctx.readDocument(path8, kind2, draft.repository) });
+  const read = (which, path9, kind2) => ({ which, path: path9, kind: kind2, ...ctx.readDocument(path9, kind2, draft.repository) });
   const given = state.documents.plan;
   const all = {
     given: given !== null && given.kind !== null && !draft.givenDropped ? read("given", given.path, given.kind) : null,
@@ -12416,7 +12416,135 @@ function renderReadout({ state, scoreboard, prUrl = null }) {
 // src/kickoff-approval.mjs
 import { createHash as createHash3 } from "node:crypto";
 import { readFileSync as readFileSync10, writeFileSync as writeFileSync2 } from "node:fs";
+import path6 from "node:path";
+
+// src/approved-plan-shape.mjs
 import path5 from "node:path";
+var TASK = /^#{2,3} Task (\d+): (.+)$/;
+var SOURCE = /^\s*(?:[-*]\s+)?(?:\*\*)?Source ticket:(?:\*\*)?\s*(\S.*?)\s*$/i;
+var FILE_ENTRY = /^(?:[-*]\s*)?(?:\*\*)?(Files|Create|Modify|Test|Delete|Add):(?:\*\*)?\s*(.*)$/i;
+function shape(message, details = {}) {
+  throw new KilnError("KILN_APPROVED_PLAN_SHAPE", message, details);
+}
+function safeFile(name) {
+  if (name.trim() !== name || name.length === 0 || path5.isAbsolute(name) || name.split("/").some((part) => part === "." || part === "..") || name.includes("//") || name.includes("\\") || /[\0\r\n]/.test(name)) {
+    shape("task files must be safe repository-relative paths", { path: name });
+  }
+}
+function filePaths(lines, startLine) {
+  const files = [];
+  const fileLines = [];
+  const spans = [];
+  let inFiles = false;
+  let fileStarted = false;
+  for (const [index, raw] of lines.entries()) {
+    const line = raw.trim();
+    const entry = FILE_ENTRY.exec(line);
+    if (entry !== null) {
+      const label = entry[1].toLowerCase();
+      const names = [...entry[2].matchAll(/`([^`]+)`/g)].map((match) => match[1]);
+      if (names.length === 0 && label !== "files") shape("each task file line must name a path in backticks", { line: raw, lineNumber: startLine + index });
+      inFiles = label === "files" && names.length === 0;
+      fileStarted = false;
+      const selected = label === "files" ? names : names.slice(0, 1);
+      if (selected.length > 0) fileLines.push(raw);
+      for (const name of selected) {
+        safeFile(name);
+        if (!files.includes(name)) files.push(name);
+        spans.push({ field: "file", line: startLine + index, value: name });
+      }
+      continue;
+    }
+    if (!inFiles) continue;
+    if (line === "") {
+      if (fileStarted) inFiles = false;
+      continue;
+    }
+    const item = /^[-*]\s+`([^`]+)`(?:\s|$)/.exec(line);
+    if (item === null) {
+      inFiles = false;
+      continue;
+    }
+    safeFile(item[1]);
+    if (!files.includes(item[1])) files.push(item[1]);
+    fileStarted = true;
+    fileLines.push(raw);
+    spans.push({ field: "file", line: startLine + index, value: item[1] });
+  }
+  return { files, fileLines, spans };
+}
+function acceptanceLines(lines, startLine) {
+  const entries = lines.map((line) => line.trim());
+  const firstList = entries.findIndex((line) => /^(?:[-*]|\d+\.)\s+/.test(line));
+  if (firstList === -1) {
+    const first = entries.findIndex(Boolean);
+    if (first === -1) return { acceptance: [], spans: [] };
+    const end = entries.findIndex((line, at) => at > first && line === "");
+    const acceptance2 = entries.slice(first, end === -1 ? void 0 : end);
+    return { acceptance: acceptance2, spans: acceptance2.map((value, at) => ({ field: "acceptance", line: startLine + first + at, value })) };
+  }
+  const marker = /^(?:[-*]|\d+\.)\s+(.+)$/;
+  const acceptance = [];
+  const spans = [];
+  let current = -1;
+  for (let index = firstList; index < entries.length; index += 1) {
+    const line = entries[index];
+    if (line === "") {
+      if (current !== -1) break;
+      continue;
+    }
+    const match = marker.exec(line);
+    if (match !== null) {
+      acceptance.push(match[1].trim());
+      spans.push({ field: "acceptance", line: startLine + index, value: acceptance.at(-1) });
+      current = acceptance.length - 1;
+    } else if (current !== -1 && /^\s+\S/.test(lines[index])) {
+      acceptance[current] += ` ${line}`;
+      spans[current].value = acceptance[current];
+      spans[current].endLine = startLine + index;
+    } else break;
+  }
+  return { acceptance, spans };
+}
+function parseApprovedPlanText(text) {
+  const lines = text.replaceAll("\r\n", "\n").split("\n");
+  const sources = lines.flatMap((line, index) => {
+    const match = SOURCE.exec(line);
+    return match === null ? [] : [{ line: index + 1, value: match[1].trim() }];
+  });
+  if (sources.length !== 1) shape("the plan needs one Source ticket line");
+  const acceptanceStart = lines.findIndex((line) => line.trim() === "## Acceptance criteria");
+  if (acceptanceStart === -1) throw new KilnError("KILN_APPROVED_PLAN_ACCEPTANCE", "the plan needs ## Acceptance criteria");
+  const acceptanceEnd = lines.findIndex((line, index) => index > acceptanceStart && (/^## /.test(line) || TASK.test(line)));
+  const { acceptance, spans: acceptanceSpans } = acceptanceLines(lines.slice(acceptanceStart + 1, acceptanceEnd === -1 ? void 0 : acceptanceEnd), acceptanceStart + 2);
+  if (acceptance.length === 0 || acceptance.some((line) => line.length === 0)) {
+    throw new KilnError("KILN_APPROVED_PLAN_ACCEPTANCE", "the plan needs acceptance criteria");
+  }
+  if (new Set(acceptance).size !== acceptance.length) {
+    throw new KilnError("KILN_APPROVED_PLAN_ACCEPTANCE", "the plan repeats an acceptance criterion");
+  }
+  const headings = lines.map((line, index) => ({ match: TASK.exec(line), index })).filter(({ match }) => match !== null);
+  if (headings.length === 0) shape("the plan needs at least one numbered task");
+  const tasks = headings.map(({ match, index }, position) => {
+    const number = Number(match[1]);
+    if (number !== position + 1) shape(`task ${number} is out of order or repeated`, { task: number, position: position + 1 });
+    const nextHeading = lines.findIndex((line, at) => at > index && /^## /.test(line));
+    const nextTask = headings[position + 1]?.index ?? lines.length;
+    const end = Math.min(nextHeading === -1 ? lines.length : nextHeading, nextTask);
+    const sourceLines = lines.slice(index + 1, end);
+    const markedNonExecutable = /^(?:BLOCKED\s+(?:on|by|pending)\b|optional\s+(?:after|if|later)\b)|\(\s*(?:BLOCKED|optional)\b/i.test(match[2]);
+    const hasBlockingStatus = sourceLines.some((line) => /^\s*\*\*Blocked by:/i.test(line) || /^\s*\*\*Status:/i.test(line) && /\b(?:blocked|optional)\b/i.test(line));
+    if (markedNonExecutable || hasBlockingStatus) {
+      shape(`task ${number} is blocked or optional; settle its executable scope before approval`, { task: number, lineNumber: index + 1 });
+    }
+    const { files, fileLines, spans } = filePaths(sourceLines, index + 2);
+    if (files.length === 0) shape(`task ${number} names no file`, { task: number, lineNumber: index + 1 });
+    return { number, heading: `Task ${number}: ${match[2].trim()}`, goal: match[2].trim(), lines: sourceLines, fileLines, files, spans: [{ field: "goal", line: index + 1, value: match[2].trim() }, ...spans] };
+  });
+  return { sourceTicket: sources[0].value, acceptance, tasks, spans: [{ field: "sourceTicket", line: sources[0].line, value: sources[0].value }, ...acceptanceSpans, ...tasks.flatMap((task) => task.spans)] };
+}
+
+// src/kickoff-approval.mjs
 function readPlanBytes(planPath) {
   try {
     return readFileSync10(planPath);
@@ -12431,16 +12559,22 @@ function planHash(planPath) {
   return sha256(readPlanBytes(planPath));
 }
 function readPlanPreview(planPath) {
-  const absolute = path5.resolve(planPath);
+  const absolute = path6.resolve(planPath);
   const bytes = readPlanBytes(absolute);
   const text = bytes.toString("utf8");
   if (!Buffer.from(text, "utf8").equals(bytes)) {
     throw new KilnError("KILN_PLAN_ENCODING", "the plan is not valid UTF-8", { planPath: absolute });
   }
-  return { planPath: absolute, text, sha256: sha256(bytes) };
+  const { sourceTicket, acceptance, tasks, spans } = parseApprovedPlanText(text);
+  return { planPath: absolute, text, sha256: sha256(bytes), buildContract: {
+    sourceTicket,
+    acceptance,
+    tasks: tasks.map(({ number, goal, files }) => ({ number, goal, files })),
+    spans
+  } };
 }
 function writePlanApproval(planPath, displayedSha256) {
-  const absolute = path5.resolve(planPath);
+  const absolute = path6.resolve(planPath);
   if (!/^[0-9a-f]{64}$/.test(displayedSha256)) {
     throw new KilnError("KILN_PLAN_APPROVAL_HASH_INVALID", "the displayed plan SHA-256 is invalid", { planPath: absolute });
   }
@@ -12448,12 +12582,15 @@ function writePlanApproval(planPath, displayedSha256) {
   if (actualSha256 !== displayedSha256) {
     throw new KilnError("KILN_PLAN_CHANGED_SINCE_DISPLAY", "the plan changed after display. Show it again before approval.", { planPath: absolute, displayedSha256, actualSha256 });
   }
+  if (readPlanPreview(absolute).sha256 !== displayedSha256) {
+    throw new KilnError("KILN_PLAN_CHANGED_SINCE_DISPLAY", "the plan changed after display. Show it again before approval.", { planPath: absolute, displayedSha256 });
+  }
   const approval = { planPath: absolute, sha256: actualSha256, approvedAt: (/* @__PURE__ */ new Date()).toISOString() };
   writeFileSync2(`${absolute}.approval.json`, JSON.stringify(approval, null, 2) + "\n");
   return approval;
 }
 function verifyPlanApproval(planPath) {
-  const absolute = path5.resolve(planPath);
+  const absolute = path6.resolve(planPath);
   const sidecarPath = `${absolute}.approval.json`;
   let approval;
   try {
@@ -12471,51 +12608,9 @@ function verifyPlanApproval(planPath) {
 }
 
 // src/approved-plan.mjs
-import path6 from "node:path";
-var TASK = /^#{2,3} Task (\d+): (.+)$/;
-var SOURCE = /^Source ticket:\s*(\S.*?)\s*$/i;
-var FILE_ENTRY = /^(?:[-*]\s*)?(Files|Create|Modify|Test|Delete|Add):\s*/i;
-function shape(message, details = {}) {
-  throw new KilnError("KILN_APPROVED_PLAN_SHAPE", message, details);
-}
-function filePaths(lines) {
-  const files = [];
-  const fileLines = [];
-  for (const line of lines) {
-    const entry = FILE_ENTRY.exec(line.trim());
-    if (entry === null) continue;
-    const spans = [...line.matchAll(/`([^`]+)`/g)].map((match) => match[1]);
-    const names = entry[1].toLowerCase() === "files" ? spans : spans.slice(0, 1);
-    if (names.length === 0) shape("each task file line must name a path in backticks", { line });
-    fileLines.push(line);
-    for (const name of names) {
-      if (name.trim() !== name || name.length === 0 || path6.isAbsolute(name) || name.split("/").some((part) => part === "." || part === "..") || name.includes("//") || name.includes("\\") || /[\0\r\n]/.test(name)) shape("task files must be safe repository-relative paths", { path: name });
-      if (!files.includes(name)) files.push(name);
-    }
-  }
-  return { files, fileLines };
-}
-function acceptanceLines(lines) {
-  const entries = lines.map((line) => line.trim());
-  const firstList = entries.findIndex((line) => /^(?:[-*]|\d+\.)\s+/.test(line));
-  if (firstList === -1) {
-    const first = entries.findIndex(Boolean);
-    if (first === -1) return [];
-    const end = entries.findIndex((line, at) => at > first && line === "");
-    return entries.slice(first, end === -1 ? void 0 : end);
-  }
-  const marker = /^\d+\.\s+/.test(entries[firstList]) ? /^\d+\.\s+(.+)$/ : /^[-*]\s+(.+)$/;
-  const criteria = [];
-  for (const line of entries.slice(firstList)) {
-    if (line === "") continue;
-    const match = marker.exec(line);
-    if (match === null) break;
-    criteria.push(match[1].trim());
-  }
-  return criteria;
-}
+import path7 from "node:path";
 function readApprovedPlan(planPath, ticketRef) {
-  if (!path6.isAbsolute(planPath)) shape("the approved plan path must be absolute", { planPath });
+  if (!path7.isAbsolute(planPath)) throw new KilnError("KILN_APPROVED_PLAN_SHAPE", "the approved plan path must be absolute", { planPath });
   const approval = verifyPlanApproval(planPath);
   if (!approval.valid) {
     const codes = { missing: "KILN_PLAN_APPROVAL_MISSING", invalid: "KILN_PLAN_APPROVAL_INVALID", stale: "KILN_PLAN_APPROVAL_STALE" };
@@ -12523,34 +12618,74 @@ function readApprovedPlan(planPath, ticketRef) {
   }
   const { text, sha256: sha2562 } = readPlanPreview(planPath);
   if (sha2562 !== approval.sha256) throw new KilnError("KILN_PLAN_APPROVAL_STALE", "the plan changed during the read", { planPath });
-  const lines = text.replaceAll("\r\n", "\n").split("\n");
-  const source = lines.map((line) => SOURCE.exec(line)).filter(Boolean);
-  if (source.length !== 1) shape("the plan needs one Source ticket line");
-  const sourceTicket = source[0][1].trim();
-  if (ticketRef !== void 0 && path6.resolve(ticketRef) !== planPath && canonicalTicketRef(sourceTicket) !== canonicalTicketRef(ticketRef)) {
-    throw new KilnError("KILN_APPROVED_PLAN_TICKET", `the plan names ${sourceTicket}, not ${ticketRef}`, { sourceTicket, ticketRef });
+  const parsed = parseApprovedPlanText(text);
+  if (ticketRef !== void 0 && path7.resolve(ticketRef) !== planPath && canonicalTicketRef(parsed.sourceTicket) !== canonicalTicketRef(ticketRef)) {
+    throw new KilnError("KILN_APPROVED_PLAN_TICKET", `the plan names ${parsed.sourceTicket}, not ${ticketRef}`, { sourceTicket: parsed.sourceTicket, ticketRef });
   }
-  const acceptanceStart = lines.findIndex((line) => line.trim() === "## Acceptance criteria");
-  if (acceptanceStart === -1) throw new KilnError("KILN_APPROVED_PLAN_ACCEPTANCE", "the plan needs ## Acceptance criteria");
-  const acceptanceEnd = lines.findIndex((line, index) => index > acceptanceStart && (/^## /.test(line) || TASK.test(line)));
-  const acceptance = acceptanceLines(lines.slice(acceptanceStart + 1, acceptanceEnd === -1 ? void 0 : acceptanceEnd));
-  if (acceptance.length === 0 || acceptance.some((line) => line.length === 0)) {
-    throw new KilnError("KILN_APPROVED_PLAN_ACCEPTANCE", "the plan needs acceptance criteria");
+  return { path: planPath, sha256: sha2562, ...parsed };
+}
+
+// src/approved-plan-scaffold.mjs
+function mappingFor(mapping, taskId, field) {
+  if (mapping === null) return null;
+  if (mapping === void 0 || typeof mapping !== "object" || Array.isArray(mapping)) {
+    throw new KilnError("KILN_APPROVED_SCAFFOLD_MAPPING", `${field} must be an object keyed by task ID`);
   }
-  const headings = lines.map((line, index) => ({ match: TASK.exec(line), index })).filter(({ match }) => match !== null);
-  if (headings.length === 0) shape("the plan needs at least one numbered task");
-  const tasks = headings.map(({ match, index }, position) => {
-    const number = Number(match[1]);
-    if (number !== position + 1) shape(`task ${number} is out of order or repeated`, { task: number, position: position + 1 });
-    const nextHeading = lines.findIndex((line, at) => at > index && /^## /.test(line));
-    const nextTask = headings[position + 1]?.index ?? lines.length;
-    const end = Math.min(nextHeading === -1 ? lines.length : nextHeading, nextTask);
-    const sourceLines = lines.slice(index + 1, end);
-    const { files, fileLines } = filePaths(sourceLines);
-    if (files.length === 0) shape(`task ${number} names no file`, { task: number });
-    return { number, heading: `Task ${number}: ${match[2].trim()}`, goal: match[2].trim(), lines: sourceLines, fileLines, files };
+  const value = mapping[taskId];
+  if (value === void 0) return null;
+  if (!Array.isArray(value)) throw new KilnError("KILN_APPROVED_SCAFFOLD_MAPPING", `${field}.${taskId} must be an array`);
+  return value;
+}
+function dependenciesFor(task) {
+  const line = task.lines.find((value) => /^(?:\s*\*\*)?Depends on:/i.test(value.trim()));
+  if (line === void 0 || /\b(?:nothing|none)\b/i.test(line)) return [];
+  const dependencies = [...line.matchAll(/\bTask (\d+)\b/gi)].map((match) => Number(match[1]));
+  if (dependencies.length === 0 || dependencies.some((number) => number >= task.number || number < 1)) {
+    throw new KilnError("KILN_APPROVED_SCAFFOLD_DEPENDENCY", `task ${task.number} has an unresolved dependency`, { line });
+  }
+  return [...new Set(dependencies)].map((number) => `task-${number}`);
+}
+function createApprovedTaskScaffold(approved, { ticketRef, repo, branch, coverage = null, checks = null }) {
+  const known = new Set(approved.tasks.map((task) => `task-${task.number}`));
+  for (const [field, mapping] of [["coverage", coverage], ["checks", checks]]) {
+    if (mapping === null) continue;
+    if (typeof mapping !== "object" || Array.isArray(mapping)) throw new KilnError("KILN_APPROVED_SCAFFOLD_MAPPING", `${field} must be an object keyed by task ID`);
+    const unknown = Object.keys(mapping).find((taskId) => !known.has(taskId));
+    if (unknown !== void 0) throw new KilnError("KILN_APPROVED_SCAFFOLD_MAPPING", `${field} names unknown ${unknown}`);
+  }
+  const tasks = approved.tasks.map((task) => {
+    const taskId = `task-${task.number}`;
+    const chosen = mappingFor(coverage, taskId, "coverage") ?? (approved.tasks.length === 1 ? approved.acceptance.map((_, index) => index + 1) : []);
+    if (chosen.some((number) => !Number.isInteger(number) || number < 1 || number > approved.acceptance.length) || new Set(chosen).size !== chosen.length) {
+      throw new KilnError("KILN_APPROVED_SCAFFOLD_COVERAGE", `${taskId} names an invalid acceptance number`, { chosen });
+    }
+    return {
+      taskId,
+      goal: task.goal,
+      covers: chosen.map((number) => approved.acceptance[number - 1]),
+      dependsOn: dependenciesFor(task),
+      doneWhen: mappingFor(checks, taskId, "checks") ?? [],
+      inputs: [approved.path, repo],
+      paths: task.files,
+      repo,
+      branch
+    };
   });
-  return { path: planPath, sha256: sha2562, sourceTicket, acceptance, tasks };
+  const covered = new Set(tasks.flatMap((task) => task.covers));
+  const missing = [];
+  if (approved.acceptance.some((line) => !covered.has(line))) missing.push("coverage");
+  if (tasks.some((task) => task.doneWhen.length === 0)) missing.push("checks");
+  return {
+    plan: {
+      contractId: "kiln:ticket-plan@1",
+      ticketRef,
+      source: { path: approved.path, sha256: approved.sha256 },
+      summary: approved.tasks.map((task) => task.goal).join("; "),
+      tasks
+    },
+    missing,
+    acceptanceChoices: approved.acceptance.map((value, index) => ({ number: index + 1, value }))
+  };
 }
 
 // src/jira-write.mjs
@@ -12867,8 +13002,8 @@ function kickoffIssue(key) {
   return { issue, site };
 }
 function kickoffPreview(file) {
-  const absolute = path7.resolve(file);
-  if (!absolute.startsWith(`${resolveJiraStore()}${path7.sep}`)) throw new KilnError("KILN_JIRA_PREVIEW_PATH", "the preview is outside the Jira state folder");
+  const absolute = path8.resolve(file);
+  if (!absolute.startsWith(`${resolveJiraStore()}${path8.sep}`)) throw new KilnError("KILN_JIRA_PREVIEW_PATH", "the preview is outside the Jira state folder");
   let bytes, record;
   try {
     bytes = readFileSync11(absolute, "utf8");
@@ -12883,7 +13018,7 @@ function kickoffPreview(file) {
   } catch {
     siteOrigin = null;
   }
-  if (sourceOf(record?.key) !== "jira" || absolute !== path7.join(jiraCapturePaths(resolveJiraStore(), record.key).dir, "previews", `${sha2562}.json`) || record.field !== "description" || siteOrigin !== record.site || !record.site.startsWith("https://") || !/^[0-9a-f]{32}$/.test(record.nonce ?? "") || typeof record.proposal !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(record.date ?? "") || record.originalAdf?.type !== "doc" || record.newAdf?.type !== "doc" || record.originalSha256 !== sha256Utf8(JSON.stringify(record.originalAdf)) || record.newSha256 !== sha256Utf8(JSON.stringify(record.newAdf))) {
+  if (sourceOf(record?.key) !== "jira" || absolute !== path8.join(jiraCapturePaths(resolveJiraStore(), record.key).dir, "previews", `${sha2562}.json`) || record.field !== "description" || siteOrigin !== record.site || !record.site.startsWith("https://") || !/^[0-9a-f]{32}$/.test(record.nonce ?? "") || typeof record.proposal !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(record.date ?? "") || record.originalAdf?.type !== "doc" || record.newAdf?.type !== "doc" || record.originalSha256 !== sha256Utf8(JSON.stringify(record.originalAdf)) || record.newSha256 !== sha256Utf8(JSON.stringify(record.newAdf))) {
     throw new KilnError("KILN_JIRA_PREVIEW_INVALID", "the preview record and its prepared ADF do not match");
   }
   let prepared;
@@ -12908,7 +13043,7 @@ function unresolvedWrite(preview, message) {
   throw new KilnError("KILN_JIRA_WRITE_UNRESOLVED", message);
 }
 function withJiraStartLock(store, action) {
-  const lock = path7.join(store, "write-start.lock");
+  const lock = path8.join(store, "write-start.lock");
   try {
     mkdirSync3(lock);
   } catch (err) {
@@ -13030,7 +13165,7 @@ function fetchLinked(paths, { ref, source, body, title, comments = [], links = [
   const items = /* @__PURE__ */ new Map();
   const ownRepo = source === "github" ? githubIssueOf(ref).repo : null;
   if (source === "github") {
-    const own = path7.join(paths.fetched, "issue.md");
+    const own = path8.join(paths.fetched, "issue.md");
     writeFileAtomic(own, `# ${title ?? ""}
 
 ${body}
@@ -13041,7 +13176,7 @@ ${c.body}`).join("\n")}`);
     items.set(ref, `fetched, ${own}`);
   }
   if (source === "jira") {
-    const own = path7.join(paths.fetched, "ticket.md");
+    const own = path8.join(paths.fetched, "ticket.md");
     writeFileAtomic(own, `${body}
 ${comments.map((c) => `
 ---
@@ -13055,12 +13190,12 @@ ${c.body}`).join("\n")}`);
         items.set(key, "not fetched");
         continue;
       }
-      const copy = path7.join(paths.fetched, `${key}.md`);
+      const copy = path8.join(paths.fetched, `${key}.md`);
       writeFileAtomic(copy, text);
       items.set(key, `fetched, ${copy}`);
     }
   }
-  const ticketDir = source === "markdown" ? path7.dirname(path7.resolve(ref)) : null;
+  const ticketDir = source === "markdown" ? path8.dirname(path8.resolve(ref)) : null;
   const github = [];
   for (const m of body.matchAll(GITHUB_ITEM_URL)) github.push({ repo: m[1], number: Number(m[2]), label: `${m[1]}#${m[2]}`, url: m[0] });
   for (const m of body.matchAll(GITHUB_ITEM_REF)) github.push({ repo: m[1], number: Number(m[2]), label: m[0] });
@@ -13072,7 +13207,7 @@ ${c.body}`).join("\n")}`);
       items.set(g.label, "not fetched");
       continue;
     }
-    const copy = path7.join(paths.fetched, `${g.repo.replace("/", "-")}-${g.number}.md`);
+    const copy = path8.join(paths.fetched, `${g.repo.replace("/", "-")}-${g.number}.md`);
     writeFileAtomic(copy, text);
     items.set(g.label, `fetched, ${copy}`);
   }
@@ -13084,12 +13219,12 @@ ${c.body}`).join("\n")}`);
   for (const m of body.matchAll(ANY_URL)) if (!githubUrls.has(m[0]) && !items.has(m[0]) && !fetchedBrowse(m[0])) items.set(m[0], "not fetched");
   if (ticketDir !== null) {
     for (const m of body.matchAll(LOCAL_PATH)) {
-      const abs = path7.resolve(ticketDir, m[1]);
-      if (abs === path7.resolve(ref) || !existsSync2(abs)) continue;
+      const abs = path8.resolve(ticketDir, m[1]);
+      if (abs === path8.resolve(ref) || !existsSync2(abs)) continue;
       items.set(abs, "local, read in place");
     }
   }
-  writeFileAtomic(path7.join(paths.fetched, "index.md"), `# Fetched items
+  writeFileAtomic(path8.join(paths.fetched, "index.md"), `# Fetched items
 
 ${[...items.entries()].map(([k, v]) => `- ${k}: ${v}`).join("\n")}
 `);
@@ -13110,9 +13245,9 @@ function repoWordsOf(root) {
 }
 function runAllowList({ meta, state, body }) {
   const { checkout } = state.repo;
-  const repoNames = [...ticketRepoNames(meta.ticketRef, meta.source).map((r) => r.repo), path7.basename(checkout)];
+  const repoNames = [...ticketRepoNames(meta.ticketRef, meta.source).map((r) => r.repo), path8.basename(checkout)];
   const origin = spawnSync("git", ["-C", checkout, "remote", "get-url", "origin"], { encoding: "utf8" });
-  if (origin.status === 0) repoNames.push(path7.basename(origin.stdout.trim()).replace(/\.git$/, ""));
+  if (origin.status === 0) repoNames.push(path8.basename(origin.stdout.trim()).replace(/\.git$/, ""));
   return allowedWords({ ticketText: body, repoNames, repoWords: meta.repoWords });
 }
 function cleanTicketSection(sectionLines, { allow }) {
@@ -13142,7 +13277,7 @@ var INSTALL_COMMANDS = [
   { files: ["package.json"], argv: ["npm", "install"] }
 ];
 function installDependencies(worktree) {
-  const match = INSTALL_COMMANDS.find((c) => c.files.some((f) => existsSync2(path7.join(worktree, f))));
+  const match = INSTALL_COMMANDS.find((c) => c.files.some((f) => existsSync2(path8.join(worktree, f))));
   if (!match) return null;
   const [bin, ...args] = match.argv;
   const command = match.argv.join(" ");
@@ -13172,7 +13307,7 @@ function dirtyMap(repo) {
   const dirty = {};
   for (const entry of gitOut(repo, ["status", "--porcelain=v1", "-uall", "-z"]).split("\0").filter((e) => e.length > 0)) {
     const p = entry.slice(3);
-    dirty[p] = existsSync2(path7.join(repo, p)) ? gitOut(repo, ["hash-object", p]).trim() : "deleted";
+    dirty[p] = existsSync2(path8.join(repo, p)) ? gitOut(repo, ["hash-object", p]).trim() : "deleted";
   }
   return dirty;
 }
@@ -13444,12 +13579,12 @@ function againFor(paths, replacingUnbuilt = false) {
 }
 function repoForApprovedTasks(plan, roots, baseFlag, title, ref) {
   const rootPath = plan.tasks[0].repo;
-  if (!path7.isAbsolute(rootPath) || !existsSync2(rootPath)) throw new KilnError("KILN_APPROVED_WORKTREE", "the task plan must name an existing worktree", { root: rootPath });
+  if (!path8.isAbsolute(rootPath) || !existsSync2(rootPath)) throw new KilnError("KILN_APPROVED_WORKTREE", "the task plan must name an existing worktree", { root: rootPath });
   const root = realpathSync3(rootPath);
   if (gitOut(root, ["rev-parse", "--show-toplevel"]).trim() !== root) throw new KilnError("KILN_APPROVED_WORKTREE", "the task plan repo is not the worktree root", { root });
   const common = gitOut(root, ["rev-parse", "--path-format=absolute", "--git-common-dir"]).trim();
-  const checkout = realpathSync3(path7.dirname(common));
-  if (!roots.some((parent) => path7.dirname(checkout) === realpathSync3(parent)) || !isCheckout(checkout)) throw new KilnError("KILN_APPROVED_REPOSITORY", "the worktree checkout must be a repository directly under KILN_CHECKOUTS", { checkout });
+  const checkout = realpathSync3(path8.dirname(common));
+  if (!roots.some((parent) => path8.dirname(checkout) === realpathSync3(parent)) || !isCheckout(checkout)) throw new KilnError("KILN_APPROVED_REPOSITORY", "the worktree checkout must be a repository directly under KILN_CHECKOUTS", { checkout });
   const registered = gitOut(checkout, ["worktree", "list", "--porcelain"]).split("\n").filter((line) => line.startsWith("worktree ")).map((line) => line.slice(9));
   if (!registered.includes(root)) throw new KilnError("KILN_APPROVED_WORKTREE", "the task plan repo is not a registered worktree", { root, checkout });
   const branch = gitOut(root, ["symbolic-ref", "--short", "HEAD"]).trim();
@@ -13500,8 +13635,8 @@ var COMMANDS = {
     if (approval.sha256 !== preview.sha256 || approval.key !== key || approval.site !== site || approval.originalSha256 !== originalSha256 || approval.newSha256 !== newSha256) throw new KilnError("KILN_JIRA_APPROVAL_STALE", "the approved preview no longer matches the prepared edit");
     const store = jiraCapturePaths(resolveJiraStore(), key).dir;
     return withJiraStartLock(store, () => {
-      const requestPath = path7.join(store, "write-request.json");
-      const attemptPath = path7.join(store, "write-attempt.json");
+      const requestPath = path8.join(store, "write-request.json");
+      const attemptPath = path8.join(store, "write-attempt.json");
       if (existsSync2(`${preview.path}.attempt.json`) || existsSync2(`${preview.path}.response.json`) || existsSync2(requestPath)) throw new KilnError("KILN_JIRA_WRITE_ALREADY_ATTEMPTED", "this approval already has a write attempt");
       let previous = null;
       if (existsSync2(attemptPath)) {
@@ -13523,7 +13658,7 @@ var COMMANDS = {
       const current = kickoffIssue(key);
       if (current.site !== site || sha256Utf8(JSON.stringify(current.issue.fields?.description)) !== originalSha256) throw new KilnError("KILN_JIRA_PREVIEW_STALE", "the Jira site or description changed after preview");
       const token = sha256Utf8(`${preview.sha256}:${key}:${site}:${originalSha256}:${newSha256}:${randomBytes(32).toString("hex")}`);
-      if (previous !== null) renameSync3(attemptPath, path7.join(store, `write-attempt-${previous.token}.json`));
+      if (previous !== null) renameSync3(attemptPath, path8.join(store, `write-attempt-${previous.token}.json`));
       writeFileAtomic(requestPath, JSON.stringify({ token, previewPath: preview.path, previewSha256: preview.sha256, key, site, originalSha256, newSha256 }, null, 2) + "\n");
       return { action: { cloudId: site, issueIdOrKey: key, fields: { __kiln_guard__: token }, contentFormat: "adf", responseContentFormat: "adf" } };
     });
@@ -13551,7 +13686,7 @@ var COMMANDS = {
     writeFileAtomic(`${preview.path}.readback.json`, JSON.stringify(current.issue, null, 2) + "\n");
     if (current.site !== site || sha256Utf8(JSON.stringify(current.issue.fields?.description)) !== newSha256) unresolvedWrite(preview, "the Jira readback differs from the approved ADF");
     writeFileAtomic(`${preview.path}.finish.json`, JSON.stringify({ status: "confirmed", at: (/* @__PURE__ */ new Date()).toISOString() }, null, 2) + "\n");
-    rmSync2(path7.join(store, "write-attempt.json"), { force: true });
+    rmSync2(path8.join(store, "write-attempt.json"), { force: true });
     return { status: "confirmed", key, site };
   },
   "jira-preview"(args) {
@@ -13616,7 +13751,7 @@ ${v.idea.trim()}
     const brief = { ...ticketBrief, acceptance: approvedAcceptance };
     const taskGoals = ticketShape === null ? [] : ticketDoc.taskGoals;
     const title = ticketShape === null ? fromTicket.title : titleOf(body);
-    const planPath = approvedPlan?.path ?? (v.plan === void 0 ? null : path7.resolve(v.plan));
+    const planPath = approvedPlan?.path ?? (v.plan === void 0 ? null : path8.resolve(v.plan));
     const planShape = planPath === null ? null : documentKindOf(readInput({ plan: planPath }, "plan"), planPath);
     const documents = { plan: planPath === null ? null : { path: planPath, kind: planShape?.kind ?? null, shape: planShape?.shape ?? null, ...approvedPlan === null ? {} : { ...approvedPlan, approved: true, ticketAcceptance: ticketBrief.acceptance?.lines ?? null } }, decision: null };
     const registry = getRegistry();
@@ -13662,11 +13797,11 @@ ${v.idea.trim()}
     const roles = rolesFor(roster, registry);
     const bundle = buildBundle({ ticketText: body });
     const outward = outwardOf(source);
-    const extras = { runDir: paths.dir, cliPath: path7.resolve(process.argv[1]), ticket: { ref, source, outward, title: issueTitle, taskGoals, kind: ticketShape?.kind ?? "ticket", shape: ticketShape?.shape ?? null, readOnly: ticketShape !== null, ...source === "jira" ? { skipped: ticketRead.skipped, descriptionForm: ticketRead.form } : {}, ...documentParts === null ? {} : { documentParts } }, brief: readyBrief, repo: directRepo, checkoutRoots, base: v.base ?? null, documents, ...directRepo === null ? {} : { mode: "EXECUTE" } };
+    const extras = { runDir: paths.dir, cliPath: path8.resolve(process.argv[1]), ticket: { ref, source, outward, title: issueTitle, taskGoals, kind: ticketShape?.kind ?? "ticket", shape: ticketShape?.shape ?? null, readOnly: ticketShape !== null, ...source === "jira" ? { skipped: ticketRead.skipped, descriptionForm: ticketRead.form } : {}, ...documentParts === null ? {} : { documentParts } }, brief: readyBrief, repo: directRepo, checkoutRoots, base: v.base ?? null, documents, ...directRepo === null ? {} : { mode: "EXECUTE" } };
     const firstKind = route(baseStateOf({ bundle, roles, extras }), flowCtx({ ticketRef: ref, source, firstKind: null })).nextKind;
     const flow = flowFor(flowCtx({ ticketRef: ref, source, firstKind }));
     const state = createRun(flow, { bundle, loadout: LOADOUT, host: HOST, policy: null, roles, profile: PROFILE, extras });
-    const original = path7.join(paths.original, `ticket.${source === "markdown" ? "md" : "json"}`);
+    const original = path8.join(paths.original, `ticket.${source === "markdown" ? "md" : "json"}`);
     const meta = { ticketRef: ref, source, outward, repo: directRepo?.root ?? null, branch: directRepo?.branch ?? null, base: directRepo?.base ?? null, ...directRepo === null ? {} : { repoWords: repoWordsOf(directRepo.root) }, firstKind, original, createdAt: (/* @__PURE__ */ new Date()).toISOString() };
     createRunDir2(paths);
     writeFileAtomic(original, ticketRead.raw);
@@ -13802,7 +13937,7 @@ ${v.idea.trim()}
       if (launcherPaths.length !== 1) throw new KilnError("KILN_CLASS_LAUNCHER_AMBIGUOUS", `${classId} declares more than one skill launcher`, { classId, launcherPaths });
       if (v.launcher === void 0) throw new KilnError("KILN_CLASS_LAUNCHER_MISSING", `${classId} needs its installed launcher skill for direct binding`, { classId });
       const actual = readInput(v, "launcher");
-      const expected = readFileSync11(path7.join(catalog.getClass(classId).source.root, launcherPaths[0]), "utf8");
+      const expected = readFileSync11(path8.join(catalog.getClass(classId).source.root, launcherPaths[0]), "utf8");
       if (actual !== expected) throw new KilnError("KILN_CLASS_LAUNCHER_STALE", `${classId}: the installed launcher skill does not match canon`, { classId, launcher: v.launcher });
     }
     const input = readJsonInput(v, "input");
@@ -13836,11 +13971,25 @@ ${v.idea.trim()}
     }
     return result;
   },
+  "plan-scaffold"(args) {
+    const v = flags(args, { file: { type: "string" }, ticket: { type: "string" }, repo: { type: "string" }, branch: { type: "string" }, out: { type: "string" }, coverage: { type: "string" }, checks: { type: "string" } });
+    const ticketRef = canonicalTicketRef(requireFlag(v, "ticket"));
+    const approved = readApprovedPlan(requireFlag(v, "file"), ticketRef);
+    const repo = path8.resolve(requireFlag(v, "repo"));
+    const branch = requireFlag(v, "branch");
+    const coverage = v.coverage === void 0 ? null : readJsonInput(v, "coverage");
+    const checks = v.checks === void 0 ? null : readJsonInput(v, "checks");
+    const { plan, missing, acceptanceChoices } = createApprovedTaskScaffold(approved, { ticketRef, repo, branch, coverage, checks });
+    const out = path8.resolve(requireFlag(v, "out"));
+    writeFileAtomic(out, `${JSON.stringify(plan, null, 2)}
+`);
+    return { path: out, sourceSha256: approved.sha256, taskCount: plan.tasks.length, missing, acceptanceChoices, spans: approved.spans };
+  },
   borrowed(args) {
     const v = flags(args, { result: { type: "string" }, evidence: { type: "string" }, scope: { type: "string" }, lens: { type: "string" } });
     const result = readJsonInput(v, "result");
     const evidence = readJsonInput(v, "evidence");
-    return mapBorrowedReview({ result, evidence, lens: v.lens ?? "adversarial-review", scope: v.scope ?? "branch", runId: path7.basename(path7.dirname(requireFlag(v, "result"))), resultPath: requireFlag(v, "result") });
+    return mapBorrowedReview({ result, evidence, lens: v.lens ?? "adversarial-review", scope: v.scope ?? "branch", runId: path8.basename(path8.dirname(requireFlag(v, "result"))), resultPath: requireFlag(v, "result") });
   },
   show(args) {
     const v = flags(args, { root: { type: "string" }, ticket: { type: "string" } });
