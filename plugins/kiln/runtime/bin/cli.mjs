@@ -3259,8 +3259,8 @@ var require_utils = __commonJS({
       }
       return ind;
     }
-    function removeDotSegments(path9) {
-      let input = path9;
+    function removeDotSegments(path11) {
+      let input = path11;
       const output = [];
       let nextSlash = -1;
       let len = 0;
@@ -3669,8 +3669,8 @@ var require_schemes = __commonJS({
       }
       if (wsComponent.resourceName) {
         const queryIndex = wsComponent.resourceName.indexOf("?");
-        const path9 = queryIndex === -1 ? wsComponent.resourceName : wsComponent.resourceName.slice(0, queryIndex);
-        wsComponent.path = path9 && path9 !== "/" ? path9 : void 0;
+        const path11 = queryIndex === -1 ? wsComponent.resourceName : wsComponent.resourceName.slice(0, queryIndex);
+        wsComponent.path = path11 && path11 !== "/" ? path11 : void 0;
         wsComponent.query = queryIndex === -1 ? void 0 : wsComponent.resourceName.slice(queryIndex + 1);
         wsComponent.resourceName = void 0;
       }
@@ -7457,9 +7457,9 @@ var require__ = __commonJS({
 // src/cli.mjs
 import { parseArgs } from "node:util";
 import { randomBytes } from "node:crypto";
-import { readFileSync as readFileSync11, existsSync as existsSync2, writeFileSync as writeFileSync3, realpathSync as realpathSync3, rmSync as rmSync2, renameSync as renameSync3, mkdirSync as mkdirSync3, rmdirSync } from "node:fs";
+import { readFileSync as readFileSync12, existsSync as existsSync2, writeFileSync as writeFileSync3, realpathSync as realpathSync3, rmSync as rmSync2, renameSync as renameSync3, mkdirSync as mkdirSync3, rmdirSync } from "node:fs";
 import { spawnSync } from "node:child_process";
-import path8 from "node:path";
+import path10 from "node:path";
 
 // node_modules/@lewisjcs/statblock/src/runtime/digest.mjs
 import { createHash } from "node:crypto";
@@ -7811,16 +7811,16 @@ function recordFailure(protocol, state, { stage, attempt, buildRetryAction, fail
   };
 }
 var WRITES_AVAILABILITY = /* @__PURE__ */ new Set(["measured", "unavailable"]);
-function normalizeWritePath(path9) {
-  if (typeof path9 !== "string" || path9.length === 0) return null;
-  if (path9.startsWith("/") || path9.includes("\\")) return null;
-  const stripped = path9.startsWith("./") ? path9.slice(2) : path9;
+function normalizeWritePath(path11) {
+  if (typeof path11 !== "string" || path11.length === 0) return null;
+  if (path11.startsWith("/") || path11.includes("\\")) return null;
+  const stripped = path11.startsWith("./") ? path11.slice(2) : path11;
   const body = stripped.endsWith("/") ? stripped.slice(0, -1) : stripped;
   if (body.split("/").some((segment) => segment === ".." || segment === "." || segment === "")) return null;
   return stripped;
 }
-function insideBoundary(path9, allowedPaths) {
-  const normalized = normalizeWritePath(path9);
+function insideBoundary(path11, allowedPaths) {
+  const normalized = normalizeWritePath(path11);
   if (normalized === null) return false;
   return allowedPaths.some((entry) => entry.endsWith("/") ? normalized.startsWith(entry) : normalized === entry);
 }
@@ -8569,12 +8569,12 @@ function isAudienceVisible(resourceAudience, consumerAudience) {
 function fail2(code, message, details) {
   throw new StatblockError(code, message, details);
 }
-function isContained(path9, root) {
-  const pathFromRoot = relative(root, path9);
+function isContained(path11, root) {
+  const pathFromRoot = relative(root, path11);
   return pathFromRoot === "" || !pathFromRoot.startsWith(`..${sep}`) && pathFromRoot !== ".." && !isAbsolute(pathFromRoot);
 }
-function isSafeRelativePath(path9) {
-  return typeof path9 === "string" && path9.length > 0 && !isAbsolute(path9) && !path9.split(/[\\/]/).includes("..");
+function isSafeRelativePath(path11) {
+  return typeof path11 === "string" && path11.length > 0 && !isAbsolute(path11) && !path11.split(/[\\/]/).includes("..");
 }
 function resolveRoot(source) {
   if (typeof source.root !== "string" || !isAbsolute(source.root)) {
@@ -8636,9 +8636,9 @@ function resolveManifestPath(root, manifestPath, source, type) {
   }
 }
 function parseManifest(root, manifestPath, source, type) {
-  const path9 = resolveManifestPath(root, manifestPath, source, type);
+  const path11 = resolveManifestPath(root, manifestPath, source, type);
   try {
-    return JSON.parse(readFileSync5(path9, "utf8"));
+    return JSON.parse(readFileSync5(path11, "utf8"));
   } catch {
     fail2("MANIFEST_PATH_INVALID", "Manifest file cannot be read and parsed", {
       sourceId: source.id,
@@ -9218,27 +9218,27 @@ function deepFreeze4(value) {
   }
   return value;
 }
-function isContained2(path9, root) {
-  const pathFromRoot = relative2(root, path9);
+function isContained2(path11, root) {
+  const pathFromRoot = relative2(root, path11);
   return pathFromRoot === "" || !pathFromRoot.startsWith(`..${sep2}`) && pathFromRoot !== ".." && !isAbsolute2(pathFromRoot);
 }
-function resolveSourceFile(root, path9, type) {
-  if (typeof root !== "string" || !isAbsolute2(root) || typeof path9 !== "string" || path9.length === 0 || isAbsolute2(path9)) {
-    fail4("HOST_ENTRYPOINT_MISSING", "Host source file is missing or invalid", { type, path: path9 });
+function resolveSourceFile(root, path11, type) {
+  if (typeof root !== "string" || !isAbsolute2(root) || typeof path11 !== "string" || path11.length === 0 || isAbsolute2(path11)) {
+    fail4("HOST_ENTRYPOINT_MISSING", "Host source file is missing or invalid", { type, path: path11 });
   }
-  const candidate = resolve2(root, path9);
+  const candidate = resolve2(root, path11);
   if (!isContained2(candidate, root)) {
-    fail4("HOST_ENTRYPOINT_MISSING", "Host source file escapes its catalog root", { type, path: path9 });
+    fail4("HOST_ENTRYPOINT_MISSING", "Host source file escapes its catalog root", { type, path: path11 });
   }
   try {
     const resolved = realpathSync2(candidate);
     if (!isContained2(resolved, root) || !statSync2(resolved).isFile()) {
-      fail4("HOST_ENTRYPOINT_MISSING", "Host source file is missing or invalid", { type, path: path9 });
+      fail4("HOST_ENTRYPOINT_MISSING", "Host source file is missing or invalid", { type, path: path11 });
     }
     return resolved;
   } catch (error) {
     if (error instanceof StatblockError) throw error;
-    fail4("HOST_ENTRYPOINT_MISSING", "Host source file is missing or invalid", { type, path: path9 });
+    fail4("HOST_ENTRYPOINT_MISSING", "Host source file is missing or invalid", { type, path: path11 });
   }
 }
 function capabilityStatusFor(manifest, capabilities) {
@@ -9299,8 +9299,8 @@ function cloneCapabilities(capabilities) {
 }
 function computeProjectionSourceHash(records) {
   const hash = createHash2("sha256");
-  for (const { path: path9, bytes } of records) {
-    hash.update(path9, "utf8");
+  for (const { path: path11, bytes } of records) {
+    hash.update(path11, "utf8");
     hash.update("\0", "utf8");
     hash.update(createHash2("sha256").update(bytes).digest("hex"), "utf8");
     hash.update("\n", "utf8");
@@ -9310,9 +9310,9 @@ function computeProjectionSourceHash(records) {
 function projectionFor(manifest, source, entrypoint) {
   if (entrypoint.projection === void 0) return void 0;
   const { canonicalSources, sourceHash } = entrypoint.projection;
-  const resolved = canonicalSources.map((path9) => resolveSourceFile(source.root, path9, "projection-source"));
-  const actualSourceHash = computeProjectionSourceHash(canonicalSources.map((path9, index) => ({
-    path: path9,
+  const resolved = canonicalSources.map((path11) => resolveSourceFile(source.root, path11, "projection-source"));
+  const actualSourceHash = computeProjectionSourceHash(canonicalSources.map((path11, index) => ({
+    path: path11,
     bytes: readFileSync6(resolved[index])
   })));
   if (actualSourceHash !== sourceHash) {
@@ -9419,7 +9419,7 @@ function createHostAdapter({
       }
       const absolutePath = resolveSourceFile(source.root, entrypoint.path, "entrypoint");
       const projection = projectionFor(manifest, source, entrypoint);
-      const references = invocation.loadout.references.map((path9) => resolveSourceFile(source.root, path9, "reference"));
+      const references = invocation.loadout.references.map((path11) => resolveSourceFile(source.root, path11, "reference"));
       const descriptor = {
         host: hostId,
         classId: manifest.id,
@@ -9462,16 +9462,45 @@ function createClaudeCodeAdapter({ modelBindings, guarantees, capabilities } = {
   });
 }
 
+// node_modules/@lewisjcs/statblock/src/hosts/codex.mjs
+var BINDING_KEYS = ["model", "reasoningEffort"];
+function isCodexModelBinding(binding) {
+  return binding && typeof binding === "object" && !Array.isArray(binding) && Reflect.ownKeys(binding).length === BINDING_KEYS.length && BINDING_KEYS.every((key) => typeof binding[key] === "string" && binding[key].length > 0);
+}
+function createCodexAdapter({ modelBindings, guarantees, capabilities } = {}) {
+  const bindings = Object.freeze({ ...modelBindings });
+  return createHostAdapter({
+    hostId: "codex",
+    hostLabel: "Codex",
+    entrypointKey: "codex",
+    guarantees,
+    capabilities,
+    resolveModelBinding(modelRequirement) {
+      const binding = bindings[modelRequirement];
+      if (!Object.hasOwn(bindings, modelRequirement) || !isCodexModelBinding(binding)) {
+        throw new StatblockError(
+          "HOST_MODEL_UNBOUND",
+          "Host has no concrete model binding for this requirement",
+          { modelRequirement }
+        );
+      }
+      return { model: binding.model, reasoningEffort: binding.reasoningEffort };
+    }
+  });
+}
+
 // src/classes.mjs
 var PLUGIN_NAMESPACE = "kiln";
 var CLASS_MANIFESTS = Object.freeze(["classes/crafter.class.json", "classes/designer.class.json", "classes/planner.class.json", "classes/inspector.class.json", "classes/prospector.class.json"]);
 var REPO_ROOT = path3.resolve(path3.dirname(fileURLToPath(import.meta.url)), "..");
 var BORROWED_PINS = Object.freeze(JSON.parse(readFileSync7(new URL("../policy/borrowed-classes-v1.json", import.meta.url), "utf8")).classes);
-function claudeCodeEntry(manifest) {
-  return manifest.entrypoints["claude-code"];
+function hostEntry(manifest, hostId) {
+  const entry = manifest.entrypoints[hostId];
+  if (entry === void 0) throw new KilnError("KILN_CLASS_HOST_UNAVAILABLE", `${manifest.id} has no ${hostId} entrypoint`, { classId: manifest.id, hostId });
+  return entry;
 }
-function playOf(manifest) {
-  const entry = claudeCodeEntry(manifest);
+function playOf(manifest, hostId = "claude-code") {
+  const entry = hostEntry(manifest, hostId);
   if (entry.kind === "skill") {
     return { kind: "skill", invoke: `${PLUGIN_NAMESPACE}:${path3.basename(path3.dirname(entry.path))}` };
   }
@@ -9480,15 +9509,15 @@ function playOf(manifest) {
 function manifestHash(manifest) {
   return sha256Utf8(canonicalJson(manifest));
 }
-function projectionHashFor(root, manifest) {
-  const sources = claudeCodeEntry(manifest).projection.canonicalSources;
+function projectionHashFor(root, manifest, hostId = "claude-code") {
+  const sources = hostEntry(manifest, hostId).projection.canonicalSources;
   return computeProjectionSourceHash(sources.map((p) => ({ path: p, bytes: readFileSync7(path3.join(root, p)) })));
 }
-function entryFor(record, root) {
+function entryFor(record, root, hostId) {
   const { manifest } = record;
-  const entry = claudeCodeEntry(manifest);
+  const entry = hostEntry(manifest, hostId);
   const projectionSourceHash = entry.projection.sourceHash;
-  const actual = projectionHashFor(root, manifest);
+  const actual = projectionHashFor(root, manifest, hostId);
   if (actual !== projectionSourceHash) {
     throw new KilnError("KILN_CLASS_PROJECTION_STALE", `${manifest.id}: the manifest pins sourceHash ${projectionSourceHash} but the body on disk hashes to ${actual} \u2014 run tools/class-projection-hash.mjs and update the manifest`, { classId: manifest.id, expected: projectionSourceHash, actual });
   }
@@ -9496,7 +9525,7 @@ function entryFor(record, root) {
     classId: manifest.id,
     version: manifest.version,
     borrowed: false,
-    play: playOf(manifest),
+    play: playOf(manifest, hostId),
     outputContractId: manifest.contract.output.id,
     tools: Object.freeze([...manifest.boundaries.tools.allow]),
     manifestHash: manifestHash(manifest),
@@ -9526,10 +9555,10 @@ function borrowedEntry(pin) {
 function loadClassCatalog(root = REPO_ROOT, manifests = CLASS_MANIFESTS) {
   return createCatalog({ sources: [{ id: "kiln", audience: "personal", root, classManifestPaths: [...manifests], partyManifestPaths: [] }] });
 }
-function loadClassRegistry(root = REPO_ROOT, manifests = CLASS_MANIFESTS) {
+function loadClassRegistry(root = REPO_ROOT, manifests = CLASS_MANIFESTS, hostId = "claude-code") {
   const catalog = loadClassCatalog(root, manifests);
   return Object.freeze({
-    ...Object.fromEntries(catalog.listClasses({ audience: "personal" }).map((record) => [record.manifest.id, entryFor(record, root)])),
+    ...Object.fromEntries(catalog.listClasses({ audience: "personal" }).map((record) => [record.manifest.id, entryFor(record, root, hostId)])),
     ...Object.fromEntries(BORROWED_PINS.map((pin) => [pin.classId, borrowedEntry(pin)]))
   });
 }
@@ -10109,6 +10138,9 @@ var CLASS_OF_ROLE = Object.freeze({ finder: "kiln:prospector", designer: "kiln:d
 var ROLE_OF_CLASS = Object.freeze(Object.fromEntries(Object.entries(CLASS_OF_ROLE).map(([k, v]) => [v, k])));
 var BORROWED_CLASS_ID = "jcsl:gauntlet:adversarial-review";
 var PERSON_ROLE = Object.freeze({ roleId: "kiln:person", roleSourceHash: sha256Utf8("kiln:person@claude-code") });
+function personRoleFor(hostId) {
+  return hostId === "claude-code" ? PERSON_ROLE : { roleId: "kiln:person", roleSourceHash: sha256Utf8(`kiln:person@${hostId}`) };
+}
 function borrowedRole() {
   const pin = BORROWED_PINS.find((c) => c.classId === BORROWED_CLASS_ID);
   if (pin === void 0) throw new KilnError("KILN_BORROWED_PIN_MISSING", `policy/borrowed-classes-v1.json has no pin for ${BORROWED_CLASS_ID}`);
@@ -10120,10 +10152,11 @@ function selectRoster(policy, profile, options) {
 function roleFor(classKey, registry) {
   const classId = CLASS_OF_ROLE[classKey];
   if (classId === void 0) throw new KilnError("KILN_ROLE_UNKNOWN", `no role for classKey "${classKey}": known keys are ${Object.keys(CLASS_OF_ROLE).join(", ")}, or "borrowed"`);
+  if (registry[classId] === void 0) throw new KilnError("KILN_CLASS_HOST_UNAVAILABLE", `${classId} has no admitted Class on this host`, { classId });
   return { roleId: classId, roleSourceHash: registry[classId].manifestHash };
 }
-function rolesFor(roster, registry) {
-  return { person: PERSON_ROLE, ...Object.fromEntries(roster.fielded.map((m) => [m.classKey, m.classKey === "borrowed" ? borrowedRole() : roleFor(m.classKey, registry)])) };
+function rolesFor(roster, registry, hostId = "claude-code") {
+  return { person: personRoleFor(hostId), ...Object.fromEntries(roster.fielded.map((m) => [m.classKey, m.classKey === "borrowed" ? borrowedRole() : roleFor(m.classKey, registry)])) };
 }
 function partyRecordFor({ slug, createdAt, ticketText, profile, roster, bundleSha256 }) {
   const digest = sha256Utf8(ticketText);
@@ -10676,7 +10709,7 @@ var SPEC_PATH = /\/specs\/[^/]*-design\.md$/;
 function lineNumbers(lines, re) {
   return lines.map((l, i) => re.test(l) ? i + 1 : 0).filter((n2) => n2 > 0);
 }
-function documentKindOf(rawText, path9) {
+function documentKindOf(rawText, path11) {
   const text = normalizeBody(rawText);
   const lines = text.split("\n");
   const sp = lineNumbers(lines, SP_TASK);
@@ -10686,7 +10719,7 @@ function documentKindOf(rawText, path9) {
   const status = lines.findIndex((l) => STATUS.test(l));
   const summary = lines.findIndex((l) => l.trim() === "## Summary");
   if (status !== -1 && summary !== -1) return { kind: "decision", shape: "designer-decision", lines: [status + 1, summary + 1] };
-  if (SPEC_PATH.test(path9)) return { kind: "decision", shape: "brainstorming-spec", lines: [] };
+  if (SPEC_PATH.test(path11)) return { kind: "decision", shape: "brainstorming-spec", lines: [] };
   return null;
 }
 function firstParagraph(lines) {
@@ -10704,7 +10737,7 @@ function boldField(lines, name) {
   const line = lines.find((l) => re.test(l));
   return line === void 0 ? null : re.exec(line)[1].trim();
 }
-function briefFromPlan(rawText, path9) {
+function briefFromPlan(rawText, path11) {
   const text = normalizeBody(rawText);
   const lines = text.split("\n");
   const taskRe = lines.some((l) => SP_TASK.test(l)) ? SP_TASK : KILN_TASK;
@@ -10722,12 +10755,12 @@ ${headings.map((h) => `- ${h}`).join("\n")}` : null].filter((t) => t !== null &&
       return;
     }
     const f = FILE_LINE.exec(l.trim());
-    if (f && current !== null) items.push({ fact: `${current} changes ${f[1]}`, source: `${path9}:${i + 1}` });
+    if (f && current !== null) items.push({ fact: `${current} changes ${f[1]}`, source: `${path11}:${i + 1}` });
   });
   return {
     intent: goal.length > 0 ? { by: "party", text: goal } : null,
     decision: decisionText.length > 0 ? { by: "party", text: decisionText } : null,
-    facts: { by: "party", items: items.length > 0 ? items : [{ fact: "the plan names no file; its tasks are the facts", source: `${path9}:1` }] },
+    facts: { by: "party", items: items.length > 0 ? items : [{ fact: "the plan names no file; its tasks are the facts", source: `${path11}:1` }] },
     taskGoals: headings.map((h) => h.replace(/^Task \d+: /, ""))
   };
 }
@@ -10969,6 +11002,7 @@ var CLASS_VERSION = "1.0.0";
 var TERMINAL_STATUSES = Object.freeze(["complete", "gap", "abandoned"]);
 var PROFILE = Object.freeze({ profileId: "kiln:build-ticket", version: "1.0.0", familyMarker: "Artifact family: kiln:build-ticket@1 \u2014 one ticket, filled and built" });
 var HOST = Object.freeze({ id: "claude-code", adapterId: "kiln:claude-code@1" });
+var CODEX_HOST = Object.freeze({ id: "codex", adapterId: "kiln:codex@1" });
 var LOADOUT = Object.freeze({ loadoutId: "kiln:build-1" });
 var KINDS = Object.freeze(["ask-person", "dispatch-discover", "dispatch-finder", "dispatch-designer", "dispatch-planner", "dispatch-changer", "dispatch-judge", "dispatch-borrowed"]);
 var ROLE_OF_KIND = Object.freeze({ "ask-person": "person", "dispatch-discover": "finder", "dispatch-finder": "finder", "dispatch-designer": "designer", "dispatch-planner": "planner", "dispatch-changer": "changer", "dispatch-judge": "judge", "dispatch-borrowed": "borrowed" });
@@ -11101,7 +11135,8 @@ function buildAsk(state, ctx) {
   const rank = (part) => ctx.ticketFormat.layout.indexOf(FAMILY_OF_PART[part]);
   const names = (state.pendingWrite?.parts ?? []).filter((p) => TICKET_PARTS.includes(p)).sort((a, b) => rank(a) - rank(b)).map((p) => ctx.ticketFormat.families[FAMILY_OF_PART[p]].heading);
   const cut = state.repo.base === void 0 ? "" : `, cut from ${state.repo.base}`;
-  return `The plan has ${plural(n2, "task")}. The work lands in ${repoName} on the branch ${state.repo.branch}${cut}.${ticketWriteLine(state, names)} Ready to build?`;
+  const codexTools = state.host?.id === "codex" ? " Codex cannot restrict the subagent tool list. Kiln checks writes and command evidence after each action." : "";
+  return `The plan has ${plural(n2, "task")}. The work lands in ${repoName} on the branch ${state.repo.branch}${cut}.${ticketWriteLine(state, names)}${codexTools} Ready to build?`;
 }
 function ticketWriteLine(state, names) {
   const sections = `${joinNames(names)} section${names.length > 1 ? "s" : ""}`;
@@ -11531,7 +11566,7 @@ function readsAsDocument(state, draft) {
 }
 var NO_READS = Object.freeze({ reads: Object.freeze({ given: null, ticket: null, found: null }), unreadable: Object.freeze([]), unknown: Object.freeze([]) });
 function documentReads(state, ctx, draft, kindOpen) {
-  const read = (which, path9, kind2) => ({ which, path: path9, kind: kind2, ...ctx.readDocument(path9, kind2, draft.repository) });
+  const read = (which, path11, kind2) => ({ which, path: path11, kind: kind2, ...ctx.readDocument(path11, kind2, draft.repository) });
   const given = state.documents.plan;
   const all = {
     given: given !== null && given.kind !== null && !draft.givenDropped ? read("given", given.path, given.kind) : null,
@@ -12789,14 +12824,160 @@ function checkDirectClassReply({ catalog, classId, raw }) {
   return validateOutcome2(classRecord(catalog, classId), reply[0]);
 }
 
+// src/codex-session.mjs
+import { readdirSync as readdirSync3, readFileSync as readFileSync11 } from "node:fs";
+import os from "node:os";
+import path8 from "node:path";
+function rolloutFor(root, sessionId) {
+  const sessions = path8.join(root, "sessions");
+  const folders = (dir) => readdirSync3(dir, { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => entry.name).sort().reverse();
+  for (const year of folders(sessions)) {
+    const yearDir = path8.join(sessions, year);
+    for (const month of folders(yearDir)) {
+      const monthDir = path8.join(yearDir, month);
+      for (const day of folders(monthDir)) {
+        const dayDir = path8.join(monthDir, day);
+        const file = readdirSync3(dayDir).find((name) => name.endsWith(`-${sessionId}.jsonl`));
+        if (file) return path8.join(dayDir, file);
+      }
+    }
+  }
+  return null;
+}
+function activeCodexModelBinding(env = process.env) {
+  const sessionId = env.CODEX_SESSION_ID;
+  if (!/^[0-9a-f-]{36}$/.test(sessionId ?? "")) throw new KilnError("KILN_CODEX_SESSION_UNAVAILABLE", "the active Codex session ID is unavailable");
+  let file;
+  try {
+    file = rolloutFor(env.CODEX_HOME ?? path8.join(os.homedir(), ".codex"), sessionId);
+  } catch {
+    file = null;
+  }
+  if (file === null) throw new KilnError("KILN_CODEX_SESSION_UNAVAILABLE", "the active Codex session rollout is unavailable", { sessionId });
+  let lines;
+  try {
+    lines = readFileSync11(file, "utf8").split("\n");
+  } catch {
+    throw new KilnError("KILN_CODEX_SESSION_UNAVAILABLE", "the active Codex session rollout is unreadable", { sessionId });
+  }
+  let binding = null;
+  for (const line of lines) {
+    if (!line) continue;
+    let event;
+    try {
+      event = JSON.parse(line);
+    } catch {
+      continue;
+    }
+    if (event.type !== "turn_context") continue;
+    const { model, effort } = event.payload ?? {};
+    binding = typeof model === "string" && model && typeof effort === "string" && effort ? { model, reasoningEffort: effort } : null;
+  }
+  if (binding === null) throw new KilnError("KILN_CODEX_MODEL_UNAVAILABLE", "the active Codex turn has no concrete model and reasoning effort", { sessionId });
+  return binding;
+}
+
+// hosts/codex/check-expectation.mjs
+function parseCheckExpectation(value) {
+  const expect = value.trim();
+  const exit = /^exit (0|[1-9][0-9]*)$/i.exec(expect);
+  if (exit && Number.isSafeInteger(Number(exit[1])) && Number(exit[1]) <= 255) return { kind: "exit", code: Number(exit[1]) };
+  if (/^[0-9]+$/.test(expect)) return { kind: "exact-count", count: expect };
+  const minimum = /^a count of at least ([0-9]+)$/i.exec(expect);
+  if (minimum && Number.isSafeInteger(Number(minimum[1]))) return { kind: "minimum-count", count: Number(minimum[1]) };
+  const literal = /^`([^`\n]+)`$/.exec(expect);
+  if (literal) return { kind: "contains", text: literal[1] };
+  return null;
+}
+
+// src/codex-binding.mjs
+var CLASS_OF_KIND = Object.freeze({ "dispatch-changer": "kiln:crafter", "dispatch-judge": "kiln:inspector" });
+function inputFor(state, kind2) {
+  if (kind2 === "dispatch-changer") {
+    const task = state.brief.tasks.plan[state.cursor];
+    return {
+      taskId: task.taskId,
+      goal: task.goal,
+      covers: task.covers,
+      doneWhen: task.doneWhen,
+      inputs: task.inputs,
+      paths: task.paths,
+      repo: task.repo,
+      branch: task.branch,
+      findings: state.findings ?? [],
+      decision: state.brief.decision?.text ?? null,
+      ...task.fixes === void 0 ? {} : { fixes: task.fixes }
+    };
+  }
+  const done = state.done ?? [];
+  return {
+    repo: state.repo.root,
+    branch: state.repo.branch,
+    acceptance: state.brief.acceptance.lines,
+    tasks: state.brief.tasks.plan.map((task) => {
+      const built = done.find((item) => item.taskId === task.taskId);
+      return {
+        taskId: task.taskId,
+        goal: task.goal,
+        commit: built?.sha ?? null,
+        covers: task.covers,
+        doneWhen: task.doneWhen.map(({ command, expect }) => ({ command, expect })),
+        deviations: built?.deviations ?? []
+      };
+    })
+  };
+}
+function bindCodexMember({ state, kind: kind2, catalog, rations: rations2 }) {
+  const classId = CLASS_OF_KIND[kind2];
+  if (classId === void 0) throw new KilnError("KILN_CLASS_HOST_UNAVAILABLE", `Codex has no admitted Class for ${kind2}`, { kind: kind2 });
+  const record = catalog.getClass(classId);
+  const modelRequirement = record.manifest.modelRequirements[0];
+  const ration = rationFor(rations2, classId);
+  for (const task of state.brief.tasks.plan) {
+    task.doneWhen.forEach((check, i) => {
+      if (parseCheckExpectation(check.expect) === null) {
+        throw new KilnError("KILN_CODEX_CHECK_EXPECT_UNSUPPORTED", `Codex cannot verify check ${i + 1} of ${task.taskId} from its expected result. Use exit N, a numeric count, a count of at least N, or a backticked output literal in the task scaffold.`, { taskId: task.taskId, check: i + 1, expect: check.expect });
+      }
+    });
+  }
+  const adapter = createCodexAdapter({
+    modelBindings: { [modelRequirement]: state.host.modelBinding },
+    guarantees: { tools: false, paths: false, data: true },
+    capabilities: { "isolated-dispatch": true }
+  });
+  return bindDirectClass({
+    catalog,
+    classId,
+    input: inputFor(state, kind2),
+    adapter,
+    loadout: {
+      featIds: [],
+      tools: record.manifest.boundaries.tools.allow,
+      references: [],
+      modelRequirement,
+      budget: { maxTokens: ration.tokens, maxTurns: ration.turns }
+    }
+  });
+}
+
+// hosts/codex/check-command.mjs
+import path9 from "node:path";
+function shellQuote(value) {
+  return `'${String(value).replaceAll("'", "'\\''")}'`;
+}
+function checkInvocation({ run, action, check, cli }) {
+  const runner = path9.resolve(path9.dirname(cli), "../hosts/codex/bin/check.mjs");
+  return `node ${shellQuote(runner)} --run ${shellQuote(run)} --action ${shellQuote(action)} --check ${check} --cli ${shellQuote(cli)}`;
+}
+
 // src/cli.mjs
-var priceTable = JSON.parse(readFileSync11(new URL("../policy/price-table-v1.json", import.meta.url), "utf8"));
-var rosterPolicy = JSON.parse(readFileSync11(new URL("../policy/roster-policy-v1.json", import.meta.url), "utf8"));
-var rations = JSON.parse(readFileSync11(new URL("../policy/rations-v1.json", import.meta.url), "utf8"));
-var hostBindings = JSON.parse(readFileSync11(new URL("../policy/host-bindings-v1.json", import.meta.url), "utf8")).hosts["claude-code"];
-var modePolicy = JSON.parse(readFileSync11(new URL("../policy/mode-policy-v1.json", import.meta.url), "utf8"));
-var ticketFormat = JSON.parse(readFileSync11(new URL("../policy/ticket-format-v1.json", import.meta.url), "utf8"));
-var jiraWritePolicy = JSON.parse(readFileSync11(new URL("../policy/jira-write-v1.json", import.meta.url), "utf8"));
+var priceTable = JSON.parse(readFileSync12(new URL("../policy/price-table-v1.json", import.meta.url), "utf8"));
+var rosterPolicy = JSON.parse(readFileSync12(new URL("../policy/roster-policy-v1.json", import.meta.url), "utf8"));
+var rations = JSON.parse(readFileSync12(new URL("../policy/rations-v1.json", import.meta.url), "utf8"));
+var hostBindings = JSON.parse(readFileSync12(new URL("../policy/host-bindings-v1.json", import.meta.url), "utf8")).hosts;
+var modePolicy = JSON.parse(readFileSync12(new URL("../policy/mode-policy-v1.json", import.meta.url), "utf8"));
+var ticketFormat = JSON.parse(readFileSync12(new URL("../policy/ticket-format-v1.json", import.meta.url), "utf8"));
+var jiraWritePolicy = JSON.parse(readFileSync12(new URL("../policy/jira-write-v1.json", import.meta.url), "utf8"));
 function checkoutRootsOf(env = process.env) {
   const raw = env.KILN_CHECKOUTS ?? "";
   const roots = raw.split(":").map((r) => r.trim()).filter((r) => r.length > 0);
@@ -12834,7 +13015,7 @@ function documentReaderFor(ticketRef, source) {
     if (file === ticketRef) text = readTicketBody(ticketRef, source, null).body;
     else {
       try {
-        text = readFileSync11(file, "utf8");
+        text = readFileSync12(file, "utf8");
       } catch (err) {
         return { unreadable: err.message.replace(`, ${err.syscall} '${file}'`, "") };
       }
@@ -12847,10 +13028,16 @@ function documentReaderFor(ticketRef, source) {
     return { ...doc, leaks };
   };
 }
-var registryCache = null;
-function getRegistry() {
-  if (registryCache === null) registryCache = loadClassRegistry(process.env.KILN_CLASSES_ROOT);
-  return registryCache;
+var registryCache = /* @__PURE__ */ new Map();
+var CODEX_CLASS_MANIFESTS = ["classes/crafter.class.json", "classes/inspector.class.json"];
+function selectedHost(id) {
+  if (id === void 0 || id === "claude-code") return HOST;
+  if (id === "codex") return CODEX_HOST;
+  throw new KilnError("KILN_HOST_UNKNOWN", `unknown build host ${id}`, { host: id });
+}
+function getRegistry(hostId = "claude-code") {
+  if (!registryCache.has(hostId)) registryCache.set(hostId, loadClassRegistry(process.env.KILN_CLASSES_ROOT, hostId === "codex" ? CODEX_CLASS_MANIFESTS : void 0, hostId));
+  return registryCache.get(hostId);
 }
 function flags(args, spec) {
   return parseArgs({ args, options: spec, allowPositionals: false }).values;
@@ -12862,7 +13049,7 @@ function requireFlag(values, name) {
 function readInput(values, name) {
   const file = requireFlag(values, name);
   try {
-    return readFileSync11(file, "utf8");
+    return readFileSync12(file, "utf8");
   } catch (err) {
     throw new KilnError("KILN_INPUT_UNREADABLE", `--${name} file cannot be read: ${err.message}`, { flag: name, file });
   }
@@ -13002,11 +13189,11 @@ function kickoffIssue(key) {
   return { issue, site };
 }
 function kickoffPreview(file) {
-  const absolute = path8.resolve(file);
-  if (!absolute.startsWith(`${resolveJiraStore()}${path8.sep}`)) throw new KilnError("KILN_JIRA_PREVIEW_PATH", "the preview is outside the Jira state folder");
+  const absolute = path10.resolve(file);
+  if (!absolute.startsWith(`${resolveJiraStore()}${path10.sep}`)) throw new KilnError("KILN_JIRA_PREVIEW_PATH", "the preview is outside the Jira state folder");
   let bytes, record;
   try {
-    bytes = readFileSync11(absolute, "utf8");
+    bytes = readFileSync12(absolute, "utf8");
     record = JSON.parse(bytes);
   } catch {
     throw new KilnError("KILN_JIRA_PREVIEW_UNREADABLE", "the preview cannot be read");
@@ -13018,7 +13205,7 @@ function kickoffPreview(file) {
   } catch {
     siteOrigin = null;
   }
-  if (sourceOf(record?.key) !== "jira" || absolute !== path8.join(jiraCapturePaths(resolveJiraStore(), record.key).dir, "previews", `${sha2562}.json`) || record.field !== "description" || siteOrigin !== record.site || !record.site.startsWith("https://") || !/^[0-9a-f]{32}$/.test(record.nonce ?? "") || typeof record.proposal !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(record.date ?? "") || record.originalAdf?.type !== "doc" || record.newAdf?.type !== "doc" || record.originalSha256 !== sha256Utf8(JSON.stringify(record.originalAdf)) || record.newSha256 !== sha256Utf8(JSON.stringify(record.newAdf))) {
+  if (sourceOf(record?.key) !== "jira" || absolute !== path10.join(jiraCapturePaths(resolveJiraStore(), record.key).dir, "previews", `${sha2562}.json`) || record.field !== "description" || siteOrigin !== record.site || !record.site.startsWith("https://") || !/^[0-9a-f]{32}$/.test(record.nonce ?? "") || typeof record.proposal !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(record.date ?? "") || record.originalAdf?.type !== "doc" || record.newAdf?.type !== "doc" || record.originalSha256 !== sha256Utf8(JSON.stringify(record.originalAdf)) || record.newSha256 !== sha256Utf8(JSON.stringify(record.newAdf))) {
     throw new KilnError("KILN_JIRA_PREVIEW_INVALID", "the preview record and its prepared ADF do not match");
   }
   let prepared;
@@ -13043,7 +13230,7 @@ function unresolvedWrite(preview, message) {
   throw new KilnError("KILN_JIRA_WRITE_UNRESOLVED", message);
 }
 function withJiraStartLock(store, action) {
-  const lock = path8.join(store, "write-start.lock");
+  const lock = path10.join(store, "write-start.lock");
   try {
     mkdirSync3(lock);
   } catch (err) {
@@ -13119,7 +13306,7 @@ function readGithubIssue(ref) {
 }
 function readTicketBody(ref, source, since) {
   if (source === "markdown") {
-    const raw = readFileSync11(ref, "utf8");
+    const raw = readFileSync12(ref, "utf8");
     return { body: normalizeBody(raw), newerItems: [], raw };
   }
   const read = source === "jira" ? readJiraTicket(ref) : readGithubIssue(ref);
@@ -13165,7 +13352,7 @@ function fetchLinked(paths, { ref, source, body, title, comments = [], links = [
   const items = /* @__PURE__ */ new Map();
   const ownRepo = source === "github" ? githubIssueOf(ref).repo : null;
   if (source === "github") {
-    const own = path8.join(paths.fetched, "issue.md");
+    const own = path10.join(paths.fetched, "issue.md");
     writeFileAtomic(own, `# ${title ?? ""}
 
 ${body}
@@ -13176,7 +13363,7 @@ ${c.body}`).join("\n")}`);
     items.set(ref, `fetched, ${own}`);
   }
   if (source === "jira") {
-    const own = path8.join(paths.fetched, "ticket.md");
+    const own = path10.join(paths.fetched, "ticket.md");
     writeFileAtomic(own, `${body}
 ${comments.map((c) => `
 ---
@@ -13190,12 +13377,12 @@ ${c.body}`).join("\n")}`);
         items.set(key, "not fetched");
         continue;
       }
-      const copy = path8.join(paths.fetched, `${key}.md`);
+      const copy = path10.join(paths.fetched, `${key}.md`);
       writeFileAtomic(copy, text);
       items.set(key, `fetched, ${copy}`);
     }
   }
-  const ticketDir = source === "markdown" ? path8.dirname(path8.resolve(ref)) : null;
+  const ticketDir = source === "markdown" ? path10.dirname(path10.resolve(ref)) : null;
   const github = [];
   for (const m of body.matchAll(GITHUB_ITEM_URL)) github.push({ repo: m[1], number: Number(m[2]), label: `${m[1]}#${m[2]}`, url: m[0] });
   for (const m of body.matchAll(GITHUB_ITEM_REF)) github.push({ repo: m[1], number: Number(m[2]), label: m[0] });
@@ -13207,7 +13394,7 @@ ${c.body}`).join("\n")}`);
       items.set(g.label, "not fetched");
       continue;
     }
-    const copy = path8.join(paths.fetched, `${g.repo.replace("/", "-")}-${g.number}.md`);
+    const copy = path10.join(paths.fetched, `${g.repo.replace("/", "-")}-${g.number}.md`);
     writeFileAtomic(copy, text);
     items.set(g.label, `fetched, ${copy}`);
   }
@@ -13219,12 +13406,12 @@ ${c.body}`).join("\n")}`);
   for (const m of body.matchAll(ANY_URL)) if (!githubUrls.has(m[0]) && !items.has(m[0]) && !fetchedBrowse(m[0])) items.set(m[0], "not fetched");
   if (ticketDir !== null) {
     for (const m of body.matchAll(LOCAL_PATH)) {
-      const abs = path8.resolve(ticketDir, m[1]);
-      if (abs === path8.resolve(ref) || !existsSync2(abs)) continue;
+      const abs = path10.resolve(ticketDir, m[1]);
+      if (abs === path10.resolve(ref) || !existsSync2(abs)) continue;
       items.set(abs, "local, read in place");
     }
   }
-  writeFileAtomic(path8.join(paths.fetched, "index.md"), `# Fetched items
+  writeFileAtomic(path10.join(paths.fetched, "index.md"), `# Fetched items
 
 ${[...items.entries()].map(([k, v]) => `- ${k}: ${v}`).join("\n")}
 `);
@@ -13245,9 +13432,9 @@ function repoWordsOf(root) {
 }
 function runAllowList({ meta, state, body }) {
   const { checkout } = state.repo;
-  const repoNames = [...ticketRepoNames(meta.ticketRef, meta.source).map((r) => r.repo), path8.basename(checkout)];
+  const repoNames = [...ticketRepoNames(meta.ticketRef, meta.source).map((r) => r.repo), path10.basename(checkout)];
   const origin = spawnSync("git", ["-C", checkout, "remote", "get-url", "origin"], { encoding: "utf8" });
-  if (origin.status === 0) repoNames.push(path8.basename(origin.stdout.trim()).replace(/\.git$/, ""));
+  if (origin.status === 0) repoNames.push(path10.basename(origin.stdout.trim()).replace(/\.git$/, ""));
   return allowedWords({ ticketText: body, repoNames, repoWords: meta.repoWords });
 }
 function cleanTicketSection(sectionLines, { allow }) {
@@ -13277,7 +13464,7 @@ var INSTALL_COMMANDS = [
   { files: ["package.json"], argv: ["npm", "install"] }
 ];
 function installDependencies(worktree) {
-  const match = INSTALL_COMMANDS.find((c) => c.files.some((f) => existsSync2(path8.join(worktree, f))));
+  const match = INSTALL_COMMANDS.find((c) => c.files.some((f) => existsSync2(path10.join(worktree, f))));
   if (!match) return null;
   const [bin, ...args] = match.argv;
   const command = match.argv.join(" ");
@@ -13307,7 +13494,7 @@ function dirtyMap(repo) {
   const dirty = {};
   for (const entry of gitOut(repo, ["status", "--porcelain=v1", "-uall", "-z"]).split("\0").filter((e) => e.length > 0)) {
     const p = entry.slice(3);
-    dirty[p] = existsSync2(path8.join(repo, p)) ? gitOut(repo, ["hash-object", p]).trim() : "deleted";
+    dirty[p] = existsSync2(path10.join(repo, p)) ? gitOut(repo, ["hash-object", p]).trim() : "deleted";
   }
   return dirty;
 }
@@ -13325,10 +13512,16 @@ function scrubLines(lines) {
 function hostBindingFor(state, action, registry) {
   const roleKey = ROLE_OF_KIND[action.kind];
   if (roleKey === "person") return { kind: "person" };
-  if (roleKey === "borrowed") return { kind: "borrowed", invoke: "gauntlet:adversarial-review", model: hostBindings[BORROWED_CLASS_ID] };
+  const hostId = state.host?.id ?? "claude-code";
+  const bindings = hostBindings[hostId];
+  if (roleKey === "borrowed") return { kind: "borrowed", invoke: "gauntlet:adversarial-review", model: bindings[BORROWED_CLASS_ID] };
   const classId = CLASS_OF_ROLE[roleKey];
+  if (hostId === "codex") {
+    const descriptor = bindCodexMember({ state, kind: action.kind, catalog: loadClassCatalog(process.env.KILN_CLASSES_ROOT), rations });
+    return { kind: "subagent", classId, bodyPath: descriptor.entrypoint.absolutePath, model: descriptor.model.model, reasoningEffort: descriptor.model.reasoningEffort, enforcement: descriptor.enforcement };
+  }
   const play = registry[classId].play;
-  return play.kind === "skill" ? { kind: "skill", invoke: play.invoke, model: hostBindings[classId] } : { kind: "agent", agentType: play.agentType, model: hostBindings[classId] };
+  return play.kind === "skill" ? { kind: "skill", invoke: play.invoke, model: bindings[classId] } : { kind: "agent", agentType: play.agentType, model: bindings[classId] };
 }
 function openRun(v) {
   const ref = canonicalTicketRef(requireFlag(v, "ticket"));
@@ -13364,8 +13557,8 @@ function leakCheckFor(ref, source, repoWords) {
     return findLeaks(scrubPaths(lines.join("\n")), { allow: allowFor.get(checkout) });
   };
 }
-function flowCtx({ ticketRef, source, firstKind, repoWords }, extra = {}) {
-  return { registry: getRegistry(), policy: rosterPolicy, modePolicy, ticketFormat, toolCalls: { availability: "unavailable" }, attachments: {}, breach: null, leaksIn: leakCheckFor(ticketRef, source, repoWords), ticketChanges: { parts: [], brief: emptyBrief() }, repoFacts: repoFactsFor(), readDocument: documentReaderFor(ticketRef, source), firstKind, ...extra };
+function flowCtx({ ticketRef, source, firstKind, repoWords, hostId }, extra = {}) {
+  return { registry: getRegistry(hostId), policy: rosterPolicy, modePolicy, ticketFormat, toolCalls: { availability: "unavailable" }, attachments: {}, breach: null, leaksIn: leakCheckFor(ticketRef, source, repoWords), ticketChanges: { parts: [], brief: emptyBrief() }, repoFacts: repoFactsFor(), readDocument: documentReaderFor(ticketRef, source), firstKind, ...extra };
 }
 function bodyWithParts(body, state, parts) {
   let next = withContextHeading(body, ticketFormat);
@@ -13444,7 +13637,7 @@ function briefLine(briefPath) {
 function nextSummary(flow, state, paths, meta) {
   const pending = nextAction(flow, state);
   if (pending.terminal) return { terminal: true, status: state.status };
-  const out = { terminal: false, actionId: pending.actionId, kind: pending.kind, attempt: pending.attempt, promptBody: pending.promptBody, hostBinding: hostBindingFor(state, pending, getRegistry()) };
+  const out = { terminal: false, actionId: pending.actionId, kind: pending.kind, attempt: pending.attempt, promptBody: pending.promptBody, hostBinding: hostBindingFor(state, pending, getRegistry(state.host?.id)) };
   const member = partyClassInputFor(state, pending.kind);
   if (member !== null) {
     const record = loadClassCatalog(process.env.KILN_CLASSES_ROOT).getClass(member.classId);
@@ -13463,6 +13656,14 @@ function nextSummary(flow, state, paths, meta) {
     const baseline = state.writeBaseline ?? null;
     const beforePath = paths.before(baseline ?? firstAttemptOf(pending.actionId));
     out.before = { path: beforePath, take: baseline === null && pending.attempt === 1 && !existsSync2(beforePath) };
+  }
+  if (state.host?.id === "codex" && pending.kind === "dispatch-judge") {
+    const beforePath = paths.before(firstAttemptOf(pending.actionId));
+    out.readOnly = { repoRoot: state.repo.root, before: { path: beforePath, take: !existsSync2(beforePath) } };
+  }
+  if (state.host?.id === "codex" && (pending.kind === "dispatch-changer" || pending.kind === "dispatch-judge")) {
+    const checks = pending.kind === "dispatch-changer" ? state.brief.tasks.plan[state.cursor].doneWhen : state.brief.tasks.plan.flatMap((task) => task.doneWhen);
+    out.checkCommands = checks.map((_, i) => checkInvocation({ run: paths.dir, action: pending.actionId, check: i + 1, cli: path10.resolve(process.argv[1]) }));
   }
   if (pending.kind !== "ask-person") {
     const briefPath = paths.brief(pending.actionId);
@@ -13499,7 +13700,7 @@ function attachmentsFor(rawOutput) {
   const out = {};
   const read = (p) => {
     try {
-      return readFileSync11(p, "utf8");
+      return readFileSync12(p, "utf8");
     } catch {
       return null;
     }
@@ -13536,7 +13737,7 @@ function visitOf(actionId) {
 function afterReceipt({ flow, paths, meta, state, nextState, actionId, pending, accepted: accepted2 }) {
   checkBriefValid(nextState.brief);
   const reform = accepted2 && nextState.lastReform !== null ? nextState.lastReform : null;
-  const reformedRecord = reform === null ? null : reformPartyRecord(JSON.parse(readFileSync11(paths.party.record, "utf8")), rosterPolicy, { actionId, trigger: reform.trigger, classKey: reform.classKey, reason: reform.reason });
+  const reformedRecord = reform === null ? null : reformPartyRecord(JSON.parse(readFileSync12(paths.party.record, "utf8")), rosterPolicy, { actionId, trigger: reform.trigger, classKey: reform.classKey, reason: reform.reason });
   const written = accepted2 ? nextState.lastFilled.filter((p) => TICKET_PARTS.includes(p)) : [];
   const writesTicket = written.length > 0 && nextState.pendingWrite === null && nextState.ticket.readOnly !== true;
   const nextBody = writesTicket ? ticketWriteFor(meta, nextState, written) : null;
@@ -13579,12 +13780,12 @@ function againFor(paths, replacingUnbuilt = false) {
 }
 function repoForApprovedTasks(plan, roots, baseFlag, title, ref) {
   const rootPath = plan.tasks[0].repo;
-  if (!path8.isAbsolute(rootPath) || !existsSync2(rootPath)) throw new KilnError("KILN_APPROVED_WORKTREE", "the task plan must name an existing worktree", { root: rootPath });
+  if (!path10.isAbsolute(rootPath) || !existsSync2(rootPath)) throw new KilnError("KILN_APPROVED_WORKTREE", "the task plan must name an existing worktree", { root: rootPath });
   const root = realpathSync3(rootPath);
   if (gitOut(root, ["rev-parse", "--show-toplevel"]).trim() !== root) throw new KilnError("KILN_APPROVED_WORKTREE", "the task plan repo is not the worktree root", { root });
   const common = gitOut(root, ["rev-parse", "--path-format=absolute", "--git-common-dir"]).trim();
-  const checkout = realpathSync3(path8.dirname(common));
-  if (!roots.some((parent) => path8.dirname(checkout) === realpathSync3(parent)) || !isCheckout(checkout)) throw new KilnError("KILN_APPROVED_REPOSITORY", "the worktree checkout must be a repository directly under KILN_CHECKOUTS", { checkout });
+  const checkout = realpathSync3(path10.dirname(common));
+  if (!roots.some((parent) => path10.dirname(checkout) === realpathSync3(parent)) || !isCheckout(checkout)) throw new KilnError("KILN_APPROVED_REPOSITORY", "the worktree checkout must be a repository directly under KILN_CHECKOUTS", { checkout });
   const registered = gitOut(checkout, ["worktree", "list", "--porcelain"]).split("\n").filter((line) => line.startsWith("worktree ")).map((line) => line.slice(9));
   if (!registered.includes(root)) throw new KilnError("KILN_APPROVED_WORKTREE", "the task plan repo is not a registered worktree", { root, checkout });
   const branch = gitOut(root, ["symbolic-ref", "--short", "HEAD"]).trim();
@@ -13627,7 +13828,7 @@ var COMMANDS = {
     const preview = kickoffPreview(requireFlag(v, "preview"));
     let approval;
     try {
-      approval = JSON.parse(readFileSync11(`${preview.path}.approval.json`, "utf8"));
+      approval = JSON.parse(readFileSync12(`${preview.path}.approval.json`, "utf8"));
     } catch {
       throw new KilnError("KILN_JIRA_APPROVAL_MISSING", "the exact preview has no approval");
     }
@@ -13635,20 +13836,20 @@ var COMMANDS = {
     if (approval.sha256 !== preview.sha256 || approval.key !== key || approval.site !== site || approval.originalSha256 !== originalSha256 || approval.newSha256 !== newSha256) throw new KilnError("KILN_JIRA_APPROVAL_STALE", "the approved preview no longer matches the prepared edit");
     const store = jiraCapturePaths(resolveJiraStore(), key).dir;
     return withJiraStartLock(store, () => {
-      const requestPath = path8.join(store, "write-request.json");
-      const attemptPath = path8.join(store, "write-attempt.json");
+      const requestPath = path10.join(store, "write-request.json");
+      const attemptPath = path10.join(store, "write-attempt.json");
       if (existsSync2(`${preview.path}.attempt.json`) || existsSync2(`${preview.path}.response.json`) || existsSync2(requestPath)) throw new KilnError("KILN_JIRA_WRITE_ALREADY_ATTEMPTED", "this approval already has a write attempt");
       let previous = null;
       if (existsSync2(attemptPath)) {
         try {
-          previous = JSON.parse(readFileSync11(attemptPath, "utf8"));
+          previous = JSON.parse(readFileSync12(attemptPath, "utf8"));
         } catch {
           throw new KilnError("KILN_JIRA_WRITE_ALREADY_ATTEMPTED", "the prior Jira write attempt needs manual resolution");
         }
         let finish;
         try {
           const priorPreview = kickoffPreview(previous.previewPath);
-          finish = JSON.parse(readFileSync11(`${priorPreview.path}.finish.json`, "utf8"));
+          finish = JSON.parse(readFileSync12(`${priorPreview.path}.finish.json`, "utf8"));
           if (previous.previewSha256 !== priorPreview.sha256 || !/^[0-9a-f]{64}$/.test(previous.token ?? "") || typeof previous.toolUseId !== "string") throw new Error("invalid prior attempt");
         } catch {
           throw new KilnError("KILN_JIRA_WRITE_ALREADY_ATTEMPTED", "the prior Jira write attempt needs manual resolution");
@@ -13658,7 +13859,7 @@ var COMMANDS = {
       const current = kickoffIssue(key);
       if (current.site !== site || sha256Utf8(JSON.stringify(current.issue.fields?.description)) !== originalSha256) throw new KilnError("KILN_JIRA_PREVIEW_STALE", "the Jira site or description changed after preview");
       const token = sha256Utf8(`${preview.sha256}:${key}:${site}:${originalSha256}:${newSha256}:${randomBytes(32).toString("hex")}`);
-      if (previous !== null) renameSync3(attemptPath, path8.join(store, `write-attempt-${previous.token}.json`));
+      if (previous !== null) renameSync3(attemptPath, path10.join(store, `write-attempt-${previous.token}.json`));
       writeFileAtomic(requestPath, JSON.stringify({ token, previewPath: preview.path, previewSha256: preview.sha256, key, site, originalSha256, newSha256 }, null, 2) + "\n");
       return { action: { cloudId: site, issueIdOrKey: key, fields: { __kiln_guard__: token }, contentFormat: "adf", responseContentFormat: "adf" } };
     });
@@ -13670,8 +13871,8 @@ var COMMANDS = {
     const store = jiraCapturePaths(resolveJiraStore(), key).dir;
     let attempt, response;
     try {
-      attempt = JSON.parse(readFileSync11(`${preview.path}.attempt.json`, "utf8"));
-      response = JSON.parse(readFileSync11(`${preview.path}.response.json`, "utf8"));
+      attempt = JSON.parse(readFileSync12(`${preview.path}.attempt.json`, "utf8"));
+      response = JSON.parse(readFileSync12(`${preview.path}.response.json`, "utf8"));
     } catch {
       throw new KilnError("KILN_JIRA_WRITE_UNRESOLVED", "the Jira write attempt has no complete hook response");
     }
@@ -13686,7 +13887,7 @@ var COMMANDS = {
     writeFileAtomic(`${preview.path}.readback.json`, JSON.stringify(current.issue, null, 2) + "\n");
     if (current.site !== site || sha256Utf8(JSON.stringify(current.issue.fields?.description)) !== newSha256) unresolvedWrite(preview, "the Jira readback differs from the approved ADF");
     writeFileAtomic(`${preview.path}.finish.json`, JSON.stringify({ status: "confirmed", at: (/* @__PURE__ */ new Date()).toISOString() }, null, 2) + "\n");
-    rmSync2(path8.join(store, "write-attempt.json"), { force: true });
+    rmSync2(path10.join(store, "write-attempt.json"), { force: true });
     return { status: "confirmed", key, site };
   },
   "jira-preview"(args) {
@@ -13719,7 +13920,7 @@ ${prepared.addedText}`;
     return jiraCapability(key);
   },
   open(args) {
-    const v = flags(args, { root: { type: "string" }, ticket: { type: "string" }, idea: { type: "string" }, again: { type: "boolean" }, base: { type: "string" }, plan: { type: "string" }, "approved-plan": { type: "string" }, "ticket-plan": { type: "string" } });
+    const v = flags(args, { root: { type: "string" }, ticket: { type: "string" }, idea: { type: "string" }, again: { type: "boolean" }, base: { type: "string" }, plan: { type: "string" }, "approved-plan": { type: "string" }, "ticket-plan": { type: "string" }, host: { type: "string" } });
     const ref = canonicalTicketRef(requireFlag(v, "ticket"));
     if (v.plan !== void 0 && v["approved-plan"] !== void 0) throw new KilnError("KILN_PLAN_FLAGS_CONFLICT", "use either --plan or --approved-plan");
     const approvedPlan = v["approved-plan"] === void 0 ? null : readApprovedPlan(v["approved-plan"], ref);
@@ -13729,6 +13930,12 @@ ${prepared.addedText}`;
     const checkoutRoots = checkoutRootsOf();
     const root = resolveRunsRoot({ flag: v.root });
     const paths = runPathsFor(root, ref);
+    const savedHostId = runExists(paths) ? loadState(paths).host?.id ?? "claude-code" : null;
+    const host = selectedHost(v.host ?? savedHostId ?? "claude-code");
+    if (savedHostId !== null && v.host !== void 0 && host.id !== savedHostId) throw new KilnError("KILN_HOST_RUN_MISMATCH", `the saved run uses ${savedHostId}; requested ${host.id}`, { runDir: paths.dir, savedHostId, requestedHostId: host.id });
+    if (host.id === "codex" && approvedPlan === null) throw new KilnError("KILN_CODEX_APPROVED_PLAN_REQUIRED", "the Codex host currently requires an approved plan", { ticket: ref });
+    if (host.id === "codex" && source === "jira" && !process.env.KILN_JIRA_VIEW) throw new KilnError("KILN_CODEX_JIRA_READ_UNAVAILABLE", "the Codex host needs a configured Jira view command for this ticket", { ticket: ref });
+    const codexModelBinding = host.id === "codex" ? activeCodexModelBinding() : null;
     if (v.idea !== void 0) {
       if (source !== "markdown") throw new KilnError("KILN_IDEA_NEEDS_FILE", "an idea opens a new markdown ticket; pass a file path as --ticket", { ticket: ref });
       if (existsSync2(ref)) throw new KilnError("KILN_IDEA_FILE_EXISTS", `the ticket file already exists; open it without --idea`, { ticket: ref });
@@ -13751,10 +13958,10 @@ ${v.idea.trim()}
     const brief = { ...ticketBrief, acceptance: approvedAcceptance };
     const taskGoals = ticketShape === null ? [] : ticketDoc.taskGoals;
     const title = ticketShape === null ? fromTicket.title : titleOf(body);
-    const planPath = approvedPlan?.path ?? (v.plan === void 0 ? null : path8.resolve(v.plan));
+    const planPath = approvedPlan?.path ?? (v.plan === void 0 ? null : path10.resolve(v.plan));
     const planShape = planPath === null ? null : documentKindOf(readInput({ plan: planPath }, "plan"), planPath);
     const documents = { plan: planPath === null ? null : { path: planPath, kind: planShape?.kind ?? null, shape: planShape?.shape ?? null, ...approvedPlan === null ? {} : { ...approvedPlan, approved: true, ticketAcceptance: ticketBrief.acceptance?.lines ?? null } }, decision: null };
-    const registry = getRegistry();
+    const registry = getRegistry(host.id);
     const issueTitle = title === null && source === "github" ? ticketRead.title : title;
     let directRepo = null;
     if (taskPlan !== null && (!runExists(paths) || v.again === true)) {
@@ -13770,6 +13977,9 @@ ${v.idea.trim()}
       const meta2 = readRunMeta(paths);
       const state2 = loadState(paths);
       refuseOldRelease(paths, state2);
+      if (host.id === "codex" && (state2.host.modelBinding?.model !== codexModelBinding.model || state2.host.modelBinding?.reasoningEffort !== codexModelBinding.reasoningEffort)) {
+        throw new KilnError("KILN_CODEX_MODEL_RUN_MISMATCH", "the active Codex model or reasoning effort differs from the saved run", { saved: state2.host.modelBinding, active: codexModelBinding });
+      }
       if (taskPlan !== null && state2.documents?.plan?.approved && state2.brief.tasks === null) {
         throw new KilnError("KILN_APPROVED_RUN_NEEDS_RESTART", "this saved run still waits on discovery or planning; use open --again to keep its record and start the approved task route", { runDir: paths.dir });
       }
@@ -13780,7 +13990,7 @@ ${v.idea.trim()}
         throw new KilnError("KILN_APPROVED_PLAN_ACCEPTANCE_MISMATCH", "the ticket acceptance changed since the run opened; return to kickoff", { ticket: ref, planPath: approvedPlan.path });
       }
       checkSavedApprovedPlan(state2);
-      const record2 = JSON.parse(readFileSync11(paths.party.record, "utf8"));
+      const record2 = JSON.parse(readFileSync12(paths.party.record, "utf8"));
       const flow2 = flowFor(flowCtx(meta2));
       return { resumed: true, dir: paths.dir, ...ENDED.has(state2.status) ? { again: `this run ended ${state2.status}; open --again sets it aside and starts a fresh run on this ticket` } : {}, fillState: openFillState(fillStateLines({ brief: state2.brief, taskGoals, roster: record2.roster, changed: ticketChangesFor(state2, ticketRead.body).parts }), source, ticketRead), roster: { rowId: record2.roster.rowId, fielded: record2.roster.fielded.map((m) => m.classKey) }, next: nextSummary(flow2, state2, paths, meta2) };
     }
@@ -13794,15 +14004,22 @@ ${v.idea.trim()}
     };
     const profile = buildProfile(readyBrief, { sizeBytes: Buffer.byteLength(body, "utf8") });
     const roster = selectRoster(rosterPolicy, profile, directRepo === null ? void 0 : { skipLanes: ["finder"] });
-    const roles = rolesFor(roster, registry);
+    const roles = rolesFor(roster, registry, host.id);
     const bundle = buildBundle({ ticketText: body });
     const outward = outwardOf(source);
-    const extras = { runDir: paths.dir, cliPath: path8.resolve(process.argv[1]), ticket: { ref, source, outward, title: issueTitle, taskGoals, kind: ticketShape?.kind ?? "ticket", shape: ticketShape?.shape ?? null, readOnly: ticketShape !== null, ...source === "jira" ? { skipped: ticketRead.skipped, descriptionForm: ticketRead.form } : {}, ...documentParts === null ? {} : { documentParts } }, brief: readyBrief, repo: directRepo, checkoutRoots, base: v.base ?? null, documents, ...directRepo === null ? {} : { mode: "EXECUTE" } };
-    const firstKind = route(baseStateOf({ bundle, roles, extras }), flowCtx({ ticketRef: ref, source, firstKind: null })).nextKind;
-    const flow = flowFor(flowCtx({ ticketRef: ref, source, firstKind }));
-    const state = createRun(flow, { bundle, loadout: LOADOUT, host: HOST, policy: null, roles, profile: PROFILE, extras });
-    const original = path8.join(paths.original, `ticket.${source === "markdown" ? "md" : "json"}`);
-    const meta = { ticketRef: ref, source, outward, repo: directRepo?.root ?? null, branch: directRepo?.branch ?? null, base: directRepo?.base ?? null, ...directRepo === null ? {} : { repoWords: repoWordsOf(directRepo.root) }, firstKind, original, createdAt: (/* @__PURE__ */ new Date()).toISOString() };
+    const extras = { runDir: paths.dir, cliPath: path10.resolve(process.argv[1]), ticket: { ref, source, outward, title: issueTitle, taskGoals, kind: ticketShape?.kind ?? "ticket", shape: ticketShape?.shape ?? null, readOnly: ticketShape !== null, ...source === "jira" ? { skipped: ticketRead.skipped, descriptionForm: ticketRead.form } : {}, ...documentParts === null ? {} : { documentParts } }, brief: readyBrief, repo: directRepo, checkoutRoots, base: v.base ?? null, documents, ...directRepo === null ? {} : { mode: "EXECUTE" } };
+    const firstKind = route(baseStateOf({ bundle, roles, extras }), flowCtx({ ticketRef: ref, source, firstKind: null, hostId: host.id })).nextKind;
+    const flow = flowFor(flowCtx({ ticketRef: ref, source, firstKind, hostId: host.id }));
+    const boundHost = host.id === "codex" ? { ...host, sessionId: process.env.CODEX_SESSION_ID, modelBinding: codexModelBinding } : host;
+    if (host.id === "codex") {
+      const catalog = loadClassCatalog(process.env.KILN_CLASSES_ROOT);
+      const initial = { host: boundHost, brief: readyBrief, repo: directRepo, done: [], findings: [], cursor: 0 };
+      for (let cursor = 0; cursor < readyBrief.tasks.plan.length; cursor += 1) bindCodexMember({ state: { ...initial, cursor }, kind: "dispatch-changer", catalog, rations });
+      bindCodexMember({ state: initial, kind: "dispatch-judge", catalog, rations });
+    }
+    const state = createRun(flow, { bundle, loadout: LOADOUT, host: boundHost, policy: null, roles, profile: PROFILE, extras });
+    const original = path10.join(paths.original, `ticket.${source === "markdown" ? "md" : "json"}`);
+    const meta = { ticketRef: ref, source, hostId: host.id, outward, repo: directRepo?.root ?? null, branch: directRepo?.branch ?? null, base: directRepo?.base ?? null, ...directRepo === null ? {} : { repoWords: repoWordsOf(directRepo.root) }, firstKind, original, createdAt: (/* @__PURE__ */ new Date()).toISOString() };
     createRunDir2(paths);
     writeFileAtomic(original, ticketRead.raw);
     fetchLinked(paths, { ref, source, body, title: issueTitle, comments: ticketRead.comments ?? [], links: ticketRead.links ?? [], skipped: ticketRead.skipped ?? [] });
@@ -13815,7 +14032,7 @@ ${v.idea.trim()}
       { kind: "profile-computed", data: { artifactType: "ticket", family: "build-ticket", mechanicalOnly: null, goLiveMatched: false, securityMatched: false, firstEmpty: profile.firstEmpty } },
       { kind: "roster-selected", data: { rowId: roster.rowId, fielded: roster.fielded.map((m) => m.classKey), skipped: [], gaps: [] } },
       { kind: "party-formed", data: { partyId: paths.slug, roster: roster.fielded.map((m) => m.classId), coveredRoles: roster.fielded.map((m) => m.classKey), gates: [] } },
-      { kind: "run-initialized", data: { policyId: `kiln:roster-policy@${rosterPolicy.version}`, host: HOST.id, roles: Object.values(roles).map((r) => r.roleId) } },
+      { kind: "run-initialized", data: { policyId: `kiln:roster-policy@${rosterPolicy.version}`, host: host.id, roles: Object.values(roles).map((r) => r.roleId) } },
       pendingEvent(state)
     ]);
     writeRunMeta(paths, meta);
@@ -13837,7 +14054,7 @@ ${v.idea.trim()}
     if (pending.kind === "ask-person") throw new KilnError("KILN_RECEIPT_IS_REPLY", "the pending action addresses the person; use reply");
     const hostMeta = readJsonInput(v, "host-meta");
     const classId = state.roles[ROLE_OF_KIND[pending.kind]].roleId;
-    const envelope = buildUsageEnvelope({ actionId, kind: pending.kind, attempt: pending.attempt, classId, host: HOST, modelBinding: hostMeta.modelBinding ?? null, usage: hostMeta.usage, toolCalls: hostMeta.toolCalls });
+    const envelope = buildUsageEnvelope({ actionId, kind: pending.kind, attempt: pending.attempt, classId, host: selectedHost(state.host?.id), modelBinding: hostMeta.modelBinding ?? null, usage: hostMeta.usage, toolCalls: hostMeta.toolCalls });
     const priorEnvelopes = readEnvelopes(paths).filter((e) => visitOf(e.actionId) === visitOf(actionId));
     const ration = assessRation({ ration: rationFor(rations, classId), multiplier: rations.multiplier, envelope, priorEnvelopes });
     const rawOutput = readInput(v, "output");
@@ -13910,8 +14127,8 @@ ${v.idea.trim()}
     return { valid: true, tasks: plan.tasks.length };
   },
   "class-check"(args) {
-    const v = flags(args, { class: { type: "string" }, input: { type: "string" }, output: { type: "string" } });
-    const registry = getRegistry();
+    const v = flags(args, { class: { type: "string" }, input: { type: "string" }, output: { type: "string" }, host: { type: "string" } });
+    const registry = getRegistry(selectedHost(v.host).id);
     const classId = requireFlag(v, "class");
     const entry = registry[classId];
     if (!entry || entry.borrowed) throw new KilnError("KILN_CLASS_UNKNOWN", `${classId} is not a local Class`, { classId });
@@ -13937,7 +14154,7 @@ ${v.idea.trim()}
       if (launcherPaths.length !== 1) throw new KilnError("KILN_CLASS_LAUNCHER_AMBIGUOUS", `${classId} declares more than one skill launcher`, { classId, launcherPaths });
       if (v.launcher === void 0) throw new KilnError("KILN_CLASS_LAUNCHER_MISSING", `${classId} needs its installed launcher skill for direct binding`, { classId });
       const actual = readInput(v, "launcher");
-      const expected = readFileSync11(path8.join(catalog.getClass(classId).source.root, launcherPaths[0]), "utf8");
+      const expected = readFileSync12(path10.join(catalog.getClass(classId).source.root, launcherPaths[0]), "utf8");
       if (actual !== expected) throw new KilnError("KILN_CLASS_LAUNCHER_STALE", `${classId}: the installed launcher skill does not match canon`, { classId, launcher: v.launcher });
     }
     const input = readJsonInput(v, "input");
@@ -13975,12 +14192,12 @@ ${v.idea.trim()}
     const v = flags(args, { file: { type: "string" }, ticket: { type: "string" }, repo: { type: "string" }, branch: { type: "string" }, out: { type: "string" }, coverage: { type: "string" }, checks: { type: "string" } });
     const ticketRef = canonicalTicketRef(requireFlag(v, "ticket"));
     const approved = readApprovedPlan(requireFlag(v, "file"), ticketRef);
-    const repo = path8.resolve(requireFlag(v, "repo"));
+    const repo = path10.resolve(requireFlag(v, "repo"));
     const branch = requireFlag(v, "branch");
     const coverage = v.coverage === void 0 ? null : readJsonInput(v, "coverage");
     const checks = v.checks === void 0 ? null : readJsonInput(v, "checks");
     const { plan, missing, acceptanceChoices } = createApprovedTaskScaffold(approved, { ticketRef, repo, branch, coverage, checks });
-    const out = path8.resolve(requireFlag(v, "out"));
+    const out = path10.resolve(requireFlag(v, "out"));
     writeFileAtomic(out, `${JSON.stringify(plan, null, 2)}
 `);
     return { path: out, sourceSha256: approved.sha256, taskCount: plan.tasks.length, missing, acceptanceChoices, spans: approved.spans };
@@ -13989,12 +14206,12 @@ ${v.idea.trim()}
     const v = flags(args, { result: { type: "string" }, evidence: { type: "string" }, scope: { type: "string" }, lens: { type: "string" } });
     const result = readJsonInput(v, "result");
     const evidence = readJsonInput(v, "evidence");
-    return mapBorrowedReview({ result, evidence, lens: v.lens ?? "adversarial-review", scope: v.scope ?? "branch", runId: path8.basename(path8.dirname(requireFlag(v, "result"))), resultPath: requireFlag(v, "result") });
+    return mapBorrowedReview({ result, evidence, lens: v.lens ?? "adversarial-review", scope: v.scope ?? "branch", runId: path10.basename(path10.dirname(requireFlag(v, "result"))), resultPath: requireFlag(v, "result") });
   },
   show(args) {
     const v = flags(args, { root: { type: "string" }, ticket: { type: "string" } });
     const { paths, meta, state } = openRun(v);
-    const record = JSON.parse(readFileSync11(paths.party.record, "utf8"));
+    const record = JSON.parse(readFileSync12(paths.party.record, "utf8"));
     return { dir: paths.dir, status: state.status, fillState: fillStateLines({ brief: state.brief, taskGoals: state.ticket.taskGoals, roster: record.roster }), cursor: state.cursor, done: state.done, repo: state.repo, ledger: state.ledger.slice(-5).map((e) => ({ actionId: e.actionId, outcome: e.outcome })), next: nextSummary(flowFor(flowCtx(meta)), state, paths, meta) };
   },
   readout(args) {
@@ -14033,7 +14250,7 @@ ${v.idea.trim()}
     const nextBody = writes ? bodyWithReferencesLink(meta, state, url) : null;
     const scoreboard = computeScoreboard({ roles: state.roles, envelopes: readEnvelopes(paths), rations, priceTable, ledger: state.ledger });
     const readout = renderReadout({ state, scoreboard, prUrl: url });
-    const record = JSON.parse(readFileSync11(paths.party.record, "utf8"));
+    const record = JSON.parse(readFileSync12(paths.party.record, "utf8"));
     const reportedAt = (/* @__PURE__ */ new Date()).toISOString();
     const completed = completePartyRecord(record, { laneRuns: record.laneRuns.map((l) => ({ ...l, executionStatus: "complete" })), cost: scoreboard.cost, report: { path: paths.party.report, sha256: sha256Utf8(readout) }, reportedAt });
     if (nextBody !== null) writeTicketBody(meta.ticketRef, meta.source, nextBody, paths.ticketBody);
@@ -14044,8 +14261,8 @@ ${v.idea.trim()}
     return { url, readoutPath: paths.readout, cost: scoreboard.cost.totals, omissions: scoreboard.cost.omissions.length };
   },
   classes(args) {
-    const v = flags(args, { class: { type: "string" }, installed: { type: "string" } });
-    const registry = getRegistry();
+    const v = flags(args, { class: { type: "string" }, installed: { type: "string" }, host: { type: "string" } });
+    const registry = getRegistry(selectedHost(v.host).id);
     if (v.class === void 0 && v.installed === void 0) return { classes: Object.values(registry) };
     const classId = requireFlag(v, "class");
     const entry = registry[classId];
