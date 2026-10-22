@@ -7511,7 +7511,7 @@ var require__ = __commonJS({
 });
 
 // src/cli.mjs
-import { existsSync as existsSync8, readFileSync as readFileSync17, realpathSync as realpathSync3, statSync as statSync3 } from "node:fs";
+import { existsSync as existsSync8, readFileSync as readFileSync18, realpathSync as realpathSync3, statSync as statSync3 } from "node:fs";
 import { execFileSync as execFileSync4 } from "node:child_process";
 import { homedir } from "node:os";
 import path12 from "node:path";
@@ -11121,6 +11121,7 @@ function loadClasses(repoRoot) {
 var ROLE_TOOLS = Object.freeze(["Read", "Grep", "Glob", "Bash"]);
 var ROLE_BUDGET = Object.freeze({ maxTokens: 2e4, maxTurns: 40 });
 var HOST_GUARANTEES = Object.freeze({ tools: true, paths: true, data: true });
+var CODEX_NATIVE_GUARANTEES = Object.freeze({ tools: false, paths: false, data: false });
 var HOST_CAPABILITIES = Object.freeze({ "isolated-dispatch": true });
 var ADAPTER_FACTORIES = Object.freeze({
   "claude-code": createClaudeCodeAdapter,
@@ -11144,10 +11145,13 @@ function descriptorFor(classes2, classKey) {
     references: [...record.references, ...record.families.map((family) => record.lensFiles[family])]
   };
 }
-function admitPartyRun({ classes: classes2, host, input, classKey }) {
+function admitPartyRun({ classes: classes2, host, input, classKey, codexModelBinding }) {
   const makeAdapter = ADAPTER_FACTORIES[host];
   if (!makeAdapter) {
     throw new AdmissionError("ADMISSION_UNKNOWN_HOST", `no adapter for host "${host}"`);
+  }
+  if (host === "codex" && (!codexModelBinding || typeof codexModelBinding.model !== "string" || typeof codexModelBinding.reasoningEffort !== "string")) {
+    throw new AdmissionError("ADMISSION_CODEX_MODEL_REQUIRED", "Codex admission requires the observed parent model and reasoning effort");
   }
   const admission = descriptorFor(classes2, classKey);
   const events = [];
@@ -11171,10 +11175,11 @@ function admitPartyRun({ classes: classes2, host, input, classKey }) {
     }
   });
   const roleBindings = {};
-  const modelBindings = deriveModelRequirementBindings(adapterModelBindings(classes2.bindings[host], host, Object.keys(admission.roles)), admission.roles);
+  const roleModels = host === "codex" ? Object.fromEntries(Object.keys(admission.roles).map((roleId) => [roleId, codexModelBinding])) : adapterModelBindings(classes2.bindings[host], host, Object.keys(admission.roles));
+  const modelBindings = deriveModelRequirementBindings(roleModels, admission.roles);
   const adapter = makeAdapter({
     modelBindings,
-    guarantees: HOST_GUARANTEES,
+    guarantees: host === "codex" ? CODEX_NATIVE_GUARANTEES : HOST_GUARANTEES,
     capabilities: HOST_CAPABILITIES
   });
   for (const [roleId, modelRequirement] of Object.entries(admission.roles)) {
@@ -11223,8 +11228,116 @@ function validateRunOutcome({ classes: classes2, classKey, result, evidencePath 
   return { events: [{ kind: "outcome-validated", data: { status: "complete" } }] };
 }
 
+// src/codex-native.mjs
+import { createHash as createHash3 } from "node:crypto";
+import { readFileSync as readFileSync11 } from "node:fs";
+var CodexTraceError = class extends Error {
+  constructor(code, message) {
+    super(message);
+    this.code = code;
+  }
+};
+function readRollout(file) {
+  let bytes;
+  try {
+    bytes = readFileSync11(file);
+  } catch (error) {
+    throw new CodexTraceError("CODEX_TRACE_UNREADABLE", `cannot read rollout "${file}": ${error.message}`);
+  }
+  let rows2;
+  try {
+    rows2 = bytes.toString("utf8").trim().split("\n").map((line) => JSON.parse(line));
+  } catch (error) {
+    throw new CodexTraceError("CODEX_TRACE_MALFORMED", `rollout "${file}" is not valid JSONL: ${error.message}`);
+  }
+  const metadata = rows2.filter((row) => row.type === "session_meta");
+  if (metadata.length !== 1 || typeof metadata[0].payload?.id !== "string") {
+    throw new CodexTraceError("CODEX_TRACE_MALFORMED", `rollout "${file}" must have one session_meta with an id`);
+  }
+  return { rows: rows2, metadata: metadata[0].payload, sha256: createHash3("sha256").update(bytes).digest("hex") };
+}
+function observedContext(rollout) {
+  const contexts = rollout.rows.filter((row) => row.type === "turn_context").map((row) => row.payload);
+  const last = contexts.at(-1);
+  if (!last || typeof last.model !== "string" || !last.model || typeof last.effort !== "string" || !last.effort) {
+    throw new CodexTraceError("CODEX_MODEL_UNAVAILABLE", "rollout has no observed model and reasoning effort");
+  }
+  return { model: last.model, reasoningEffort: last.effort };
+}
+function pathBindingFor(bundle) {
+  if (bundle.artifactFamily !== "jcsl:artifact-family:code-diff") return "not-applicable";
+  return bundle.repoRoot ? "pinned" : "unbound";
+}
+function nativePrompt({ parentId, action, roleBody, bundle }) {
+  return [
+    `Gauntlet native dispatch: parent=${parentId} action=${action.actionId} role=${action.roleId} artifact=${action.artifactSha256}`,
+    ...bundle.repoRoot ? [
+      `Repository under review: ${bundle.repoRoot}`,
+      `Pinned reviewed commit: ${bundle.reviewedCommit}`,
+      "Use the repository under review for all source reads and git commands. Native child cwd may be a different directory. Use absolute paths or git -C with that repository root. Path access is not enforced by this host."
+    ] : bundle.artifactFamily === "jcsl:artifact-family:code-diff" ? ["This local diff has no pinned repository root or commit. Review the staged bundle as the source of truth. Any source reads beyond it are unpinned; do not claim commit-bound source proof. Path access is not enforced by this host."] : [],
+    "",
+    roleBody.trimEnd(),
+    "",
+    action.promptBody
+  ].join("\n");
+}
+function measureChild({ parentId, parentCwd, action, admittedModel, childId, prompt, child, pathBinding }) {
+  if (child.metadata.id !== childId || child.metadata.source?.subagent?.thread_spawn?.parent_thread_id !== parentId) {
+    throw new CodexTraceError("CODEX_CHILD_IDENTITY_MISMATCH", "child rollout id or parent link does not match the admitted dispatch");
+  }
+  if (child.metadata.cwd !== parentCwd) {
+    throw new CodexTraceError("CODEX_CHILD_CWD_MISMATCH", "child rollout cwd differs from the parent working directory");
+  }
+  const userTexts = child.rows.filter((row) => row.type === "response_item" && row.payload?.type === "message" && row.payload.role === "user").flatMap((row) => row.payload.content ?? []).filter((part) => part.type === "input_text").map((part) => part.text);
+  if (!userTexts.includes(prompt)) {
+    throw new CodexTraceError("CODEX_ACTION_MISMATCH", `child rollout does not contain the exact prepared prompt for ${action.actionId}`);
+  }
+  const contexts = child.rows.filter((row) => row.type === "turn_context").map((row) => row.payload);
+  if (contexts.length === 0 || contexts.some((context) => context.model !== admittedModel.model || context.effort !== admittedModel.reasoningEffort)) {
+    throw new CodexTraceError("CODEX_MODEL_MISMATCH", `child rollout model or reasoning effort differs from the admitted ${admittedModel.model}/${admittedModel.reasoningEffort}`);
+  }
+  const finals = child.rows.filter((row) => row.type === "response_item" && row.payload?.type === "message" && row.payload.role === "assistant" && row.payload.phase === "final_answer");
+  if (finals.length !== 1) throw new CodexTraceError("CODEX_CHILD_INCOMPLETE", "child rollout must contain exactly one final answer");
+  const rawOutput = (finals[0].payload.content ?? []).filter((part) => part.type === "output_text").map((part) => part.text).join("");
+  if (!rawOutput) throw new CodexTraceError("CODEX_CHILD_INCOMPLETE", "child final answer is empty");
+  const samples = child.rows.filter((row) => row.type === "event_msg" && row.payload?.type === "token_count");
+  const totals = samples.at(-1)?.payload?.info?.total_token_usage;
+  const usage = {};
+  if (totals && ["input_tokens", "cached_input_tokens", "cache_write_input_tokens", "output_tokens"].every((key) => Number.isSafeInteger(totals[key]) && totals[key] >= 0)) {
+    const plainInput = totals.input_tokens - totals.cached_input_tokens - totals.cache_write_input_tokens;
+    if (plainInput >= 0) {
+      Object.assign(usage, {
+        inputTokens: plainInput,
+        cacheReadTokens: totals.cached_input_tokens,
+        cacheWriteTokens: totals.cache_write_input_tokens,
+        outputTokens: totals.output_tokens
+      });
+    }
+  }
+  const toolCalls = child.rows.filter((row) => row.type === "response_item" && ["custom_tool_call", "function_call"].includes(row.payload?.type)).map((row) => ({ tool: [row.payload.namespace, row.payload.name].filter(Boolean).join(".") || "unknown" }));
+  return { rawOutput, hostMeta: {
+    modelBinding: { [action.kind.slice("dispatch-".length)]: admittedModel },
+    bindingStatus: "degraded",
+    usage,
+    toolCalls,
+    nativeCodex: {
+      parentId,
+      childId,
+      actionId: action.actionId,
+      childTraceSha256: child.sha256,
+      pathBinding,
+      observedTurns: null,
+      tokenCountSamples: samples.length,
+      declaredMaxTurns: 40,
+      turnLimitEnforced: false,
+      toolAndPathLimitsEnforced: false
+    }
+  } };
+}
+
 // src/triage.mjs
-import { existsSync as existsSync3, readFileSync as readFileSync11 } from "node:fs";
+import { existsSync as existsSync3, readFileSync as readFileSync12 } from "node:fs";
 var FINDING_ID_PATTERN = /^(?:F-[0-9]{3,}|A-[0-9]{3})$/;
 var ADMITTED_DISPOSITIONS = ["accepted", "rejected", "not-useful"];
 var TriageError = class extends Error {
@@ -11285,7 +11398,7 @@ function readTriageEntries(root, runId) {
   const sidecarPath = runPaths(root, runId).triage;
   let raw;
   try {
-    raw = readFileSync11(sidecarPath, "utf8");
+    raw = readFileSync12(sidecarPath, "utf8");
   } catch (err) {
     if (err.code === "ENOENT") {
       return [];
@@ -11957,7 +12070,7 @@ function evaluateRoster(policy, profile, { forceLanes = [], skipLanes = [] } = {
 }
 
 // node_modules/@lewisjcs/statblock/src/party/store.mjs
-import { existsSync as existsSync4, mkdirSync as mkdirSync3, readdirSync as readdirSync3, readFileSync as readFileSync12 } from "node:fs";
+import { existsSync as existsSync4, mkdirSync as mkdirSync3, readdirSync as readdirSync3, readFileSync as readFileSync13 } from "node:fs";
 import { execFileSync } from "node:child_process";
 import path8 from "node:path";
 function partyPaths(root, partyRunId) {
@@ -12069,7 +12182,7 @@ function collectRunEnvelopes(runDir) {
     const filePath = path8.join(runDir, fileName);
     let raw;
     try {
-      raw = readFileSync12(filePath, "utf8");
+      raw = readFileSync13(filePath, "utf8");
     } catch (err) {
       throw new PartyError("PARTY_ENVELOPE_UNREADABLE", `failed to read envelope file "${filePath}": ${err.message}`, { filePath });
     }
@@ -12199,7 +12312,7 @@ function computeCostSummary(lanes, priceTable) {
 }
 
 // src/party-policy.mjs
-import { readFileSync as readFileSync13 } from "node:fs";
+import { readFileSync as readFileSync14 } from "node:fs";
 import path9 from "node:path";
 var POLICY_FILES = Object.freeze([
   Object.freeze({ key: "rules", fileName: "artifact-profile-rules-v1.json", contractId: "jcsl:artifact-profile-rules@1", validate: validatePartyContract }),
@@ -12214,7 +12327,7 @@ function loadPartyPolicy(repoRoot) {
     const filePath = path9.join(repoRoot, "policy", fileName);
     let data;
     try {
-      data = JSON.parse(readFileSync13(filePath, "utf8"));
+      data = JSON.parse(readFileSync14(filePath, "utf8"));
     } catch (err) {
       problems.push(`${fileName}: failed to read/parse (${err.message})`);
       continue;
@@ -12233,11 +12346,11 @@ function loadPartyPolicy(repoRoot) {
 }
 
 // src/party-revision.mjs
-import { existsSync as existsSync6, readdirSync as readdirSync4, readFileSync as readFileSync15, mkdirSync as mkdirSync4 } from "node:fs";
+import { existsSync as existsSync6, readdirSync as readdirSync4, readFileSync as readFileSync16, mkdirSync as mkdirSync4 } from "node:fs";
 import { execFileSync as execFileSync3 } from "node:child_process";
 
 // src/party-post.mjs
-import { existsSync as existsSync5, readFileSync as readFileSync14 } from "node:fs";
+import { existsSync as existsSync5, readFileSync as readFileSync15 } from "node:fs";
 import { execFileSync as execFileSync2 } from "node:child_process";
 import path10 from "node:path";
 var MARKER_PREFIX = "<!-- gauntlet:v1 ";
@@ -12256,7 +12369,7 @@ function readReceipts(sidecarPath) {
   if (!existsSync5(sidecarPath)) return [];
   let parsed;
   try {
-    parsed = JSON.parse(readFileSync14(sidecarPath, "utf8"));
+    parsed = JSON.parse(readFileSync15(sidecarPath, "utf8"));
   } catch (err) {
     throw new CliError("CLI_POST_RECEIPTS_MALFORMED", `failed to parse "${sidecarPath}": ${err.message}`);
   }
@@ -12929,7 +13042,7 @@ function findPriorParty(partyRoot, { repo, number }) {
     if (origin === null || origin.repo !== repo || origin.number !== number) continue;
     const receipts = readReceipts(partySidecarPaths(paths).post);
     if (!receipts.some((r) => r.status === "posted")) continue;
-    const record = JSON.parse(readFileSync15(paths.record, "utf8"));
+    const record = JSON.parse(readFileSync16(paths.record, "utf8"));
     if (best === null || record.createdAt > best.record.createdAt) best = { partyRunId, paths, record, origin };
   }
   return best;
@@ -13016,7 +13129,7 @@ function readRevision(paths) {
   if (!existsSync6(filePath)) return null;
   let parsed;
   try {
-    parsed = JSON.parse(readFileSync15(filePath, "utf8"));
+    parsed = JSON.parse(readFileSync16(filePath, "utf8"));
   } catch (err) {
     throw new CliError("CLI_REVISION_INVALID", `failed to read "${filePath}": ${err.message}`);
   }
@@ -13028,7 +13141,7 @@ function readRevision(paths) {
 }
 
 // src/party-escape.mjs
-import { existsSync as existsSync7, readFileSync as readFileSync16 } from "node:fs";
+import { existsSync as existsSync7, readFileSync as readFileSync17 } from "node:fs";
 var ESCAPE_CONTRACT_ID = "jcsl:party-escape@1";
 var FINDING_CATEGORIES = Object.freeze(["security", "correctness", "data-loss", "maintainability", "style", "accuracy", "other"]);
 var EscapeError = class extends Error {
@@ -13050,7 +13163,7 @@ function readEscapes(sidecarPath) {
   if (!existsSync7(sidecarPath)) return [];
   let parsed;
   try {
-    parsed = JSON.parse(readFileSync16(sidecarPath, "utf8"));
+    parsed = JSON.parse(readFileSync17(sidecarPath, "utf8"));
   } catch (err) {
     throw new EscapeError("ESCAPE_SIDECAR_MALFORMED", `failed to read "${sidecarPath}": ${err.message}`);
   }
@@ -13199,7 +13312,7 @@ function receiptMeasurement(usage, { fields, fallback }) {
 function readJsonFile(filePath, readFailedCode) {
   let raw;
   try {
-    raw = readFileSync17(filePath, "utf8");
+    raw = readFileSync18(filePath, "utf8");
   } catch (err) {
     throw new CliError(readFailedCode, `failed to read "${filePath}": ${err.message}`);
   }
@@ -13229,7 +13342,7 @@ function loadStateFile(statePath) {
   return { wrapper, runtimeState: wrapper.runtimeState, action };
 }
 function readRepoFile(relPath) {
-  return readFileSync17(path12.join(GAUNTLET_REPO_ROOT, relPath), "utf8");
+  return readFileSync18(path12.join(GAUNTLET_REPO_ROOT, relPath), "utf8");
 }
 function computeRoleSourceHash(personaRelPath, lensRelPath) {
   const persona = readRepoFile(personaRelPath);
@@ -13340,6 +13453,7 @@ function assertValidRunId(runId) {
   }
 }
 var INIT_REQUIRED_FLAGS = ["bundle", "family", "host", "out", "class"];
+var INIT_OPTIONAL_FLAGS = ["codex-parent-trace"];
 var NEXT_FLAGS = ["state"];
 var RECEIPT_REQUIRED_FLAGS = ["state", "action", "output"];
 var RECEIPT_OPTIONAL_FLAGS = ["host-meta"];
@@ -13414,7 +13528,7 @@ function cmdBundle(flags) {
   }
   let content;
   try {
-    content = readFileSync17(flags.primary, "utf8");
+    content = readFileSync18(flags.primary, "utf8");
   } catch (err) {
     throw new CliError("CLI_PRIMARY_READ_FAILED", `failed to read --primary file "${flags.primary}": ${err.message}`);
   }
@@ -13493,7 +13607,7 @@ var PARTY_ARTIFACT_TYPES = ["code-pr", "code-local", "plan", "doc", "skill", "di
 var TRUST_CONTEXTS = ["single-user-tool", "agent-tool", "multi-caller-service"];
 function readPartyInputFile(filePath) {
   try {
-    return readFileSync17(filePath, "utf8");
+    return readFileSync18(filePath, "utf8");
   } catch (err) {
     throw new CliError("CLI_PARTY_INPUT_UNREADABLE", `failed to read "${filePath}": ${err.message}`);
   }
@@ -14289,7 +14403,7 @@ function readLaneLink(outDir) {
 }
 function cmdInit(flags) {
   requireFlags(flags, INIT_REQUIRED_FLAGS);
-  rejectUnknownFlags(flags, INIT_REQUIRED_FLAGS);
+  rejectUnknownFlags(flags, [...INIT_REQUIRED_FLAGS, ...INIT_OPTIONAL_FLAGS]);
   const record = recordForKey(flags.class);
   const bundle = readJsonFile(flags.bundle, "CLI_BUNDLE_READ_FAILED");
   const { valid: bundleValid, issues: bundleIssues } = verifyBundle(bundle);
@@ -14307,10 +14421,32 @@ function cmdInit(flags) {
     throw new CliError("CLI_INVALID_HOST", `--host must be one of ${Object.keys(HOST_ADAPTERS).join(", ")}; got "${flags.host}"`);
   }
   const host = { id: flags.host, adapterId };
+  if (flags.host === "codex" !== (flags["codex-parent-trace"] !== void 0)) {
+    throw new CliError("CLI_CODEX_PARENT_REQUIRED", "--codex-parent-trace is required exactly when --host codex is selected");
+  }
+  let codexContext = null;
+  if (flags.host === "codex") {
+    try {
+      const parent = readRollout(flags["codex-parent-trace"]);
+      codexContext = {
+        parentId: parent.metadata.id,
+        parentTrace: path12.resolve(flags["codex-parent-trace"]),
+        modelBinding: observedContext(parent)
+      };
+    } catch (error) {
+      throw new CliError(error.code ?? "CLI_CODEX_PARENT_INVALID", error.message);
+    }
+  }
   const runDir = runDirForFile(flags.out);
   let admission;
   try {
-    admission = admitPartyRun({ classes: classes(), host: flags.host, input: bundle, classKey: record.classKey });
+    admission = admitPartyRun({
+      classes: classes(),
+      host: flags.host,
+      input: bundle,
+      classKey: record.classKey,
+      codexModelBinding: codexContext?.modelBinding
+    });
   } catch (err) {
     emitEvents(runDir, [{
       kind: "party-formation-failed",
@@ -14349,7 +14485,7 @@ function cmdInit(flags) {
   } catch (err) {
     throw new CliError("CLI_ADMISSION_FAILED", `createRun failed: ${err.message}`);
   }
-  writeStateFile(flags.out, { runtimeState: state, hostMetaHistory: [] });
+  writeStateFile(flags.out, { runtimeState: state, hostMetaHistory: [], ...codexContext ? { codexContext } : {} });
   emitEventsAfterPrimaryWrite(runDir, [
     ...admission.events,
     {
@@ -14363,23 +14499,23 @@ function cmdInit(flags) {
     },
     pendingEventFrom(state)
   ], flags.out);
-  printNext(state);
+  printNext(state, [], codexContext);
 }
-function hostBindingFor(state, action) {
+function hostBindingFor(state, action, codexContext) {
   if (action.terminal) return null;
   const { model, agent } = classes().bindings[state.host.id].roles[action.roleId];
-  return { agent, model, maxTurns: ROLE_BUDGET.maxTurns };
+  return state.host.id === "codex" ? { agent, ...codexContext.modelBinding, maxTurns: ROLE_BUDGET.maxTurns, maxTurnsEnforced: false } : { agent, model, maxTurns: ROLE_BUDGET.maxTurns };
 }
-function printNext(state, issues = []) {
+function printNext(state, issues = [], codexContext = null) {
   const action = nextAction2(classes(), state);
-  process.stdout.write(`${JSON.stringify({ issues, next: action, hostBinding: hostBindingFor(state, action) })}
+  process.stdout.write(`${JSON.stringify({ issues, next: action, hostBinding: hostBindingFor(state, action, codexContext) })}
 `);
 }
 function cmdNext(flags) {
   requireFlags(flags, NEXT_FLAGS);
   rejectUnknownFlags(flags, NEXT_FLAGS);
-  const { runtimeState } = loadStateFile(flags.state);
-  printNext(runtimeState);
+  const { wrapper, runtimeState } = loadStateFile(flags.state);
+  printNext(runtimeState, [], wrapper.codexContext);
 }
 function hasUsableModelBinding(modelBinding) {
   if (modelBinding === null || typeof modelBinding !== "object" || Array.isArray(modelBinding)) {
@@ -14397,7 +14533,7 @@ function cmdReceipt(flags) {
   const { wrapper, runtimeState } = loadStateFile(flags.state);
   let rawOutput;
   try {
-    rawOutput = readFileSync17(flags.output, "utf8");
+    rawOutput = readFileSync18(flags.output, "utf8");
   } catch (err) {
     throw new CliError("CLI_OUTPUT_READ_FAILED", `failed to read --output file "${flags.output}": ${err.message}`);
   }
@@ -14418,6 +14554,46 @@ function cmdReceipt(flags) {
         "CLI_HOST_META_MODEL_BINDING_MISSING",
         `--host-meta for a "${dispatchKind}" receipt must include exactly one role's modelBinding entry, shaped like {"modelBinding": {"finder": {"model": "<model-id>"}}}`
       );
+    }
+    if (runtimeState.host.id === "codex") {
+      const roleKey = dispatchKind.slice("dispatch-".length);
+      if (JSON.stringify(hostMeta.modelBinding) !== JSON.stringify({ [roleKey]: wrapper.codexContext?.modelBinding }) || hostMeta.bindingStatus !== "degraded" || hostMeta.nativeCodex?.parentId !== wrapper.codexContext?.parentId || hostMeta.nativeCodex?.actionId !== runtimeState.pendingAction.actionId || typeof hostMeta.nativeCodex?.childId !== "string") {
+        throw new CliError("CLI_CODEX_BINDING_MISMATCH", "Codex receipt must carry the measured parent, child, action, observed model, and degraded binding");
+      }
+      try {
+        const tracePath = hostMeta.nativeCodex.childTracePath;
+        if (typeof tracePath !== "string" || !path12.isAbsolute(tracePath)) {
+          throw new Error("child rollout path is missing or not absolute");
+        }
+        const parent = readRollout(wrapper.codexContext.parentTrace);
+        if (parent.metadata.id !== wrapper.codexContext.parentId || JSON.stringify(observedContext(parent)) !== JSON.stringify(wrapper.codexContext.modelBinding)) {
+          throw new Error("parent rollout changed since admission");
+        }
+        const agent = classes().bindings.codex.roles[runtimeState.pendingAction.roleId].agent;
+        const roleBody = readRepoFile(`hosts/codex/roles/${agent}.md`);
+        const prompt = nativePrompt({
+          parentId: wrapper.codexContext.parentId,
+          action: runtimeState.pendingAction,
+          roleBody,
+          bundle: runtimeState.bundle
+        });
+        const measured = measureChild({
+          parentId: wrapper.codexContext.parentId,
+          parentCwd: parent.metadata.cwd,
+          action: runtimeState.pendingAction,
+          admittedModel: wrapper.codexContext.modelBinding,
+          childId: hostMeta.nativeCodex.childId,
+          prompt,
+          child: readRollout(tracePath),
+          pathBinding: pathBindingFor(runtimeState.bundle)
+        });
+        const { childTracePath, ...reportedNative } = hostMeta.nativeCodex;
+        if (rawOutput !== measured.rawOutput || JSON.stringify(reportedNative) !== JSON.stringify(measured.hostMeta.nativeCodex) || JSON.stringify(hostMeta.usage) !== JSON.stringify(measured.hostMeta.usage) || JSON.stringify(hostMeta.toolCalls) !== JSON.stringify(measured.hostMeta.toolCalls)) {
+          throw new Error("output or host metadata differs from the child rollout");
+        }
+      } catch (error) {
+        throw new CliError("CLI_CODEX_TRACE_MISMATCH", error.message);
+      }
     }
   }
   const receipt = { actionId: flags.action, rawOutput, hostMeta };
@@ -14463,7 +14639,7 @@ function cmdReceipt(flags) {
     process.stderr.write(`[gauntlet-runtime] ${issue.code}: ${issue.message}
 `);
   }
-  printNext(nextState, issues);
+  printNext(nextState, issues, wrapper.codexContext);
 }
 function cmdResult(flags) {
   requireFlags(flags, RESULT_FLAGS);
@@ -14673,7 +14849,7 @@ async function cmdShow(flags) {
   if (!existsSync8(paths.dir)) {
     throw new CliError("CLI_RUN_NOT_FOUND", `no stored run "${flags.run}" under "${storeRoot}"`);
   }
-  const readResult = () => existsSync8(paths.result) ? JSON.parse(readFileSync17(paths.result, "utf8")) : null;
+  const readResult = () => existsSync8(paths.result) ? JSON.parse(readFileSync18(paths.result, "utf8")) : null;
   if (flags.follow === void 0) {
     process.stdout.write(`${renderRun2({ events: readRunEvents(paths.dir), result: readResult() })}
 `);
