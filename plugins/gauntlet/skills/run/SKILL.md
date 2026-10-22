@@ -1,7 +1,7 @@
 ---
 name: run
 description: Use when running the full review Party over one artifact — a pull request, a local diff, a plan, a doc, a skill, or an agent-instruction file. The canonical PR-review surface — "review this PR" routes here. Trigger phrases include "review this PR", "review PR <number>", "review the PR", "review this", "run the gauntlet", "do a full review", "fully review", or any natural-language variation requesting a full review of an artifact. When NOT to use: for a single-lane review invoke the corresponding sibling directly (threat-review, code-quality-audit, adversarial-review, plan-review, doc-review, skill-audit, directive-review).
-argument-hint: "[<pr-url> | <path>] [--type <type>] [--full] [--go-live] [--no-go-live] [--force-lane <class>] [--skip-lane <class>]"
+argument-hint: "[<pr-url> | <path>] [--type <type>] [--full] [--go-live] [--no-go-live] [--force-lane <class>] [--skip-lane <class>] [--strict-turn-cap]"
 ---
 
 # Gauntlet
@@ -26,13 +26,15 @@ One artifact per run. The runtime reviews one file per party run and refuses a d
 
 ## 1. Preflight
 
-**Host.** The Party runs under Claude Code. Step 6 uses the packaged Claude dispatch wrapper with the `claude-code` host binding. If this session is not Claude Code, stop here and name the supported single-lane sibling skills. Before forming a party, check that `${CLAUDE_PLUGIN_ROOT}/runtime/bin/dispatch.mjs` exists. A missing wrapper means this installed plugin cannot enforce the turn limit.
+**Host.** Set `PLUGIN_ROOT` to the absolute directory two levels above this `SKILL.md` file and check that its `runtime/bin/cli.mjs` exists. In Claude Code, confirm its real path matches `CLAUDE_PLUGIN_ROOT` and set `HOST=claude-code`. In Codex, set `HOST=codex` and check that native subagent dispatch is available. Find the one parent rollout JSONL whose session ID equals the active `CODEX_SESSION_ID`; save its absolute path as `PARENT_TRACE`. If the parent trace is unavailable, stop before forming a Party. If the default Codex run store is unwritable, prefix every runtime command with the same `GAUNTLET_STORE=<writable-path>` assignment. Stop if neither host can dispatch a Party lane. Native subagents are the default in both hosts. `--strict-turn-cap` selects the Claude Code SDK wrapper. If that option is requested, check for `runtime/bin/dispatch.mjs` before forming the Party. In Codex, report that this option is unavailable before forming a Party. Read the selected host's dispatch instructions in step 6.
 
-**Sibling-name check.** Run `ls ${CLAUDE_PLUGIN_ROOT}/skills/` and note the sibling skill names. Another plugin, or a local skill of the same bare name, can shadow one of them. Every sibling dispatch in this skill therefore uses the plugin-qualified form — `Skill: gauntlet:<name>` — never the bare name.
+**Sibling-name check.** Run `ls ${PLUGIN_ROOT}/skills/` and note the sibling skill names. Another plugin, or a local skill of the same bare name, can shadow one of them. Every sibling dispatch in this skill therefore uses the plugin-qualified form `Skill: gauntlet:<name>`. Do not use the bare name.
 
 **Node.** Run `node --version`. If it fails or the major version is below 22, stop and report that as the blocker: the runtime requires Node 22 or newer.
 
-**The command.** Every runtime call below is `node "${CLAUDE_PLUGIN_ROOT}/runtime/bin/cli.mjs" <subcommand> …`. Never write run files into the plugin directory or into the repository under review — the runtime owns where a run is recorded. The report copy that step 8 places under a repository's `reviews/` directory is not a run file: it is the deliverable, and putting it there is deliberate.
+**The command.** Every runtime call below is `node "${PLUGIN_ROOT}/runtime/bin/cli.mjs" <subcommand> …`. The runtime owns run files, so never write them into the plugin directory or the repository under review. The report copy that step 8 places under a repository's `reviews/` directory is the deliverable.
+
+Shell tool calls start fresh. In every command below and in the selected host route, substitute the verified absolute plugin path for `${PLUGIN_ROOT}` and the recorded values for placeholders and variables such as `<runDir>`, `<HOST>`, and `$STAGE`. Do not rely on a shell variable from an earlier call.
 
 ## 2. Normalize the input
 
@@ -99,7 +101,7 @@ This step reports signals; it decides nothing. Whether the signals lead to a go-
 Compose one call. Detection, the roster, and the artifact snapshot are all the runtime's decisions:
 
 ```
-node "${CLAUDE_PLUGIN_ROOT}/runtime/bin/cli.mjs" party-form --primary <artifact-file> [--path <logical-path>] [--type <code-pr|code-local|plan|doc|skill|directive>] [--body <pr-body-file>] [--title <pr-title-file>] [--trust-context <single-user-tool|agent-tool|multi-caller-service>] [--repo-root <dir> --reviewed-commit <sha>] [--origin-url <url> --base-ref <ref> --base-sha <sha> --author <self|other> --visibility <public|private>] [--thread <thread-file>] [--full] [--golive-signal <id>]... [--go-live|--no-go-live] [--force-lane <class>]... [--skip-lane <class>]...
+node "${PLUGIN_ROOT}/runtime/bin/cli.mjs" party-form --primary <artifact-file> [--path <logical-path>] [--type <code-pr|code-local|plan|doc|skill|directive>] [--body <pr-body-file>] [--title <pr-title-file>] [--trust-context <single-user-tool|agent-tool|multi-caller-service>] [--repo-root <dir> --reviewed-commit <sha>] [--origin-url <url> --base-ref <ref> --base-sha <sha> --author <self|other> --visibility <public|private>] [--thread <thread-file>] [--full] [--golive-signal <id>]... [--go-live|--no-go-live] [--force-lane <class>]... [--skip-lane <class>]...
 # stdout: {partyRunId, partyDir, profile, roster:{fielded, skipped, gaps, overrides}, goLivePrompt, lanes:[{classKey, runId, runDir, family}], origin, worktree, revision, events}
 ```
 
@@ -139,30 +141,16 @@ The go-live lane's SHIP / HOLD / NEEDS-INFO verdict is a separate verdict system
 
 ## 6. Drive the fielded lanes
 
-Each lane has its own staged `bundle.json` and run directory. Start fielded lanes in parallel, then advance each lane only when its current dispatch and receipt finish. A lane's pending action supplies `hostBinding.agent`, `hostBinding.model`, and `hostBinding.maxTurns`. The agent name selects `${CLAUDE_PLUGIN_ROOT}/agents/<name without gauntlet: prefix>.md`. Save `next.promptBody` verbatim to `<runDir>/<actionId>-prompt.md`.
+Each lane has its own staged `bundle.json` and run directory. Start fielded lanes in parallel, then advance each lane only when its current dispatch and receipt finish. A lane's pending action supplies `hostBinding.agent`, `hostBinding.model`, and `hostBinding.maxTurns`.
 
-Initialize each lane before its first dispatch. Read the prefixed `artifactFamily` from its `bundle.json` and run `node "${CLAUDE_PLUGIN_ROOT}/runtime/bin/cli.mjs" init --bundle <runDir>/bundle.json --family <artifactFamily> --host claude-code --class <classKey> --out <runDir>/state.json`. Use the returned `next` and `hostBinding`. For later actions, use the `next` and `hostBinding` returned by `receipt`, or run `next --state <runDir>/state.json` after an interruption.
+Initialize each lane before its first dispatch. Read the prefixed `artifactFamily` from its `bundle.json` and run `node "${PLUGIN_ROOT}/runtime/bin/cli.mjs" init --bundle <runDir>/bundle.json --family <artifactFamily> --host <HOST> --class <classKey> --out <runDir>/state.json`, adding `--codex-parent-trace <PARENT_TRACE>` when `HOST=codex`. Use the returned `next` and `hostBinding`. For later actions, use the `next` and `hostBinding` returned by `receipt`, or run `next --state <runDir>/state.json` after an interruption.
 
-Run one process for each pending action:
-
-```
-node "${CLAUDE_PLUGIN_ROOT}/runtime/bin/dispatch.mjs" \
-  --agent-file "${CLAUDE_PLUGIN_ROOT}/agents/<agent-name>.md" \
-  --prompt-file <runDir>/<actionId>-prompt.md \
-  --bundle <runDir>/bundle.json \
-  --model <hostBinding.model> \
-  --role <next.kind without dispatch- prefix> \
-  --max-turns <hostBinding.maxTurns> \
-  --output <runDir>/<role>-output-<attempt>.json \
-  --meta <runDir>/<role>-host-meta-<attempt>.json
-```
-
-The wrapper runs a fresh Claude SDK query with the role's model and a host-enforced turn cap. For a pinned pull request, it starts in the reviewed worktree and refuses a mismatched commit. Its stdout lists read targets. Inspect unusually broad targets before launching another lane. It writes the raw member reply and host metadata, including actual turns, usage, and tool calls. The SDK result `error_max_turns` becomes raw host-failure output; never interpret it as a clean finding set.
+Read and follow the one host route selected at preflight: `skills/run/claude-native.md` for Claude Code, `skills/run/codex-native.md` for Codex, or `skills/run/claude-strict-cap.md` when the operator requested the enforced cap. The route defines how to dispatch one pending action and record its raw output and host metadata. Check that the route file exists before the first dispatch.
 
 Pass those files to the runtime unchanged:
 
 ```
-node "${CLAUDE_PLUGIN_ROOT}/runtime/bin/cli.mjs" receipt \
+node "${PLUGIN_ROOT}/runtime/bin/cli.mjs" receipt \
   --state <runDir>/state.json --action <actionId> \
   --output <runDir>/<role>-output-<attempt>.json \
   --host-meta <runDir>/<role>-host-meta-<attempt>.json
@@ -171,7 +159,7 @@ node "${CLAUDE_PLUGIN_ROOT}/runtime/bin/cli.mjs" receipt \
 Follow the returned `next` action for that lane, including the runtime's single retry. If the wrapper process fails before writing output, report the process error and stop that lane. When `next` reports `terminal: true`, run `result --state <runDir>/state.json --out <runDir>/result.json --evidence <runDir>/evidence.json` once. A lane that ended in a gap is still terminal; run `result` and let the Party report that gap. If no lanes were fielded, continue to step 7.
 
 <HARD-GATE>
-Never reorder or skip a stage. Never place two roles in one dispatch. Never change the member's output, invent a finding, or adjudicate a lane yourself. Each wrapper process gets only its own role, prompt, and staged artifact. Run `receipt` for every completed dispatch before acting on the next one.
+Never reorder or skip a stage. Never place two roles in one dispatch. Never change the member's output, invent a finding, or adjudicate a lane yourself. Give each dispatch only its selected role, prompt, and staged artifact. Run `receipt` for every completed dispatch before acting on the next one.
 </HARD-GATE>
 
 ## 7. Close the party
@@ -179,7 +167,7 @@ Never reorder or skip a stage. Never place two roles in one dispatch. Never chan
 Once every fielded lane is terminal and has run `result`:
 
 ```
-node "${CLAUDE_PLUGIN_ROOT}/runtime/bin/cli.mjs" party-report --party <partyRunId> [--keep-worktree]
+node "${PLUGIN_ROOT}/runtime/bin/cli.mjs" party-report --party <partyRunId> [--keep-worktree]
 # stdout: {partyRunId, reportPath, recordPath, blockers, gaps, lanes, cost:{bookedUsd, fullFlowUsd, omissions}}
 ```
 
@@ -208,9 +196,11 @@ Confirm the copy landed — `wc -l <path>` returns at least 1 — before naming 
 3. The report path, the cost line (`bookedUsd`, `fullFlowUsd`, and any `omissions`), and a one-line note that the full findings are in the file.
 4. On a revision, the transition, read off `party-report`'s `revision.statuses` — for example `2 of 3 prior findings resolved · 1 persisting · 1 new`. The counts in the verdict line cover open rows only (`persisting`, `new`, `unverified`); resolved and withdrawn rows stay in the report, closed.
 
-**The postable comment.** When the operator asks for something to post, run `node "${CLAUDE_PLUGIN_ROOT}/runtime/bin/cli.mjs" party-report --party <partyRunId> --format pr-comment` and show the operator the `commentPath` it prints. Security findings post like every other finding — claim, location, and fix — on every origin: a pull request is unreleased code, and its author is the one who can fix it. The stdout also carries `securityFindings`, every security-class row the comment holds (lane, id, tier, claim, file, line, location — the location fields only where the row has them), and `held`, which is `{security: 0, blockers: 0}` on this render. The runtime renders the whole comment — banner, box score, blocker callouts, findings table, machine-readable block, marker, footer — do not edit, re-word, or re-count it. For a non-pull-request artifact the operator pastes that file into the ticket.
+For a native subagent run, state that the 40-turn limit was not enforced. Report measured turns and any overrun when available; state when turns were unavailable. Preserve the report's measured values and omissions.
 
-**Posting to the pull request** is an outward-facing action. On a revision, before asking, say which of the two will happen: compare the prior party's last `post.json` receipt event with the verdict `party-report` just printed — on a revision the runtime updates the standing review in place when its event is unchanged, and when the event must change (blockers cleared, or blockers appeared) it dismisses a standing `REQUEST_CHANGES` review (a `COMMENT` review has nothing to dismiss), replaces that review's body with a one-line superseded note, and files a new review with the new event. Then, **only when `VISIBILITY` is `public` or was left unset in step 2, and `securityFindings` is not empty**, list those rows in chat, one line each as `<lane>/<id> · <tier> · <claim> · <location>`, and ask once: when `VISIBILITY` is `public`, `This repository is public. Hold these N security findings from the post? [y/N]`; when it was left unset, `This repository's visibility was not recorded, so it is treated as public. Hold these N security findings from the post? [y/N]`. Default is no: anything but `y` posts them. On `y`, add `--hold-security` to the `post` call below; the review event and the box score still come from the full set, so a held blocker still requests changes, and the comment carries a lock line naming the held count and pointing at the report file. A private origin never asks. Then ask: `Post the comment (held as answered above) to <repo>#<number>? [y/N]`. On `y`, run `node "${CLAUDE_PLUGIN_ROOT}/runtime/bin/cli.mjs" post --party <partyRunId>`, with `--hold-security` only when the hold question got a `y` in this exchange. Neither answer carries to the next post — ask both again every time. The runtime files or updates one pull-request review whose body is the comment — `REQUEST_CHANGES` with blockers, `COMMENT` without, and always `COMMENT` on a pull request the operator authored — and writes receipts to `post.json`; the receipt's `event` is the event the live review carries. A refusal (`CLI_POST_PENDING`, `CLI_POST_GH_FAILED`, `CLI_POST_ORIGIN_MISSING`, `CLI_POST_RECEIPTS_MALFORMED`) is surfaced verbatim, never retried. `post` is only ever run at the operator's say-so, each time.
+**The postable comment.** When the operator asks for something to post, run `node "${PLUGIN_ROOT}/runtime/bin/cli.mjs" party-report --party <partyRunId> --format pr-comment` and show the operator the `commentPath` it prints. Security findings carry claim, location, and fix on every origin: a pull request is unreleased code, and its author is the one who can fix it. The stdout also carries `securityFindings`, every security-class row the comment holds (lane, id, tier, claim, file, line, and available location fields), and `held`, which is `{security: 0, blockers: 0}` on this render. The runtime renders the banner, box score, blocker callouts, findings table, machine-readable block, marker, and footer. Do not edit, re-word, or re-count it. For a non-pull-request artifact the operator pastes that file into the ticket.
+
+**Posting to the pull request** is an outward-facing action. On a revision, before asking, say which of the two will happen: compare the prior party's last `post.json` receipt event with the verdict `party-report` just printed. On a revision the runtime updates the standing review in place when its event is unchanged, and when the event must change (blockers cleared, or blockers appeared) it dismisses a standing `REQUEST_CHANGES` review (a `COMMENT` review has nothing to dismiss), replaces that review's body with a one-line superseded note, and files a new review with the new event. Then, **only when `VISIBILITY` is `public` or was left unset in step 2, and `securityFindings` is not empty**, list those rows in chat, one line each as `<lane>/<id> · <tier> · <claim> · <location>`, and ask once: when `VISIBILITY` is `public`, `This repository is public. Hold these N security findings from the post? [y/N]`; when it was left unset, `This repository's visibility was not recorded, so it is treated as public. Hold these N security findings from the post? [y/N]`. Default is no: anything but `y` posts them. On `y`, add `--hold-security` to the `post` call below; the review event and the box score still come from the full set, so a held blocker still requests changes, and the comment carries a lock line naming the held count and pointing at the report file. A private origin never asks. Then ask: `Post the comment (held as answered above) to <repo>#<number>? [y/N]`. On `y`, run `node "${PLUGIN_ROOT}/runtime/bin/cli.mjs" post --party <partyRunId>`, with `--hold-security` only when the hold question got a `y` in this exchange. Neither answer carries to the next post. Ask both again every time. The runtime files or updates one pull-request review whose body is the comment. It uses `REQUEST_CHANGES` when blockers remain on another author's pull request. It uses `COMMENT` otherwise. It writes receipts to `post.json`; the receipt's `event` is the event the live review carries. A refusal (`CLI_POST_PENDING`, `CLI_POST_GH_FAILED`, `CLI_POST_ORIGIN_MISSING`, `CLI_POST_RECEIPTS_MALFORMED`) is surfaced verbatim, never retried. `post` is only ever run at the operator's say-so, each time.
 
 ## 9. Offer the gaps
 
@@ -234,4 +224,4 @@ What carries over is the discipline around the previous review:
 
 ## 11. Recording a missed defect
 
-When the operator says a reported party missed a defect — a reviewer, a later bug, or the operator's own reading found something the report did not — record it with `node "${CLAUDE_PLUGIN_ROOT}/runtime/bin/cli.mjs" escape --party <partyRunId> --lane <lane> --category <category> --note <text> [--ref <ref>]`: `--lane` is the Class that should have caught it, a Class key the runtime recognizes; `--category` is one of the runtime's finding categories; `--note` is one sentence saying what was missed; `--ref` is an optional pointer (a file:line, a commit, or a comment URL). The runtime appends the record to the party's `escapes.json` sidecar and prints the stamped record; it is only valid after `party-report` has run — `CLI_PARTY_NOT_REPORTED` is the refusal before that, and `CLI_INVALID_CLASS`, `ESCAPE_LANE_INVALID`, `ESCAPE_CATEGORY_INVALID`, `ESCAPE_NOTE_INVALID`, `ESCAPE_REF_INVALID`, `ESCAPE_SIDECAR_MALFORMED` are surfaced verbatim, never retried. Nothing in the runtime reads the sidecar back yet; it is evidence for a later measurement of which lane missed what. The skill never runs `escape` on its own, only when the operator names a miss.
+When a reviewer, a later bug, or the operator reveals a defect that a reported party missed, record it with `node "${PLUGIN_ROOT}/runtime/bin/cli.mjs" escape --party <partyRunId> --lane <lane> --category <category> --note <text> [--ref <ref>]`: `--lane` is the Class that should have caught it, a Class key the runtime recognizes; `--category` is one of the runtime's finding categories; `--note` is one sentence saying what was missed; `--ref` is an optional pointer (a file:line, a commit, or a comment URL). The runtime appends the record to the party's `escapes.json` sidecar and prints the stamped record; it is only valid after `party-report` has run. `CLI_PARTY_NOT_REPORTED` is the refusal before that, and `CLI_INVALID_CLASS`, `ESCAPE_LANE_INVALID`, `ESCAPE_CATEGORY_INVALID`, `ESCAPE_NOTE_INVALID`, `ESCAPE_REF_INVALID`, `ESCAPE_SIDECAR_MALFORMED` are surfaced verbatim, never retried. Nothing in the runtime reads the sidecar back yet; it is evidence for a later measurement of which lane missed what. The skill never runs `escape` on its own, only when the operator names a miss.

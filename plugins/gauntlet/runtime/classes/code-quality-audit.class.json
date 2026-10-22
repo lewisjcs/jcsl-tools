@@ -62,9 +62,9 @@
       ]
     },
     "enforcement": {
-      "tools": "required",
-      "paths": "required",
-      "data": "required"
+      "tools": "best-effort",
+      "paths": "best-effort",
+      "data": "best-effort"
     }
   },
   "contract": {
@@ -585,7 +585,7 @@
           "references/code-quality-standards.md",
           "bindings/codex.json"
         ],
-        "sourceHash": "bb96dd2ced7b72c87ebd888c1605533d09ef4dc01a4e08d6280495e70e61dbd1"
+        "sourceHash": "6c321c38d3f69376b5847468de6c27d3335f71c53d2f849e24c9852921e0e66f"
       }
     }
   },

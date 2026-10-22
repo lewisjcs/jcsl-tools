@@ -28,6 +28,12 @@ The check runner executes the saved task check itself and records the command, e
 
 ## Other actions
 
-For `person`, follow the top-level skill's reply rules. For `borrowed`, run the pinned Gauntlet review with its Codex host skill, then use Kiln's `borrowed` command and receipt mapping from the top-level skill. At terminal `complete`, follow its pull request consent and close rules. If a required Gauntlet Codex host or result is unavailable, report the gap and leave the Kiln action pending.
+For `person`, follow the top-level skill's reply rules. For `borrowed`, use the pinned `gauntlet:adversarial-review` Class result, not a Party aggregate report:
+
+1. Run `show --ticket <ref>` and confirm the pending borrowed action. Fetch `repo.base` from origin, then stage `git -C <repo.root> diff $(git -C <repo.root> merge-base origin/<repo.base> HEAD) HEAD` at `<run dir>/handed/<actionId>.diff`. For an older run without `repo.base`, use the default branch named by `git -C <repo.root> symbolic-ref --short refs/remotes/origin/HEAD`.
+2. Load the Gauntlet Codex host skill and run that Class over the staged diff as a `code-diff` artifact. Before dispatch, check the installed borrowed Class manifest with `classes --class jcsl:gauntlet:adversarial-review --installed <Gauntlet plugin root>/runtime/classes/adversarial-review.class.json`. Skip Gauntlet triage. Retain the Gauntlet `runDir` returned by `bundle`; its `bundle.json`, `result.json`, and `evidence.json` must be from that one run.
+3. Run `borrowed --ticket <ref> --action <actionId> --result <Gauntlet runDir>/result.json --evidence <Gauntlet runDir>/evidence.json --bundle <Gauntlet runDir>/bundle.json --scope branch`. Pass `--root <run store>` when this run uses a nondefault store. The CLI reads the saved Kiln host and staged diff for that pending action, then checks Class identity, Codex host, result/evidence/bundle digest, and the staged diff bytes. A mismatch maps to a `run-incomplete` gap; leave the action pending until the runtime handles that receipt. Write the returned `outcome` array to `<run dir>/handed/<actionId>-output.txt` and `{"modelBinding": {"model": "main-thread"}, "usage": <returned usage>}` to `<run dir>/handed/<actionId>-meta.json`. Omit `toolCalls` when they were not measured, then run `receipt`.
+
+At terminal `complete`, follow the top-level skill's pull request consent and close rules. If a required Gauntlet Codex host or result is unavailable, report the gap and leave the Kiln action pending.
 
 Before each receipt, check that the saved run still names the same pending action. Before reporting completion, confirm `next.terminal` and the saved status. Do not treat a subagent's final message alone as a Kiln result.

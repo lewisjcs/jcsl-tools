@@ -63,9 +63,9 @@
       ]
     },
     "enforcement": {
-      "tools": "required",
-      "paths": "required",
-      "data": "required"
+      "tools": "best-effort",
+      "paths": "best-effort",
+      "data": "best-effort"
     }
   },
   "contract": {
@@ -522,7 +522,7 @@
           "profiles/revision-review/code-diff/lenses.md",
           "bindings/codex.json"
         ],
-        "sourceHash": "1684da46c9ea65a20fbed1ec79dfbf1f84dcf33af3681eeaddc5c62ea8c26590"
+        "sourceHash": "c3c293600439ec6d19b4642ccbfccc44643453906a2cf28b2b9eb2cba242e626"
       }
     }
   },
