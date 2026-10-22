@@ -266,12 +266,22 @@ each lens and how the Validator disproves one, for a code diff specifically.
 
 ### Revision scope
 
-For a narrow revision, read the new patch and prior findings first. Inspect
-the changed definitions and named immediate callers or imports only when a
-specific claim needs them. Keep each search tied to a symbol in that patch
-or a prior finding. Record the expanded path in the finding's evidence.
-When the patch is seven lines, a survey of every package or test in the
-repository is outside this review's scope.
+When the dispatch prompt carries the line `Review scope: narrow revision`,
+the primary component is only the patch added since the previously
+reviewed head. A separate lane rules on the earlier review's findings; they
+are not in this bundle, and this review does not look for them. Read the
+patch first and attack each hunk. Keep every search tied to a symbol the
+patch changes, and record each read beyond the patch in the finding's
+evidence. Two lenses reach into the tree, and on a narrow revision each has
+a stated edge:
+
+- **Blast Radius** reaches the direct callers and importers of the symbols
+  the patch changes, located by searching for those symbol names.
+- **Missed Integration** reaches alternatives reachable by import from the
+  files the patch changes.
+
+A survey of other packages, endpoints, tests, or commit history is outside
+this review, whatever the candidate count so far.
 
 ### Post-image anchoring
 

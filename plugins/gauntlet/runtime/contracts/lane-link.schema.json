@@ -8,7 +8,8 @@
     "partyRunId": { "type": "string", "minLength": 1 },
     "classKey": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
     "family": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
-    "originAuthorship": { "enum": ["self", "other"] }
+    "originAuthorship": { "enum": ["self", "other"] },
+    "reviewScope": { "enum": ["full", "narrow"] }
   },
   "additionalProperties": false
 }

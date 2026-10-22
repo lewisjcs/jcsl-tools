@@ -36,7 +36,8 @@
               "family": { "type": "string" },
               "mechanicalOnly": { "type": "boolean" },
               "artifactType": { "type": "string" },
-              "revision": { "type": "boolean" }
+              "revision": { "type": "boolean" },
+              "firstEmpty": { "enum": ["none", "intent", "facts", "decision", "acceptance", "tasks"] }
             },
             "additionalProperties": false
           },
