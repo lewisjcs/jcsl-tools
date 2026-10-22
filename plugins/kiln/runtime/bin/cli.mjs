@@ -7484,6 +7484,10 @@ function canonicalJson(value) {
   return `${JSON.stringify(sortKeysDeep(value))}
 `;
 }
+function artifactSha256(components) {
+  const snapshot = components.map(({ id, mediaType, contentSha256 }) => ({ id, mediaType, contentSha256 }));
+  return sha256Utf8(canonicalJson(snapshot));
+}
 
 // node_modules/@lewisjcs/statblock/src/runtime/contracts.mjs
 var import__ = __toESM(require__(), 1);
@@ -10958,7 +10962,7 @@ function pendingEvent(state) {
 // src/borrowed.mjs
 var RUN_INCOMPLETE = "run-incomplete";
 function usageOfMeasurements(measurements = {}) {
-  return Object.fromEntries(Object.entries(measurements).filter(([k, m]) => k !== "outputTokens" && m?.availability === "measured" && typeof m.value === "number").map(([k, m]) => [k, m.value]));
+  return Object.fromEntries(Object.entries(measurements).filter(([key, measurement]) => key !== "outputTokens" && measurement?.availability === "measured" && Number.isFinite(measurement.value)).map(([key, measurement]) => [key, measurement.value]));
 }
 function slim(f) {
   return { id: f.id, severity: f.severity, category: f.category, location: f.location ?? "", claim: f.claim };
@@ -10979,21 +10983,52 @@ function failedSignalLines(result) {
   }
   return lines;
 }
-function mapBorrowedReview({ result, evidence, lens, scope, runId, resultPath }) {
+function inputSignalLines({ result, evidence, bundle, stagedDiffBytes, lens, expectedHost, filesFromSameRun }) {
+  const lines = [];
+  const classId = `jcsl:gauntlet:${lens}`;
+  if (filesFromSameRun !== true) lines.push("the review result, evidence, and bundle are not from one Gauntlet run directory");
+  if (result.classId !== classId || evidence.classId !== classId) {
+    lines.push(`the review Class identity does not match ${classId} in both result and evidence`);
+  }
+  if (result.host?.id !== expectedHost || evidence.host?.id !== expectedHost) {
+    lines.push(`the review host does not match ${expectedHost} in both result and evidence`);
+  }
+  if (bundle?.contractId !== "jcsl:reviewable-artifact@1" || bundle.artifactFamily !== "jcsl:artifact-family:code-diff") {
+    lines.push("the review bundle is not a code-diff artifact");
+  }
+  const components = bundle?.components;
+  const primaries = Array.isArray(components) ? components.filter((component) => component?.role === "primary") : [];
+  const primary = primaries.length === 1 ? primaries[0] : null;
+  if (typeof primary?.inlineContent !== "string") {
+    lines.push("the review bundle does not have exactly one inline primary diff");
+  } else if (!Buffer.isBuffer(stagedDiffBytes) || !stagedDiffBytes.equals(Buffer.from(primary.inlineContent, "utf8"))) {
+    lines.push("the review bundle bytes do not match the staged diff");
+  }
+  const digestFieldsValid = Array.isArray(components) && components.every((component) => component && typeof component.id === "string" && typeof component.mediaType === "string" && typeof component.contentSha256 === "string" && (component.inlineContent === void 0 || typeof component.inlineContent === "string"));
+  if (!digestFieldsValid || components.some((component) => component.inlineContent !== void 0 && component.contentSha256 !== sha256Utf8(component.inlineContent)) || bundle.artifactSha256 !== artifactSha256(components)) {
+    lines.push("the review bundle digest does not match its content");
+  }
+  if (result.input?.contractId !== "jcsl:reviewable-artifact@1" || result.input.artifactSha256 !== bundle?.artifactSha256 || evidence.artifactSha256 !== bundle?.artifactSha256) {
+    lines.push("the result and evidence bundle digests do not match the review bundle");
+  }
+  return lines;
+}
+function mapBorrowedReview({ result, evidence, bundle, stagedDiffBytes, lens, scope, runId, resultPath, expectedHost, filesFromSameRun = true }) {
+  const classId = `jcsl:gauntlet:${lens}`;
   const findings = (result.findings ?? []).map(slim);
   const highBlockers = findings.filter((f) => f.severity === "High").map((f) => f.id);
-  const signalLines = failedSignalLines(result);
+  const signalLines = [...failedSignalLines(result), ...inputSignalLines({ result, evidence, bundle, stagedDiffBytes, lens, expectedHost, filesFromSameRun })];
   const blockers = signalLines.length > 0 ? [...highBlockers, RUN_INCOMPLETE] : highBlockers;
   const body = { lens, scope, runId, findings, blockers, belowTheLine: (result.belowTheLine ?? []).length };
   const usage = usageOfMeasurements(evidence.measurements);
   if (highBlockers.length === 0 && signalLines.length === 0) {
-    return { outcome: [{ status: "complete", classId: result.classId, outputContractId: "kiln:borrowed-review-outcome@1", output: body, evidence: [{ kind: "file", reference: resultPath }] }], usage };
+    return { outcome: [{ status: "complete", classId, outputContractId: "kiln:borrowed-review-outcome@1", output: body, evidence: [{ kind: "file", reference: resultPath }] }], usage };
   }
   const missing = [
     ...findings.filter((f) => highBlockers.includes(f.id)).map((f) => `${f.id} ${f.severity} ${f.category} at ${f.location}: ${f.claim}`),
     ...signalLines
   ];
-  return { outcome: [{ status: "gap", classId: result.classId, ...body, missing }], usage };
+  return { outcome: [{ status: "gap", classId, ...body, missing }], usage };
 }
 
 // src/flow.mjs
@@ -14203,10 +14238,25 @@ ${v.idea.trim()}
     return { path: out, sourceSha256: approved.sha256, taskCount: plan.tasks.length, missing, acceptanceChoices, spans: approved.spans };
   },
   borrowed(args) {
-    const v = flags(args, { result: { type: "string" }, evidence: { type: "string" }, scope: { type: "string" }, lens: { type: "string" } });
+    const v = flags(args, { root: { type: "string" }, ticket: { type: "string" }, action: { type: "string" }, result: { type: "string" }, evidence: { type: "string" }, bundle: { type: "string" }, scope: { type: "string" }, lens: { type: "string" } });
+    const { paths, meta, state } = openRun(v);
+    const pending = nextAction(flowFor(flowCtx(meta)), state);
+    if (pending.terminal || pending.kind !== "dispatch-borrowed") throw new KilnError("KILN_BORROWED_NOT_PENDING", "the saved run has no pending borrowed review");
+    const actionId = requireFlag(v, "action");
+    if (pending.actionId !== actionId) throw new KilnError("KILN_ACTION_STALE", `actionId ${actionId} is not the pending action (${pending.actionId})`);
+    const expectedHost = state.host?.id ?? "claude-code";
+    const stagedDiffPath = path10.join(paths.handed, `${actionId}.diff`);
+    if (!existsSync2(stagedDiffPath)) throw new KilnError("KILN_BORROWED_DIFF_MISSING", `the staged diff for ${actionId} is missing`, { path: stagedDiffPath });
+    const resultPath = path10.resolve(requireFlag(v, "result"));
+    const evidencePath = path10.resolve(requireFlag(v, "evidence"));
+    const bundlePath = path10.resolve(requireFlag(v, "bundle"));
     const result = readJsonInput(v, "result");
     const evidence = readJsonInput(v, "evidence");
-    return mapBorrowedReview({ result, evidence, lens: v.lens ?? "adversarial-review", scope: v.scope ?? "branch", runId: path10.basename(path10.dirname(requireFlag(v, "result"))), resultPath: requireFlag(v, "result") });
+    const bundle = readJsonInput(v, "bundle");
+    const stagedDiffBytes = readFileSync12(stagedDiffPath);
+    const runDir = path10.dirname(resultPath);
+    const filesFromSameRun = resultPath === path10.join(runDir, "result.json") && evidencePath === path10.join(runDir, "evidence.json") && bundlePath === path10.join(runDir, "bundle.json");
+    return mapBorrowedReview({ result, evidence, bundle, stagedDiffBytes, expectedHost, filesFromSameRun, lens: v.lens ?? "adversarial-review", scope: v.scope ?? "branch", runId: path10.basename(runDir), resultPath });
   },
   show(args) {
     const v = flags(args, { root: { type: "string" }, ticket: { type: "string" } });
