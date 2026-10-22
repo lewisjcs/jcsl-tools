@@ -1,7 +1,7 @@
 {
   "$id": "jcsl:run-event@1",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Gauntlet run event line",
+  "title": "Run event line",
   "type": "object",
   "required": ["seq", "at", "kind", "data"],
   "additionalProperties": false,
@@ -26,6 +26,7 @@
         "triage-appended",
         "profile-computed",
         "roster-selected",
+        "party-reformed",
         "snapshot-staged",
         "worktree-pinned",
         "lane-run-linked",

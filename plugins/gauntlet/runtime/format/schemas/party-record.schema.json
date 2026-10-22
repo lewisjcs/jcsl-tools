@@ -42,11 +42,12 @@
       "properties": {
         "rulesVersion": { "$ref": "#/$defs/semver" },
         "artifactType": { "$ref": "#/$defs/artifactType" },
-        "family": { "enum": ["code-diff", "plan-text", "doc-text", null] },
+        "family": { "enum": ["code-diff", "plan-text", "doc-text", "build-ticket", null] },
         "mechanicalOnly": { "type": ["boolean", "null"] },
         "docOnly": { "type": ["boolean", "null"] },
         "revision": { "type": "boolean" },
         "sizeBytes": { "type": "integer", "minimum": 0 },
+        "firstEmpty": { "enum": ["none", "intent", "facts", "decision", "acceptance", "tasks"] },
         "signals": {
           "type": "object",
           "required": ["goLive", "security"],
@@ -106,7 +107,7 @@
               "classId": { "$ref": "#/$defs/nonEmptyString" },
               "family": { "$ref": "#/$defs/nonEmptyString" },
               "reason": { "$ref": "#/$defs/nonEmptyString" },
-              "via": { "enum": ["policy", "override"] }
+              "via": { "enum": ["policy", "override", "reform"] }
             },
             "additionalProperties": false
           }
@@ -151,7 +152,21 @@
             "additionalProperties": false
           }
         },
-        "goLivePrompt": { "type": "boolean" }
+        "goLivePrompt": { "type": "boolean" },
+        "reforms": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["actionId", "trigger", "classKey", "reason"],
+            "properties": {
+              "actionId": { "$ref": "#/$defs/nonEmptyString" },
+              "trigger": { "enum": ["member-reform", "member-gap", "profile-change"] },
+              "classKey": { "$ref": "#/$defs/nonEmptyString" },
+              "reason": { "$ref": "#/$defs/nonEmptyString" }
+            },
+            "additionalProperties": false
+          }
+        }
       },
       "additionalProperties": false
     },
@@ -263,7 +278,7 @@
   "$defs": {
     "nonEmptyString": { "type": "string", "minLength": 1 },
     "semver": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
-    "artifactType": { "enum": ["code-pr", "code-local", "plan", "doc", "skill", "directive"] },
+    "artifactType": { "enum": ["code-pr", "code-local", "plan", "doc", "skill", "directive", "ticket"] },
     "artifactBody": {
       "oneOf": [
         {

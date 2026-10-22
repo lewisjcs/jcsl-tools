@@ -7614,6 +7614,9 @@ function assertProtocolModule(protocol) {
   assertNonEmptyString(protocol.classVersion, "classVersion");
   assertFunction(protocol.admit, "admit");
   assertFunction(protocol.validateOutput, "validateOutput");
+  if (protocol.onRetriesExhausted !== void 0) {
+    assertFunction(protocol.onRetriesExhausted, "onRetriesExhausted");
+  }
   if (!Array.isArray(protocol.terminalStatuses) || protocol.terminalStatuses.length === 0) {
     throw new TypeError("protocol: terminalStatuses must be a non-empty array");
   }
@@ -7630,6 +7633,15 @@ function assertProtocolModule(protocol) {
     assertNonEmptyString(config?.outputContractId, `kinds["${kind}"].outputContractId`);
     assertFunction(config?.buildPrompt, `kinds["${kind}"].buildPrompt`);
     assertFunction(config?.accept, `kinds["${kind}"].accept`);
+    if (config.writeBoundary !== void 0) {
+      assertFunction(config.writeBoundary, `kinds["${kind}"].writeBoundary`);
+    }
+    if (config.receipt !== void 0 && config.receipt !== "items" && config.receipt !== "text") {
+      throw new TypeError(`protocol: kinds["${kind}"].receipt must be "items" or "text" when present`);
+    }
+    if (config.receipt === "text" && config.writeBoundary !== void 0) {
+      throw new TypeError(`protocol: kinds["${kind}"] is a text-receipt kind and must not declare writeBoundary`);
+    }
   }
   assertNonEmptyString(protocol.initialKind, "initialKind");
   if (!Object.hasOwn(protocol.kinds, protocol.initialKind)) {
@@ -7686,12 +7698,29 @@ function assertProfileMatchesBundle(profile, bundle) {
     );
   }
 }
+function writeBoundaryFor(config, state, kind) {
+  if (config.writeBoundary === void 0) return void 0;
+  const write = config.writeBoundary(state);
+  if (write === void 0) return void 0;
+  const shaped = write !== null && typeof write === "object" && typeof write.repoRoot === "string" && write.repoRoot.length > 0 && typeof write.branch === "string" && write.branch.length > 0 && Array.isArray(write.allowedPaths) && write.allowedPaths.length > 0 && write.allowedPaths.every((p) => typeof p === "string" && p.length > 0);
+  if (!shaped) {
+    throw new TypeError(`protocol: kinds["${kind}"].writeBoundary must return {repoRoot, branch, allowedPaths} with a non-empty allowedPaths, or undefined`);
+  }
+  return { repoRoot: write.repoRoot, branch: write.branch, allowedPaths: [...write.allowedPaths] };
+}
+function nextVisit(state, kind) {
+  return state.ledger.filter((entry) => entry.kind === kind && entry.attempt === 1).length + 1;
+}
+function actionIdFor(kind, visit, attempt) {
+  return visit === 1 ? `${kind}-${attempt}` : `${kind}-v${visit}-${attempt}`;
+}
 function buildDispatchAction(protocol, { kind, attempt, state, retryContext }) {
   const config = protocol.kinds[kind];
   const role = state.roles[config.roleKey];
   const promptBody = config.buildPrompt(state);
+  const write = writeBoundaryFor(config, state, kind);
   return Object.freeze({
-    actionId: `${kind}-${attempt}`,
+    actionId: actionIdFor(kind, nextVisit(state, kind), attempt),
     kind,
     attempt,
     roleId: role.roleId,
@@ -7703,7 +7732,8 @@ function buildDispatchAction(protocol, { kind, attempt, state, retryContext }) {
     outputContractId: config.outputContractId,
     promptBody: retryContext === void 0 ? promptBody : `${promptBody}
 
-${retryContext}`
+${retryContext}`,
+    ...write === void 0 ? {} : { write }
   });
 }
 function tryParseArray(text) {
@@ -7715,21 +7745,36 @@ function tryParseArray(text) {
   }
   return Array.isArray(parsed) ? parsed : null;
 }
+function balancedArraySlice(text, start) {
+  let depth = 0;
+  let inString = false;
+  for (let i = start; i < text.length; i += 1) {
+    const ch = text[i];
+    if (inString) {
+      if (ch === "\\") i += 1;
+      else if (ch === '"') inString = false;
+    } else if (ch === '"') {
+      inString = true;
+    } else if (ch === "[") {
+      depth += 1;
+    } else if (ch === "]") {
+      depth -= 1;
+      if (depth === 0) return text.slice(start, i + 1);
+    }
+  }
+  return null;
+}
 function salvageArrays(rawOutput) {
-  const texts = [];
-  for (const match of rawOutput.matchAll(/```[a-zA-Z]*\r?\n([\s\S]*?)```/g)) {
-    texts.push(match[1]);
-  }
-  const first = rawOutput.indexOf("[");
-  const last = rawOutput.lastIndexOf("]");
-  if (first !== -1 && last > first) {
-    texts.push(rawOutput.slice(first, last + 1));
-  }
   const distinct = /* @__PURE__ */ new Map();
-  for (const text of texts) {
-    const parsed = tryParseArray(text.trim());
+  let start = rawOutput.indexOf("[");
+  while (start !== -1) {
+    const slice = balancedArraySlice(rawOutput, start);
+    const parsed = slice === null ? null : tryParseArray(slice);
     if (parsed !== null) {
       distinct.set(canonicalJson(parsed), parsed);
+      start = rawOutput.indexOf("[", start + slice.length);
+    } else {
+      start = rawOutput.indexOf("[", start + 1);
     }
   }
   return [...distinct.values()];
@@ -7757,13 +7802,20 @@ function parseReceiptArray(protocol, rawOutput, contractId) {
     const details = contractIssueLines(protocol, direct, contractId);
     return details.length === 0 ? { ok: true, value: direct, salvaged: false } : { ok: false, label: "the output parsed as a JSON array but one or more items failed the output contract", details };
   }
-  const embedded = salvageArrays(rawOutput);
-  if (embedded.length === 1 && embedded[0].length > 0) {
-    const details = contractIssueLines(protocol, embedded[0], contractId);
-    if (details.length === 0) {
-      return { ok: true, value: embedded[0], salvaged: true };
-    }
-    return { ok: false, label: "a JSON array embedded in the output failed the output contract", details };
+  const candidates = salvageArrays(rawOutput).filter((array) => array.length > 0);
+  const judged = candidates.map((array) => ({ array, details: contractIssueLines(protocol, array, contractId) }));
+  const passing = judged.filter((c) => c.details.length === 0);
+  if (passing.length === 1) {
+    return { ok: true, value: passing[0].array, salvaged: true };
+  }
+  if (passing.length > 1) {
+    return { ok: false, label: "the output was not parseable as a single JSON array", details: [`${passing.length} distinct embedded arrays pass the output contract; only one may`] };
+  }
+  if (judged.length === 1) {
+    return { ok: false, label: "a JSON array embedded in the output failed the output contract", details: judged[0].details };
+  }
+  if (judged.length > 1) {
+    return { ok: false, label: "the output was not parseable as a single JSON array", details: [`${judged.length} distinct embedded arrays, none passes the output contract`] };
   }
   return { ok: false, label: "the output was not parseable as a single JSON array", details: [] };
 }
@@ -7780,19 +7832,41 @@ function buildRetryContext({ attempt, label, details, outputContractId }) {
     `Respond with ONLY a JSON array whose items conform to ${outputContractId} \u2014 no prose, no code fences, nothing before or after the array.`
   ].join("\n");
 }
-function recordFailure(state, { stage, attempt, buildRetryAction, code, messageLabel, outcomeRetry, outcomeGap, reason }) {
+function writeBoundaryInstructionLine(outsideCount) {
+  const shown = MAX_RETRY_DIAGNOSTIC_LINES - 1;
+  return outsideCount > shown ? `revert every change outside the boundary before replying (${outsideCount} paths outside, the first ${shown} follow)` : "revert every change outside the boundary before replying";
+}
+function exhaustedStep(protocol, state, failure) {
+  const step = protocol.onRetriesExhausted(state, failure);
+  const shaped = step !== null && typeof step === "object" && typeof step.status === "string" && step.status.length > 0 && typeof step.nextKind === "string" && Object.hasOwn(protocol.kinds, step.nextKind);
+  if (!shaped) {
+    throw new TypeError("protocol: onRetriesExhausted must return {fields, status, nextKind} with a non-empty status and nextKind a key of kinds");
+  }
+  return step;
+}
+function recordFailure(protocol, state, { stage, attempt, buildRetryAction, failure, messageLabel, outcomeRetry, outcomeGap, omissions = [] }) {
   const receiptActionId = state.pendingAction.actionId;
   const kind = state.pendingAction.kind;
+  const { code, reason } = failure;
+  const omissionField = omissions.length === 0 ? {} : { omissions };
   if (attempt < MAX_ATTEMPTS_PER_STAGE) {
     const retryAction = buildRetryAction(state);
     const nextState2 = {
       ...state,
       pendingAction: retryAction,
-      ledger: [...state.ledger, { actionId: receiptActionId, kind, attempt, outcome: outcomeRetry }]
+      ledger: [...state.ledger, { actionId: receiptActionId, kind, attempt, outcome: outcomeRetry, ...omissionField }]
     };
     return {
       state: sealState(nextState2),
       issues: [{ code, stage, attempt, message: `${stage} stage ${messageLabel} on attempt ${attempt}; retrying` }]
+    };
+  }
+  if (protocol.onRetriesExhausted !== void 0) {
+    const step = exhaustedStep(protocol, state, { stage, kind, ...failure });
+    const ledgerEntry = { actionId: receiptActionId, kind, attempt, outcome: "retries-exhausted", reason, ...omissionField };
+    return {
+      state: settle(protocol, state, ledgerEntry, step),
+      issues: [{ code, stage, attempt, message: `${stage} stage ${messageLabel} on attempt ${attempt}; retries exhausted, the protocol names the next step` }]
     };
   }
   const nextState = {
@@ -7800,53 +7874,98 @@ function recordFailure(state, { stage, attempt, buildRetryAction, code, messageL
     status: "gap",
     gap: { stage, reason },
     pendingAction: null,
-    ledger: [...state.ledger, { actionId: receiptActionId, kind, attempt, outcome: outcomeGap }]
+    ledger: [...state.ledger, { actionId: receiptActionId, kind, attempt, outcome: outcomeGap, ...omissionField }]
   };
   return {
     state: sealState(nextState),
     issues: [{ code, stage, attempt, message: `${stage} stage ${messageLabel} on attempt ${attempt}; retries exhausted, recording gap` }]
   };
 }
-function applyStageReceipt(protocol, state, receipt) {
+var WRITES_AVAILABILITY = /* @__PURE__ */ new Set(["measured", "unavailable"]);
+function normalizeWritePath(path13) {
+  if (typeof path13 !== "string" || path13.length === 0) return null;
+  if (path13.startsWith("/") || path13.includes("\\")) return null;
+  const stripped = path13.startsWith("./") ? path13.slice(2) : path13;
+  const body = stripped.endsWith("/") ? stripped.slice(0, -1) : stripped;
+  if (body.split("/").some((segment) => segment === ".." || segment === "." || segment === "")) return null;
+  return stripped;
+}
+function insideBoundary(path13, allowedPaths) {
+  const normalized = normalizeWritePath(path13);
+  if (normalized === null) return false;
+  return allowedPaths.some((entry) => entry.endsWith("/") ? normalized.startsWith(entry) : normalized === entry);
+}
+function checkWrites(writes, write) {
+  if (writes === void 0) return write === void 0 ? { outside: [], omissions: [] } : { outside: [], omissions: ["writes-unavailable"] };
+  if (writes === null || typeof writes !== "object" || !WRITES_AVAILABILITY.has(writes.availability)) {
+    return { malformed: 'hostMeta.writes must be {availability: "measured", paths} or {availability: "unavailable"}' };
+  }
+  if (writes.availability === "unavailable") return { outside: [], omissions: ["writes-unavailable"] };
+  if (!Array.isArray(writes.paths) || !writes.paths.every((p) => typeof p === "string")) {
+    return { malformed: "hostMeta.writes.paths must be an array of strings when availability is measured" };
+  }
+  const allowed = write?.allowedPaths ?? [];
+  return { outside: writes.paths.filter((p) => !insideBoundary(p, allowed)), omissions: [] };
+}
+function applyStageReceipt(protocol, state, receipt, omissions) {
   const kind = state.pendingAction.kind;
   const config = protocol.kinds[kind];
   const attempt = state.pendingAction.attempt;
+  if (config.receipt === "text") {
+    const outcome2 = config.accept(state, receipt.rawOutput, false);
+    if (outcome2?.reject) {
+      throw new TypeError(`protocol: kinds["${kind}"] is a text-receipt kind and must not reject`);
+    }
+    return applyAcceptance(protocol, state, receipt, { kind, attempt, outcome: outcome2, salvaged: false, omissions });
+  }
   const parsed = parseReceiptArray(protocol, receipt.rawOutput, config.outputContractId);
   if (!parsed.ok) {
     const retryContext = buildRetryContext({ attempt: attempt + 1, label: parsed.label, details: parsed.details, outputContractId: config.outputContractId });
-    return recordFailure(state, {
+    return recordFailure(protocol, state, {
       stage: config.stage,
       attempt,
       buildRetryAction: (s) => buildDispatchAction(protocol, { kind, attempt: attempt + 1, state: s, retryContext }),
-      code: "RUNTIME_OUTPUT_MALFORMED",
+      failure: { code: "RUNTIME_OUTPUT_MALFORMED", label: parsed.label, details: parsed.details, reason: "malformed-output" },
       messageLabel: "output malformed",
       outcomeRetry: "malformed-retry",
       outcomeGap: "malformed-gap",
-      reason: "malformed-output"
+      omissions
     });
   }
   const outcome = config.accept(state, parsed.value, parsed.salvaged);
   if (outcome.reject) {
     const rejection = outcome.reject;
     const retryContext = buildRetryContext({ attempt: attempt + 1, label: rejection.label, details: rejection.details, outputContractId: config.outputContractId });
-    return recordFailure(state, {
+    return recordFailure(protocol, state, {
       stage: config.stage,
       attempt,
       buildRetryAction: (s) => buildDispatchAction(protocol, { kind, attempt: attempt + 1, state: s, retryContext }),
-      code: rejection.code,
+      failure: { code: rejection.code, label: rejection.label, details: rejection.details, reason: rejection.reason },
       messageLabel: rejection.label,
       outcomeRetry: rejection.outcomeRetry,
       outcomeGap: rejection.outcomeGap,
-      reason: rejection.reason
+      omissions
     });
   }
-  const ledgerEntry = { actionId: receipt.actionId, kind, attempt, outcome: parsed.salvaged ? "accepted-salvaged" : "accepted" };
-  const accepted = { ...state, ...outcome.fields, ledger: [...state.ledger, ledgerEntry] };
-  if (outcome.nextKind !== void 0) {
-    const chainedAction = buildDispatchAction(protocol, { kind: outcome.nextKind, attempt: 1, state: accepted });
-    return { state: sealState({ ...accepted, status: outcome.status, pendingAction: chainedAction }), issues: [] };
+  return applyAcceptance(protocol, state, receipt, { kind, attempt, outcome, salvaged: parsed.salvaged, omissions });
+}
+function settle(protocol, state, ledgerEntry, { fields, status, nextKind }) {
+  const settled = { ...state, ...fields, ledger: [...state.ledger, ledgerEntry] };
+  if (nextKind !== void 0) {
+    const chainedAction = buildDispatchAction(protocol, { kind: nextKind, attempt: 1, state: settled });
+    return sealState({ ...settled, status, pendingAction: chainedAction });
   }
-  return { state: sealState({ ...accepted, status: outcome.status, pendingAction: null }), issues: [] };
+  return sealState({ ...settled, status, pendingAction: null });
+}
+function applyAcceptance(protocol, state, receipt, { kind, attempt, outcome, salvaged, omissions }) {
+  const ledgerEntry = {
+    actionId: receipt.actionId,
+    kind,
+    attempt,
+    outcome: salvaged ? "accepted-salvaged" : "accepted",
+    ...omissions.length === 0 ? {} : { omissions }
+  };
+  return { state: settle(protocol, state, ledgerEntry, outcome), issues: [] };
 }
 function createRun(protocol, { bundle, loadout, host, policy, roles, profile, extras, classId }) {
   assertProtocolModule(protocol);
@@ -7932,7 +8051,41 @@ function applyReceipt(protocol, state, receipt) {
       }]
     };
   }
-  return applyStageReceipt(protocol, state, receipt);
+  const writesCheck = checkWrites(receipt.hostMeta?.writes, state.pendingAction.write);
+  if (writesCheck.malformed) {
+    return { state, issues: [{ code: "RUNTIME_RECEIPT_MALFORMED", message: writesCheck.malformed }] };
+  }
+  if (writesCheck.outside.length > 0) {
+    const kind = state.pendingAction.kind;
+    const config = protocol.kinds[kind];
+    if (config.receipt === "text") {
+      return {
+        state,
+        issues: [{
+          code: "RUNTIME_WRITE_OUTSIDE_BOUNDARY",
+          message: `${config.stage} stage measured writes outside its boundary (${writesCheck.outside.join(", ")}); a person action is never retried`
+        }]
+      };
+    }
+    const attempt = state.pendingAction.attempt;
+    const label = "the dispatch changed paths outside its declared write boundary";
+    const retryContext = buildRetryContext({
+      attempt: attempt + 1,
+      label,
+      details: [writeBoundaryInstructionLine(writesCheck.outside.length), ...writesCheck.outside],
+      outputContractId: config.outputContractId
+    });
+    return recordFailure(protocol, state, {
+      stage: config.stage,
+      attempt,
+      buildRetryAction: (s) => buildDispatchAction(protocol, { kind, attempt: attempt + 1, state: s, retryContext }),
+      failure: { code: "RUNTIME_WRITE_OUTSIDE_BOUNDARY", label, details: writesCheck.outside, reason: "write-outside-boundary" },
+      messageLabel: "wrote outside its boundary",
+      outcomeRetry: "write-boundary-retry",
+      outcomeGap: "write-boundary-gap"
+    });
+  }
+  return applyStageReceipt(protocol, state, receipt, writesCheck.omissions);
 }
 
 // node_modules/@lewisjcs/statblock/src/runtime/prompt.mjs
@@ -8160,6 +8313,7 @@ var EVENT_RENDERERS = {
   "party-formed": (config, d) => `party-formed ${d.partyId}
 ${renderPartyBlock(d)}`,
   "party-formation-failed": (config, d) => `party-formation-failed ${d.code}: ${d.message}`,
+  "party-reformed": (config, d) => `party-reformed ${d.classKey} (trigger ${d.trigger}): ${d.reason}`,
   "profile-computed": (config, d) => {
     const extras = [
       d.mechanicalOnly ? ", mechanical-only" : "",
@@ -8616,7 +8770,7 @@ function protocolFor(classes2, classId) {
   if (record === void 0) throw new TypeError(`unknown classId "${classId}"; loaded: ${Object.keys(byId).join(", ")}`);
   return record.shape.protocolFor(record);
 }
-function createRun2({ classes: classes2, classId, bundle, loadout, host, policy, roles, profile, artifactPath, originAuthorship = "self" }) {
+function createRun2({ classes: classes2, classId, bundle, loadout, host, policy, roles, profile, artifactPath, originAuthorship = "self", reviewScope = "full" }) {
   return createRun(protocolFor(classes2, classId), {
     bundle,
     loadout,
@@ -8625,7 +8779,7 @@ function createRun2({ classes: classes2, classId, bundle, loadout, host, policy,
     roles,
     profile,
     classId,
-    extras: { artifactPath, originAuthorship }
+    extras: { artifactPath, originAuthorship, reviewScope }
   });
 }
 function nextAction2(classes2, state) {
@@ -8921,8 +9075,41 @@ function isInvocationValidatedForClass(classRecord, invocation) {
   return invocationClassRecords.get(invocation) === classRecord;
 }
 function validateOutcome2(classRecord, outcome) {
-  validateOutcomeEnvelope(outcome);
   const { manifest } = classRecord;
+  if (manifest.contract.output.schemaTarget === "outcome") {
+    assertJsonValue(
+      outcome,
+      "OUTPUT_INVALID",
+      "Outcome does not satisfy the Class output schema",
+      manifest.contract.output.id
+    );
+    if (outcome === null || typeof outcome !== "object" || Array.isArray(outcome) || typeof outcome.status !== "string" || outcome.status.length === 0) {
+      fail("OUTPUT_INVALID", "Outcome does not satisfy the Class output schema", {
+        contractId: manifest.contract.output.id
+      });
+    }
+    if (outcome.classId !== manifest.id) {
+      fail("OUTCOME_CLASS_MISMATCH", "Outcome does not belong to the Class", {
+        classId: outcome.classId,
+        expectedClassId: manifest.id
+      });
+    }
+    if (outcome.outputContractId !== void 0 && outcome.outputContractId !== manifest.contract.output.id) {
+      fail("OUTPUT_CONTRACT_MISMATCH", "Outcome does not match the Class output contract", {
+        outputContractId: outcome.outputContractId,
+        expectedOutputContractId: manifest.contract.output.id
+      });
+    }
+    const validateOutput = validatorsFor(classRecord).output;
+    if (!validateOutput(outcome)) {
+      fail("OUTPUT_INVALID", "Outcome does not satisfy the Class output schema", {
+        contractId: manifest.contract.output.id,
+        errors: validateOutput.errors ?? []
+      });
+    }
+    return normalize(outcome);
+  }
+  validateOutcomeEnvelope(outcome);
   if (outcome.classId !== manifest.id) {
     fail("OUTCOME_CLASS_MISMATCH", "Outcome does not belong to the Class", {
       classId: outcome.classId,
@@ -10238,13 +10425,25 @@ function assertOriginAuthorship(value) {
 function originLine(state) {
   return `Origin authorship: ${state.originAuthorship}`;
 }
+var REVIEW_SCOPES = Object.freeze(["full", "narrow"]);
+function assertReviewScope(value) {
+  if (!REVIEW_SCOPES.includes(value)) throw new TypeError(`createRun: reviewScope must be one of ${REVIEW_SCOPES.join(", ")}; got ${JSON.stringify(value)}`);
+  return value;
+}
+function scopeLines(state) {
+  if (state.reviewScope !== "narrow") return [];
+  return [
+    "Review scope: narrow revision. The primary component holds only what changed since the previously reviewed head of this pull request; a prior review covered the rest of the pull request, and a separate lane rules on that review's findings. Read beyond the patch only to the definitions, direct callers, and imports of the symbols it changes."
+  ];
+}
 function artifactByReference(state, verb) {
   return [
     ...renderBindingHeader(state.bundle),
     `Artifact (by reference): read the reviewable-artifact bundle at ${state.artifactPath}`,
     `Verify the bundle's artifactSha256 equals ${state.artifactSha256} before ${verb}; if it does not match, produce no output items and state the mismatch as your only output.`,
     "Each components[] entry carries the artifact content in inlineContent (or names a resolvedReference); cover every component listed in requiredCoverage.",
-    originLine(state)
+    originLine(state),
+    ...scopeLines(state)
   ];
 }
 var MAX_LABEL_PROBLEMS = 5;
@@ -10343,7 +10542,7 @@ function protocolFor2(record) {
         // {profileId, version, familyMarker} projection, untouched — this
         // run's admitted lens vocabulary rides as its own explicit state
         // field instead of overriding that projection.
-        extraFields: { lenses: profile.lenses, artifactPath: extras.artifactPath, originAuthorship: assertOriginAuthorship(extras?.originAuthorship ?? "self"), candidates: [], verdicts: [] }
+        extraFields: { lenses: profile.lenses, artifactPath: extras.artifactPath, originAuthorship: assertOriginAuthorship(extras?.originAuthorship ?? "self"), reviewScope: assertReviewScope(extras?.reviewScope ?? "full"), candidates: [], verdicts: [] }
       };
     },
     validateOutput: validateContract,
@@ -10608,7 +10807,7 @@ function protocolFor3(record) {
       if (typeof extras?.artifactPath !== "string" || extras.artifactPath.length === 0) {
         throw new TypeError("createRun: artifactPath must be a non-empty string for audit runs");
       }
-      return { status: "auditor-pending", extraFields: { lenses: profile.lenses, artifactPath: extras.artifactPath, originAuthorship: assertOriginAuthorship(extras?.originAuthorship ?? "self"), findings: [] } };
+      return { status: "auditor-pending", extraFields: { lenses: profile.lenses, artifactPath: extras.artifactPath, originAuthorship: assertOriginAuthorship(extras?.originAuthorship ?? "self"), reviewScope: assertReviewScope(extras?.reviewScope ?? "full"), findings: [] } };
     },
     validateOutput: validateContract,
     kinds: {
@@ -10805,6 +11004,7 @@ function buildVerifierPromptBody(state) {
     `Components: the primary component is the change; "${PRIOR_FINDINGS_COMPONENT_ID}" lists the findings to rule on, one verdict per key${hasThread ? `; "${THREAD_COMPONENT_ID}" is the pull-request thread` : ". No thread was supplied: nothing can be withdrawn"}.`,
     "Each components[] entry carries its content in inlineContent (or names a resolvedReference).",
     originLine(state),
+    ...scopeLines(state),
     "Never modify the tree under review."
   ].join("\n");
 }
@@ -10842,7 +11042,7 @@ function protocolFor4(record) {
       if (typeof extras?.artifactPath !== "string" || extras.artifactPath.length === 0) {
         throw new TypeError("createRun: artifactPath must be a non-empty string for verify runs");
       }
-      return { status: "verifier-pending", extraFields: { artifactPath: extras.artifactPath, originAuthorship: assertOriginAuthorship(extras?.originAuthorship ?? "self"), priorKeys: priorKeysOf(bundle), verdicts: [] } };
+      return { status: "verifier-pending", extraFields: { artifactPath: extras.artifactPath, originAuthorship: assertOriginAuthorship(extras?.originAuthorship ?? "self"), reviewScope: assertReviewScope(extras?.reviewScope ?? "full"), priorKeys: priorKeysOf(bundle), verdicts: [] } };
     },
     validateOutput: validateContract,
     kinds: {
@@ -13912,7 +14112,8 @@ function cmdPartyForm(flags) {
           partyRunId,
           classKey: lane.classKey,
           family: lane.family,
-          originAuthorship: hasOrigin ? flags.author : "self"
+          originAuthorship: hasOrigin ? flags.author : "self",
+          reviewScope: link?.revision.mode === "narrow" ? "narrow" : "full"
         }, null, 2)}
 `);
         laneRuns.push({ classKey: lane.classKey, runId, bundleSha256: bundle.artifactSha256, executionStatus: null });
@@ -14468,6 +14669,7 @@ function cmdInit(flags) {
   const policy = record.shape.needsPolicy ? readJsonFile(POLICY_PATH, "CLI_POLICY_READ_FAILED") : null;
   const link = readLaneLink(path12.dirname(path12.resolve(flags.out)));
   const originAuthorship = link?.originAuthorship ?? "self";
+  const reviewScope = link?.reviewScope ?? "full";
   let state;
   try {
     state = createRun2({
@@ -14480,7 +14682,8 @@ function cmdInit(flags) {
       profile,
       classId: record.classId,
       artifactPath: path12.resolve(flags.bundle),
-      originAuthorship
+      originAuthorship,
+      reviewScope
     });
   } catch (err) {
     throw new CliError("CLI_ADMISSION_FAILED", `createRun failed: ${err.message}`);
