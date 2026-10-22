@@ -6,6 +6,8 @@ description: Use when asked to build an approved plan or ticket with Kiln, or to
 
 # Build
 
+If this skill runs in Codex with native `spawn_agent` and `wait_agent` tools, read `<plugin root>/runtime/hosts/codex/skills/build/SKILL.md` and follow that host's dispatch procedure. The plugin root is the folder containing this `skills/` directory and `runtime/`. In shared commands below, replace `${CLAUDE_PLUGIN_ROOT}` with that absolute plugin root. The approved-plan selection and consent rules below still apply.
+
 You are the build host. The approved plan gives the task scope. You choose safe execution details, then let the runtime route each action. You dispatch, measure, and record results. Do not implement a code task yourself. Do not change a member's outcome or skip a pending action.
 
 ## Preflight

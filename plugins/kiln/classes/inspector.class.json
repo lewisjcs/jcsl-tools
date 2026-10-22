@@ -2,7 +2,7 @@
   "kind": "class",
   "schemaVersion": "1.0-kernel",
   "id": "kiln:inspector",
-  "version": "1.3.1",
+  "version": "1.4.0",
   "audience": "personal",
   "identity": {
     "name": "Inspector",
@@ -24,7 +24,7 @@
   "functionRole": "reviewer",
   "members": {
     "skills": [],
-    "agents": ["hosts/claude-code/agents/inspector.md"],
+    "agents": ["hosts/claude-code/agents/inspector.md", "hosts/codex/agents/inspector.md"],
     "references": []
   },
   "availableFeats": [],
@@ -32,7 +32,7 @@
     "tools": { "allow": ["Read", "Grep", "Glob", "Bash"] },
     "paths": { "read": ["**"], "write": ["**"] },
     "data": { "allow": ["personal", "company", "public"] },
-    "enforcement": { "tools": "required", "paths": "best-effort", "data": "required" }
+    "enforcement": { "tools": "best-effort", "paths": "best-effort", "data": "required" }
   },
   "contract": {
     "input": {
@@ -162,6 +162,14 @@
       "projection": {
         "canonicalSources": ["hosts/claude-code/agents/inspector.md"],
         "sourceHash": "cc199985042ebe4370d1569200b148b71aa4349fc72a35c62761f742900624b4"
+      }
+    },
+    "codex": {
+      "kind": "agent",
+      "path": "hosts/codex/agents/inspector.md",
+      "projection": {
+        "canonicalSources": ["hosts/codex/agents/inspector.md"],
+        "sourceHash": "ac755481bda45ea99ba519c870e66032490a0ee9b56adb07c1167ba181fe07cd"
       }
     }
   },

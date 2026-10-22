@@ -1,7 +1,7 @@
 {
   "name": "kiln",
-  "version": "3.6.7",
-  "description": "Use Prospector directly for cited research and Designer directly to explore a decision from an ordinary request. /kiln:kickoff prepares a build plan; /kiln:build executes an approved plan. Statblock checks Class results and build receipts.",
+  "version": "3.6.8",
+  "description": "Use Prospector directly for cited research and Designer directly to explore a decision from an ordinary request. /kiln:kickoff prepares a build plan; /kiln:build executes approved plans, with native subagents in Codex. Statblock checks Class results and build receipts.",
   "author": {
     "name": "Josh C.S. Lewis"
   },
@@ -10,6 +10,8 @@
   "keywords": [
     "kiln",
     "build",
+    "codex",
+    "subagents",
     "class",
     "crafter",
     "designer",

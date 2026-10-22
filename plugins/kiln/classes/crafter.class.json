@@ -2,7 +2,7 @@
   "kind": "class",
   "schemaVersion": "1.0-kernel",
   "id": "kiln:crafter",
-  "version": "2.3.1",
+  "version": "2.4.0",
   "audience": "personal",
   "identity": {
     "name": "Crafter",
@@ -24,7 +24,7 @@
   "functionRole": "implementer",
   "members": {
     "skills": [],
-    "agents": ["hosts/claude-code/agents/crafter.md"],
+    "agents": ["hosts/claude-code/agents/crafter.md", "hosts/codex/agents/crafter.md"],
     "references": []
   },
   "availableFeats": [],
@@ -32,7 +32,7 @@
     "tools": { "allow": ["Read", "Edit", "Write", "Bash", "Grep", "Glob"] },
     "paths": { "read": ["**"], "write": ["**"] },
     "data": { "allow": ["personal", "company", "public"] },
-    "enforcement": { "tools": "required", "paths": "best-effort", "data": "required" }
+    "enforcement": { "tools": "best-effort", "paths": "best-effort", "data": "required" }
   },
   "contract": {
     "input": {
@@ -153,6 +153,14 @@
       "projection": {
         "canonicalSources": ["hosts/claude-code/agents/crafter.md"],
         "sourceHash": "90bca8b35ef75d06026c55278ef266dd01b64f44428cbabeffd2e8769f6302d2"
+      }
+    },
+    "codex": {
+      "kind": "agent",
+      "path": "hosts/codex/agents/crafter.md",
+      "projection": {
+        "canonicalSources": ["hosts/codex/agents/crafter.md"],
+        "sourceHash": "1f7571030107b77a509199b5a30c6de9902a88168e86bb48607bbc14be2c8f4c"
       }
     }
   },
