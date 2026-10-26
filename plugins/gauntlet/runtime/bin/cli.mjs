@@ -14821,7 +14821,11 @@ function cmdReceipt(flags) {
     { actionId: pendingBefore.actionId, kind: pendingBefore.kind, attempt: pendingBefore.attempt, hostMeta }
   ];
   const oldLedgerLength = runtimeState.ledger.length;
-  writeStateFile(flags.state, { runtimeState: nextState, hostMetaHistory: history });
+  writeStateFile(flags.state, {
+    runtimeState: nextState,
+    hostMetaHistory: history,
+    ...wrapper.codexContext ? { codexContext: wrapper.codexContext } : {}
+  });
   const receiptCounts = recordForClassId(nextState.classId).shape.receiptCounts(nextState);
   const ledgerEvents = nextState.ledger.slice(oldLedgerLength).map((entry) => ({
     kind: entry.outcome === "accepted" || entry.outcome === "accepted-salvaged" ? "receipt-applied" : "stage-failed",
