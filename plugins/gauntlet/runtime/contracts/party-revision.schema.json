@@ -9,13 +9,23 @@
     "priorPartyRunId": { "type": "string", "pattern": "^[0-9]{8}T[0-9]{6}Z-[0-9a-f]{6}$" },
     "priorSha": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
     "priorBaseSha": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
-    "mode": { "enum": ["narrow", "full"] },
+    "mode": { "enum": ["narrow", "full", "partial"] },
     "fallbackReason": { "type": ["string", "null"] },
     "dedup": { "type": "object", "required": ["policyVersion", "match", "proximity"], "properties": { "policyVersion": { "type": "string" }, "match": { "type": "array", "items": { "enum": ["lane", "sublens", "file"] } }, "proximity": { "type": "object", "required": ["lines"], "properties": { "lines": { "type": "integer", "minimum": 1 } }, "additionalProperties": false } }, "additionalProperties": false },
-    "rows": { "type": "array", "items": { "$ref": "#/$defs/row" } }
+    "rows": { "type": "array", "items": { "$ref": "#/$defs/row" } },
+    "coverageGaps": { "type": "array", "items": { "$ref": "#/$defs/coverageGap" } }
   },
   "additionalProperties": false,
   "$defs": {
+    "coverageGap": {
+      "type": "object",
+      "required": ["classKey", "reason"],
+      "properties": {
+        "classKey": { "type": "string", "minLength": 1 },
+        "reason": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
     "row": {
       "type": "object",
       "required": ["key", "tier", "lane", "sublens", "claim", "recommendation", "status", "reason"],

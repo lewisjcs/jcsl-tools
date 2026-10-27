@@ -12549,6 +12549,29 @@ function loadPartyPolicy(repoRoot) {
 import { existsSync as existsSync6, readdirSync as readdirSync4, readFileSync as readFileSync16, mkdirSync as mkdirSync4 } from "node:fs";
 import { execFileSync as execFileSync3 } from "node:child_process";
 
+// src/party-report.mjs
+function partyReportConfigFor(classes2, laneFailureReasons) {
+  const laneLabels = Object.freeze(Object.fromEntries(classes2.list.map((r) => [r.classKey, r.classKey])));
+  return Object.freeze({
+    title: (record) => `Party review \u2014 ${record.artifact.artifactId}`,
+    laneLabels,
+    laneFailureBlocker: (classKey) => ({
+      label: `${classKey} lane failure \u2014 the lane did not produce a result`,
+      recommendation: `${laneFailureReasons[classKey] ?? "The lane reached a terminal status without writing result.json"}. Rerun the lane before trusting this report.`
+    }),
+    // No leading "- " here: statblock's renderGaps (report.mjs) already
+    // prefixes each gap line with its own "- " — a leading dash here would
+    // double the bullet.
+    gapLine: (gap) => `**${gap.lane}** \u2014 ${gap.reason}${gap.trigger ? ` (trigger: ${gap.trigger})` : ""}`
+  });
+}
+function laneResultsFor(record, readsByRunId) {
+  return Object.freeze(record.laneRuns.map((laneRun) => ({
+    classKey: laneRun.classKey,
+    result: readsByRunId[laneRun.runId] ?? null
+  })));
+}
+
 // src/party-post.mjs
 import { existsSync as existsSync5, readFileSync as readFileSync15 } from "node:fs";
 import { execFileSync as execFileSync2 } from "node:child_process";
@@ -12716,29 +12739,6 @@ function postComment({
   };
   appendReceipt(receiptsPath, { status: "posted", at: new Date(now).toISOString(), partyRunId, ref, bodySha256, ...outcome });
   return outcome;
-}
-
-// src/party-report.mjs
-function partyReportConfigFor(classes2, laneFailureReasons) {
-  const laneLabels = Object.freeze(Object.fromEntries(classes2.list.map((r) => [r.classKey, r.classKey])));
-  return Object.freeze({
-    title: (record) => `Party review \u2014 ${record.artifact.artifactId}`,
-    laneLabels,
-    laneFailureBlocker: (classKey) => ({
-      label: `${classKey} lane failure \u2014 the lane did not produce a result`,
-      recommendation: `${laneFailureReasons[classKey] ?? "The lane reached a terminal status without writing result.json"}. Rerun the lane before trusting this report.`
-    }),
-    // No leading "- " here: statblock's renderGaps (report.mjs) already
-    // prefixes each gap line with its own "- " — a leading dash here would
-    // double the bullet.
-    gapLine: (gap) => `**${gap.lane}** \u2014 ${gap.reason}${gap.trigger ? ` (trigger: ${gap.trigger})` : ""}`
-  });
-}
-function laneResultsFor(record, readsByRunId) {
-  return Object.freeze(record.laneRuns.map((laneRun) => ({
-    classKey: laneRun.classKey,
-    result: readsByRunId[laneRun.runId] ?? null
-  })));
 }
 
 // src/party-render.mjs
@@ -12941,6 +12941,7 @@ function buildReportModel({
     priorPartyRunId: revision === null ? null : revision.priorPartyRunId,
     mode: revision?.mode ?? null,
     fallbackReason: revision?.fallbackReason ?? null,
+    checkpointGaps: (revision?.coverageGaps ?? []).map((g) => ({ classKey: g.classKey, reason: g.reason })),
     merged,
     carried,
     ref: shortRef(record),
@@ -12998,19 +12999,44 @@ function statusCellText(f) {
   if (f.laneFailure && f.status === "new") return "\u2014";
   return statusCell(f.status);
 }
-function verdictLine(counts) {
+function isolationSkipCount(model) {
+  return model.roster.skipped.filter((e) => e.trigger === "revision-isolation-failed").length;
+}
+function checkpointGapCount(model) {
+  const skippedNow = new Set(model.roster.skipped.filter((e) => e.trigger === "revision-isolation-failed").map((e) => e.classKey));
+  return model.checkpointGaps.filter((g) => !skippedNow.has(g.classKey)).length;
+}
+function plural(n, one, many) {
+  return `${n} ${n === 1 ? one : many}`;
+}
+function verdictLine(model) {
+  const { counts } = model;
   const advisory = counts.concerns + counts.nits;
   if (counts.blockers > 0) return `\u{1F6D1} ${counts.blockers} Blocker${counts.blockers === 1 ? "" : "s"} \xB7 ${advisory} advisory`;
+  const unreviewed = isolationSkipCount(model);
+  const gapped = checkpointGapCount(model);
+  if (unreviewed > 0 || gapped > 0) {
+    const parts = [
+      ...unreviewed > 0 ? [`${plural(unreviewed, "lane", "lanes")} not reviewed this round`] : [],
+      ...gapped > 0 ? [`${plural(gapped, "lane", "lanes")} with an unclosed coverage gap`] : []
+    ];
+    const partial = `\u26A0\uFE0F Partial coverage \xB7 ${parts.join(" \xB7 ")}`;
+    return advisory > 0 ? `${partial} \xB7 ${advisory} advisory` : partial;
+  }
   return advisory > 0 ? `\u{1F6E1}\uFE0F Clean \xB7 ${advisory} advisory` : "\u{1F6E1}\uFE0F Clean";
 }
 function skippedText(e) {
   return `${e.classKey} \u2014 skipped: ${e.reason}${e.trigger ? ` (${e.trigger})` : ""}${e.marker ? ` [${e.marker}]` : ""}`;
 }
-function lanesCell(roster) {
+function checkpointGapText(g) {
+  return `${g.classKey} \u2014 coverage gap from an earlier review, still open: ${g.reason}`;
+}
+function lanesCell(roster, checkpointGaps) {
   const fielded = roster.fielded.map((e) => e.label);
   const notRun = [
     ...roster.skipped.map((e) => `<sub>${escapeCell(skippedText(e))}</sub>`),
-    ...roster.gaps.map((g) => `<sub>${escapeCell(g.lane)} \u2014 not run: ${escapeCell(g.reason)}</sub>`)
+    ...roster.gaps.map((g) => `<sub>${escapeCell(g.lane)} \u2014 not run: ${escapeCell(g.reason)}</sub>`),
+    ...checkpointGaps.map((g) => `<sub>${escapeCell(checkpointGapText(g))}</sub>`)
   ];
   return [...fielded, ...notRun].join(" \xB7 ");
 }
@@ -13061,7 +13087,7 @@ function machineBlock(model) {
 function renderPrComment(model) {
   const isRevision = model.priorRef !== null;
   const out = [
-    `## \u2694\uFE0F The Gauntlet \u2014 ${verdictLine(model.counts)}`,
+    `## \u2694\uFE0F The Gauntlet \u2014 ${verdictLine(model)}`,
     "<sub>\u{1F916} AI-powered \xB7 *your code, through the lanes*</sub>",
     "",
     `\u2705 Reviewed \`${model.ref}\` at ${formatUtc(model.reviewedAt)}`
@@ -13077,7 +13103,7 @@ function renderPrComment(model) {
     `| \u{1F6D1} Blockers | **${model.counts.blockers}** |`,
     `| \u26A0\uFE0F Concerns | ${model.counts.concerns} |`,
     `| \u{1F4A1} Nits | ${model.counts.nits} |`,
-    `| \u{1F9EA} Lanes | ${lanesCell(model.roster)} |`
+    `| \u{1F9EA} Lanes | ${lanesCell(model.roster, model.checkpointGaps)} |`
   );
   if (model.held !== void 0 && model.held.security > 0) {
     const { security: n, blockers: m } = model.held;
@@ -13088,7 +13114,14 @@ function renderPrComment(model) {
   for (const b of blockers) out.push("", blockerCallout(b));
   if (model.findings.length === 0) {
     const held = model.held !== void 0 && model.held.security > 0;
-    out.push("", held ? "No findings outside the held set." : "Cleared all lanes \u2014 no findings.");
+    const unreviewed = isolationSkipCount(model);
+    const gapped = checkpointGapCount(model);
+    const incomplete = [
+      ...unreviewed > 0 ? [`${unreviewed} lane${unreviewed === 1 ? " was" : "s were"} not reviewed this round \u2014 see Lanes.`] : [],
+      ...gapped > 0 ? [`${gapped} lane${gapped === 1 ? " carries" : "s carry"} a coverage gap from an earlier review \u2014 see Lanes.`] : []
+    ].join(" ");
+    if (unreviewed > 0 || gapped > 0) out.push("", held ? `No findings outside the held set. Coverage is incomplete: ${incomplete}` : `No open findings. Coverage is incomplete: ${incomplete}`);
+    else out.push("", held ? "No findings outside the held set." : "Cleared all lanes \u2014 no findings.");
   } else {
     const header = isRevision ? "| | Lens | Finding | Location | Status |" : "| | Lens | Finding | Location |";
     const sep3 = isRevision ? "|---|---|---|---|---|" : "|---|---|---|---|";
@@ -13142,7 +13175,8 @@ function renderFileHeader(model) {
 function renderFileRoster(model) {
   const lines = [
     ...model.roster.fielded.map((e) => `- ${e.label} \u2014 ${e.reason}`),
-    ...model.roster.skipped.map((e) => `- ${skippedText(e)}`)
+    ...model.roster.skipped.map((e) => `- ${skippedText(e)}`),
+    ...model.checkpointGaps.map((g) => `- ${checkpointGapText(g)}`)
   ];
   return ["## Roster", "", lines.length > 0 ? lines.join("\n") : "None."].join("\n");
 }
@@ -13240,9 +13274,8 @@ function findPriorParty(partyRoot, { repo, number }) {
     if (!existsSync6(paths.record)) continue;
     const origin = readOrigin(paths);
     if (origin === null || origin.repo !== repo || origin.number !== number) continue;
-    const receipts = readReceipts(partySidecarPaths(paths).post);
-    if (!receipts.some((r) => r.status === "posted")) continue;
     const record = JSON.parse(readFileSync16(paths.record, "utf8"));
+    if (record.phase !== "reported") continue;
     if (best === null || record.createdAt > best.record.createdAt) best = { partyRunId, paths, record, origin };
   }
   return best;
@@ -13263,6 +13296,35 @@ function carriedRowsFrom(model) {
     status: CLOSED.has(f.status) ? f.status : "pending",
     reason: CLOSED.has(f.status) ? f.reason : null
   }));
+}
+var VERIFIER_LANE = "revision-review";
+var NO_NEW_CONTENT_TRIGGER = "revision-no-new-content";
+function checkpointRoundOutcomes(roster, laneResults, reviewScopeByClassKey, laneFailureReasons = {}) {
+  const failedOrSkipped = [];
+  const fullScopeSucceeded = [];
+  for (const { classKey, result } of laneResults) {
+    if (classKey === VERIFIER_LANE) continue;
+    if (result === null) {
+      failedOrSkipped.push({ classKey, reason: laneFailureReasons[classKey] ?? "the lane produced no result" });
+    } else if ((reviewScopeByClassKey[classKey] ?? "full") === "full") {
+      fullScopeSucceeded.push(classKey);
+    }
+  }
+  for (const entry of roster.skipped) {
+    if (entry.classKey === VERIFIER_LANE) continue;
+    if (entry.via === "policy") continue;
+    if (entry.trigger === NO_NEW_CONTENT_TRIGGER) continue;
+    failedOrSkipped.push({ classKey: entry.classKey, reason: entry.reason });
+  }
+  return { failedOrSkipped, fullScopeSucceeded };
+}
+function coverageGapsFor(inherited, { failedOrSkipped, fullScopeSucceeded }) {
+  const cleared = new Set(fullScopeSucceeded);
+  const byKey = /* @__PURE__ */ new Map();
+  for (const gap of [...inherited, ...failedOrSkipped]) {
+    if (!cleared.has(gap.classKey) && !byKey.has(gap.classKey)) byKey.set(gap.classKey, { classKey: gap.classKey, reason: gap.reason });
+  }
+  return [...byKey.values()];
 }
 function openRows(rows2) {
   return rows2.filter((r) => r.status === "pending");
@@ -13298,19 +13360,22 @@ function nameOnly(repoRoot, from, to) {
 }
 function computeRevisionDelta({ repoRoot, priorBase, priorHead, base, head }) {
   for (const [label, sha] of [["prior base", priorBase], ["prior head", priorHead], ["base", base], ["head", head]]) {
-    if (!resolves(repoRoot, sha)) return { mode: "full", fallbackReason: `${label} ${sha} does not resolve in the repository` };
+    if (!resolves(repoRoot, sha)) return { mode: "partial", fallbackReason: `${label} ${sha} does not resolve in the repository` };
   }
-  if (base !== priorBase) return { mode: "full", fallbackReason: "pull-request base changed since the prior review; the new patch cannot be isolated" };
   try {
     execFileSync3("git", ["merge-base", "--is-ancestor", priorHead, head], { cwd: repoRoot, stdio: "ignore" });
   } catch {
-    return { mode: "full", fallbackReason: "prior reviewed head is not an ancestor of the new head (rebase or rewrite)" };
+    return { mode: "partial", fallbackReason: "prior reviewed head is not an ancestor of the new head (rebase or rewrite)" };
   }
   const prFiles = new Set(nameOnly(repoRoot, base, head));
   const files = nameOnly(repoRoot, priorHead, head).filter((f) => prFiles.has(f)).sort();
-  if (files.length === 0) return { mode: "full", fallbackReason: "no pull-request file changed since the prior head" };
+  const baseDelta = new Set(base === priorBase ? [] : nameOnly(repoRoot, priorBase, base));
+  const overlap = files.filter((f) => baseDelta.has(f));
+  if (overlap.length > 0) {
+    return { mode: "partial", fallbackReason: `pull-request base moved since the prior review and its changes overlap files changed since the prior head (${overlap.join(", ")}); the new patch cannot be isolated` };
+  }
   const rangeDiffText = gitOut(repoRoot, ["range-diff", "--no-color", `${priorBase}..${priorHead}`, `${base}..${head}`]);
-  const rosterDiffText = gitOut(repoRoot, ["diff", `${priorHead}..${head}`, "--", ...files]);
+  const rosterDiffText = files.length === 0 ? "" : gitOut(repoRoot, ["diff", `${priorHead}..${head}`, "--", ...files]);
   return { mode: "narrow", rangeDiffText, rosterDiffText, files };
 }
 function buildRevision(fields) {
@@ -13825,17 +13890,28 @@ function linkRevision({ flags, parsedOrigin, partyRoot, runsStoreRoot, repoRoot,
     throw new CliError("CLI_REVISION_SAME_SHA", `head ${headSha} was already reviewed by party ${prior.partyRunId}; push a new commit before re-reviewing`);
   }
   let priorModel;
+  let coverageGaps;
   try {
     const { resultsByRunId, laneFailureReasons, evidenceByClassKey } = collectLanes(prior.record, runsStoreRoot);
+    const priorLaneResults = laneResultsFor(prior.record, resultsByRunId);
+    const priorRevision = readRevision(prior.paths);
     priorModel = buildReportModel({
       classes: classes(),
       record: prior.record,
-      laneResults: laneResultsFor(prior.record, resultsByRunId),
+      laneResults: priorLaneResults,
       laneFailureReasons,
       origin: prior.origin,
       evidenceByClassKey,
-      revision: readRevision(prior.paths)
+      revision: priorRevision
     });
+    const reviewScopeByClassKey = {};
+    for (const laneRun of prior.record.laneRuns) {
+      reviewScopeByClassKey[laneRun.classKey] = readLaneLink(runPaths(runsStoreRoot, laneRun.runId).dir)?.reviewScope ?? "full";
+    }
+    coverageGaps = coverageGapsFor(
+      priorRevision?.coverageGaps ?? [],
+      checkpointRoundOutcomes(prior.record.roster, priorLaneResults, reviewScopeByClassKey, laneFailureReasons)
+    );
   } catch (err) {
     if (err instanceof TypeError) throw err;
     throw new CliError("CLI_REVISION_PRIOR_UNREADABLE", `prior party ${prior.partyRunId} cannot be re-read (${err.code ?? ""} ${err.message}); without its findings there are no fates to assign`, { cause: err });
@@ -13848,9 +13924,10 @@ function linkRevision({ flags, parsedOrigin, partyRoot, runsStoreRoot, repoRoot,
     priorSha: prior.origin.headSha,
     priorBaseSha: prior.origin.baseSha,
     mode: delta.mode,
-    fallbackReason: delta.mode === "full" ? delta.fallbackReason : null,
+    fallbackReason: delta.mode !== "narrow" ? delta.fallbackReason : null,
     dedup: { policyVersion: revisionPolicy.version, match: [...revisionPolicy.match], proximity: { lines: revisionPolicy.proximity.lines } },
-    rows: rows2
+    rows: rows2,
+    coverageGaps
   });
   return {
     revision,
@@ -13989,7 +14066,24 @@ function cmdPartyForm(flags) {
     if (goLiveSuppressed) {
       cliOverrides.push({ kind: "suppress-go-live", target: "go-live", effect: "suppressed by caller override" });
     }
-    const roster = cliOverrides.length > 0 ? { ...rosterDecision, overrides: [...rosterDecision.overrides, ...cliOverrides] } : rosterDecision;
+    const cliRoster = cliOverrides.length > 0 ? { ...rosterDecision, overrides: [...rosterDecision.overrides, ...cliOverrides] } : rosterDecision;
+    const demotion = link === null ? null : link.revision.mode === "partial" ? {
+      trigger: "revision-isolation-failed",
+      reason: `revision delta could not be isolated (${link.revision.fallbackReason}); rerun with --full to review the whole pull request`
+    } : link.revision.mode === "narrow" && link.files.length === 0 ? { trigger: "revision-no-new-content", reason: "no pull-request file changed since the prior review; nothing new to verify this round" } : null;
+    const demoted = demotion === null ? [] : cliRoster.fielded.filter((lane) => lane.classKey !== "revision-review");
+    const roster = demoted.length === 0 ? cliRoster : {
+      ...cliRoster,
+      fielded: cliRoster.fielded.filter((lane) => lane.classKey === "revision-review"),
+      skipped: [
+        ...cliRoster.skipped,
+        ...demoted.map((lane) => ({ classKey: lane.classKey, reason: demotion.reason, via: "override", trigger: demotion.trigger }))
+      ],
+      overrides: [
+        ...cliRoster.overrides,
+        ...demoted.map((lane) => ({ kind: demotion.trigger, target: lane.classKey, effect: "removed from fielded" }))
+      ]
+    };
     for (const lane of roster.fielded) {
       resolveProfile(classes(), lane.classKey, `jcsl:artifact-family:${lane.family}`);
     }
