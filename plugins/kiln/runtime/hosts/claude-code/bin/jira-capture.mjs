@@ -33,10 +33,13 @@ export function openRequest(dir, key, now) {
   return request;
 }
 
-/** The answer text of a tool response, and the form it came in. The real tool gives one string. A stand-in can give a list of text blocks. */
+const isTextBlock = (b) => b !== null && typeof b === 'object' && b.type === 'text' && typeof b.text === 'string';
+
+/** The answer text of a tool response, and the form it came in. Claude Code gives one string. A stand-in can give a list of text blocks. The Codex app can give an MCP result object that holds a list of text blocks. */
 export function answerOf(response) {
   if (typeof response === 'string') return { text: response, form: 'string' };
-  if (Array.isArray(response) && response.every((b) => b !== null && typeof b === 'object' && b.type === 'text' && typeof b.text === 'string')) return { text: response.map((b) => b.text).join(''), form: 'blocks' };
+  if (Array.isArray(response) && response.every(isTextBlock)) return { text: response.map((b) => b.text).join(''), form: 'blocks' };
+  if (response !== null && typeof response === 'object' && Array.isArray(response.content) && response.content.every(isTextBlock)) return { text: response.content.map((b) => b.text).join(''), form: 'mcp' };
   return { text: null, form: 'other' };
 }
 
@@ -46,7 +49,7 @@ function isJsonObject(text) {
 
 /** The ticket JSON as text, or the reason that there is none. A large answer arrives as a message that names a saved file. */
 export function ticketTextOf(text) {
-  if (text === null) return { text: null, problem: 'the answer is neither a string nor a list of text blocks' };
+  if (text === null) return { text: null, problem: 'the answer is neither a string, nor a list of text blocks, nor an MCP result of text blocks' };
   if (isJsonObject(text)) return { text, problem: null };
   const saved = SAVED.exec(text);
   if (saved === null) return { text: null, problem: 'the answer is not JSON' };
@@ -81,7 +84,7 @@ export function handle(input, { env = process.env, home = homedir(), now = Date.
   rmSync(path.join(dir, 'request.json'), { force: true });
   if (ticket.problem !== null) return null;
   const receipt = `kiln saved the answer for ${key} to a file for the run. This session holds no ticket text. Run the kiln command again.`;
-  return { hookSpecificOutput: { hookEventName: 'PostToolUse', updatedToolOutput: answer.form === 'string' ? receipt : [{ type: 'text', text: receipt }] } };
+  return { hookSpecificOutput: { hookEventName: 'PostToolUse', updatedToolOutput: answer.form === 'string' || answer.form === 'mcp' ? receipt : [{ type: 'text', text: receipt }] } };
 }
 
 if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href) {

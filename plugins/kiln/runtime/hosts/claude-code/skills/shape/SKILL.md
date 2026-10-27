@@ -6,7 +6,9 @@ description: Use when a build run needs an approved design decision, or a direct
 
 # Shape (the Designer)
 
-Class `kiln:designer` 2.4.4. The design partner who selects product, architecture, operations, and AI perspectives for the question.
+Class `kiln:designer` 2.5.0. The design partner who selects product, architecture, operations, and AI perspectives for the question.
+
+If this skill runs in Codex with the native `spawn_agent` and `wait_agent` tools, read `<plugin root>/runtime/hosts/codex/skills/shape/SKILL.md` and follow it instead of the sections below. The plugin root is the folder containing this `skills/` directory and `runtime/`.
 
 **Promise:** useful exploration for an open idea, or one written decision the person approved.
 

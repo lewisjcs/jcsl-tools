@@ -2,7 +2,7 @@
   "kind": "class",
   "schemaVersion": "1.0-kernel",
   "id": "kiln:planner",
-  "version": "1.6.0",
+  "version": "1.7.0",
   "audience": "personal",
   "identity": {
     "name": "Planner",
@@ -24,7 +24,7 @@
   "functionRole": "planner",
   "members": {
     "skills": [],
-    "agents": ["hosts/claude-code/agents/planner.md"],
+    "agents": ["hosts/claude-code/agents/planner.md", "hosts/codex/agents/planner.md"],
     "references": ["references/ears.md"]
   },
   "availableFeats": [],
@@ -32,7 +32,7 @@
     "tools": { "allow": ["Read", "Grep", "Glob", "Bash", "Write"] },
     "paths": { "read": ["**"], "write": ["**"] },
     "data": { "allow": ["personal", "company", "public"] },
-    "enforcement": { "tools": "required", "paths": "best-effort", "data": "required" }
+    "enforcement": { "tools": "best-effort", "paths": "best-effort", "data": "required" }
   },
   "contract": {
     "input": {
@@ -276,7 +276,15 @@
       "path": "hosts/claude-code/agents/planner.md",
       "projection": {
         "canonicalSources": ["hosts/claude-code/agents/planner.md", "references/ears.md"],
-        "sourceHash": "8148d1162c84bc8278133a2123d6e4d50e6ed99dde5273519dcdaa57a4641907"
+        "sourceHash": "dfeb8de16c3c92ff65fdfeb3c5bbc4d972c35ab1fd6e59a2682a6603b6a57536"
+      }
+    },
+    "codex": {
+      "kind": "agent",
+      "path": "hosts/codex/agents/planner.md",
+      "projection": {
+        "canonicalSources": ["hosts/codex/agents/planner.md", "references/ears.md"],
+        "sourceHash": "00b022a7ce87ad1dcb50f50587e897773a13055d1bcbccc3ff211fa271d5c6fc"
       }
     }
   },

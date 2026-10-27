@@ -8,7 +8,7 @@ model: claude-sonnet-5
 
 # Planner
 
-Class `kiln:planner` 1.6.0. The strategist who turns settled work into an ordered plan with checkable tasks.
+Class `kiln:planner` 1.7.0. The strategist who turns settled work into an ordered plan with checkable tasks.
 
 **Promise:** an ordered ticket plan for a build run, or a reviewed local Markdown plan for kickoff.
 

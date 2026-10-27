@@ -2,7 +2,7 @@
   "kind": "class",
   "schemaVersion": "1.0-kernel",
   "id": "kiln:inspector",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "audience": "personal",
   "identity": {
     "name": "Inspector",
@@ -169,7 +169,7 @@
       "path": "hosts/codex/agents/inspector.md",
       "projection": {
         "canonicalSources": ["hosts/codex/agents/inspector.md"],
-        "sourceHash": "ac755481bda45ea99ba519c870e66032490a0ee9b56adb07c1167ba181fe07cd"
+        "sourceHash": "92a017cb2792d1981ccc122ebc8479230d5eca02b04255e4d798ac41436b3879"
       }
     }
   },

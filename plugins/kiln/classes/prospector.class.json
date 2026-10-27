@@ -2,7 +2,7 @@
   "kind": "class",
   "schemaVersion": "1.0-kernel",
   "id": "kiln:prospector",
-  "version": "1.5.4",
+  "version": "1.6.0",
   "audience": "personal",
   "identity": {
     "name": "Prospector",
@@ -22,7 +22,7 @@
   "functionRole": "researcher",
   "members": {
     "skills": ["hosts/claude-code/skills/prospector/SKILL.md"],
-    "agents": ["hosts/claude-code/agents/prospector.md"],
+    "agents": ["hosts/claude-code/agents/prospector.md", "hosts/codex/agents/prospector.md"],
     "references": []
   },
   "availableFeats": [],
@@ -30,7 +30,7 @@
     "tools": { "allow": ["Read", "Grep", "Glob", "Bash", "Skill", "Write"] },
     "paths": { "read": ["**"], "write": ["**"] },
     "data": { "allow": ["personal", "company", "public"] },
-    "enforcement": { "tools": "required", "paths": "best-effort", "data": "required" }
+    "enforcement": { "tools": "best-effort", "paths": "best-effort", "data": "required" }
   },
   "contract": {
     "input": {
@@ -106,7 +106,15 @@
       "path": "hosts/claude-code/agents/prospector.md",
       "projection": {
         "canonicalSources": ["hosts/claude-code/agents/prospector.md"],
-        "sourceHash": "29cca06a9c5a006427cfdfc578854fed66e541db845937bb74755a64b5f2d219"
+        "sourceHash": "6cdcf8400e89ea003f603d74554608f0e37108a5bd9eb6761bccd352dca732eb"
+      }
+    },
+    "codex": {
+      "kind": "agent",
+      "path": "hosts/codex/agents/prospector.md",
+      "projection": {
+        "canonicalSources": ["hosts/codex/agents/prospector.md"],
+        "sourceHash": "8f0700a5237eb7f53f95fa051de5c2c3d3eac81f8dbca83567054572c6e0c054"
       }
     }
   },
