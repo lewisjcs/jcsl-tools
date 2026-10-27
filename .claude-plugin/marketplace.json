@@ -10,7 +10,7 @@
       "name": "kiln",
       "source": "./plugins/kiln",
       "displayName": "The Kiln",
-      "description": "Use Prospector directly for cited research and Designer directly to explore a decision from an ordinary request. /kiln:kickoff prepares a build plan; /kiln:build executes approved plans, with native subagents in Codex. Statblock checks Class results and build receipts.",
+      "description": "Use Prospector directly for cited research and Designer directly to explore a decision from an ordinary request. /kiln:kickoff prepares a build plan; /kiln:build executes approved plans. Kickoff, shape, build, and the direct Prospector call run whole in Codex, with native subagents. Statblock checks Class results and build receipts.",
       "author": {
         "name": "Josh C.S. Lewis"
       },
@@ -20,6 +20,7 @@
         "build",
         "codex",
         "subagents",
+        "shape",
         "kickoff",
         "planning",
         "crafter",

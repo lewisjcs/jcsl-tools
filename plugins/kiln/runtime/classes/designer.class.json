@@ -2,7 +2,7 @@
   "kind": "class",
   "schemaVersion": "1.0-kernel",
   "id": "kiln:designer",
-  "version": "2.4.4",
+  "version": "2.5.0",
   "audience": "personal",
   "identity": {
     "name": "Designer",
@@ -24,7 +24,7 @@
   },
   "functionRole": "designer",
   "members": {
-    "skills": ["hosts/claude-code/skills/shape/SKILL.md"],
+    "skills": ["hosts/claude-code/skills/shape/SKILL.md", "hosts/codex/skills/shape/SKILL.md"],
     "agents": [],
     "references": ["references/ears.md", "references/brainstorming.md", "references/architecture.md"]
   },
@@ -225,7 +225,15 @@
       "path": "hosts/claude-code/skills/shape/SKILL.md",
       "projection": {
         "canonicalSources": ["hosts/claude-code/skills/shape/SKILL.md", "references/ears.md", "references/brainstorming.md", "references/architecture.md"],
-        "sourceHash": "e94e0912cd04ea0ddf57c67ab53348a91b055da4950ea8c45c91894c91a25064"
+        "sourceHash": "32ec53fbd5a26e76a019d81dc4523cf64ca42e925cd4d3f4a8e98ea403f188d2"
+      }
+    },
+    "codex": {
+      "kind": "skill",
+      "path": "hosts/codex/skills/shape/SKILL.md",
+      "projection": {
+        "canonicalSources": ["hosts/codex/skills/shape/SKILL.md", "references/ears.md", "references/brainstorming.md", "references/architecture.md"],
+        "sourceHash": "83dc1698bb91408d39e10cb2f1e3a1a3de53fee1d49a07fd7d3430dcde3a800f"
       }
     }
   },

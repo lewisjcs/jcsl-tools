@@ -8,6 +8,8 @@ description: Use when a person starts Kiln with a question, open idea, ticket, o
 
 You are the kickoff host. `$ARGUMENTS` contains the person's ordinary-language request. End with a sourced answer, exploration, or a reviewed local plan. Stop before implementation. `/kiln:build` starts a separate Party, which is a team formed for one build.
 
+If this skill runs in Codex with native `spawn_agent` and `wait_agent` tools, read `<plugin root>/runtime/hosts/codex/skills/kickoff/SKILL.md` and follow that host's dispatch procedure. The plugin root is the folder containing this `skills/` directory and `runtime/`. In shared commands below, replace `${CLAUDE_PLUGIN_ROOT}` with that absolute plugin root. The routing, source, Jira, and local plan rules below still apply.
+
 ## Harness rules
 
 - Absolute paths only. Never run `cd`. Use `git -C <dir>`.

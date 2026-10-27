@@ -37,7 +37,7 @@ A plugin's version is bumped independently in its own `plugin.json` — the mark
 
 `/kiln:kickoff` answers a question, explores an idea, or prepares a reviewed plan. It can call a Class directly when that Class's separate result helps. It stops before implementation. `/kiln:build` starts a separate Party run from an approved plan or ticket. The runtime chooses each next action, and the build skill performs the host call. `/kiln:shape` also opens the Designer without a run.
 
-Kiln ships five Classes: Crafter, Designer, Planner, Inspector, and Prospector. Each Class has a manifest and a Claude Code entry point. The host skills are `kickoff`, `build`, and `shape`. The Kiln packager copies those files, their references, the hooks, policy, and the bundled runtime from the merged Kiln source. `PROVENANCE.json` records the source commit and payload hash. Edit the canonical files in Kiln, then generate this payload again. The marketplace owns only `plugins/kiln/.claude-plugin/plugin.json`.
+Kiln ships five Classes: Crafter, Designer, Planner, Inspector, and Prospector. Each Class has a manifest and an entry point on each host, Claude Code and Codex. The host skills are `kickoff`, `build`, `prospector`, and `shape`. The Codex portion of each skill lives under `runtime/hosts/codex/skills/`, and the shared skill sends a Codex session there. The Kiln packager copies those files, their references, the hooks, policy, and the bundled runtime from the merged Kiln source. `PROVENANCE.json` records the source commit and payload hash. Edit the canonical files in Kiln, then generate this payload again. The marketplace owns only `plugins/kiln/.claude-plugin/plugin.json`.
 
 ### Gauntlet — multi-skill review harness
 

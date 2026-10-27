@@ -2,7 +2,7 @@
   "kind": "class",
   "schemaVersion": "1.0-kernel",
   "id": "kiln:crafter",
-  "version": "2.4.0",
+  "version": "2.4.1",
   "audience": "personal",
   "identity": {
     "name": "Crafter",
@@ -160,7 +160,7 @@
       "path": "hosts/codex/agents/crafter.md",
       "projection": {
         "canonicalSources": ["hosts/codex/agents/crafter.md"],
-        "sourceHash": "1f7571030107b77a509199b5a30c6de9902a88168e86bb48607bbc14be2c8f4c"
+        "sourceHash": "5c0de41e24b42c4429bc63694236ae6fae908cc22ea49d5e556be315744b2117"
       }
     }
   },

@@ -6,7 +6,10 @@ import path from 'node:path';
 import { parseArgs } from 'node:util';
 import { spawnSync } from 'node:child_process';
 import { checkInvocation } from '../check-command.mjs';
+import { findSession, entriesOf, usageOf, sessionMetaOf, assertChildOf, modelOf, finalReplyOf } from '../rollout.mjs';
 import { parseCheckExpectation, checkMatchesExpectation } from '../check-expectation.mjs';
+
+const PREFIX = 'CODEX_MEASURE';
 
 class MeasureError extends Error {
   constructor(code, message, details = {}) { super(message); this.code = code; this.details = details; }
@@ -25,27 +28,6 @@ function flagsOf(args) {
     throw new MeasureError('CODEX_MEASURE_FLAGS', '--repo and --before must be supplied together');
   }
   return { ...values, 'sessions-root': values['sessions-root'] ?? path.join(process.env.CODEX_HOME ?? path.join(homedir(), '.codex'), 'sessions') };
-}
-
-function findSession(root, agent) {
-  if (!existsSync(root)) throw new MeasureError('CODEX_MEASURE_SESSION_MISSING', 'Codex sessions directory is missing', { root });
-  const files = readdirSync(root, { recursive: true, withFileTypes: true })
-    .filter((entry) => entry.isFile() && entry.name.endsWith(`-${agent}.jsonl`))
-    .map((entry) => path.join(entry.parentPath, entry.name));
-  if (files.length !== 1) throw new MeasureError('CODEX_MEASURE_SESSION_MISSING', `expected one rollout for agent ${agent}, found ${files.length}`, { agent, count: files.length });
-  return files[0];
-}
-
-function entriesOf(file) {
-  return readFileSync(file, 'utf8').split('\n').filter(Boolean).map((line, i) => {
-    try { return JSON.parse(line); }
-    catch { throw new MeasureError('CODEX_MEASURE_MALFORMED', `rollout line ${i + 1} is not JSON`, { file, line: i + 1 }); }
-  });
-}
-
-function one(list, code, message) {
-  if (list.length !== 1) throw new MeasureError(code, message, { count: list.length });
-  return list[0];
 }
 
 function nestedCommands(source) {
@@ -85,23 +67,6 @@ function commandsOf(events) {
     }
     return [];
   });
-}
-
-function usageOf(events) {
-  const counts = events.filter((e) => e.type === 'event_msg' && e.payload?.type === 'token_count')
-    .map((e) => e.payload.info?.total_token_usage).filter(Boolean);
-  if (counts.length === 0) throw new MeasureError('CODEX_MEASURE_USAGE_MISSING', 'the subagent has no token count');
-  const total = counts.at(-1);
-  for (const key of ['input_tokens', 'cached_input_tokens', 'cache_write_input_tokens', 'output_tokens']) {
-    if (!Number.isSafeInteger(total[key]) || total[key] < 0) throw new MeasureError('CODEX_MEASURE_USAGE_MALFORMED', `${key} is not a nonnegative integer`);
-  }
-  const fresh = total.input_tokens - total.cached_input_tokens - total.cache_write_input_tokens;
-  if (fresh < 0) throw new MeasureError('CODEX_MEASURE_USAGE_MALFORMED', 'cached and cache-write tokens exceed input tokens');
-  const totals = counts.map((c) => c.total_tokens);
-  if (totals.some((n, i) => !Number.isSafeInteger(n) || (i > 0 && n <= totals[i - 1]))) {
-    throw new MeasureError('CODEX_MEASURE_USAGE_MALFORMED', 'cumulative token counts are not strictly increasing');
-  }
-  return { inputTokens: fresh, cacheWriteTokens: total.cache_write_input_tokens, cacheReadTokens: total.cached_input_tokens, outputTokens: total.output_tokens, turns: counts.length };
 }
 
 function checkedReply(reply, handed, action, run, cli, commands, plannedChecks, finalStartedAt) {
@@ -193,27 +158,17 @@ function main(args) {
   }
   const parentSessionId = process.env.CODEX_SESSION_ID;
   if (!/^[0-9a-f-]{36}$/.test(parentSessionId ?? '')) throw new MeasureError('CODEX_MEASURE_PARENT_UNAVAILABLE', 'the active Codex parent session ID is unavailable');
-  const file = findSession(v['sessions-root'], v.agent);
-  const events = entriesOf(file);
-  const meta = one(events.filter((e) => e.type === 'session_meta').map((e) => e.payload), 'CODEX_MEASURE_SESSION_MISSING', 'expected one session header');
-  if (meta.id !== v.agent || meta.source?.subagent?.thread_spawn === undefined) throw new MeasureError('CODEX_MEASURE_NOT_SUBAGENT', 'rollout is not the selected native subagent');
-  if (meta.source.subagent.thread_spawn.parent_thread_id !== parentSessionId) throw new MeasureError('CODEX_MEASURE_PARENT_MISMATCH', 'subagent does not belong to the active Codex session');
+  const file = findSession(v['sessions-root'], v.agent, PREFIX);
+  const events = entriesOf(file, PREFIX);
+  assertChildOf(sessionMetaOf(events, PREFIX), v.agent, parentSessionId, PREFIX);
   const userMessages = events.filter((e) => e.type === 'response_item' && e.payload?.type === 'message' && e.payload.role === 'user');
   if (!userMessages.some((e) => JSON.stringify(e.payload.content).includes(v.brief) && JSON.stringify(e.payload.content).includes(v.action))) {
     throw new MeasureError('CODEX_MEASURE_ACTION_MISMATCH', 'subagent prompt does not name this action and brief');
   }
-  const completions = events.filter((e) => e.type === 'event_msg' && e.payload?.type === 'task_complete').map((e) => e.payload);
-  const starts = events.filter((e) => e.type === 'event_msg' && e.payload?.type === 'task_started').map((e) => e.payload);
-  if (completions.length === 0 || completions.length !== starts.length || completions.length > 2) {
-    throw new MeasureError('CODEX_MEASURE_INCOMPLETE', 'subagent has an unfinished task or more than one correction', { starts: starts.length, completions: completions.length });
-  }
-  const done = completions.at(-1);
-  if (typeof done.last_agent_message !== 'string' || done.last_agent_message.length === 0) throw new MeasureError('CODEX_MEASURE_INCOMPLETE', 'subagent has no final reply');
-  const contexts = events.filter((e) => e.type === 'turn_context').map((e) => e.payload);
-  const models = new Set(contexts.map((c) => `${c.model}|${c.effort}`));
-  if (models.size !== 1 || !contexts[0]?.model || !contexts[0]?.effort) throw new MeasureError('CODEX_MEASURE_MODEL_UNBOUND', 'subagent model or effort is unavailable or changed');
-  if (contexts[0].model !== saved.host.modelBinding.model || contexts[0].effort !== saved.host.modelBinding.reasoningEffort) {
-    throw new MeasureError('CODEX_MEASURE_MODEL_MISMATCH', 'subagent model or effort differs from the saved host binding', { expected: saved.host.modelBinding, actual: { model: contexts[0].model, reasoningEffort: contexts[0].effort } });
+  const done = finalReplyOf(events, PREFIX);
+  const binding = modelOf(events, PREFIX);
+  if (binding.model !== saved.host.modelBinding.model || binding.reasoningEffort !== saved.host.modelBinding.reasoningEffort) {
+    throw new MeasureError('CODEX_MEASURE_MODEL_MISMATCH', 'subagent model or effort differs from the saved host binding', { expected: saved.host.modelBinding, actual: binding });
   }
   const handed = path.join(v.run, 'handed');
   const finalStartIndex = events.findLastIndex((e) => e.type === 'event_msg' && e.payload?.type === 'task_started');
@@ -224,18 +179,18 @@ function main(args) {
     : saved.pendingAction?.kind === 'dispatch-judge'
       ? saved.brief.tasks.plan.flatMap((task) => task.doneWhen)
       : [];
-  const { item, toolCalls } = checkedReply(done.last_agent_message, handed, v.action, v.run, v.cli, commandsOf(events.slice(finalStartIndex)), plannedChecks, finalStartedAt);
+  const { item, toolCalls } = checkedReply(done.reply, handed, v.action, v.run, v.cli, commandsOf(events.slice(finalStartIndex)), plannedChecks, finalStartedAt);
   validateClassReply(v.cli, item, handed, v.action);
-  const usage = usageOf(events);
-  const seconds = Math.round((Date.parse(done.completed_at) - Date.parse(starts[0].started_at)) / 1000);
+  const usage = usageOf(events, PREFIX);
+  const seconds = Math.round((Date.parse(done.completedAt) - Date.parse(done.startedAt)) / 1000);
   if (Number.isFinite(seconds) && seconds >= 0) usage.latencySeconds = seconds;
   const writes = writesOf(v);
   if (saved.pendingAction?.kind === 'dispatch-judge') {
     if (writes?.availability !== 'measured' || !Array.isArray(writes.paths)) throw new MeasureError('CODEX_MEASURE_READ_ONLY_UNVERIFIED', 'Inspector needs a measured worktree baseline');
     if (writes.paths.length > 0) throw new MeasureError('CODEX_MEASURE_READ_ONLY_WRITE', 'Inspector changed the worktree', { paths: writes.paths });
   }
-  const hostMeta = { modelBinding: { model: contexts[0].model, reasoningEffort: contexts[0].effort }, usage, toolCalls, ...(writes === undefined ? {} : { writes }) };
-  writePair(handed, v.action, done.last_agent_message, hostMeta);
+  const hostMeta = { modelBinding: binding, usage, toolCalls, ...(writes === undefined ? {} : { writes }) };
+  writePair(handed, v.action, done.reply, hostMeta);
   return { agentId: v.agent, actionId: v.action, tokens: usage.inputTokens + usage.cacheWriteTokens + usage.outputTokens, checks: toolCalls.length };
 }
 

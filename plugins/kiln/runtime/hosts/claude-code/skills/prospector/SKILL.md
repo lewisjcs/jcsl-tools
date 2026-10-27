@@ -6,7 +6,9 @@ description: Use when a person asks Prospector to research a question, find wher
 
 # Prospector
 
-Class `kiln:prospector` 1.5.4. Accept the person's research question in ordinary language. Prepare the internal brief and files yourself. A short lookup that needs no separate research can be answered in this thread; say that you did not dispatch Prospector.
+Class `kiln:prospector` 1.6.0. Accept the person's research question in ordinary language. Prepare the internal brief and files yourself. A short lookup that needs no separate research can be answered in this thread; say that you did not dispatch Prospector.
+
+If this skill runs in Codex with native `spawn_agent` and `wait_agent` tools, read `<plugin root>/runtime/hosts/codex/skills/prospector/SKILL.md` and follow that host's dispatch procedure. The plugin root is the folder containing this `skills/` directory and `runtime/`. In shared commands below, replace `${CLAUDE_PLUGIN_ROOT}` with that absolute plugin root. The brief, report check, and outcome rules below still apply.
 
 ## Harness rules
 

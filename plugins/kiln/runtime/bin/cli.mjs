@@ -9496,6 +9496,7 @@ function createCodexAdapter({ modelBindings, guarantees, capabilities } = {}) {
 // src/classes.mjs
 var PLUGIN_NAMESPACE = "kiln";
 var CLASS_MANIFESTS = Object.freeze(["classes/crafter.class.json", "classes/designer.class.json", "classes/planner.class.json", "classes/inspector.class.json", "classes/prospector.class.json"]);
+var CODEX_BUILD_MANIFESTS = Object.freeze(["classes/crafter.class.json", "classes/inspector.class.json"]);
 var REPO_ROOT = path3.resolve(path3.dirname(fileURLToPath(import.meta.url)), "..");
 var BORROWED_PINS = Object.freeze(JSON.parse(readFileSync7(new URL("../policy/borrowed-classes-v1.json", import.meta.url), "utf8")).classes);
 function hostEntry(manifest, hostId) {
@@ -13064,15 +13065,20 @@ function documentReaderFor(ticketRef, source) {
   };
 }
 var registryCache = /* @__PURE__ */ new Map();
-var CODEX_CLASS_MANIFESTS = ["classes/crafter.class.json", "classes/inspector.class.json"];
 function selectedHost(id) {
   if (id === void 0 || id === "claude-code") return HOST;
   if (id === "codex") return CODEX_HOST;
   throw new KilnError("KILN_HOST_UNKNOWN", `unknown build host ${id}`, { host: id });
 }
 function getRegistry(hostId = "claude-code") {
-  if (!registryCache.has(hostId)) registryCache.set(hostId, loadClassRegistry(process.env.KILN_CLASSES_ROOT, hostId === "codex" ? CODEX_CLASS_MANIFESTS : void 0, hostId));
+  if (!registryCache.has(hostId)) registryCache.set(hostId, loadClassRegistry(process.env.KILN_CLASSES_ROOT, void 0, hostId));
   return registryCache.get(hostId);
+}
+function getBuildRegistry(hostId = "claude-code") {
+  if (hostId !== "codex") return getRegistry(hostId);
+  const key = "codex:build";
+  if (!registryCache.has(key)) registryCache.set(key, loadClassRegistry(process.env.KILN_CLASSES_ROOT, CODEX_BUILD_MANIFESTS, hostId));
+  return registryCache.get(key);
 }
 function flags(args, spec) {
   return parseArgs({ args, options: spec, allowPositionals: false }).values;
@@ -13593,7 +13599,7 @@ function leakCheckFor(ref, source, repoWords) {
   };
 }
 function flowCtx({ ticketRef, source, firstKind, repoWords, hostId }, extra = {}) {
-  return { registry: getRegistry(hostId), policy: rosterPolicy, modePolicy, ticketFormat, toolCalls: { availability: "unavailable" }, attachments: {}, breach: null, leaksIn: leakCheckFor(ticketRef, source, repoWords), ticketChanges: { parts: [], brief: emptyBrief() }, repoFacts: repoFactsFor(), readDocument: documentReaderFor(ticketRef, source), firstKind, ...extra };
+  return { registry: getBuildRegistry(hostId), policy: rosterPolicy, modePolicy, ticketFormat, toolCalls: { availability: "unavailable" }, attachments: {}, breach: null, leaksIn: leakCheckFor(ticketRef, source, repoWords), ticketChanges: { parts: [], brief: emptyBrief() }, repoFacts: repoFactsFor(), readDocument: documentReaderFor(ticketRef, source), firstKind, ...extra };
 }
 function bodyWithParts(body, state, parts) {
   let next = withContextHeading(body, ticketFormat);
@@ -13969,7 +13975,6 @@ ${prepared.addedText}`;
     const host = selectedHost(v.host ?? savedHostId ?? "claude-code");
     if (savedHostId !== null && v.host !== void 0 && host.id !== savedHostId) throw new KilnError("KILN_HOST_RUN_MISMATCH", `the saved run uses ${savedHostId}; requested ${host.id}`, { runDir: paths.dir, savedHostId, requestedHostId: host.id });
     if (host.id === "codex" && approvedPlan === null) throw new KilnError("KILN_CODEX_APPROVED_PLAN_REQUIRED", "the Codex host currently requires an approved plan", { ticket: ref });
-    if (host.id === "codex" && source === "jira" && !process.env.KILN_JIRA_VIEW) throw new KilnError("KILN_CODEX_JIRA_READ_UNAVAILABLE", "the Codex host needs a configured Jira view command for this ticket", { ticket: ref });
     const codexModelBinding = host.id === "codex" ? activeCodexModelBinding() : null;
     if (v.idea !== void 0) {
       if (source !== "markdown") throw new KilnError("KILN_IDEA_NEEDS_FILE", "an idea opens a new markdown ticket; pass a file path as --ticket", { ticket: ref });
@@ -13996,7 +14001,7 @@ ${v.idea.trim()}
     const planPath = approvedPlan?.path ?? (v.plan === void 0 ? null : path10.resolve(v.plan));
     const planShape = planPath === null ? null : documentKindOf(readInput({ plan: planPath }, "plan"), planPath);
     const documents = { plan: planPath === null ? null : { path: planPath, kind: planShape?.kind ?? null, shape: planShape?.shape ?? null, ...approvedPlan === null ? {} : { ...approvedPlan, approved: true, ticketAcceptance: ticketBrief.acceptance?.lines ?? null } }, decision: null };
-    const registry = getRegistry(host.id);
+    const registry = getBuildRegistry(host.id);
     const issueTitle = title === null && source === "github" ? ticketRead.title : title;
     let directRepo = null;
     if (taskPlan !== null && (!runExists(paths) || v.again === true)) {
@@ -14176,9 +14181,10 @@ ${v.idea.trim()}
     return { valid: true, classId, kind: kind2 };
   },
   "class-bind"(args) {
-    const v = flags(args, { class: { type: "string" }, input: { type: "string" }, "host-config": { type: "string" }, installed: { type: "string" }, launcher: { type: "string" } });
+    const v = flags(args, { class: { type: "string" }, input: { type: "string" }, "host-config": { type: "string" }, installed: { type: "string" }, launcher: { type: "string" }, host: { type: "string" } });
     const classId = requireFlag(v, "class");
-    const entry = getRegistry()[classId];
+    const hostId = selectedHost(v.host).id;
+    const entry = getRegistry(hostId)[classId];
     if (!entry || entry.borrowed) throw new KilnError("KILN_CLASS_UNKNOWN", `${classId} is not a registered local Class`, { classId });
     readInput(v, "installed");
     const installed = verifyInstalledBody(entry, v.installed, process.env.KILN_CLASSES_ROOT);
@@ -14194,10 +14200,12 @@ ${v.idea.trim()}
     }
     const input = readJsonInput(v, "input");
     const config = readJsonInput(v, "host-config");
-    for (const field of ["modelBindings", "guarantees", "capabilities", "loadout"]) {
+    const codex = hostId === "codex";
+    for (const field of [...codex ? [] : ["modelBindings"], "guarantees", "capabilities", "loadout"]) {
       if (config?.[field] === void 0) throw new KilnError("KILN_HOST_CONFIG_MISSING", `host config must state ${field}`, { field });
     }
-    const adapter = createClaudeCodeAdapter(config);
+    if (codex && config.modelBindings !== void 0) throw new KilnError("KILN_HOST_CONFIG_CODEX_MODEL", "the Codex model comes from the session; remove modelBindings");
+    const adapter = codex ? createCodexAdapter({ modelBindings: { [config.loadout.modelRequirement]: activeCodexModelBinding() }, guarantees: config.guarantees, capabilities: config.capabilities }) : createClaudeCodeAdapter(config);
     return bindDirectClass({ catalog, classId, input, loadout: config.loadout, adapter });
   },
   "class-outcome"(args) {
