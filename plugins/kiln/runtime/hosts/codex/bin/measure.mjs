@@ -6,7 +6,7 @@ import path from 'node:path';
 import { parseArgs } from 'node:util';
 import { spawnSync } from 'node:child_process';
 import { checkInvocation } from '../check-command.mjs';
-import { findSession, entriesOf, usageOf, sessionMetaOf, assertChildOf, modelOf, finalReplyOf } from '../rollout.mjs';
+import { findSession, entriesOf, usageOf, sessionMetaOf, assertChildOf, modelOf, finalReplyOf, timeOf } from '../rollout.mjs';
 import { parseCheckExpectation, checkMatchesExpectation } from '../check-expectation.mjs';
 
 const PREFIX = 'CODEX_MEASURE';
@@ -101,7 +101,7 @@ function checkedReply(reply, handed, action, run, cli, commands, plannedChecks, 
       if (typeof record.commandOutput !== 'string' || !checkMatchesExpectation(expectation, record.exitCode, record.commandOutput)) {
         throw new MeasureError('CODEX_MEASURE_CHECK_FAILED', `check ${evidence.check} did not show its planned result`);
       }
-      if (!Number.isFinite(Date.parse(record.completedAt)) || Date.parse(record.completedAt) < finalStartedAt) {
+      if (!Number.isFinite(timeOf(record.completedAt)) || timeOf(record.completedAt) < finalStartedAt) {
         throw new MeasureError('CODEX_MEASURE_CHECK_STALE', `check ${evidence.check} was not recorded in the final subagent turn`);
       }
       const invocation = checkInvocation({ run, action, check: record.check, cli });
@@ -172,7 +172,7 @@ function main(args) {
   }
   const handed = path.join(v.run, 'handed');
   const finalStartIndex = events.findLastIndex((e) => e.type === 'event_msg' && e.payload?.type === 'task_started');
-  const finalStartedAt = Date.parse(events[finalStartIndex]?.payload?.started_at);
+  const finalStartedAt = timeOf(events[finalStartIndex]?.payload?.started_at);
   if (!Number.isFinite(finalStartedAt)) throw new MeasureError('CODEX_MEASURE_INCOMPLETE', 'the final subagent turn has no start time');
   const plannedChecks = saved.pendingAction?.kind === 'dispatch-changer'
     ? saved.brief.tasks.plan[saved.cursor].doneWhen
@@ -182,7 +182,7 @@ function main(args) {
   const { item, toolCalls } = checkedReply(done.reply, handed, v.action, v.run, v.cli, commandsOf(events.slice(finalStartIndex)), plannedChecks, finalStartedAt);
   validateClassReply(v.cli, item, handed, v.action);
   const usage = usageOf(events, PREFIX);
-  const seconds = Math.round((Date.parse(done.completedAt) - Date.parse(done.startedAt)) / 1000);
+  const seconds = Math.round((timeOf(done.completedAt) - timeOf(done.startedAt)) / 1000);
   if (Number.isFinite(seconds) && seconds >= 0) usage.latencySeconds = seconds;
   const writes = writesOf(v);
   if (saved.pendingAction?.kind === 'dispatch-judge') {
