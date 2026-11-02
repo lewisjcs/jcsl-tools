@@ -17,7 +17,7 @@ import { writeFileSync, renameSync, rmSync, existsSync, readdirSync, readFileSyn
 import { homedir } from 'node:os';
 import path from 'node:path';
 import { parseArgs } from 'node:util';
-import { RolloutError, findSession, entriesOf, usageOf } from '../rollout.mjs';
+import { RolloutError, findSession, entriesOf, usageOf, timeOf } from '../rollout.mjs';
 
 const PREFIX = 'CODEX_WINDOW';
 const COUNTERS = ['input_tokens', 'cached_input_tokens', 'cache_write_input_tokens', 'output_tokens'];
@@ -89,7 +89,7 @@ function childrenIn(root, parentId, since) {
       if (firstMetaOf(file)?.source?.subagent?.thread_spawn?.parent_thread_id !== parentId) continue;
       const events = entriesOf(file, PREFIX);
       const meta = events.find((e) => e.type === 'session_meta').payload;
-      const startedAt = Date.parse(events.find((e) => e.type === 'event_msg' && e.payload?.type === 'task_started')?.payload.started_at);
+      const startedAt = timeOf(events.find((e) => e.type === 'event_msg' && e.payload?.type === 'task_started')?.payload.started_at);
       if (!Number.isFinite(startedAt) || startedAt < since) continue;
       let usage = null;
       try { usage = usageOf(events, PREFIX); }

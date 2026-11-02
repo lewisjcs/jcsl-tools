@@ -57,6 +57,13 @@ export function modelOf(events, prefix) {
   return { model: contexts[0].model, reasoningEffort: contexts[0].effort };
 }
 
+/** A rollout time as milliseconds since the epoch: Codex writes `started_at` and `completed_at` as epoch seconds, and older rollouts as ISO strings. NaN for anything else. */
+export function timeOf(value) {
+  if (typeof value === 'number') return Number.isFinite(value) ? value * 1000 : NaN;
+  if (typeof value === 'string') return Date.parse(value);
+  return NaN;
+}
+
 export function finalReplyOf(events, prefix) {
   const completions = events.filter((e) => e.type === 'event_msg' && e.payload?.type === 'task_complete').map((e) => e.payload);
   const starts = events.filter((e) => e.type === 'event_msg' && e.payload?.type === 'task_started').map((e) => e.payload);

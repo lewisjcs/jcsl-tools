@@ -11895,16 +11895,16 @@ function acceptPlanner(state, ctx, items) {
   if (attachment.value.issues.length > 0) return rejection({ code: "KILN_PLAN_INVALID", label: "the ticket plan file fails kiln:ticket-plan@1 or the absolute-command rule", details: attachment.value.issues.slice(0, 5).map((i) => i.message), tag: "plan", reason: "plan-invalid" });
   const plan = attachment.value.plan;
   const newTasks = plan.tasks;
+  const kept = state.replan === null ? [] : state.brief.tasks.plan.slice(0, state.replan.from);
   const approved = state.documents.plan?.approved ? state.documents.plan : null;
   if (approved !== null) {
-    const change = firstApprovedPlanChange(plan, approved, state.ticket.ref);
+    const change = firstApprovedPlanChange(plan, approved, state.ticket.ref, kept);
     if (change !== null) return rejection({ code: "KILN_APPROVED_TASK_CHANGED", label: change, details: [], tag: "plan", reason: "approved-task-changed" });
   }
   const offRepo = firstOffRepo(newTasks, state.repo);
   if (offRepo !== null) return rejection({ code: "KILN_PLAN_REPO", label: `every task's repo and branch, and every check's repo, must be the run's worktree ${state.repo.root} on ${state.repo.branch}`, details: [offRepo], tag: "plan", reason: "plan-repo" });
   const doneIds = new Set(state.done.map((d) => d.taskId));
   if (newTasks.some((t) => doneIds.has(t.taskId))) return rejection({ code: "KILN_PLAN_RENUMBER", label: `a re-plan must number its tasks after the done ones (${[...doneIds].join(", ")})`, details: [], tag: "plan", reason: "plan-renumber" });
-  const kept = state.replan === null ? [] : state.brief.tasks.plan.slice(0, state.replan.from);
   const newCovers = [...new Set(newTasks.flatMap((t) => t.covers))];
   let acceptance = state.brief.acceptance;
   const filled = ["tasks"];
@@ -11932,22 +11932,24 @@ function acceptPlanner(state, ctx, items) {
     judgeDue: false
   }, "plan", outwardLeaks(ctx, [plan.summary], "the plan summary"));
 }
-function firstApprovedPlanChange(plan, approved, ticketRef) {
+function firstApprovedPlanChange(plan, approved, ticketRef, kept = []) {
   if (plan.ticketRef !== ticketRef) return `the runtime plan names ticket ${plan.ticketRef}, not ${ticketRef}`;
   if (plan.source.path !== approved.path || plan.source.sha256 !== approved.sha256) return "the runtime plan does not name the approved plan path and SHA-256";
-  if (plan.tasks.length !== approved.tasks.length) return `task ${Math.min(plan.tasks.length, approved.tasks.length) + 1} changes the approved count: the runtime plan has ${plan.tasks.length} tasks; the approved plan has ${approved.tasks.length}`;
-  for (let i = 0; i < approved.tasks.length; i += 1) {
+  const remaining = approved.tasks.slice(kept.length);
+  if (plan.tasks.length !== remaining.length) return `task ${kept.length + Math.min(plan.tasks.length, remaining.length) + 1} changes the approved count: the runtime plan has ${plan.tasks.length} tasks; the approved plan has ${remaining.length}${kept.length > 0 ? ` after the ${kept.length} done` : ""}`;
+  for (let i = 0; i < remaining.length; i += 1) {
+    const number = kept.length + i + 1;
     const task = plan.tasks[i];
-    const source = approved.tasks[i];
-    if (task.taskId !== `task-${i + 1}`) return `task ${i + 1} changed its number to ${task.taskId}`;
-    if (task.goal !== source.goal) return `task ${i + 1} changed its goal from ${source.goal}`;
-    if (task.covers.some((line) => !approved.acceptance.includes(line))) return `task ${i + 1} changed an approved acceptance line`;
+    const source = remaining[i];
+    if (task.taskId !== `task-${number}`) return `task ${number} changed its number to ${task.taskId}`;
+    if (task.goal !== source.goal) return `task ${number} changed its goal from ${source.goal}`;
+    if (task.covers.some((line) => !approved.acceptance.includes(line))) return `task ${number} changed an approved acceptance line`;
     for (const named of task.paths) {
       const safe = !named.startsWith("/") && !named.split("/").includes("..") && !named.startsWith("./") && !named.includes("\\");
-      if (!safe || !source.files.some((file) => named === file || file.endsWith("/") && named.startsWith(file))) return `task ${i + 1} names ${named} outside its approved files`;
+      if (!safe || !source.files.some((file) => named === file || file.endsWith("/") && named.startsWith(file))) return `task ${number} names ${named} outside its approved files`;
     }
   }
-  const covered = new Set(plan.tasks.flatMap((task) => task.covers));
+  const covered = new Set([...kept, ...plan.tasks].flatMap((task) => task.covers));
   if (covered.size !== approved.acceptance.length || approved.acceptance.some((line) => !covered.has(line))) return "the runtime plan changed or omitted an approved acceptance line";
   return null;
 }

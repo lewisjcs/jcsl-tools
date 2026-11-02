@@ -4,7 +4,7 @@ import { writeFileSync, renameSync, rmSync, existsSync } from 'node:fs';
 import { homedir } from 'node:os';
 import path from 'node:path';
 import { parseArgs } from 'node:util';
-import { RolloutError, findSession, entriesOf, usageOf, sessionMetaOf, assertChildOf, modelOf, finalReplyOf } from '../rollout.mjs';
+import { RolloutError, findSession, entriesOf, usageOf, sessionMetaOf, assertChildOf, modelOf, finalReplyOf, timeOf } from '../rollout.mjs';
 
 const PREFIX = 'CODEX_REPLY';
 
@@ -58,7 +58,7 @@ function main(args) {
   const { item, text } = itemOf(done.reply);
   const binding = modelOf(events, PREFIX);
   const usage = usageOf(events, PREFIX);
-  const seconds = Math.round((Date.parse(done.completedAt) - Date.parse(done.startedAt)) / 1000);
+  const seconds = Math.round((timeOf(done.completedAt) - timeOf(done.startedAt)) / 1000);
   if (Number.isFinite(seconds) && seconds >= 0) usage.latencySeconds = seconds;
   writeAll(v.out, {
     'reply.txt': text,

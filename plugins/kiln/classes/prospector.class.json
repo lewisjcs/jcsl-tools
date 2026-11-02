@@ -2,7 +2,7 @@
   "kind": "class",
   "schemaVersion": "1.0-kernel",
   "id": "kiln:prospector",
-  "version": "1.6.0",
+  "version": "1.6.1",
   "audience": "personal",
   "identity": {
     "name": "Prospector",
@@ -71,7 +71,7 @@
                   "gaps": { "type": "array", "items": { "type": "string", "minLength": 1 } }
                 }
               },
-              "evidence": { "type": "array", "minItems": 1, "items": { "type": "object", "additionalProperties": false, "required": ["check", "command", "exitCode", "quote"], "properties": { "check": { "type": "integer", "minimum": 1 }, "command": { "type": "string", "minLength": 1 }, "exitCode": { "type": "integer" }, "quote": { "type": "string", "minLength": 1, "maxLength": 400 } } } }
+              "evidence": { "type": "array", "minItems": 1, "items": { "type": "object", "additionalProperties": false, "required": ["check", "command", "exitCode", "quote"], "properties": { "check": { "type": "integer", "minimum": 1 }, "command": { "type": "string", "minLength": 1 }, "exitCode": { "type": "integer" }, "quote": { "type": "string", "maxLength": 400 } } } }
             }
           },
           {
@@ -106,7 +106,7 @@
       "path": "hosts/claude-code/agents/prospector.md",
       "projection": {
         "canonicalSources": ["hosts/claude-code/agents/prospector.md"],
-        "sourceHash": "6cdcf8400e89ea003f603d74554608f0e37108a5bd9eb6761bccd352dca732eb"
+        "sourceHash": "91d803d970e8c877a1087c532cbac5831d8241c42793df6933ad1e7c9a491f37"
       }
     },
     "codex": {
@@ -114,7 +114,7 @@
       "path": "hosts/codex/agents/prospector.md",
       "projection": {
         "canonicalSources": ["hosts/codex/agents/prospector.md"],
-        "sourceHash": "8f0700a5237eb7f53f95fa051de5c2c3d3eac81f8dbca83567054572c6e0c054"
+        "sourceHash": "78042bf572d4f82da862a1a069825522c5c7ae61767acb764157bdf5ce22b4ce"
       }
     }
   },
