@@ -2,7 +2,7 @@
   "kind": "class",
   "schemaVersion": "1.0-kernel",
   "id": "kiln:crafter",
-  "version": "2.4.1",
+  "version": "2.6.0",
   "audience": "personal",
   "identity": {
     "name": "Crafter",
@@ -10,7 +10,7 @@
     "promise": "The requested change, committed on the branch, with evidence for every done-when check.",
     "constraints": [
       "Builds exactly one task per dispatch and touches only the paths its brief lists.",
-      "One commit per task: the task creates it, and a fix task makes its own commit.",
+      "One commit per task: the task creates it unless its change is already on the branch or it edits no file, and a fix task makes its own commit.",
       "Replies with only a one-element JSON array holding one kiln:crafter-outcome@1 item: no prose, no code fence."
     ],
     "taboos": [
@@ -84,7 +84,7 @@
                     "properties": {
                       "sha": { "type": "string", "pattern": "^[0-9a-f]{7,40}$" },
                       "branch": { "type": "string", "minLength": 1 },
-                      "mode": { "enum": ["created", "amended"] }
+                      "mode": { "enum": ["created", "amended", "existing"] }
                     }
                   },
                   "deviations": {
@@ -114,7 +114,7 @@
                     "check": { "type": "integer", "minimum": 1 },
                     "command": { "type": "string", "minLength": 1 },
                     "exitCode": { "type": "integer" },
-                    "quote": { "type": "string", "minLength": 1, "maxLength": 400 }
+                    "quote": { "type": "string" }
                   }
                 }
               }
@@ -152,7 +152,7 @@
       "path": "hosts/claude-code/agents/crafter.md",
       "projection": {
         "canonicalSources": ["hosts/claude-code/agents/crafter.md"],
-        "sourceHash": "90bca8b35ef75d06026c55278ef266dd01b64f44428cbabeffd2e8769f6302d2"
+        "sourceHash": "116f92fb012aedd406a98aa6a0ed8bbb716035e9199c3658c09ccd974cb0239d"
       }
     },
     "codex": {
@@ -160,7 +160,7 @@
       "path": "hosts/codex/agents/crafter.md",
       "projection": {
         "canonicalSources": ["hosts/codex/agents/crafter.md"],
-        "sourceHash": "5c0de41e24b42c4429bc63694236ae6fae908cc22ea49d5e556be315744b2117"
+        "sourceHash": "56db801e5aa4467056868e24271860800b85c9d70bb0e1242f1892171869f0f7"
       }
     }
   },

@@ -6,7 +6,7 @@ description: Use when a build run needs an approved design decision, or a direct
 
 # Shape (the Designer)
 
-Class `kiln:designer` 2.5.0. The design partner who selects product, architecture, operations, and AI perspectives for the question.
+Class `kiln:designer` 2.6.0. The design partner who selects product, architecture, operations, and AI perspectives for the question.
 
 If this skill runs in Codex with the native `spawn_agent` and `wait_agent` tools, read `<plugin root>/runtime/hosts/codex/skills/shape/SKILL.md` and follow it instead of the sections below. The plugin root is the folder containing this `skills/` directory and `runtime/`.
 
@@ -77,7 +77,7 @@ Write two files into `<dir>/handed/` (create the folder), named by the action id
    - Transcript: never compute the project folder name from the working directory; find the file instead. Let `<config-dir>` be `${CLAUDE_CONFIG_DIR:-$HOME/.claude}`. Under a run, the session transcript is the newest `*.jsonl` under `<config-dir>/projects/*/` that contains the action id (`grep -l "<actionId>" <config-dir>/projects/*/*.jsonl`, then the newest by modification time with `ls -t`). On a direct call there is no action id. The transcript is `<config-dir>/projects/*/$CLAUDE_SESSION_ID.jsonl` when that variable is set. Otherwise, it is the newest `<config-dir>/projects/*/*.jsonl` modified after START. The folder that holds the transcript is `<folder>`, and its file name without `.jsonl` is the session id.
    - Usage (fresh tokens = input + cache writes; never record output tokens, the transcript only carries a placeholder): `jq -s --arg start "<START>" '[.[] | select(.type=="assistant" and .timestamp >= $start)] | group_by(.message.id) | map(last) | {inputTokens: (map(.message.usage.input_tokens)|add), cacheWriteTokens: (map(.message.usage.cache_creation_input_tokens)|add), cacheReadTokens: (map(.message.usage.cache_read_input_tokens)|add), turns: length}' <transcript>`
    - Delegates: every `<folder>/<session id>/subagents/agent-*.jsonl` modified after START, measured with the same filter (no `$start` needed) and added to the totals. The file keeps only the totals.
-   - Tool calls, from the same window and every delegate file: every `tool_use` content block (`.message.content[] | select(.type=="tool_use")`) deduplicated by block `id`, as `{"tool": "<name>", "target": "<the Bash command's first 120 characters, or the file path or pattern>"}`. Never leave a Bash target out.
+   - Tool calls, from the same window and every delegate file: every `tool_use` content block (`.message.content[] | select(.type=="tool_use")`) deduplicated by block `id`, as `{"tool": "<name>", "target": "<the whole Bash command, or the file path or pattern>"}`. Never leave a Bash target out.
    - `latencySeconds`: seconds from START to now.
    - If the transcript cannot be found, leave both `usage` and `toolCalls` out of the file, and say so when you end. Never write an empty `toolCalls` list: the runtime reads it as measured with no calls and rejects every evidence command. If the totals come back null, write `"usage": {}` and say so. An unmeasured action is a named omission, never a guess.
 
@@ -107,4 +107,4 @@ Gap (the person stopped before approving, or an input is unreachable):
 [{"status": "gap", "classId": "kiln:designer", "missing": ["the person's approval"], "decisionState": "DRAFT written at <path>, sections 1 to 4 ruled, requirements open"}]
 
 
-The runtime rejects a `complete` with fewer or more evidence items than the brief has checks, out of order, or citing a command your tool calls do not show.
+The runtime rejects a `complete` reply that leaves a check number without an evidence item, or that cites a command your own tool calls do not show.

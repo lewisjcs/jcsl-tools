@@ -11,13 +11,23 @@ export function parseCheckExpectation(value) {
   return null;
 }
 
+/** The number a `grep -c` check printed: bare digits, or one `path:N` line. */
+export function countOf(output) {
+  const shown = output.trim();
+  const digits = /^[0-9]+$/.test(shown) ? shown : /^[^\n]*:([0-9]+)$/.exec(shown)?.[1];
+  if (digits === undefined) return null;
+  const n = Number(digits);
+  return Number.isSafeInteger(n) ? n : null;
+}
+
 export function checkMatchesExpectation(parsed, exitCode, output) {
   if (parsed.kind === 'exit') return exitCode === parsed.code;
-  if (exitCode !== 0) return false;
-  if (parsed.kind === 'exact-count') return output.trim() === parsed.count;
-  if (parsed.kind === 'minimum-count') {
-    const shown = output.trim();
-    return /^[0-9]+$/.test(shown) && Number.isSafeInteger(Number(shown)) && Number(shown) >= parsed.count;
+  if (parsed.kind === 'exact-count' || parsed.kind === 'minimum-count') {
+    const n = countOf(output);
+    if (n === null) return false;
+    if (exitCode !== 0 && !(exitCode === 1 && n === 0)) return false;
+    return parsed.kind === 'exact-count' ? n === Number(parsed.count) : n >= parsed.count;
   }
+  if (exitCode !== 0) return false;
   return output.includes(parsed.text);
 }

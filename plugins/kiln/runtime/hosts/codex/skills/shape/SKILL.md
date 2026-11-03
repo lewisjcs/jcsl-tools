@@ -5,7 +5,7 @@ description: Use when a Kiln kickoff or a direct request in Codex needs explorat
 
 # Shape (the Designer) in Codex
 
-Class `kiln:designer` 2.5.0. The design partner who selects product, architecture, operations, and AI perspectives for the question; the promise is useful exploration for an open idea, or one written decision the person approved. This is the Codex body of the shape skill: the Designer plays in the Codex main thread, binds to the active session's model, and measures its own window from the session rollout. The request that invoked the skill is the argument, and both ways in follow Direct call: from kickoff, the argument is `--brief <absolute JSON path> --cli <absolute path to the kiln CLI>`; any other argument is the person's idea, and no Party run starts.
+Class `kiln:designer` 2.6.0. The design partner who selects product, architecture, operations, and AI perspectives for the question; the promise is useful exploration for an open idea, or one written decision the person approved. This is the Codex body of the shape skill: the Designer plays in the Codex main thread, binds to the active session's model, and measures its own window from the session rollout. The request that invoked the skill is the argument, and both ways in follow Direct call: from kickoff, the argument is `--brief <absolute JSON path> --cli <absolute path to the kiln CLI>`; any other argument is the person's idea, and no Party run starts.
 
 ## Harness rules
 
@@ -87,4 +87,4 @@ Gap (the person stopped before approving, or an input is unreachable):
 [{"status": "gap", "classId": "kiln:designer", "missing": ["the person's approval"], "decisionState": "DRAFT written at <path>, sections 1 to 4 ruled, requirements open"}]
 
 
-The runtime rejects a `complete` with fewer or more evidence items than the brief has checks, out of order, or citing a command your tool calls do not show.
+The runtime rejects a `complete` reply that leaves a check number without an evidence item, or that cites a command your own tool calls do not show.

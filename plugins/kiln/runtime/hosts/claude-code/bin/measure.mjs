@@ -4,27 +4,40 @@
  * Brief by reference). After a member dispatch ends, the build skill runs it
  * with the agent id, the action id, the run folder, and the model binding.
  * It finds the dispatch transcript under the Claude configuration directory,
- * takes the member's reply from the hand-back tool input, and writes the
- * output file and the meta file into `<run dir>/handed/`. With `--cli`,
- * `--repo`, and `--before`, it also runs the command line's write
- * measurement and puts the result under `writes`. It prints one summary
- * line with no action id and no path, because the build skill shows it to
- * the person. On any failure it prints a typed error on stderr, exits 1, and
- * writes nothing. It imports nothing from `src/`, so it runs from the payload
- * as it is.
+ * takes the member's reply from the hand-back tool input (or, with no
+ * hand-back, from the last text block of the last assistant message, noted
+ * in the meta's `repairs`), and writes the output file and the meta file
+ * into `<run dir>/handed/`. With `--cli`, `--repo`, and `--before`, it also
+ * runs the command line's write measurement and puts the result under
+ * `writes`. With `--after <ISO time>`, it measures a correction that the
+ * build skill sent to the same agent: only the entries stamped after that
+ * time count, and an entry with no timestamp is left out. The usage, the tool
+ * calls, the latency, the hand-back, and the final text then come from the
+ * kept entries alone, and `MEASURE_NO_HANDBACK` applies to them. The build
+ * skill reads that time from the `lastTimestamp` of the corrected action's
+ * meta file: the latest timestamp the script kept, left out when no kept
+ * entry has one. The meta's `agentId` is the `--agent` value, so a resumed
+ * session can still send a correction to the same agent. An `--after` value that is not a date is
+ * `MEASURE_FLAG_INVALID`. It prints one summary line with no action id and
+ * no path, because the build skill shows it to the person. On any failure it
+ * prints a typed error on stderr, exits 1, and writes nothing. It imports
+ * nothing from `src/`, so it runs from the payload as it is.
  *
  * Usage:
- *   node measure.mjs --agent <id> --action <actionId> --run <run dir> --model <binding> [--cli <cli.mjs> --repo <root> --before <before.json>]
+ *   node measure.mjs --agent <id> --action <actionId> --run <run dir> --model <binding> [--after <ISO time>] [--cli <cli.mjs> --repo <root> --before <before.json>]
  *
  * The usage groups the assistant lines by message id and keeps the last line
  * of each group, because a streamed message repeats its earlier lines. No
  * output token figure is ever written: the transcript carries a placeholder.
  * The tool calls are every tool_use block, deduplicated by block id. A Bash
- * call's target is the first 120 characters of its command. Any other call's
- * target is its whole path, pattern, or URL. The latency is the span between
- * the transcript's first and last timestamps. A transcript with a hand-back
- * has at least one assistant line and one tool call, so the meta file always
- * holds the usage and the tool calls.
+ * call's target is its whole command. Any other call's target is its whole
+ * path, pattern, or URL. The latency is the span between
+ * the first and last timestamps the script keeps. The final text is the last text
+ * block of the last assistant message (one message repeats its id across
+ * entries). The hand-back wins when both exist. `MEASURE_NO_HANDBACK` means
+ * neither exists. A transcript with a reply has at least one assistant line,
+ * so the meta file always holds the usage and the tool calls, and `repairs`
+ * (an array of strings, empty when the hand-back was used).
  */
 import { readFileSync, readdirSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
@@ -33,7 +46,6 @@ import { parseArgs } from 'node:util';
 import { spawnSync } from 'node:child_process';
 
 const TARGET_KEYS = ['file_path', 'pattern', 'path', 'notebook_path', 'url'];
-const TARGET_CHARS = 120;
 const HANDBACK = 'SubagentHandback';
 
 class MeasureError extends Error {
@@ -47,14 +59,22 @@ class MeasureError extends Error {
 function flagsOf(argv) {
   let values;
   try {
-    ({ values } = parseArgs({ args: argv, options: { agent: { type: 'string' }, action: { type: 'string' }, run: { type: 'string' }, model: { type: 'string' }, cli: { type: 'string' }, repo: { type: 'string' }, before: { type: 'string' } }, allowPositionals: false }));
+    ({ values } = parseArgs({ args: argv, options: { agent: { type: 'string' }, action: { type: 'string' }, run: { type: 'string' }, model: { type: 'string' }, after: { type: 'string' }, cli: { type: 'string' }, repo: { type: 'string' }, before: { type: 'string' } }, allowPositionals: false }));
   } catch (err) {
     throw new MeasureError('MEASURE_FLAG_MISSING', err.message);
   }
   for (const name of ['agent', 'action', 'run', 'model']) if (values[name] === undefined) throw new MeasureError('MEASURE_FLAG_MISSING', `--${name} is required`);
+  if (values.after !== undefined && Number.isNaN(Date.parse(values.after))) throw new MeasureError('MEASURE_FLAG_INVALID', `--after must be an ISO date and time, got ${JSON.stringify(values.after)}`);
   const writeFlags = ['cli', 'repo', 'before'].filter((n) => values[n] !== undefined);
   if (writeFlags.length !== 0 && writeFlags.length !== 3) throw new MeasureError('MEASURE_FLAG_MISSING', '--cli, --repo, and --before go together', { given: writeFlags });
   return values;
+}
+
+/** Under `--after`, the entries stamped after it; an entry at or before it, or with no string timestamp, is left out. */
+function entriesAfter(entries, after) {
+  if (after === undefined) return entries;
+  const cut = Date.parse(after);
+  return entries.filter((e) => typeof e.timestamp === 'string' && Date.parse(e.timestamp) > cut);
 }
 
 /** Every `projects/<project>/<session>/subagents/agent-<id>.jsonl` under the configuration directory. */
@@ -80,7 +100,7 @@ function entriesOf(file) {
 
 function targetOf(block) {
   const input = block.input ?? {};
-  if (block.name === 'Bash') return String(input.command ?? '').slice(0, TARGET_CHARS);
+  if (block.name === 'Bash') return String(input.command ?? '');
   const key = TARGET_KEYS.find((k) => typeof input[k] === 'string');
   return key === undefined ? '' : input[key];
 }
@@ -102,9 +122,17 @@ function measureEntries(entries) {
       if (block.name === HANDBACK && typeof block.input?.message === 'string') reply = block.input.message;
     }
   }
+  const lastId = assistant.at(-1)?.message.id;
+  let finalText = null;
+  for (const e of assistant) {
+    if (e.message.id !== lastId) continue;
+    for (const block of e.message.content ?? []) {
+      if (block.type === 'text' && typeof block.text === 'string' && block.text.trim() !== '') finalText = block.text;
+    }
+  }
   const stamps = entries.map((e) => e.timestamp).filter((t) => typeof t === 'string').sort();
   const latencySeconds = stamps.length < 2 ? null : Math.round((Date.parse(stamps.at(-1)) - Date.parse(stamps[0])) / 1000);
-  return { usage, toolCalls: [...blocks.values()], reply, latencySeconds };
+  return { usage, toolCalls: [...blocks.values()], reply, finalText, latencySeconds, lastTimestamp: stamps.at(-1) };
 }
 
 /** The command line's write measurement, when the action has a write boundary (choice 15). */
@@ -125,10 +153,14 @@ function main(argv, env) {
   const files = transcriptsFor(configDir, v.agent);
   if (files.length === 0) throw new MeasureError('MEASURE_TRANSCRIPT_MISSING', `no transcript agent-${v.agent}.jsonl under ${path.join(configDir, 'projects')}/*/*/subagents/`, { configDir });
   if (files.length > 1) throw new MeasureError('MEASURE_TRANSCRIPT_AMBIGUOUS', `${files.length} transcripts are named agent-${v.agent}.jsonl`, { files });
-  const { usage, toolCalls, reply, latencySeconds } = measureEntries(entriesOf(files[0]));
-  if (reply === null) throw new MeasureError('MEASURE_NO_HANDBACK', `the transcript has no ${HANDBACK} tool call, so the member ended without a reply`, { file: files[0] });
+  const measured = measureEntries(entriesAfter(entriesOf(files[0]), v.after));
+  const { usage, toolCalls, latencySeconds, lastTimestamp } = measured;
+  const reply = measured.reply ?? measured.finalText;
+  const span = v.after === undefined ? '' : ` after ${v.after}`;
+  if (reply === null) throw new MeasureError('MEASURE_NO_HANDBACK', `the transcript has no ${HANDBACK} tool call and no text in its last assistant message${span}, so the member ended without a reply`, { file: files[0] });
+  const repairs = measured.reply === null ? ['reply taken from the final assistant text; no hand-back tool call'] : [];
   const writes = writesOf(v);
-  const meta = { modelBinding: { model: v.model }, usage: latencySeconds === null ? usage : { ...usage, latencySeconds }, toolCalls };
+  const meta = { modelBinding: { model: v.model }, usage: latencySeconds === null ? usage : { ...usage, latencySeconds }, toolCalls, repairs, agentId: v.agent, ...(lastTimestamp === undefined ? {} : { lastTimestamp }) };
   if (writes !== undefined) meta.writes = writes;
   const handed = path.join(v.run, 'handed');
   mkdirSync(handed, { recursive: true });

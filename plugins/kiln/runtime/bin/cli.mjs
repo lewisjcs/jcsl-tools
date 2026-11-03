@@ -7577,8 +7577,14 @@ function assertProtocolModule(protocol) {
     if (config.receipt !== void 0 && config.receipt !== "items" && config.receipt !== "text") {
       throw new TypeError(`protocol: kinds["${kind2}"].receipt must be "items" or "text" when present`);
     }
+    if (config.repair !== void 0 && typeof config.repair !== "boolean") {
+      throw new TypeError(`protocol: kinds["${kind2}"].repair must be a boolean when present`);
+    }
     if (config.receipt === "text" && config.writeBoundary !== void 0) {
       throw new TypeError(`protocol: kinds["${kind2}"] is a text-receipt kind and must not declare writeBoundary`);
+    }
+    if (config.receipt !== void 0 && config.repair !== void 0) {
+      throw new TypeError(`protocol: kinds["${kind2}"] declares receipt and must not declare repair`);
     }
   }
   assertNonEmptyString(protocol.initialKind, "initialKind");
@@ -7647,7 +7653,7 @@ function nextVisit(state, kind2) {
 function actionIdFor(kind2, visit, attempt) {
   return visit === 1 ? `${kind2}-${attempt}` : `${kind2}-v${visit}-${attempt}`;
 }
-function buildDispatchAction(protocol, { kind: kind2, attempt, state, retryContext }) {
+function buildDispatchAction(protocol, { kind: kind2, attempt, state, retryContext, correction }) {
   const config = protocol.kinds[kind2];
   const role = state.roles[config.roleKey];
   const promptBody = config.buildPrompt(state);
@@ -7666,7 +7672,8 @@ function buildDispatchAction(protocol, { kind: kind2, attempt, state, retryConte
     promptBody: retryContext === void 0 ? promptBody : `${promptBody}
 
 ${retryContext}`,
-    ...write === void 0 ? {} : { write }
+    ...write === void 0 ? {} : { write },
+    ...correction === void 0 ? {} : { correction }
   });
 }
 function tryParseArray(text) {
@@ -7733,13 +7740,13 @@ function parseReceiptArray(protocol, rawOutput, contractId) {
   const direct = tryParseArray(rawOutput);
   if (direct !== null) {
     const details = contractIssueLines(protocol, direct, contractId);
-    return details.length === 0 ? { ok: true, value: direct, salvaged: false } : { ok: false, label: "the output parsed as a JSON array but one or more items failed the output contract", details };
+    return details.length === 0 ? { ok: true, value: direct, salvaged: false, repairs: [] } : { ok: false, label: "the output parsed as a JSON array but one or more items failed the output contract", details };
   }
   const candidates = salvageArrays(rawOutput).filter((array) => array.length > 0);
   const judged = candidates.map((array) => ({ array, details: contractIssueLines(protocol, array, contractId) }));
   const passing = judged.filter((c) => c.details.length === 0);
   if (passing.length === 1) {
-    return { ok: true, value: passing[0].array, salvaged: true };
+    return { ok: true, value: passing[0].array, salvaged: true, repairs: [] };
   }
   if (passing.length > 1) {
     return { ok: false, label: "the output was not parseable as a single JSON array", details: [`${passing.length} distinct embedded arrays pass the output contract; only one may`] };
@@ -7752,17 +7759,155 @@ function parseReceiptArray(protocol, rawOutput, contractId) {
   }
   return { ok: false, label: "the output was not parseable as a single JSON array", details: [] };
 }
+var MAX_UNKNOWN_KEY_ROUNDS = 8;
+var CLOSER_OF = { "{": "}", "[": "]" };
+function isJsonObject(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+function closersFor(openers) {
+  return openers.map((opener) => CLOSER_OF[opener]).reverse().join("");
+}
+function closedArray(text, added) {
+  const value = tryParseArray(text);
+  return value === null || value.length === 0 ? null : { value, added };
+}
+function firstUnparsedOpener(text) {
+  let start = text.indexOf("[");
+  while (start !== -1) {
+    const slice = balancedArraySlice(text, start);
+    if (slice === null || tryParseArray(slice) === null) return start;
+    start = text.indexOf("[", start + slice.length);
+  }
+  return -1;
+}
+function closeBrackets(text, start) {
+  if (start === -1) return null;
+  const stack = [];
+  let out = "";
+  let added = "";
+  let inString = false;
+  for (let i = start; i < text.length; i += 1) {
+    const ch = text[i];
+    if (inString) {
+      if (ch === "\\") {
+        out += text.slice(i, i + 2);
+        i += 1;
+      } else {
+        out += ch;
+        if (ch === '"') inString = false;
+      }
+    } else if (ch === "}" || ch === "]") {
+      const match = stack.lastIndexOf(ch === "}" ? "{" : "[");
+      if (match === -1) return null;
+      const closers2 = closersFor(stack.splice(match + 1));
+      stack.pop();
+      out += closers2 + ch;
+      added += closers2;
+      if (stack.length === 0) return text.slice(i + 1).trim() === "" ? closedArray(out, added) : null;
+    } else {
+      if (ch === '"') inString = true;
+      else if (ch === "{" || ch === "[") stack.push(ch);
+      out += ch;
+    }
+  }
+  if (inString) return null;
+  const closers = closersFor(stack);
+  return closedArray(out + closers, added + closers);
+}
+function pointerSegments(pointer) {
+  if (pointer === "") return [];
+  if (typeof pointer !== "string" || !pointer.startsWith("/")) return null;
+  return pointer.slice(1).split("/").map((segment) => segment.replaceAll("~1", "/").replaceAll("~0", "~"));
+}
+function valueAt(root, segments) {
+  let node = root;
+  for (const segment of segments) {
+    if (node === null || typeof node !== "object" || !Object.hasOwn(node, segment)) return void 0;
+    node = node[segment];
+  }
+  return node;
+}
+function dropUnknownKeys(protocol, contractId, value, repairs) {
+  value.forEach((item, index) => {
+    if (!isJsonObject(item)) return;
+    for (let round = 0; round < MAX_UNKNOWN_KEY_ROUNDS; round += 1) {
+      const { valid, issues } = protocol.validateOutput(contractId, item);
+      if (valid) return;
+      let dropped = false;
+      for (const issue of issues) {
+        if (issue.keyword !== "additionalProperties") continue;
+        const key = issue.params?.additionalProperty;
+        const segments = pointerSegments(issue.instancePath);
+        const owner = segments === null ? void 0 : valueAt(item, segments);
+        if (typeof key !== "string" || !isJsonObject(owner) || !Object.hasOwn(owner, key)) continue;
+        delete owner[key];
+        repairs.push(`item ${index + 1} ${issue.instancePath || "/"}: dropped the unknown key ${JSON.stringify(key)}`);
+        dropped = true;
+      }
+      if (!dropped) return;
+    }
+  });
+}
+function cutLongStrings(protocol, contractId, value, repairs) {
+  value.forEach((item, index) => {
+    if (!isJsonObject(item)) return;
+    const { valid, issues } = protocol.validateOutput(contractId, item);
+    if (valid) return;
+    for (const issue of issues) {
+      const limit = issue.params?.limit;
+      if (issue.keyword !== "maxLength" || !Number.isInteger(limit)) continue;
+      const segments = pointerSegments(issue.instancePath);
+      if (segments === null || segments.length === 0) continue;
+      const parent = valueAt(item, segments.slice(0, -1));
+      const last = segments.at(-1);
+      if (parent === null || typeof parent !== "object" || !Object.hasOwn(parent, last) || typeof parent[last] !== "string") continue;
+      const characters = Array.from(parent[last]);
+      if (characters.length <= limit) continue;
+      parent[last] = characters.slice(0, limit).join("");
+      repairs.push(`item ${index + 1} ${issue.instancePath}: cut to ${limit} characters`);
+    }
+  });
+}
+function repairReceipt(protocol, rawOutput, contractId) {
+  const repairs = [];
+  let value = tryParseArray(rawOutput);
+  if (value === null) {
+    const candidates = salvageArrays(rawOutput).filter((array) => array.length > 0);
+    const opener = firstUnparsedOpener(rawOutput);
+    if (candidates.length > 1) return { ok: false };
+    if (candidates.length === 1) {
+      if (opener !== -1) return { ok: false };
+      [value] = candidates;
+    } else {
+      const closed = closeBrackets(rawOutput, opener);
+      if (closed === null) return { ok: false };
+      value = closed.value;
+      repairs.push(`closed the array: added "${closed.added}"`);
+    }
+  }
+  dropUnknownKeys(protocol, contractId, value, repairs);
+  cutLongStrings(protocol, contractId, value, repairs);
+  return contractIssueLines(protocol, value, contractId).length === 0 ? { ok: true, value, repairs } : { ok: false };
+}
+function readReceiptItems(protocol, config, rawOutput) {
+  const parsed = parseReceiptArray(protocol, rawOutput, config.outputContractId);
+  if (parsed.ok || config.repair !== true) return parsed;
+  const repaired = repairReceipt(protocol, rawOutput, config.outputContractId);
+  return repaired.ok ? { ok: true, value: repaired.value, salvaged: true, repairs: repaired.repairs } : parsed;
+}
 var MAX_RETRY_DIAGNOSTIC_LINES = 10;
 var MAX_RETRY_DIAGNOSTIC_LINE_LENGTH = 200;
 function sanitizeDiagnosticLine(line) {
   return String(line).replace(/\s+/g, " ").trim().slice(0, MAX_RETRY_DIAGNOSTIC_LINE_LENGTH);
 }
-function buildRetryContext({ attempt, label, details, outputContractId }) {
+var CORRECTION_LINE = "Correct your previous reply in place: fix the defect named above and send the whole array again.";
+function buildRetryContext({ attempt, label, details, outputContractId, correction = false }) {
   return [
     `--- runtime retry context (attempt ${attempt}) ---`,
     `The previous attempt's output was rejected by the runtime: ${label}.`,
     ...details.slice(0, MAX_RETRY_DIAGNOSTIC_LINES).map((line) => `- ${JSON.stringify(sanitizeDiagnosticLine(line))}`),
-    `Respond with ONLY a JSON array whose items conform to ${outputContractId} \u2014 no prose, no code fences, nothing before or after the array.`
+    `Respond with ONLY a JSON array whose items conform to ${outputContractId} \u2014 no prose, no code fences, nothing before or after the array.`,
+    ...correction ? [CORRECTION_LINE] : []
   ].join("\n");
 }
 function writeBoundaryInstructionLine(outsideCount) {
@@ -7845,19 +7990,26 @@ function applyStageReceipt(protocol, state, receipt, omissions) {
   const config = protocol.kinds[kind2];
   const attempt = state.pendingAction.attempt;
   if (config.receipt === "text") {
-    const outcome2 = config.accept(state, receipt.rawOutput, false);
+    const outcome2 = config.accept(state, receipt.rawOutput, false, { repairs: [] });
     if (outcome2?.reject) {
       throw new TypeError(`protocol: kinds["${kind2}"] is a text-receipt kind and must not reject`);
     }
-    return applyAcceptance(protocol, state, receipt, { kind: kind2, attempt, outcome: outcome2, salvaged: false, omissions });
+    return applyAcceptance(protocol, state, receipt, { kind: kind2, attempt, outcome: outcome2, salvaged: false, repairs: [], omissions });
   }
-  const parsed = parseReceiptArray(protocol, receipt.rawOutput, config.outputContractId);
+  const parsed = readReceiptItems(protocol, config, receipt.rawOutput);
   if (!parsed.ok) {
-    const retryContext = buildRetryContext({ attempt: attempt + 1, label: parsed.label, details: parsed.details, outputContractId: config.outputContractId });
+    const correction = config.repair === true ? { of: state.pendingAction.actionId } : void 0;
+    const retryContext = buildRetryContext({
+      attempt: attempt + 1,
+      label: parsed.label,
+      details: parsed.details,
+      outputContractId: config.outputContractId,
+      correction: correction !== void 0
+    });
     return recordFailure(protocol, state, {
       stage: config.stage,
       attempt,
-      buildRetryAction: (s) => buildDispatchAction(protocol, { kind: kind2, attempt: attempt + 1, state: s, retryContext }),
+      buildRetryAction: (s) => buildDispatchAction(protocol, { kind: kind2, attempt: attempt + 1, state: s, retryContext, correction }),
       failure: { code: "RUNTIME_OUTPUT_MALFORMED", label: parsed.label, details: parsed.details, reason: "malformed-output" },
       messageLabel: "output malformed",
       outcomeRetry: "malformed-retry",
@@ -7865,7 +8017,7 @@ function applyStageReceipt(protocol, state, receipt, omissions) {
       omissions
     });
   }
-  const outcome = config.accept(state, parsed.value, parsed.salvaged);
+  const outcome = config.accept(state, parsed.value, parsed.salvaged, { repairs: [...parsed.repairs] });
   if (outcome.reject) {
     const rejection2 = outcome.reject;
     const retryContext = buildRetryContext({ attempt: attempt + 1, label: rejection2.label, details: rejection2.details, outputContractId: config.outputContractId });
@@ -7880,7 +8032,7 @@ function applyStageReceipt(protocol, state, receipt, omissions) {
       omissions
     });
   }
-  return applyAcceptance(protocol, state, receipt, { kind: kind2, attempt, outcome, salvaged: parsed.salvaged, omissions });
+  return applyAcceptance(protocol, state, receipt, { kind: kind2, attempt, outcome, salvaged: parsed.salvaged, repairs: parsed.repairs, omissions });
 }
 function settle(protocol, state, ledgerEntry, { fields, status, nextKind }) {
   const settled = { ...state, ...fields, ledger: [...state.ledger, ledgerEntry] };
@@ -7890,12 +8042,17 @@ function settle(protocol, state, ledgerEntry, { fields, status, nextKind }) {
   }
   return sealState({ ...settled, status, pendingAction: null });
 }
-function applyAcceptance(protocol, state, receipt, { kind: kind2, attempt, outcome, salvaged, omissions }) {
+function acceptedOutcome(salvaged, repairs) {
+  if (repairs.length > 0) return "accepted-repaired";
+  return salvaged ? "accepted-salvaged" : "accepted";
+}
+function applyAcceptance(protocol, state, receipt, { kind: kind2, attempt, outcome, salvaged, repairs, omissions }) {
   const ledgerEntry = {
     actionId: receipt.actionId,
     kind: kind2,
     attempt,
-    outcome: salvaged ? "accepted-salvaged" : "accepted",
+    outcome: acceptedOutcome(salvaged, repairs),
+    ...repairs.length === 0 ? {} : { repairs },
     ...omissions.length === 0 ? {} : { omissions }
   };
   return { state: settle(protocol, state, ledgerEntry, outcome), issues: [] };
@@ -10185,7 +10342,7 @@ function partyRecordFor({ slug, createdAt, ticketText, profile, roster, bundleSh
 
 // src/prompts.mjs
 var QUESTION_CAP = 700;
-var NO_CD = "Absolute paths only, from any directory, never after a cd. Run every numbered check as the absolute command written: the host cross-checks your evidence commands against your tool calls, and a cd form does not match. Run each numbered check as its own Bash call, with nothing before it and nothing after it: no variable, no heredoc, no second command. The host records the head of each call, so a check inside a compound call is never seen.";
+var NO_CD = "Absolute paths only, from any directory, never after a cd. Run every numbered check as the absolute command written: the host records the whole command of each Bash call and matches your evidence commands against them, so a cd form or a changed form does not match. Run each check as its own Bash call, nothing before it and nothing after it; a check inside a compound call is recorded as the compound and matches nothing. When two checks name the same command, one run serves both; quote it under each number.";
 var REPLY_RULE = "Do the work first. Then your entire reply is one one-element JSON array in one of the shapes your Class body names. Not one word before the [, not one word after the ], no code fence.";
 var FINDER_CHECKS = Object.freeze((state) => {
   const reportPath = `${state.runDir}/facts-report.md`;
@@ -10499,7 +10656,7 @@ function renderPlannerPrompt(state) {
     `Plan source: ${approved?.path ?? `${state.runDir}/bundle.json`}, sha256 ${approved?.sha256 ?? sha256Utf8(JSON.stringify(state.bundle, null, 2) + "\n")}`,
     "",
     `## Your plan file: ${planPath}`,
-    "A kiln:ticket-plan@1 document. Top level: contractId (kiln:ticket-plan@1), ticketRef (the Ticket line above, copied exactly), source ({path, sha256} from the Plan source line above), summary (one paragraph), drewOn (optional: absolute paths of pattern knowledge you read), tasks. Each task: taskId, goal, covers (verbatim acceptance lines), dependsOn, doneWhen (one or more checks, each {command, expect, repo}: command is one command in an absolute form: npm --prefix, git -C, node with an absolute path, or an absolute file path; no cd; no chain; expect is the result it must show; repo is the worktree), inputs (absolute paths to read), paths (the paths the changer may write, relative to the worktree, a directory ends in /), repo, branch. In re-plan mode, write only the new tasks.",
+    "A kiln:ticket-plan@1 document. Top level: contractId (kiln:ticket-plan@1), ticketRef (optional: the Ticket line above), source (optional: {path, sha256} from the Plan source line above), summary (one paragraph), drewOn (optional: absolute paths of pattern knowledge you read), tasks. Each task: taskId, goal, covers (verbatim acceptance lines), dependsOn, doneWhen (one or more checks, each {command, expect, repo}: command is one command in an absolute form: npm --prefix, git -C, node with an absolute path, or an absolute file path; no cd; no chain; expect is the result it must show; repo is optional, the worktree), inputs (absolute paths to read), paths (the paths the changer may write, relative to the worktree, a directory ends in /), repo (optional: the worktree), branch (optional: the branch). ticketRef, source, each task's repo and branch, and each check's repo are optional. The run fills ticketRef and every repo and branch from the lines above, and fills source from the approved plan when the run has one. In re-plan mode, write only the new tasks.",
     checksSentence(PLANNER_CHECKS(state)),
     NO_CD,
     REPLY_RULE,
@@ -10507,8 +10664,14 @@ function renderPlannerPrompt(state) {
     ...artifact(state, fence)
   ].join("\n");
 }
-function checksLines(doneWhen, offset = 0) {
-  return doneWhen.map((c, i) => `${offset + i + 1}. \`${c.command}\` expects ${c.expect}`);
+function checksLines(doneWhen, offset = 0, seen = /* @__PURE__ */ new Map()) {
+  return doneWhen.map((c, i) => {
+    const n2 = offset + i + 1;
+    const key = JSON.stringify([c.command, c.expect]);
+    if (seen.has(key)) return `${n2}. same command and result as check ${seen.get(key)}; one run serves both`;
+    seen.set(key, n2);
+    return `${n2}. \`${c.command}\` expects ${c.expect}`;
+  });
 }
 function renderChangerPrompt(state) {
   const task = state.brief.tasks.plan[state.cursor];
@@ -10542,11 +10705,12 @@ function renderJudgePrompt(state) {
   const plan = state.brief.tasks.plan;
   const fence = fenceFor(state);
   let offset = 0;
+  const seen = /* @__PURE__ */ new Map();
   const perTask = plan.map((t) => {
     const sha = state.done.find((d) => d.taskId === t.taskId)?.sha ?? "(no commit)";
     const declared = state.done.find((d) => d.taskId === t.taskId)?.deviations ?? [];
     const deviationLines = declared.length > 0 ? declared.map((d) => `- ${d.kind}: the brief said ${d.briefSaid}; the changer did ${d.did}; why: ${d.why}`) : ["(none)"];
-    const lines = [`### ${t.taskId}`, `Commit: ${sha}`, ...fenced(fence, [`Goal: ${t.goal}`, `Covers: ${t.covers.join(" | ")}`, "Declared deviations:", ...deviationLines]), ...checksLines(t.doneWhen, offset)];
+    const lines = [`### ${t.taskId}`, `Commit: ${sha}`, ...fenced(fence, [`Goal: ${t.goal}`, `Covers: ${t.covers.join(" | ")}`, "Declared deviations:", ...deviationLines]), ...checksLines(t.doneWhen, offset, seen)];
     offset += t.doneWhen.length;
     return lines.join("\n");
   });
@@ -10562,7 +10726,7 @@ function renderJudgePrompt(state) {
     "## Tasks, commits, and checks (the check numbers run across every task, in this order)",
     ...perTask,
     "",
-    `Your evidence carries one item per check, numbered 1 to ${offset}, in this order. Every command is an absolute form already; run it exactly as written.`,
+    `Your evidence carries one item per check, numbered 1 to ${offset} across the tasks in this order; when two checks name the same command, run it once and quote it under both numbers. Every command is an absolute form already; run it exactly as written.`,
     "Report the consequence you observed with one reason: high when someone other than the author feels a wrong change or a revert is not enough, medium when a user sees it and a revert fixes it, low when only the author notices.",
     NO_CD,
     REPLY_RULE,
@@ -11190,47 +11354,66 @@ function discoverQuestion(state) {
   const detail = gaps.map((g) => `${g.n}. ${g.key}: ${g.text}. Proposal: ${g.proposal}${g.options ? ` (answers: ${g.options.join(" or ")})` : ""}`).join("\n");
   return question("discover", `Research left ${plural(gaps.length, "gap")}, each with a proposed answer. The list is in the detail. Reply yes to take every proposal, or answer by number, one per line, as "N: <answer>".`, ["yes", "N: <answer>"], { detail });
 }
-var MIN_MATCH_CHARS = 6;
 function normalizeCommand(text) {
   return text.trim().replace(/\s+/g, " ");
 }
 function callMatches(cmd, call) {
-  if (call.tool !== "Bash" || typeof call.target !== "string") return false;
-  const target = normalizeCommand(call.target);
-  const shorter = Math.min(cmd.length, target.length);
-  return shorter >= MIN_MATCH_CHARS && (cmd.startsWith(target) || target.startsWith(cmd));
+  return call.tool === "Bash" && typeof call.target === "string" && normalizeCommand(call.target) === cmd;
 }
 function unrunChecks(evidence, toolCalls) {
   if (toolCalls?.availability !== "measured") return [];
-  const used = /* @__PURE__ */ new Set();
-  const unrun = [];
-  for (const e of evidence) {
-    const cmd = normalizeCommand(e.command);
-    const at = toolCalls.calls.findIndex((call, i) => !used.has(i) && callMatches(cmd, call));
-    if (at === -1) unrun.push(e.check);
-    else used.add(at);
-  }
-  return unrun;
+  return evidence.filter((e) => !toolCalls.calls.some((call) => callMatches(normalizeCommand(e.command), call))).map((e) => e.check);
 }
 function isCompoundCall(target) {
   return /[\n;|]|&&/.test(target);
 }
-function checkEvidence({ outcome, doneWhen, toolCalls }) {
-  const checks = outcome.evidence.map((e) => e.check);
-  if (checks.length !== doneWhen.length || checks.some((c, i) => c !== i + 1)) {
-    return rejection({ code: "KILN_EVIDENCE_COUNT", label: `one evidence item per check, numbered 1 to ${doneWhen.length} in order`, details: [`got checks [${checks.join(", ")}]`], tag: "evidence", reason: "evidence-count" });
+function normalizeEvidence(evidence, groups) {
+  const total = groups.reduce((n2, g) => n2 + g.length, 0);
+  const notes = [];
+  let items = evidence;
+  const exact = items.length === total && items.every((e, i) => e.check === i + 1);
+  if (!exact && groups.length > 1) {
+    const perTask = groups.flatMap((g) => g.map((_, i) => i + 1));
+    if (items.length === perTask.length && items.every((e, i) => e.check === perTask[i])) {
+      items = items.map((e, i) => ({ ...e, check: i + 1 }));
+      notes.push(`evidence was numbered per task; renumbered 1 to ${total}`);
+    }
   }
-  const unrun = unrunChecks(outcome.evidence, toolCalls);
+  const kept = [];
+  const seen = /* @__PURE__ */ new Set();
+  for (const e of [...items].sort((x, y) => x.check - y.check)) {
+    if (e.check < 1 || e.check > total) notes.push(`evidence item ${e.check} names no planned check; ignored`);
+    else if (seen.has(e.check)) notes.push(`evidence item ${e.check} repeated; the first was kept`);
+    else {
+      seen.add(e.check);
+      kept.push(e);
+    }
+  }
+  const missing = Array.from({ length: total }, (_, i) => i + 1).filter((n2) => !seen.has(n2));
+  return { evidence: kept, notes, missing };
+}
+function checkEvidence({ outcome, groups, toolCalls }) {
+  const { evidence, notes, missing } = normalizeEvidence(outcome.evidence, groups);
+  if (missing.length > 0) {
+    return rejection({ code: "KILN_EVIDENCE_COUNT", label: `check ${missing.join(", ")} has no evidence item`, details: [`got checks [${outcome.evidence.map((e) => e.check).join(", ")}]`], tag: "evidence", reason: "evidence-count" });
+  }
+  const planned = groups.flat();
+  const wrong = evidence.filter((e) => normalizeCommand(e.command) !== normalizeCommand(planned[e.check - 1].command)).map((e) => e.check);
+  if (wrong.length > 0) {
+    return rejection({ code: "KILN_EVIDENCE_COMMAND", label: `check ${wrong.join(", ")} names a command other than the planned one`, details: wrong.map((n2) => `check ${n2} planned: ${planned[n2 - 1].command}`), tag: "evidence", reason: "evidence-command" });
+  }
+  const unrun = unrunChecks(evidence, toolCalls);
   if (unrun.length > 0) {
     const details = [`check ${unrun.join(", ")} cites a command no Bash call ran`];
     if (toolCalls.calls.some((call) => call.tool === "Bash" && isCompoundCall(call.target))) details.push("one Bash call was a compound command (a heredoc, a chain, or a variable before the command). Run each check as its own call");
     return rejection({ code: "KILN_EVIDENCE_UNRUN", label: "every evidence command must appear among the Bash calls this dispatch made", details, tag: "evidence", reason: "evidence-unrun" });
   }
-  return null;
+  return { notes };
 }
 function classKeyOf(requiredRole) {
-  const classId = requiredRole.startsWith("kiln:") ? requiredRole : `kiln:${requiredRole}`;
-  return ROLE_OF_CLASS[classId] ?? requiredRole;
+  const role = requiredRole.toLowerCase();
+  const classId = role.startsWith("kiln:") ? role : `kiln:${role}`;
+  return ROLE_OF_CLASS[classId] ?? role;
 }
 function highestTaskNumber(plan) {
   return Math.max(...plan.map((t) => Number(t.taskId.slice("task-".length))));
@@ -11474,8 +11657,8 @@ function acceptFinder(state, ctx, items) {
   const o = items[0];
   if (o.status === "gap") return ask(question("retry", `The finder stopped with ${plural(o.missing.length, "missing item")}. The list is in the detail. Fix what it needs and reply retry.`, ["retry"], { retryKind: "dispatch-finder", detail: bullets(o.missing) }), { lastFilled: [], lastReform: null });
   if (o.status === "reform-party") return rejection({ code: "KILN_REFORM_FINDER", label: "the finder never reforms the Party; name what no source answers as a bullet under ## Missing or ## Open questions and reply complete, or reply gap", details: [`named ${o.requiredRole}`], tag: "reform", reason: "reform-finder" });
-  const evidence = checkEvidence({ outcome: o, doneWhen: FINDER_CHECKS(state), toolCalls: ctx.toolCalls });
-  if (evidence) return evidence;
+  const evidence = checkEvidence({ outcome: o, groups: [FINDER_CHECKS(state)], toolCalls: ctx.toolCalls });
+  if (evidence.reject) return evidence;
   const report = attached(ctx, "report", o.output.report.sha256);
   if (report.reject) return { reject: report.reject };
   const text = report.value.text;
@@ -11505,6 +11688,7 @@ function acceptFinder(state, ctx, items) {
     ...moved.fields,
     lastFilled: filled,
     lastReform: null,
+    notes: evidence.notes,
     pendingWrite: queuedWrite(state, filled)
   }, "facts");
 }
@@ -11755,8 +11939,8 @@ function acceptDiscover(state, ctx, items) {
   const o = items[0];
   if (o.status === "gap") return ask(question("retry", `The finder stopped before it found where the work lives, with ${plural(o.missing.length, "missing item")}. The list is in the detail. Fix what it needs and reply retry.`, ["retry"], { retryKind: "dispatch-discover", detail: bullets(o.missing) }), { lastFilled: [], lastReform: null });
   if (o.status === "reform-party") return rejection({ code: "KILN_REFORM_FINDER", label: "the finder never reforms the Party; name what no source answers as a bullet under ## Gaps and reply complete, or reply gap", details: [`named ${o.requiredRole}`], tag: "reform", reason: "reform-finder" });
-  const evidence = checkEvidence({ outcome: o, doneWhen: DISCOVER_CHECKS(state), toolCalls: ctx.toolCalls });
-  if (evidence) return evidence;
+  const evidence = checkEvidence({ outcome: o, groups: [DISCOVER_CHECKS(state)], toolCalls: ctx.toolCalls });
+  if (evidence.reject) return evidence;
   const outside = discoverCommandOutsideList(ctx.toolCalls);
   if (outside !== null) return rejection({ code: "KILN_DISCOVER_COMMAND", label: `the discover step runs only the read-only commands its brief lists, and it ran ${outside}`, details: [], tag: "discover", reason: "discover-command" });
   const report = attached(ctx, "report", o.output.report.sha256);
@@ -11776,7 +11960,7 @@ function acceptDiscover(state, ctx, items) {
     const leaks = leakWords(ctx, [draft.intent], draft.repository);
     if (leaks.length > 0) return leakRejection(leaks.map((w) => `"${w}" in the proposed intent`));
   }
-  return settleDiscover(state, ctx, draft, parsed, { lastFilled: [], lastReform: null });
+  return settleDiscover(state, ctx, draft, parsed, { lastFilled: [], lastReform: null, notes: evidence.notes });
 }
 var GAP_ANSWER = /^(\d+):\s*(.+)$/;
 function parseGapAnswers(text, gaps) {
@@ -11855,8 +12039,8 @@ function acceptDesigner(state, ctx, items) {
   if (o.status === "explored") return rejection({ code: "KILN_BUILD_NEEDS_DECISION", label: "the build Designer must return an approved decision", details: [], tag: "decision", reason: "exploration-only" });
   if (o.status === "gap") return ask(question("design", "The design session stopped before a decision. Where it stopped is in the detail. Reply continue to resume it.", ["continue"], { detail: o.decisionState }), { lastFilled: [], lastReform: null });
   if (o.status === "reform-party") return memberReform(state, ctx, o.requiredRole, o.reason, {});
-  const evidence = checkEvidence({ outcome: o, doneWhen: DESIGNER_CHECKS(state), toolCalls: ctx.toolCalls });
-  if (evidence) return evidence;
+  const evidence = checkEvidence({ outcome: o, groups: [DESIGNER_CHECKS(state)], toolCalls: ctx.toolCalls });
+  if (evidence.reject) return evidence;
   const decision = attached(ctx, "decision", o.output.decision.sha256);
   if (decision.reject) return { reject: decision.reject };
   const status = decision.value.text.split("\n").find((l) => l.startsWith("**Status:**"));
@@ -11870,6 +12054,7 @@ function acceptDesigner(state, ctx, items) {
     ...state.brief.tasks === null ? {} : { replan: { ...state.replan, from: state.cursor, reason: state.replan === null ? "the decision changed" : state.replan.reason } },
     cleared: stillCleared(state, ["decision"]),
     designerRan: true,
+    notes: evidence.notes,
     lastFilled: ["decision"],
     lastReform: null,
     pendingWrite: queuedWrite(state, ["decision"])
@@ -11888,12 +12073,12 @@ function acceptPlanner(state, ctx, items) {
     return ask(question("retry", `The planner stopped with ${plural(other.length, "missing item")}, each with a proposal. The list is in the detail. Reply retry to take the proposals, or retry <note> to answer them.`, ["retry <note>"], { retryKind: "dispatch-planner", detail: bullets(other) }), { brief: moved.brief, ...moved.fields, lastFilled: [], lastReform: null });
   }
   if (o.status === "reform-party") return memberReform(state, ctx, o.requiredRole, o.reason, {});
-  const evidence = checkEvidence({ outcome: o, doneWhen: PLANNER_CHECKS(state), toolCalls: ctx.toolCalls });
-  if (evidence) return evidence;
+  const evidence = checkEvidence({ outcome: o, groups: [PLANNER_CHECKS(state)], toolCalls: ctx.toolCalls });
+  if (evidence.reject) return evidence;
   const attachment = attached(ctx, "ticketPlan", o.output.ticketPlan.sha256);
   if (attachment.reject) return { reject: attachment.reject };
   if (attachment.value.issues.length > 0) return rejection({ code: "KILN_PLAN_INVALID", label: "the ticket plan file fails kiln:ticket-plan@1 or the absolute-command rule", details: attachment.value.issues.slice(0, 5).map((i) => i.message), tag: "plan", reason: "plan-invalid" });
-  const plan = attachment.value.plan;
+  const { plan, notes: fillNotes } = fillPlanFromRun(attachment.value.plan, state);
   const newTasks = plan.tasks;
   const kept = state.replan === null ? [] : state.brief.tasks.plan.slice(0, state.replan.from);
   const approved = state.documents.plan?.approved ? state.documents.plan : null;
@@ -11901,8 +12086,6 @@ function acceptPlanner(state, ctx, items) {
     const change = firstApprovedPlanChange(plan, approved, state.ticket.ref, kept);
     if (change !== null) return rejection({ code: "KILN_APPROVED_TASK_CHANGED", label: change, details: [], tag: "plan", reason: "approved-task-changed" });
   }
-  const offRepo = firstOffRepo(newTasks, state.repo);
-  if (offRepo !== null) return rejection({ code: "KILN_PLAN_REPO", label: `every task's repo and branch, and every check's repo, must be the run's worktree ${state.repo.root} on ${state.repo.branch}`, details: [offRepo], tag: "plan", reason: "plan-repo" });
   const doneIds = new Set(state.done.map((d) => d.taskId));
   if (newTasks.some((t) => doneIds.has(t.taskId))) return rejection({ code: "KILN_PLAN_RENUMBER", label: `a re-plan must number its tasks after the done ones (${[...doneIds].join(", ")})`, details: [], tag: "plan", reason: "plan-renumber" });
   const newCovers = [...new Set(newTasks.flatMap((t) => t.covers))];
@@ -11925,6 +12108,7 @@ function acceptPlanner(state, ctx, items) {
   return validatedAccept(state, ctx, brief, {
     replan: null,
     cleared: stillCleared(state, filled),
+    notes: [...evidence.notes, ...fillNotes],
     drift: [],
     lastFilled: filled,
     lastReform: null,
@@ -11953,14 +12137,27 @@ function firstApprovedPlanChange(plan, approved, ticketRef, kept = []) {
   if (covered.size !== approved.acceptance.length || approved.acceptance.some((line) => !covered.has(line))) return "the runtime plan changed or omitted an approved acceptance line";
   return null;
 }
-function firstOffRepo(tasks, repo) {
-  for (const t of tasks) {
-    if (t.repo !== repo.root) return `${t.taskId} repo: ${t.repo}`;
-    if (t.branch !== repo.branch) return `${t.taskId} branch: ${t.branch}`;
-    const check = t.doneWhen.findIndex((c) => c.repo !== repo.root);
-    if (check !== -1) return `${t.taskId} check ${check + 1} repo: ${t.doneWhen[check].repo}`;
+function fillPlanFromRun(plan, state) {
+  const notes = [];
+  const replaced = (given, used) => given !== void 0 && given !== used;
+  const { root, branch } = state.repo;
+  const ticketRef = state.ticket.ref;
+  if (replaced(plan.ticketRef, ticketRef)) notes.push(`plan ticketRef: the plan said ${plan.ticketRef}; the run uses ${ticketRef}`);
+  const approved = state.documents.plan;
+  const source = approved?.approved === true && typeof approved.sha256 === "string" ? { path: approved.path, sha256: approved.sha256 } : plan.source;
+  if (plan.source !== void 0 && (plan.source.path !== source.path || plan.source.sha256 !== source.sha256)) {
+    notes.push(`plan source: the plan said ${plan.source.path} ${plan.source.sha256}; the run uses ${source.path} ${source.sha256}`);
   }
-  return null;
+  const tasks = plan.tasks.map((task) => {
+    if (replaced(task.repo, root)) notes.push(`${task.taskId} repo: the plan said ${task.repo}; the run uses ${root}`);
+    if (replaced(task.branch, branch)) notes.push(`${task.taskId} branch: the plan said ${task.branch}; the run uses ${branch}`);
+    const doneWhen = task.doneWhen.map((check, i) => {
+      if (replaced(check.repo, root)) notes.push(`${task.taskId} check ${i + 1} repo: the plan said ${check.repo}; the run uses ${root}`);
+      return { ...check, repo: root };
+    });
+    return { ...task, repo: root, branch, doneWhen };
+  });
+  return { plan: { ...plan, ticketRef, ...source === void 0 ? {} : { source }, tasks }, notes };
 }
 function acceptChanger(state, ctx, items) {
   const o = items[0];
@@ -11968,17 +12165,26 @@ function acceptChanger(state, ctx, items) {
   if (o.status === "gap") return ask(question("retry", `The changer stopped on ${task.taskId} with ${plural(o.missing.length, "missing item")}. The list and the state of the tree are in the detail. Fix what it needs and reply retry.`, ["retry"], { retryKind: "dispatch-changer", detail: `${bullets(o.missing)}
 The tree: ${o.treeState}` }), { lastFilled: [], lastReform: null });
   if (o.status === "reform-party") return memberReform(state, ctx, o.requiredRole, o.reason, { lastFilled: [] });
-  const evidence = checkEvidence({ outcome: o, doneWhen: task.doneWhen, toolCalls: ctx.toolCalls });
-  if (evidence) return evidence;
-  if (o.output.commit.branch !== task.branch) {
-    return rejection({ code: "KILN_COMMIT_BRANCH", label: `the commit is on ${o.output.commit.branch} but the task names ${task.branch}`, details: ["move the commit to the task branch and reply again"], tag: "commit", reason: "commit-branch" });
+  const evidence = checkEvidence({ outcome: o, groups: [task.doneWhen], toolCalls: ctx.toolCalls });
+  if (evidence.reject) return evidence;
+  if (o.output.commit.mode === "existing" && !o.output.deviations.some((d) => d.kind === "already-present" || d.kind === "verify-only")) {
+    return rejection({ code: "KILN_COMMIT_EXISTING_UNDECLARED", label: "a commit reported as existing needs a deviation of kind already-present or verify-only that says why", details: [], tag: "commit", reason: "commit-existing-undeclared" });
   }
+  const { commit } = o.output;
+  const measured2 = ctx.commitBranches;
+  const onBranch = measured2 === void 0 ? commit.branch === task.branch : measured2.sha === commit.sha && measured2.branches.includes(task.branch);
+  if (!onBranch) {
+    const label = measured2 === void 0 ? `the commit is on ${commit.branch} but the task names ${task.branch}` : `the commit ${commit.sha} is not on ${task.branch} (git branch --contains: ${measured2.branches.length === 0 ? "none" : measured2.branches.join(", ")})`;
+    return rejection({ code: "KILN_COMMIT_BRANCH", label, details: ["move the commit to the task branch and reply again"], tag: "commit", reason: "commit-branch" });
+  }
+  const branchNotes = measured2 !== void 0 && commit.branch !== task.branch ? [`the reply named branch ${commit.branch}; the commit is on ${task.branch}`] : [];
   const cursor = state.cursor + 1;
   return accepted(state, ctx, {
-    done: [...state.done, { taskId: task.taskId, sha: o.output.commit.sha, deviations: o.output.deviations }],
+    done: [...state.done, { taskId: task.taskId, sha: commit.sha, deviations: o.output.deviations }],
     cursor,
     findings: [],
     judgeDue: cursor >= state.brief.tasks.plan.length,
+    notes: [...evidence.notes, ...branchNotes],
     lastFilled: [],
     lastReform: null
   });
@@ -11986,34 +12192,50 @@ The tree: ${o.treeState}` }), { lastFilled: [], lastReform: null });
 function rulingLines(rulings) {
   return rulings.map((r) => `${r.task}: ${r.deviation} (${r.ruling}: ${r.why})`);
 }
+function derivedVerdict(rulings) {
+  const verdict = rulings.length === 0 ? "conformed" : rulings.some((r) => r.ruling === "unjustified") ? "deviated-unjustified" : "deviated-justified";
+  return { verdict, changedAnything: rulings.some((r) => r.ruling === "undeclared" || r.ruling === "unjustified") };
+}
+function rulingTaskIds(ruling, state) {
+  return state.brief.tasks.plan.some((t) => t.taskId === ruling.task) ? [ruling.task] : state.done.map((d) => d.taskId);
+}
+function copyNotes(o, derived) {
+  return ["verdict", "changedAnything"].filter((k) => o[k] !== void 0 && o[k] !== derived[k]).map((k) => `the reply said ${k} ${o[k]}; the rulings give ${derived[k]}`);
+}
+var REASON_CAP = 200;
+var REASON_CUT_NOTE = `the consequence reason was cut to ${REASON_CAP} characters`;
+function cutReason(reason) {
+  return reason.length > REASON_CAP ? `${reason.slice(0, REASON_CAP - 1)}\u2026` : reason;
+}
 function acceptJudge(state, ctx, items) {
   const o = items[0];
   if (o.status === "reform-party") return memberReform(state, ctx, o.requiredRole, o.reason, { lastFilled: [], judgeDue: false });
   if (o.status === "gap") {
-    const known = new Set(state.brief.tasks.plan.map((t) => t.taskId));
-    const unknown = [...new Set(o.rulings.map((r) => r.task).filter((id) => !known.has(id)))];
-    const taskIds = [...new Set(o.rulings.filter((r) => r.ruling === "unjustified").map((r) => r.task))];
-    if (unknown.length > 0 || taskIds.length === 0) {
-      return rejection({ code: "KILN_RULING_UNKNOWN_TASK", label: "ruling names no known task", details: unknown.length > 0 ? unknown.map((id) => `no task ${id} in the plan (${[...known].join(", ")})`) : ["no unjustified ruling names a task"], tag: "ruling", reason: "ruling-unknown-task" });
-    }
+    const taskIds = [...new Set(o.rulings.filter((r) => r.ruling === "unjustified").flatMap((r) => rulingTaskIds(r, state)))];
     const goalLeaks = outwardLeaks(ctx, o.missing, "the missing list, which becomes the goal of a fix task");
     if (goalLeaks.length > 0) return leakRejection(goalLeaks);
-    const judge = { verdict: o.verdict, rulings: o.rulings, observedConsequence: o.observedConsequence, changedAnything: o.changedAnything };
+    const { level: level2, reason: reason2 } = o.observedConsequence;
+    const cut2 = cutReason(reason2);
+    const derived2 = derivedVerdict(o.rulings);
+    const notes = [...cut2 === reason2 ? [] : [REASON_CUT_NOTE], ...copyNotes(o, derived2)];
+    const judge = { ...derived2, rulings: o.rulings, observedConsequence: { level: level2, reason: cut2 } };
     if (state.fixRounds >= MAX_FIX_ROUNDS) {
-      return ask(question("fix", `The judge failed the change ${state.fixRounds} times over, with ${plural(o.missing.length, "item")} still missing. The list is in the detail. Reply fix for one more fix task.`, ["fix"], { missing: o.missing, taskIds, detail: bullets(o.missing) }), { judge, judgeDue: false, findings: rulingLines(o.rulings), lastFilled: [], lastReform: null });
+      return ask(question("fix", `The judge failed the change ${state.fixRounds} times over, with ${plural(o.missing.length, "item")} still missing. The list is in the detail. Reply fix for one more fix task.`, ["fix"], { missing: o.missing, taskIds, detail: bullets(o.missing) }), { judge, notes, judgeDue: false, findings: rulingLines(o.rulings), lastFilled: [], lastReform: null });
     }
     const { brief, cursor } = appendFixTask(state, o.missing, taskIds);
-    return validatedAccept(state, ctx, brief, { cursor, fixRounds: state.fixRounds + 1, judge, judgeDue: false, findings: rulingLines(o.rulings), lastFilled: [], lastReform: null }, "fix");
+    return validatedAccept(state, ctx, brief, { cursor, fixRounds: state.fixRounds + 1, judge, notes, judgeDue: false, findings: rulingLines(o.rulings), lastFilled: [], lastReform: null }, "fix");
   }
-  const allChecks = state.brief.tasks.plan.flatMap((t) => t.doneWhen);
-  const evidence = checkEvidence({ outcome: o, doneWhen: allChecks, toolCalls: ctx.toolCalls });
-  if (evidence) return evidence;
+  const evidence = checkEvidence({ outcome: o, groups: state.brief.tasks.plan.map((t) => t.doneWhen), toolCalls: ctx.toolCalls });
+  if (evidence.reject) return evidence;
   const { level, reason } = o.output.observedConsequence;
+  const cut = cutReason(reason);
+  const derived = derivedVerdict(o.output.rulings);
   return accepted(state, ctx, {
-    judge: { verdict: o.output.verdict, rulings: o.output.rulings, observedConsequence: o.output.observedConsequence, changedAnything: o.output.changedAnything },
-    verification: { level, reason, decision: level === "high" ? null : "none", lowerReason: null, borrowedDone: false },
+    judge: { ...derived, rulings: o.output.rulings, observedConsequence: { level, reason: cut } },
+    verification: { level, reason: cut, decision: level === "high" ? null : "none", lowerReason: null, borrowedDone: false },
     findings: rulingLines(o.output.rulings),
     judgeDue: false,
+    notes: [...evidence.notes, ...cut === reason ? [] : [REASON_CUT_NOTE], ...copyNotes(o.output, derived)],
     lastFilled: [],
     lastReform: null
   });
@@ -12045,6 +12267,7 @@ function kind(name, { buildPrompt, accept, receipt, writeBoundary }) {
     buildPrompt,
     accept,
     ...receipt === void 0 ? {} : { receipt },
+    ...receipt === void 0 ? { repair: true } : {},
     ...writeBoundary === void 0 ? {} : { writeBoundary }
   };
 }
@@ -12089,7 +12312,8 @@ function baseStateOf({ bundle, roles, extras }) {
     lastReform: null,
     prApproved: false,
     roles,
-    reformCounts: { designer: 0, planner: 0 }
+    reformCounts: { designer: 0, planner: 0 },
+    notes: []
   };
 }
 function flowFor(ctx) {
@@ -12098,10 +12322,11 @@ function flowFor(ctx) {
   if (ctx.ticketFormat === void 0 || ctx.ticketFormat === null) throw new KilnError("KILN_FLOW_TICKET_FORMAT_REQUIRED", "flowFor needs ctx.ticketFormat: the parsed policy/ticket-format-v1.json");
   if (typeof ctx.repoFacts !== "function") throw new KilnError("KILN_FLOW_REPO_FACTS_REQUIRED", "flowFor needs ctx.repoFacts(checkout, base): the CLI's program checks");
   if (typeof ctx.readDocument !== "function") throw new KilnError("KILN_FLOW_READ_DOCUMENT_REQUIRED", "flowFor needs ctx.readDocument(path, kind, checkout): the CLI's document reader");
-  const guard = (fn) => (state, items) => {
+  const guard = (fn) => (state, items, _salvaged, { repairs }) => {
     if (items.length !== 1) return rejection({ code: "KILN_OUTCOME_COUNT", label: "reply with exactly one outcome", details: [`got ${items.length}`], tag: "outcome", reason: "outcome-count" });
     const outcome = fn(state, ctx, items);
-    const result = outcome.reject !== void 0 ? outcome : { ...outcome, fields: { ...outcome.fields, retry: null, writeBaseline: null } };
+    const stamped = outcome.reject !== void 0 ? [] : [...ctx.hostNotes ?? [], ...repairs, ...outcome.fields.notes ?? []].map((text) => ({ actionId: state.pendingAction.actionId, text }));
+    const result = outcome.reject !== void 0 ? outcome : { ...outcome, fields: { ...outcome.fields, retry: null, writeBaseline: null, notes: [...state.notes ?? [], ...stamped] } };
     if (ctx.breach !== null && ctx.breach.actionId !== state.pendingAction.actionId) {
       throw new KilnError("KILN_BREACH_ACTION_MISMATCH", `the ration breach names action ${ctx.breach.actionId} but this receipt answers ${state.pendingAction.actionId}`);
     }
@@ -12457,6 +12682,7 @@ function renderReadout({ state, scoreboard, prUrl = null }) {
   const rows = scoreboard.perMember.map((m) => `| ${m.roleKey} | ${m.dispatches} | ${n(m.turns)} / ${n(m.rationTurns)} | ${n(m.tokens)} / ${n(m.rationTokens)} | ${n(m.cacheReadTokens)} | $${cost[m.roleKey]} |`);
   const t = scoreboard.totals;
   const unread = state.unread ?? [];
+  const notes = state.notes ?? [];
   const skipped = state.ticket?.skipped ?? [];
   return [
     "# Readout",
@@ -12472,6 +12698,7 @@ function renderReadout({ state, scoreboard, prUrl = null }) {
     "",
     state.judge ? `review: ${state.judge.verdict}, consequence ${state.judge.observedConsequence.level} (${state.judge.observedConsequence.reason})${state.verification?.decision === "lower" ? `, verification lowered: ${state.verification.lowerReason}` : ""}` : "review: none",
     "",
+    ...notes.length > 0 ? ["## Notes", ...notes.map((e) => `- ${e.actionId}: ${e.text}`), ""] : [],
     ...unread.length > 0 ? ["## Unread places", ...unread.map((u) => `- ${u}`), ""] : [],
     "## Members (tokens are fresh tokens; actual / ration)",
     "| member | dispatches | turns | tokens | cache reads | booked |",
@@ -12833,6 +13060,73 @@ function prepareJiraAddition({ original, section, proposal, format, policy, date
   return { adf, insertedBlocks, currentText, addedText: insertedBlocks.map(previewText).filter(Boolean).join("\n"), sectionHeading: format.families[section].heading };
 }
 
+// src/reply-array.mjs
+function parseArray(text) {
+  try {
+    const parsed = JSON.parse(text);
+    return Array.isArray(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+function balancedArraySlice2(text, start) {
+  let depth = 0;
+  let inString = false;
+  for (let i = start; i < text.length; i += 1) {
+    const ch = text[i];
+    if (inString) {
+      if (ch === "\\") i += 1;
+      else if (ch === '"') inString = false;
+    } else if (ch === '"') {
+      inString = true;
+    } else if (ch === "[") {
+      depth += 1;
+    } else if (ch === "]") {
+      depth -= 1;
+      if (depth === 0) return text.slice(start, i + 1);
+    }
+  }
+  return null;
+}
+function sortKeysDeep2(value) {
+  if (Array.isArray(value)) return value.map(sortKeysDeep2);
+  if (value !== null && typeof value === "object") return Object.fromEntries(Object.keys(value).sort().map((k) => [k, sortKeysDeep2(value[k])]));
+  return value;
+}
+var isObjectItem = (item) => typeof item === "object" && item !== null && !Array.isArray(item);
+function candidatesOf(raw, isOutcome) {
+  const distinct = /* @__PURE__ */ new Map();
+  let start = raw.indexOf("[");
+  while (start !== -1) {
+    const slice = balancedArraySlice2(raw, start);
+    const parsed = slice === null ? null : parseArray(slice);
+    if (parsed !== null) {
+      if (parsed.length > 0 && parsed.every((item) => isObjectItem(item) && isOutcome(item))) distinct.set(JSON.stringify(sortKeysDeep2(parsed)), parsed);
+      start = raw.indexOf("[", start + slice.length);
+    } else {
+      start = raw.indexOf("[", start + 1);
+    }
+  }
+  return [...distinct.values()];
+}
+function parsesAsJson(raw) {
+  try {
+    return { value: JSON.parse(raw) };
+  } catch {
+    return null;
+  }
+}
+function outcomeArrayOf(raw, isOutcome = () => true) {
+  const direct = parsesAsJson(raw);
+  if (direct !== null && Array.isArray(direct.value)) return { array: direct.value, salvaged: false };
+  const candidates = candidatesOf(raw, isOutcome);
+  return candidates.length === 1 ? { array: candidates[0], salvaged: true } : null;
+}
+function candidateCount(raw, isOutcome = () => true) {
+  const direct = parsesAsJson(raw);
+  return direct !== null && Array.isArray(direct.value) ? 0 : candidatesOf(raw, isOutcome).length;
+}
+
 // src/direct-class.mjs
 function classRecord(catalog, classId) {
   const record = catalog.getClass(classId);
@@ -12849,17 +13143,54 @@ function bindDirectClass({ catalog, classId, input, loadout, adapter }) {
   });
   return adapter.bind({ classRecord: record, invocation });
 }
+var MAX_ISSUES_PER_ITEM = 3;
+function issueLinesOf(record, array) {
+  return array.flatMap((item, index) => {
+    try {
+      validateOutcome2(record, item);
+      return [];
+    } catch (err) {
+      const errors = err.details.errors ?? [];
+      return errors.length === 0 ? [`item ${index + 1}: ${err.message}`] : errors.slice(0, MAX_ISSUES_PER_ITEM).map((e) => `item ${index + 1} ${e.instancePath || "/"}: ${e.message}`);
+    }
+  });
+}
 function checkDirectClassReply({ catalog, classId, raw }) {
-  let reply;
+  const record = classRecord(catalog, classId);
+  const isOutcome = (item) => {
+    try {
+      validateOutcome2(record, item);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+  let isJson = true;
+  let parsed;
   try {
-    reply = JSON.parse(raw);
-  } catch (err) {
-    throw new KilnError("KILN_CLASS_REPLY_INVALID", `Class reply is not JSON: ${err.message}`, { classId });
+    parsed = JSON.parse(raw);
+  } catch {
+    isJson = false;
   }
-  if (!Array.isArray(reply) || reply.length !== 1) {
-    throw new KilnError("KILN_CLASS_REPLY_COUNT", "Class reply must be a one-element JSON array", { classId, count: Array.isArray(reply) ? reply.length : null });
+  if (isJson && !Array.isArray(parsed)) {
+    throw new KilnError("KILN_CLASS_REPLY_COUNT", "Class reply must be a one-element JSON array", { classId, count: null });
   }
-  return validateOutcome2(classRecord(catalog, classId), reply[0]);
+  const found = outcomeArrayOf(raw, isOutcome);
+  if (found === null) {
+    const count2 = candidateCount(raw, isOutcome);
+    if (count2 > 0) {
+      throw new KilnError("KILN_CLASS_REPLY_COUNT", `Class reply holds ${count2} outcome arrays; it must hold exactly one`, { classId, count: count2 });
+    }
+    const only = outcomeArrayOf(raw);
+    if (only !== null) {
+      throw new KilnError("KILN_CLASS_REPLY_INVALID", "Class reply holds one JSON array, and it fails the outcome contract", { classId, issues: issueLinesOf(record, only.array) });
+    }
+    throw new KilnError("KILN_CLASS_REPLY_INVALID", "Class reply holds no JSON array of outcomes", { classId });
+  }
+  if (found.array.length !== 1) {
+    throw new KilnError("KILN_CLASS_REPLY_COUNT", "Class reply must be a one-element JSON array", { classId, count: found.array.length });
+  }
+  return validateOutcome2(record, found.array[0]);
 }
 
 // src/codex-session.mjs
@@ -13523,6 +13854,11 @@ function branchNamesOf(checkout) {
   const out = gitOut(checkout, ["branch", "-a", "--format=%(if)%(symref)%(then)%(else)%(refname:short)%(end)"]);
   return [...new Set(out.split("\n").map((l) => l.trim()).filter((l) => l.length > 0))];
 }
+function commitBranchesOf(root, sha) {
+  const res = spawnSync("git", ["-C", root, "branch", "--contains", sha, "--format=%(refname:short)"], { encoding: "utf8" });
+  const branches = res.status === 0 ? res.stdout.split("\n").map((l) => l.trim()).filter((l) => l.length > 0) : [];
+  return { sha, branches };
+}
 function createWorktree(repo) {
   const created = !existsSync2(repo.root);
   if (created) {
@@ -13601,7 +13937,7 @@ function leakCheckFor(ref, source, repoWords) {
   };
 }
 function flowCtx({ ticketRef, source, firstKind, repoWords, hostId }, extra = {}) {
-  return { registry: getBuildRegistry(hostId), policy: rosterPolicy, modePolicy, ticketFormat, toolCalls: { availability: "unavailable" }, attachments: {}, breach: null, leaksIn: leakCheckFor(ticketRef, source, repoWords), ticketChanges: { parts: [], brief: emptyBrief() }, repoFacts: repoFactsFor(), readDocument: documentReaderFor(ticketRef, source), firstKind, ...extra };
+  return { registry: getBuildRegistry(hostId), policy: rosterPolicy, modePolicy, ticketFormat, toolCalls: { availability: "unavailable" }, attachments: {}, breach: null, hostNotes: [], commitBranches: void 0, leaksIn: leakCheckFor(ticketRef, source, repoWords), ticketChanges: { parts: [], brief: emptyBrief() }, repoFacts: repoFactsFor(), readDocument: documentReaderFor(ticketRef, source), firstKind, ...extra };
 }
 function bodyWithParts(body, state, parts) {
   let next = withContextHeading(body, ticketFormat);
@@ -13680,7 +14016,7 @@ function briefLine(briefPath) {
 function nextSummary(flow, state, paths, meta) {
   const pending = nextAction(flow, state);
   if (pending.terminal) return { terminal: true, status: state.status };
-  const out = { terminal: false, actionId: pending.actionId, kind: pending.kind, attempt: pending.attempt, promptBody: pending.promptBody, hostBinding: hostBindingFor(state, pending, getRegistry(state.host?.id)) };
+  const out = { terminal: false, actionId: pending.actionId, kind: pending.kind, attempt: pending.attempt, promptBody: pending.promptBody, hostBinding: hostBindingFor(state, pending, getRegistry(state.host?.id)), ...pending.correction ? { correction: pending.correction } : {} };
   const member = partyClassInputFor(state, pending.kind);
   if (member !== null) {
     const record = loadClassCatalog(process.env.KILN_CLASSES_ROOT).getClass(member.classId);
@@ -13732,14 +14068,9 @@ ${detail}`);
   }
   return out;
 }
-function attachmentsFor(rawOutput) {
-  let parsed;
-  try {
-    parsed = JSON.parse(rawOutput);
-  } catch {
-    return {};
-  }
-  const o = Array.isArray(parsed) ? parsed[0] : parsed;
+function attachmentsFor(found) {
+  if (found === null) return {};
+  const o = found.array[0];
   const out = {};
   const read = (p) => {
     try {
@@ -13774,6 +14105,11 @@ function attachmentsFor(rawOutput) {
   }
   return out;
 }
+function evidenceToolCalls(paths, pending, toolCalls) {
+  if (pending.correction === void 0) return toolCalls;
+  const corrected = JSON.parse(readFileSync12(paths.envelope(pending.correction.of), "utf8")).toolCalls;
+  return toolCalls.availability === "measured" && corrected.availability === "measured" ? { availability: "measured", calls: [...corrected.calls, ...toolCalls.calls] } : { availability: "unavailable" };
+}
 function visitOf(actionId) {
   return actionId.replace(/-\d+$/, "");
 }
@@ -13792,8 +14128,9 @@ function afterReceipt({ flow, paths, meta, state, nextState, actionId, pending, 
   saveRunState(paths, nextState);
   const after = nextAction(flow, nextState);
   const modeLog = (nextState.modeLog ?? []).slice((state.modeLog ?? []).length);
+  const notes = (nextState.notes ?? []).slice((state.notes ?? []).length);
   appendRunEvents(paths.dir, [
-    { kind: accepted2 ? "receipt-applied" : "stage-failed", data: { actionId, actionKind: pending.kind, attempt: pending.attempt, outcome: nextState.ledger.at(-1).outcome, runStatus: nextState.status, ...modeLog.length > 0 ? { modeLog } : {} } },
+    { kind: accepted2 ? "receipt-applied" : "stage-failed", data: { actionId, actionKind: pending.kind, attempt: pending.attempt, outcome: nextState.ledger.at(-1).outcome, runStatus: nextState.status, ...modeLog.length > 0 ? { modeLog } : {}, ...notes.length > 0 ? { notes } : {} } },
     after.terminal ? { kind: "run-terminal", data: { status: nextState.status } } : pendingEvent(nextState)
   ]);
 }
@@ -13823,7 +14160,7 @@ function againFor(paths, replacingUnbuilt = false) {
 }
 function repoForApprovedTasks(plan, roots, baseFlag, title, ref) {
   const rootPath = plan.tasks[0].repo;
-  if (!path10.isAbsolute(rootPath) || !existsSync2(rootPath)) throw new KilnError("KILN_APPROVED_WORKTREE", "the task plan must name an existing worktree", { root: rootPath });
+  if (typeof rootPath !== "string" || !path10.isAbsolute(rootPath) || !existsSync2(rootPath)) throw new KilnError("KILN_APPROVED_WORKTREE", "the task plan must name an existing worktree", { root: rootPath });
   const root = realpathSync3(rootPath);
   if (gitOut(root, ["rev-parse", "--show-toplevel"]).trim() !== root) throw new KilnError("KILN_APPROVED_WORKTREE", "the task plan repo is not the worktree root", { root });
   const common = gitOut(root, ["rev-parse", "--path-format=absolute", "--git-common-dir"]).trim();
@@ -14009,6 +14346,8 @@ ${v.idea.trim()}
     if (taskPlan !== null && (!runExists(paths) || v.again === true)) {
       const validation = validateTicketPlan(taskPlan);
       if (!validation.valid) throw new KilnError("KILN_TICKET_PLAN_INVALID", "the host task plan fails kiln:ticket-plan@1", { issues: validation.issues });
+      if (approvedPlan !== null && typeof taskPlan.source !== "object") throw new KilnError("KILN_APPROVED_SOURCE", "the task plan must name the approved plan's source");
+      if (typeof taskPlan.ticketRef !== "string") throw new KilnError("KILN_APPROVED_TICKET", "the task plan must name the ticket");
       const change = firstApprovedPlanChange(taskPlan, approvedPlan, ref);
       if (change !== null) throw new KilnError("KILN_APPROVED_TASK_CHANGED", change);
       directRepo = repoForApprovedTasks(taskPlan, checkoutRoots, v.base ?? null, issueTitle, ref);
@@ -14095,12 +14434,18 @@ ${v.idea.trim()}
     if (pending.actionId !== actionId) throw new KilnError("KILN_ACTION_STALE", `actionId ${actionId} is not the pending action (${pending.actionId})`);
     if (pending.kind === "ask-person") throw new KilnError("KILN_RECEIPT_IS_REPLY", "the pending action addresses the person; use reply");
     const hostMeta = readJsonInput(v, "host-meta");
+    if (hostMeta.repairs !== void 0 && !(Array.isArray(hostMeta.repairs) && hostMeta.repairs.every((note) => typeof note === "string"))) {
+      throw new KilnError("KILN_HOST_META_REPAIRS", "hostMeta.repairs must be an array of strings");
+    }
     const classId = state.roles[ROLE_OF_KIND[pending.kind]].roleId;
     const envelope = buildUsageEnvelope({ actionId, kind: pending.kind, attempt: pending.attempt, classId, host: selectedHost(state.host?.id), modelBinding: hostMeta.modelBinding ?? null, usage: hostMeta.usage, toolCalls: hostMeta.toolCalls });
     const priorEnvelopes = readEnvelopes(paths).filter((e) => visitOf(e.actionId) === visitOf(actionId));
     const ration = assessRation({ ration: rationFor(rations, classId), multiplier: rations.multiplier, envelope, priorEnvelopes });
     const rawOutput = readInput(v, "output");
-    const flow = flowFor(flowCtx(meta, { toolCalls: envelope.toolCalls, attachments: attachmentsFor(rawOutput), breach: ration.breached ? { actionId, visitTokens: ration.visitTokens, threshold: ration.threshold } : null }));
+    const found = outcomeArrayOf(rawOutput, (item) => validateKilnContract(OUTPUT_OF_KIND[pending.kind], item).valid);
+    const commitSha = pending.kind === "dispatch-changer" ? found?.array[0]?.output?.commit?.sha : void 0;
+    const commitBranches = typeof commitSha === "string" ? commitBranchesOf(state.repo.root, commitSha) : void 0;
+    const flow = flowFor(flowCtx(meta, { toolCalls: evidenceToolCalls(paths, pending, envelope.toolCalls), attachments: attachmentsFor(found), hostNotes: hostMeta.repairs ?? [], commitBranches, breach: ration.breached ? { actionId, visitTokens: ration.visitTokens, threshold: ration.threshold } : null }));
     const { state: nextState, issues } = applyReceipt(flow, state, { actionId, rawOutput, hostMeta });
     if (nextState === state) throw new KilnError(issues[0].code, issues[0].message);
     const accepted2 = isAcceptedOutcome(nextState.ledger.at(-1).outcome);

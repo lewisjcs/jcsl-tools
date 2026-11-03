@@ -27,6 +27,14 @@
         "allowedPaths": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}}
       },
       "additionalProperties": false
+    },
+    "correction": {
+      "type": "object",
+      "required": ["of"],
+      "properties": {
+        "of": {"type": "string", "minLength": 1}
+      },
+      "additionalProperties": false
     }
   },
   "additionalProperties": false

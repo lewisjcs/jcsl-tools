@@ -4,6 +4,7 @@ import { readFileSync, writeFileSync, renameSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { parseArgs } from 'node:util';
 import { spawnSync } from 'node:child_process';
+import { treeSignatureOf } from '../tree.mjs';
 
 class CheckError extends Error {
   constructor(code, message, details = {}) { super(message); this.code = code; this.details = details; }
@@ -37,11 +38,12 @@ function main(args) {
   if (checks === null || v.check > checks.length) throw new CheckError('CODEX_CHECK_NUMBER', 'no planned check has this number', { check: v.check, kind: next.kind });
   const selected = checks[v.check - 1];
   if (selected.repo !== state.repo.root) throw new CheckError('CODEX_CHECK_REPO_MISMATCH', 'planned check is outside the selected worktree');
+  const tree = treeSignatureOf(selected.repo, 'CODEX_CHECK');
   const ran = spawnSync('/bin/sh', ['-c', selected.command], { cwd: selected.repo, encoding: 'utf8', timeout: 900000, maxBuffer: 4 * 1024 * 1024 });
   if (ran.error || !Number.isInteger(ran.status)) throw new CheckError('CODEX_CHECK_EXEC_FAILED', 'the planned check did not finish', { error: ran.error?.message ?? `signal ${ran.signal}` });
   const commandOutput = `${ran.stdout ?? ''}${ran.stderr ?? ''}`;
   const output = `${commandOutput}${commandOutput && !commandOutput.endsWith('\n') ? '\n' : ''}[kiln check ${v.check} exit ${ran.status}]\n`;
-  const record = { actionId: v.action, check: v.check, command: selected.command, expect: selected.expect, exitCode: ran.status, commandOutput, output, completedAt: new Date().toISOString() };
+  const record = { actionId: v.action, check: v.check, command: selected.command, expect: selected.expect, exitCode: ran.status, commandOutput, output, completedAt: new Date().toISOString(), tree };
   const file = path.join(v.run, 'handed', `${v.action}-check-${v.check}.json`);
   const temp = `${file}.tmp-${process.pid}`;
   try {

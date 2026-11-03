@@ -5,9 +5,10 @@ import { homedir } from 'node:os';
 import path from 'node:path';
 import { parseArgs } from 'node:util';
 import { spawnSync } from 'node:child_process';
-import { checkInvocation } from '../check-command.mjs';
-import { findSession, entriesOf, usageOf, sessionMetaOf, assertChildOf, modelOf, finalReplyOf, timeOf } from '../rollout.mjs';
+import { invocationMatches } from '../check-command.mjs';
+import { outcomeArrayOf, findSession, entriesOf, usageOf, sessionMetaOf, assertChildOf, modelOf, finalReplyOf, timeOf } from '../rollout.mjs';
 import { parseCheckExpectation, checkMatchesExpectation } from '../check-expectation.mjs';
+import { treeSignatureOf } from '../tree.mjs';
 
 const PREFIX = 'CODEX_MEASURE';
 
@@ -69,46 +70,65 @@ function commandsOf(events) {
   });
 }
 
-function checkedReply(reply, handed, action, run, cli, commands, plannedChecks, finalStartedAt) {
-  let result;
-  const fenced = /^```json[ \t]*\r?\n([\s\S]*?)\r?\n```[ \t]*$/.exec(reply.trim());
-  try { result = JSON.parse(fenced === null ? reply : fenced[1]); }
-  catch { throw new MeasureError('CODEX_MEASURE_REPLY_INVALID', 'subagent final message is not JSON'); }
-  if (!Array.isArray(result) || result.length !== 1 || typeof result[0] !== 'object' || result[0] === null) {
+/** Each run of whitespace as one space, so a quote may differ from the record in spacing and line breaks. */
+const ws = (s) => s.replace(/\s+/g, ' ').trim();
+
+/**
+ * Check a complete claim against the runner records and fill each evidence item's command and exit code from its record.
+ * A record from before the final turn stays valid while the worktree's content signature still matches the one it recorded.
+ */
+function checkedReply(reply, handed, action, run, repo, finalCommands, allCommands, plannedChecks, finalStartedAt) {
+  const { array, repairs } = outcomeArrayOf(reply, 'CODEX_MEASURE_REPLY');
+  if (array.length !== 1 || typeof array[0] !== 'object' || array[0] === null || Array.isArray(array[0])) {
     throw new MeasureError('CODEX_MEASURE_REPLY_INVALID', 'subagent final message must be a one-item outcome array');
   }
-  const item = result[0];
   const records = readdirSync(handed).filter((name) => name.startsWith(`${action}-check-`) && name.endsWith('.json')).map((name) => {
     try { return JSON.parse(readFileSync(path.join(handed, name), 'utf8')); }
     catch { throw new MeasureError('CODEX_MEASURE_CHECK_MALFORMED', `invalid check record ${name}`); }
   });
-  if (item.status === 'complete') {
-    if (!Array.isArray(item.evidence) || item.evidence.length !== plannedChecks.length || records.length !== plannedChecks.length) {
-      throw new MeasureError('CODEX_MEASURE_CHECK_MISMATCH', 'completed reply does not cover every recorded check');
+  const toolCalls = records.sort((a, b) => a.check - b.check).map((record) => ({ tool: 'Bash', target: record.command }));
+  if (array[0].status !== 'complete') return { item: array[0], repairs, toolCalls };
+  if (!Array.isArray(array[0].evidence)) throw new MeasureError('CODEX_MEASURE_CHECK_MISMATCH', 'completed reply has no evidence list');
+  const own = records.filter((r) => r.actionId === action);
+  const notes = [...repairs];
+  let tree;
+  const currentTree = () => (tree ??= treeSignatureOf(repo, PREFIX));
+  // A claimed item numbered past the planned total is dropped with a note, as the runtime drops one on Claude Code, so the runtime counts what remains.
+  const evidence = array[0].evidence.filter((claimed) => {
+    if (!Number.isInteger(claimed.check) || claimed.check <= plannedChecks.length) return true;
+    notes.push(`dropped evidence item numbered ${claimed.check}; the plan has ${plannedChecks.length} checks`);
+    return false;
+  }).map((claimed) => {
+    const planned = plannedChecks[claimed.check - 1];
+    const record = own.find((r) => r.check === claimed.check)
+      ?? (planned && own.find((r) => r.command === planned.command && r.expect === planned.expect));
+    if (!record || !planned || record.command !== planned.command || record.expect !== planned.expect || typeof claimed.quote !== 'string') {
+      throw new MeasureError('CODEX_MEASURE_CHECK_MISMATCH', `evidence for check ${claimed.check} does not match its executed command and output`);
     }
-    for (const evidence of item.evidence) {
-      const record = records.find((r) => r.check === evidence.check && r.actionId === action);
-      const planned = plannedChecks[evidence.check - 1];
-      if (!record || !planned || record.command !== planned.command || record.expect !== planned.expect || record.command !== evidence.command || record.exitCode !== evidence.exitCode || typeof evidence.quote !== 'string') {
-        throw new MeasureError('CODEX_MEASURE_CHECK_MISMATCH', `evidence for check ${evidence.check} does not match its executed command and output`);
-      }
-      const expectation = parseCheckExpectation(planned.expect);
-      if (expectation === null) throw new MeasureError('CODEX_MEASURE_EXPECT_UNSUPPORTED', `check ${evidence.check} has an unverifiable expected result`);
-      const quotable = expectation.kind === 'exit' ? record.output : record.commandOutput;
-      if (typeof quotable !== 'string' || !quotable.includes(evidence.quote) || !record.output.includes(evidence.quote)) {
-        throw new MeasureError('CODEX_MEASURE_CHECK_MISMATCH', `evidence for check ${evidence.check} does not quote the recorded output`);
-      }
-      if (typeof record.commandOutput !== 'string' || !checkMatchesExpectation(expectation, record.exitCode, record.commandOutput)) {
-        throw new MeasureError('CODEX_MEASURE_CHECK_FAILED', `check ${evidence.check} did not show its planned result`);
-      }
-      if (!Number.isFinite(timeOf(record.completedAt)) || timeOf(record.completedAt) < finalStartedAt) {
-        throw new MeasureError('CODEX_MEASURE_CHECK_STALE', `check ${evidence.check} was not recorded in the final subagent turn`);
-      }
-      const invocation = checkInvocation({ run, action, check: record.check, cli });
-      if (!commands.includes(invocation)) throw new MeasureError('CODEX_MEASURE_CHECK_UNSOURCED', `check ${record.check} has no matching runner invocation in the subagent rollout`);
+    const expectation = parseCheckExpectation(planned.expect);
+    if (expectation === null) throw new MeasureError('CODEX_MEASURE_EXPECT_UNSUPPORTED', `check ${claimed.check} has an unverifiable expected result`);
+    const quotable = expectation.kind === 'exit' ? record.output : record.commandOutput;
+    if (typeof quotable !== 'string' || !ws(quotable).includes(ws(claimed.quote))) {
+      throw new MeasureError('CODEX_MEASURE_CHECK_MISMATCH', `evidence for check ${claimed.check} does not quote the recorded output`);
     }
-  }
-  return { item, toolCalls: records.sort((a, b) => a.check - b.check).map((record) => ({ tool: 'Bash', target: record.command.slice(0, 120) })) };
+    if (typeof record.commandOutput !== 'string' || !checkMatchesExpectation(expectation, record.exitCode, record.commandOutput)) {
+      throw new MeasureError('CODEX_MEASURE_CHECK_FAILED', `check ${claimed.check} did not show its planned result`);
+    }
+    const beforeFinalTurn = !Number.isFinite(timeOf(record.completedAt)) || timeOf(record.completedAt) < finalStartedAt;
+    if (beforeFinalTurn && (repo === undefined || record.tree === undefined || record.tree !== currentTree())) {
+      throw new MeasureError('CODEX_MEASURE_CHECK_STALE', `check ${claimed.check} was recorded before the final subagent turn, and no matching worktree signature shows the worktree unchanged since`);
+    }
+    const sources = beforeFinalTurn ? allCommands : finalCommands;
+    if (!sources.some((command) => invocationMatches(command, { run, action, check: record.check }))) {
+      throw new MeasureError('CODEX_MEASURE_CHECK_UNSOURCED', `check ${record.check} has no matching runner invocation in the subagent rollout`);
+    }
+    if (claimed.command !== record.command || claimed.exitCode !== record.exitCode) {
+      const note = `check ${claimed.check}: command and exit code taken from the runner record`;
+      if (!notes.includes(note)) notes.push(note);
+    }
+    return { ...claimed, command: record.command, exitCode: record.exitCode };
+  });
+  return { item: { ...array[0], evidence }, repairs: notes, toolCalls };
 }
 
 function validateClassReply(cli, item, handed, action) {
@@ -179,7 +199,7 @@ function main(args) {
     : saved.pendingAction?.kind === 'dispatch-judge'
       ? saved.brief.tasks.plan.flatMap((task) => task.doneWhen)
       : [];
-  const { item, toolCalls } = checkedReply(done.reply, handed, v.action, v.run, v.cli, commandsOf(events.slice(finalStartIndex)), plannedChecks, finalStartedAt);
+  const { item, repairs, toolCalls } = checkedReply(done.reply, handed, v.action, v.run, v.repo, commandsOf(events.slice(finalStartIndex)), commandsOf(events), plannedChecks, finalStartedAt);
   validateClassReply(v.cli, item, handed, v.action);
   const usage = usageOf(events, PREFIX);
   const seconds = Math.round((timeOf(done.completedAt) - timeOf(done.startedAt)) / 1000);
@@ -189,8 +209,8 @@ function main(args) {
     if (writes?.availability !== 'measured' || !Array.isArray(writes.paths)) throw new MeasureError('CODEX_MEASURE_READ_ONLY_UNVERIFIED', 'Inspector needs a measured worktree baseline');
     if (writes.paths.length > 0) throw new MeasureError('CODEX_MEASURE_READ_ONLY_WRITE', 'Inspector changed the worktree', { paths: writes.paths });
   }
-  const hostMeta = { modelBinding: binding, usage, toolCalls, ...(writes === undefined ? {} : { writes }) };
-  writePair(handed, v.action, done.reply, hostMeta);
+  const hostMeta = { modelBinding: binding, usage, toolCalls, repairs, ...(writes === undefined ? {} : { writes }) };
+  writePair(handed, v.action, JSON.stringify([item]), hostMeta);
   return { agentId: v.agent, actionId: v.action, tokens: usage.inputTokens + usage.cacheWriteTokens + usage.outputTokens, checks: toolCalls.length };
 }
 

@@ -4,7 +4,7 @@ import { writeFileSync, renameSync, rmSync, existsSync } from 'node:fs';
 import { homedir } from 'node:os';
 import path from 'node:path';
 import { parseArgs } from 'node:util';
-import { RolloutError, findSession, entriesOf, usageOf, sessionMetaOf, assertChildOf, modelOf, finalReplyOf, timeOf } from '../rollout.mjs';
+import { RolloutError, outcomeArrayOf, findSession, entriesOf, usageOf, sessionMetaOf, assertChildOf, modelOf, finalReplyOf, timeOf } from '../rollout.mjs';
 
 const PREFIX = 'CODEX_REPLY';
 
@@ -17,15 +17,11 @@ function flagsOf(args) {
 }
 
 function itemOf(reply) {
-  const fenced = /^```json[ \t]*\r?\n([\s\S]*?)\r?\n```[ \t]*$/.exec(reply.trim());
-  const text = fenced === null ? reply : fenced[1];
-  let result;
-  try { result = JSON.parse(text); }
-  catch { throw new RolloutError(`${PREFIX}_INVALID`, 'subagent final message is not JSON'); }
-  if (!Array.isArray(result) || result.length !== 1 || typeof result[0] !== 'object' || result[0] === null || Array.isArray(result[0])) {
+  const { array, repairs } = outcomeArrayOf(reply, PREFIX);
+  if (array.length !== 1 || typeof array[0] !== 'object' || array[0] === null || Array.isArray(array[0])) {
     throw new RolloutError(`${PREFIX}_INVALID`, 'subagent final message must be a one-item outcome array');
   }
-  return { item: result[0], text };
+  return { item: array[0], text: JSON.stringify(array), repairs };
 }
 
 function writeAll(out, files) {
@@ -55,7 +51,7 @@ function main(args) {
     throw new RolloutError(`${PREFIX}_PROMPT_MISMATCH`, 'subagent prompt does not name the marker');
   }
   const done = finalReplyOf(events, PREFIX);
-  const { item, text } = itemOf(done.reply);
+  const { item, text, repairs } = itemOf(done.reply);
   const binding = modelOf(events, PREFIX);
   const usage = usageOf(events, PREFIX);
   const seconds = Math.round((timeOf(done.completedAt) - timeOf(done.startedAt)) / 1000);
@@ -63,9 +59,9 @@ function main(args) {
   writeAll(v.out, {
     'reply.txt': text,
     'reply.json': JSON.stringify(item, null, 2) + '\n',
-    'meta.json': JSON.stringify({ modelBinding: binding, usage }, null, 2) + '\n'
+    'meta.json': JSON.stringify({ modelBinding: binding, usage, repairs }, null, 2) + '\n'
   });
-  return { agentId: v.agent, corrections: done.corrections, tokens: usage.inputTokens + usage.cacheWriteTokens + usage.outputTokens };
+  return { agentId: v.agent, corrections: done.corrections, repairs: repairs.length, tokens: usage.inputTokens + usage.cacheWriteTokens + usage.outputTokens };
 }
 
 try { process.stdout.write(JSON.stringify(main(process.argv.slice(2))) + '\n'); }
