@@ -33,10 +33,12 @@ export function usageOf(events, prefix) {
   const fresh = total.input_tokens - total.cached_input_tokens - total.cache_write_input_tokens;
   if (fresh < 0) throw new RolloutError(`${prefix}_USAGE_MALFORMED`, 'cached and cache-write tokens exceed input tokens');
   const totals = counts.map((c) => c.total_tokens);
-  if (totals.some((n, i) => !Number.isSafeInteger(n) || (i > 0 && n <= totals[i - 1]))) {
-    throw new RolloutError(`${prefix}_USAGE_MALFORMED`, 'cumulative token counts are not strictly increasing');
+  if (totals.some((n, i) => !Number.isSafeInteger(n) || (i > 0 && n < totals[i - 1]))) {
+    throw new RolloutError(`${prefix}_USAGE_MALFORMED`, 'cumulative token counts went down');
   }
-  return { inputTokens: fresh, cacheWriteTokens: total.cache_write_input_tokens, cacheReadTokens: total.cached_input_tokens, outputTokens: total.output_tokens, turns: counts.length };
+  // Codex re-emits the same cumulative snapshot around a mid-turn message or a settings change; a repeat is not a turn.
+  const turns = totals.filter((n, i) => i === 0 || n !== totals[i - 1]).length;
+  return { inputTokens: fresh, cacheWriteTokens: total.cache_write_input_tokens, cacheReadTokens: total.cached_input_tokens, outputTokens: total.output_tokens, turns };
 }
 
 export function sessionMetaOf(events, prefix) {
