@@ -43,7 +43,9 @@ function parentWindow(events, since) {
       }
       return { at, total };
     });
-  const inWindow = counts.filter((c) => c.at >= since);
+  // Codex re-emits the same cumulative snapshot around a mid-turn message or a settings change; a repeat is not a turn.
+  const stepped = counts.filter((c, i) => i === 0 || COUNTERS.some((k) => c.total[k] !== counts[i - 1].total[k]));
+  const inWindow = stepped.filter((c) => c.at >= since);
   if (inWindow.length === 0) return { inputTokens: 0, cacheWriteTokens: 0, cacheReadTokens: 0, outputTokens: 0, turns: 0 };
   const base = counts.filter((c) => c.at < since).at(-1)?.total ?? Object.fromEntries(COUNTERS.map((k) => [k, 0]));
   const last = inWindow.at(-1).total;
