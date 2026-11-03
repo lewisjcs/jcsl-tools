@@ -74,3 +74,75 @@ export function finalReplyOf(events, prefix) {
   if (typeof done.last_agent_message !== 'string' || done.last_agent_message.length === 0) throw new RolloutError(`${prefix}_INCOMPLETE`, 'subagent has no final reply');
   return { reply: done.last_agent_message, startedAt: starts[0].started_at, completedAt: done.completed_at, corrections: completions.length - 1 };
 }
+
+function parseArray(text) {
+  try {
+    const parsed = JSON.parse(text);
+    return Array.isArray(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+/** The slice from the `[` at `start` to its balanced `]`, or null when the text ends first. Brackets inside JSON strings are skipped. */
+function balancedArraySlice(text, start) {
+  let depth = 0;
+  let inString = false;
+  for (let i = start; i < text.length; i += 1) {
+    const ch = text[i];
+    if (inString) {
+      if (ch === '\\') i += 1;
+      else if (ch === '"') inString = false;
+    } else if (ch === '"') {
+      inString = true;
+    } else if (ch === '[') {
+      depth += 1;
+    } else if (ch === ']') {
+      depth -= 1;
+      if (depth === 0) return text.slice(start, i + 1);
+    }
+  }
+  return null;
+}
+
+function sortKeysDeep(value) {
+  if (Array.isArray(value)) return value.map(sortKeysDeep);
+  if (value !== null && typeof value === 'object') return Object.fromEntries(Object.keys(value).sort().map((k) => [k, sortKeysDeep(value[k])]));
+  return value;
+}
+
+/** The structural outcome check a host script can make without the Class contract: an object whose `status` and `classId` are strings. So a bare outcome object's own nested arrays (its read list, its evidence) are never taken for the outcome array. `src/reply-array.mjs` takes the same check as its predicate in the parity test. */
+export function isOutcomeShaped(item) {
+  return typeof item === 'object' && item !== null && !Array.isArray(item) && typeof item.status === 'string' && typeof item.classId === 'string';
+}
+
+/** Distinct candidate arrays in order of appearance. A parsed slice is top-level: the scan resumes after it, so arrays nested inside never compete. */
+function candidatesOf(raw) {
+  const distinct = new Map();
+  let start = raw.indexOf('[');
+  while (start !== -1) {
+    const slice = balancedArraySlice(raw, start);
+    const parsed = slice === null ? null : parseArray(slice);
+    if (parsed !== null) {
+      if (parsed.length > 0 && parsed.every(isOutcomeShaped)) distinct.set(JSON.stringify(sortKeysDeep(parsed)), parsed);
+      start = raw.indexOf('[', start + slice.length);
+    } else {
+      start = raw.indexOf('[', start + 1);
+    }
+  }
+  return [...distinct.values()];
+}
+
+/**
+ * The outcome array of a member's reply, found as the kernel and `src/reply-array.mjs` find it (a second copy: nothing under hosts/codex/ imports from src/;
+ * test/reply-array.test.mjs pins the two together, with `isOutcomeShaped` as the shared scanner's predicate). A JSON array is taken as is, else the single
+ * candidate array of outcome-shaped items in the text, also after a JSON parse that is not an array. `repairs` is `[]` for a bare array.
+ */
+export function outcomeArrayOf(reply, prefix) {
+  let direct = null;
+  try { direct = JSON.parse(reply); } catch { /* A reply that is not JSON is scanned. */ }
+  if (Array.isArray(direct)) return { array: direct, repairs: [] };
+  const candidates = candidatesOf(reply);
+  if (candidates.length === 1) return { array: candidates[0], repairs: ['reply salvaged from prose or a fence'] };
+  throw new RolloutError(`${prefix}_INVALID`, candidates.length === 0 ? 'subagent final message holds no outcome array' : `subagent final message holds ${candidates.length} candidate outcome arrays`);
+}

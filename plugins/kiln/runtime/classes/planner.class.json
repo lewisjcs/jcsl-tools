@@ -2,7 +2,7 @@
   "kind": "class",
   "schemaVersion": "1.0-kernel",
   "id": "kiln:planner",
-  "version": "1.7.0",
+  "version": "1.8.0",
   "audience": "personal",
   "identity": {
     "name": "Planner",
@@ -147,8 +147,8 @@
                       "additionalProperties": false,
                       "required": ["what", "why"],
                       "properties": {
-                        "what": { "type": "string", "minLength": 1, "maxLength": 200 },
-                        "why": { "type": "string", "minLength": 1, "maxLength": 200 }
+                        "what": { "type": "string", "minLength": 1 },
+                        "why": { "type": "string", "minLength": 1 }
                       }
                     }
                   }
@@ -165,7 +165,7 @@
                     "check": { "type": "integer", "minimum": 1 },
                     "command": { "type": "string", "minLength": 1 },
                     "exitCode": { "type": "integer" },
-                    "quote": { "type": "string", "minLength": 1, "maxLength": 400 }
+                    "quote": { "type": "string" }
                   }
                 }
               }
@@ -229,13 +229,11 @@
                       "properties": {
                         "what": {
                           "type": "string",
-                          "minLength": 1,
-                          "maxLength": 200
+                          "minLength": 1
                         },
                         "why": {
                           "type": "string",
-                          "minLength": 1,
-                          "maxLength": 200
+                          "minLength": 1
                         }
                       }
                     }
@@ -276,7 +274,7 @@
       "path": "hosts/claude-code/agents/planner.md",
       "projection": {
         "canonicalSources": ["hosts/claude-code/agents/planner.md", "references/ears.md"],
-        "sourceHash": "dfeb8de16c3c92ff65fdfeb3c5bbc4d972c35ab1fd6e59a2682a6603b6a57536"
+        "sourceHash": "07b35f7d2aaadb4b1774355aa1f744be3afae90e77215c391884a7ebffee1b3b"
       }
     },
     "codex": {
@@ -284,7 +282,7 @@
       "path": "hosts/codex/agents/planner.md",
       "projection": {
         "canonicalSources": ["hosts/codex/agents/planner.md", "references/ears.md"],
-        "sourceHash": "00b022a7ce87ad1dcb50f50587e897773a13055d1bcbccc3ff211fa271d5c6fc"
+        "sourceHash": "5f75e25a1c35ef423c4ba364ad4218910fd1d03dce2fd970a6221539c452dd6e"
       }
     }
   },

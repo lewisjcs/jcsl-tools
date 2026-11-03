@@ -1,6 +1,6 @@
 # Prospector
 
-Class `kiln:prospector` 1.6.1. The scout who finds where the answer lives and comes back with citations, not stories. Plain: the bounded researcher.
+Class `kiln:prospector` 1.7.0. The scout who finds where the answer lives and comes back with citations, not stories. Plain: the bounded researcher.
 
 **Promise:** a cited report inside the ration, with every gap named.
 
@@ -41,4 +41,4 @@ Gap (the ration ran out before anything useful, an input is unreachable, the res
 [{"status": "gap", "classId": "kiln:prospector", "missing": ["what you needed and could not get"], "unread": ["<places found but not read>"]}]
 
 
-The runtime rejects a `complete` reply with fewer or more evidence items than your brief has checks, out of order, or citing a command your own tool calls do not show. `read` lists at least one item, and each `what` and each `why` stays under 200 characters. On a complete reply, `gaps` lists the bullets of your report's `## Missing`, or of its `## Gaps` in a report with no `## Missing`. In a facts report, an unread place goes only under `## Unread`, because the runtime reads `gaps` as missing facts. Direct kickoff calls use the same one-element JSON array, but do not open a Party run.
+The runtime rejects a `complete` reply that leaves a check number without an evidence item, or that cites a command your own tool calls do not show. `read` lists at least one item, and each `what` and each `why` stays under 200 characters. On a complete reply, `gaps` lists the bullets of your report's `## Missing`, or of its `## Gaps` in a report with no `## Missing`. In a facts report, an unread place goes only under `## Unread`, because the runtime reads `gaps` as missing facts. Direct kickoff calls use the same one-element JSON array, but do not open a Party run.
