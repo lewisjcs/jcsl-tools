@@ -2,14 +2,14 @@
   "kind": "class",
   "schemaVersion": "1.0-kernel",
   "id": "kiln:inspector",
-  "version": "1.6.0",
+  "version": "1.7.0",
   "audience": "personal",
   "identity": {
     "name": "Inspector",
     "tagline": "The skeptic who accepts evidence, never assurances.",
     "promise": "A verdict on whether the commits followed the plan, with one ruling per deviation.",
     "constraints": [
-      "Runs after the last task, and again after each fix task, over the plan's tasks, the acceptance lines, the branch's commits, and the deviations each task's brief block declares.",
+      "Runs after the last task of a phase, and again after each fix task.",
       "Walks the diff and re-runs every task's checks before reading the Crafter's declared deviations.",
       "Every ruling is one of justified, unjustified, or undeclared, with a reason.",
       "Names the consequence it observed in the diff, low, medium, or high, with one reason."
@@ -46,7 +46,7 @@
           "repo": { "type": "string", "minLength": 1 },
           "branch": { "type": "string", "minLength": 1 },
           "acceptance": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
-          "tasks": { "type": "array", "minItems": 1, "items": { "type": "object", "additionalProperties": false, "required": ["taskId", "goal", "commit", "covers", "doneWhen", "deviations"], "properties": { "taskId": { "type": "string", "pattern": "^task-[0-9]+$" }, "goal": { "type": "string", "minLength": 1 }, "commit": { "anyOf": [{ "type": "string", "pattern": "^[0-9a-f]{7,40}$" }, { "type": "null" }] }, "covers": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } }, "doneWhen": { "type": "array", "minItems": 1, "items": { "type": "object", "additionalProperties": false, "required": ["command", "expect"], "properties": { "command": { "type": "string", "minLength": 1 }, "expect": { "type": "string", "minLength": 1 } } } }, "deviations": { "type": "array", "items": { "type": "object", "additionalProperties": false, "required": ["kind", "briefSaid", "did", "why"], "properties": { "kind": { "type": "string", "minLength": 1 }, "briefSaid": { "type": "string", "minLength": 1 }, "did": { "type": "string", "minLength": 1 }, "why": { "type": "string", "minLength": 1 } } } } } } }
+          "tasks": { "type": "array", "minItems": 1, "items": { "type": "object", "additionalProperties": false, "required": ["taskId", "goal", "commit", "covers", "doneWhen", "deviations", "repo", "branch"], "properties": { "taskId": { "type": "string", "pattern": "^task-[0-9]+$" }, "goal": { "type": "string", "minLength": 1 }, "commit": { "anyOf": [{ "type": "string", "pattern": "^[0-9a-f]{7,40}$" }, { "type": "null" }] }, "covers": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } }, "doneWhen": { "type": "array", "minItems": 1, "items": { "type": "object", "additionalProperties": false, "required": ["command", "expect"], "properties": { "command": { "type": "string", "minLength": 1 }, "expect": { "type": "string", "minLength": 1 } } } }, "deviations": { "type": "array", "items": { "type": "object", "additionalProperties": false, "required": ["kind", "briefSaid", "did", "why"], "properties": { "kind": { "type": "string", "minLength": 1 }, "briefSaid": { "type": "string", "minLength": 1 }, "did": { "type": "string", "minLength": 1 }, "why": { "type": "string", "minLength": 1 } } } }, "repo": { "type": "string", "minLength": 1 }, "branch": { "type": "string", "minLength": 1 } } } }
         }
       }
     },
@@ -151,7 +151,7 @@
       "path": "hosts/claude-code/agents/inspector.md",
       "projection": {
         "canonicalSources": ["hosts/claude-code/agents/inspector.md"],
-        "sourceHash": "6e6db06a22c5200423a1fd168d43bcd1b7b0c6e20cb16832962832a895edfd93"
+        "sourceHash": "c03d571a33aaa2de8a4b6d64b256eeafbe45f71133678292aed4c6d8d73d8372"
       }
     },
     "codex": {
@@ -159,7 +159,7 @@
       "path": "hosts/codex/agents/inspector.md",
       "projection": {
         "canonicalSources": ["hosts/codex/agents/inspector.md"],
-        "sourceHash": "ccf9556e26fdba48386c77d0587128b2e9c67e72611aec5ad3ed962bba772308"
+        "sourceHash": "572c33c1a054e9301ba82958faa7c1a5b911bed9b6c52162db31d8ee1545a0b0"
       }
     }
   },

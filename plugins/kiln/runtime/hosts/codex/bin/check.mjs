@@ -30,20 +30,21 @@ function main(args) {
   if (next.terminal || next.actionId !== v.action || next.hostBinding?.kind !== 'subagent') {
     throw new CheckError('CODEX_CHECK_ACTION_MISMATCH', 'the requested action is not the pending Codex member', { requested: v.action, pending: next.actionId ?? null });
   }
-  const checks = next.kind === 'dispatch-changer'
-    ? state.brief.tasks.plan[state.cursor].doneWhen
-    : next.kind === 'dispatch-judge'
-      ? state.brief.tasks.plan.flatMap((task) => task.doneWhen)
-      : null;
+  // The checks `next` just wrote for this changer or judge, in check-number order.
+  const checks = next.kind === 'dispatch-changer' || next.kind === 'dispatch-judge'
+    ? JSON.parse(readFileSync(path.join(v.run, 'handed', `${v.action}-checks.json`), 'utf8'))
+    : null;
   if (checks === null || v.check > checks.length) throw new CheckError('CODEX_CHECK_NUMBER', 'no planned check has this number', { check: v.check, kind: next.kind });
   const selected = checks[v.check - 1];
-  if (selected.repo !== state.repo.root) throw new CheckError('CODEX_CHECK_REPO_MISMATCH', 'planned check is outside the selected worktree');
+  // The pending action's worktrees: the changer's own, or each repository the judge reads.
+  const roots = next.kind === 'dispatch-changer' ? [next.write.repoRoot] : next.readOnly.repos.map((r) => r.repoRoot);
+  if (!roots.includes(selected.repo)) throw new CheckError('CODEX_CHECK_REPO_MISMATCH', 'planned check is outside the pending action\'s worktrees', { repo: selected.repo, roots });
   const tree = treeSignatureOf(selected.repo, 'CODEX_CHECK');
   const ran = spawnSync('/bin/sh', ['-c', selected.command], { cwd: selected.repo, encoding: 'utf8', timeout: 900000, maxBuffer: 4 * 1024 * 1024 });
   if (ran.error || !Number.isInteger(ran.status)) throw new CheckError('CODEX_CHECK_EXEC_FAILED', 'the planned check did not finish', { error: ran.error?.message ?? `signal ${ran.signal}` });
   const commandOutput = `${ran.stdout ?? ''}${ran.stderr ?? ''}`;
   const output = `${commandOutput}${commandOutput && !commandOutput.endsWith('\n') ? '\n' : ''}[kiln check ${v.check} exit ${ran.status}]\n`;
-  const record = { actionId: v.action, check: v.check, command: selected.command, expect: selected.expect, exitCode: ran.status, commandOutput, output, completedAt: new Date().toISOString(), tree };
+  const record = { actionId: v.action, check: v.check, command: selected.command, expect: selected.expect, repo: selected.repo, exitCode: ran.status, commandOutput, output, completedAt: new Date().toISOString(), tree };
   const file = path.join(v.run, 'handed', `${v.action}-check-${v.check}.json`);
   const temp = `${file}.tmp-${process.pid}`;
   try {
