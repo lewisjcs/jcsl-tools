@@ -20,15 +20,18 @@ function flagsOf(args) {
   const { values } = parseArgs({ args, options: {
     'sessions-root': { type: 'string' }, agent: { type: 'string' }, action: { type: 'string' },
     brief: { type: 'string' }, run: { type: 'string' }, cli: { type: 'string' },
-    repo: { type: 'string' }, before: { type: 'string' }
+    repo: { type: 'string', multiple: true }, before: { type: 'string', multiple: true }
   } });
   for (const key of ['agent', 'action', 'brief', 'run', 'cli']) {
     if (!values[key]) throw new MeasureError('CODEX_MEASURE_FLAGS', `--${key} is required`);
   }
-  if ((values.repo === undefined) !== (values.before === undefined)) {
-    throw new MeasureError('CODEX_MEASURE_FLAGS', '--repo and --before must be supplied together');
+  // One --repo/--before pair per repository, the nth --before for the nth --repo.
+  const { repo: repos = [], before: befores = [], ...named } = values;
+  if (repos.length !== befores.length) {
+    throw new MeasureError('CODEX_MEASURE_FLAGS', 'each --repo needs its own --before, in the same order');
   }
-  return { ...values, 'sessions-root': values['sessions-root'] ?? path.join(process.env.CODEX_HOME ?? path.join(homedir(), '.codex'), 'sessions') };
+  const pairs = repos.map((repo, i) => ({ repo, before: befores[i] }));
+  return { ...named, pairs, 'sessions-root': named['sessions-root'] ?? path.join(process.env.CODEX_HOME ?? path.join(homedir(), '.codex'), 'sessions') };
 }
 
 function nestedCommands(source) {
@@ -75,9 +78,9 @@ const ws = (s) => s.replace(/\s+/g, ' ').trim();
 
 /**
  * Check a complete claim against the runner records and fill each evidence item's command and exit code from its record.
- * A record from before the final turn stays valid while the worktree's content signature still matches the one it recorded.
+ * A record from before the final turn stays valid while the content signature of its own repository, one of the measured roots, still matches the one it recorded.
  */
-function checkedReply(reply, handed, action, run, repo, finalCommands, allCommands, plannedChecks, finalStartedAt) {
+function checkedReply(reply, handed, action, run, roots, finalCommands, allCommands, plannedChecks, finalStartedAt) {
   const { array, repairs } = outcomeArrayOf(reply, 'CODEX_MEASURE_REPLY');
   if (array.length !== 1 || typeof array[0] !== 'object' || array[0] === null || Array.isArray(array[0])) {
     throw new MeasureError('CODEX_MEASURE_REPLY_INVALID', 'subagent final message must be a one-item outcome array');
@@ -91,8 +94,11 @@ function checkedReply(reply, handed, action, run, repo, finalCommands, allComman
   if (!Array.isArray(array[0].evidence)) throw new MeasureError('CODEX_MEASURE_CHECK_MISMATCH', 'completed reply has no evidence list');
   const own = records.filter((r) => r.actionId === action);
   const notes = [...repairs];
-  let tree;
-  const currentTree = () => (tree ??= treeSignatureOf(repo, PREFIX));
+  const trees = new Map();
+  const currentTree = (repo) => {
+    if (!trees.has(repo)) trees.set(repo, treeSignatureOf(repo, PREFIX));
+    return trees.get(repo);
+  };
   // A claimed item numbered past the planned total is dropped with a note, as the runtime drops one on Claude Code, so the runtime counts what remains.
   const evidence = array[0].evidence.filter((claimed) => {
     if (!Number.isInteger(claimed.check) || claimed.check <= plannedChecks.length) return true;
@@ -115,7 +121,7 @@ function checkedReply(reply, handed, action, run, repo, finalCommands, allComman
       throw new MeasureError('CODEX_MEASURE_CHECK_FAILED', `check ${claimed.check} did not show its planned result`);
     }
     const beforeFinalTurn = !Number.isFinite(timeOf(record.completedAt)) || timeOf(record.completedAt) < finalStartedAt;
-    if (beforeFinalTurn && (repo === undefined || record.tree === undefined || record.tree !== currentTree())) {
+    if (beforeFinalTurn && (!roots.includes(record.repo) || record.tree === undefined || record.tree !== currentTree(record.repo))) {
       throw new MeasureError('CODEX_MEASURE_CHECK_STALE', `check ${claimed.check} was recorded before the final subagent turn, and no matching worktree signature shows the worktree unchanged since`);
     }
     const sources = beforeFinalTurn ? allCommands : finalCommands;
@@ -140,12 +146,17 @@ function validateClassReply(cli, item, handed, action) {
   } finally { rmSync(temp, { force: true }); }
 }
 
+/** One `writes measure` per --repo/--before pair. The paths are their union, and the measurement counts as measured only when every pair's is. */
 function writesOf(v) {
-  if (v.repo === undefined) return undefined;
-  const result = spawnSync(process.execPath, [v.cli, 'writes', 'measure', '--repo', v.repo, '--before', v.before], { encoding: 'utf8' });
-  if (result.status !== 0) throw new MeasureError('CODEX_MEASURE_WRITES_FAILED', 'write measurement failed', { error: result.stderr.trim().slice(0, 1000) });
-  try { return JSON.parse(result.stdout); }
-  catch { throw new MeasureError('CODEX_MEASURE_WRITES_FAILED', 'write measurement did not return JSON'); }
+  if (v.pairs.length === 0) return undefined;
+  const measured = v.pairs.map(({ repo, before }) => {
+    const result = spawnSync(process.execPath, [v.cli, 'writes', 'measure', '--repo', repo, '--before', before], { encoding: 'utf8' });
+    if (result.status !== 0) throw new MeasureError('CODEX_MEASURE_WRITES_FAILED', 'write measurement failed', { error: result.stderr.trim().slice(0, 1000) });
+    try { return JSON.parse(result.stdout); }
+    catch { throw new MeasureError('CODEX_MEASURE_WRITES_FAILED', 'write measurement did not return JSON'); }
+  });
+  if (measured.some((w) => w.availability !== 'measured')) return { availability: 'unavailable' };
+  return { availability: 'measured', paths: [...new Set(measured.flatMap((w) => w.paths))].sort() };
 }
 
 function writePair(handed, action, reply, meta) {
@@ -194,12 +205,11 @@ function main(args) {
   const finalStartIndex = events.findLastIndex((e) => e.type === 'event_msg' && e.payload?.type === 'task_started');
   const finalStartedAt = timeOf(events[finalStartIndex]?.payload?.started_at);
   if (!Number.isFinite(finalStartedAt)) throw new MeasureError('CODEX_MEASURE_INCOMPLETE', 'the final subagent turn has no start time');
-  const plannedChecks = saved.pendingAction?.kind === 'dispatch-changer'
-    ? saved.brief.tasks.plan[saved.cursor].doneWhen
-    : saved.pendingAction?.kind === 'dispatch-judge'
-      ? saved.brief.tasks.plan.flatMap((task) => task.doneWhen)
-      : [];
-  const { item, repairs, toolCalls } = checkedReply(done.reply, handed, v.action, v.run, v.repo, commandsOf(events.slice(finalStartIndex)), commandsOf(events), plannedChecks, finalStartedAt);
+  // The checks `next` wrote for a changer or judge, in check-number order, beside the runner records.
+  const plannedChecks = saved.pendingAction?.kind === 'dispatch-changer' || saved.pendingAction?.kind === 'dispatch-judge'
+    ? JSON.parse(readFileSync(path.join(handed, `${v.action}-checks.json`), 'utf8'))
+    : [];
+  const { item, repairs, toolCalls } = checkedReply(done.reply, handed, v.action, v.run, v.pairs.map((p) => p.repo), commandsOf(events.slice(finalStartIndex)), commandsOf(events), plannedChecks, finalStartedAt);
   validateClassReply(v.cli, item, handed, v.action);
   const usage = usageOf(events, PREFIX);
   const seconds = Math.round((timeOf(done.completedAt) - timeOf(done.startedAt)) / 1000);
