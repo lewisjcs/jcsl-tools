@@ -19,6 +19,7 @@
         "run-initialized",
         "action-pending",
         "receipt-applied",
+        "interjection-applied",
         "stage-failed",
         "run-terminal",
         "outcome-validated",
