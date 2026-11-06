@@ -2232,8 +2232,8 @@ var require_resolve = __commonJS({
       }
       return count2;
     }
-    function getFullPath(resolver, id = "", normalize2) {
-      if (normalize2 !== false)
+    function getFullPath(resolver, id = "", normalize3) {
+      if (normalize3 !== false)
         id = normalizeId(id);
       const p = resolver.parse(id);
       return _getFullPath(resolver, p);
@@ -3828,7 +3828,7 @@ var require_fast_uri = __commonJS({
       }
       return decodedScheme;
     }
-    function normalize2(uri, options) {
+    function normalize3(uri, options) {
       if (typeof uri === "string") {
         uri = /** @type {T} */
         normalizeString(uri, options);
@@ -4206,7 +4206,7 @@ var require_fast_uri = __commonJS({
     }
     var fastUri = {
       SCHEMES,
-      normalize: normalize2,
+      normalize: normalize3,
       resolve: resolve3,
       resolveComponent,
       equal,
@@ -7555,6 +7555,9 @@ function assertProtocolModule(protocol) {
   if (protocol.onRetriesExhausted !== void 0) {
     assertFunction(protocol.onRetriesExhausted, "onRetriesExhausted");
   }
+  if (protocol.interject !== void 0) {
+    assertFunction(protocol.interject, "interject");
+  }
   if (!Array.isArray(protocol.terminalStatuses) || protocol.terminalStatuses.length === 0) {
     throw new TypeError("protocol: terminalStatuses must be a non-empty array");
   }
@@ -7922,6 +7925,18 @@ function exhaustedStep(protocol, state, failure) {
   }
   return step;
 }
+function isRejection(step) {
+  return step !== null && typeof step === "object" && step.reject !== null && typeof step.reject === "object" && typeof step.reject.code === "string" && typeof step.reject.label === "string";
+}
+function interjectionStep(protocol, step) {
+  const rejected = isRejection(step);
+  const terminal = typeof step?.status === "string" && protocol.terminalStatuses.includes(step.status);
+  const shaped = step !== null && typeof step === "object" && step.reject === void 0 && typeof step.status === "string" && step.status.length > 0 && (step.nextKind === void 0 ? terminal : typeof step.nextKind === "string" && Object.hasOwn(protocol.kinds, step.nextKind));
+  if (!rejected && !shaped) {
+    throw new TypeError("protocol: interject must return {reject: {code, label}} or {fields, status, nextKind}, with nextKind a key of kinds unless status is terminal");
+  }
+  return step;
+}
 function recordFailure(protocol, state, { stage, attempt, buildRetryAction, failure, messageLabel, outcomeRetry, outcomeGap, omissions = [] }) {
   const receiptActionId = state.pendingAction.actionId;
   const kind2 = state.pendingAction.kind;
@@ -8176,6 +8191,27 @@ function applyReceipt(protocol, state, receipt) {
     });
   }
   return applyStageReceipt(protocol, state, receipt, writesCheck.omissions);
+}
+function applyInterjection(protocol, state, interjection) {
+  if (!verifyIntegrity(state)) {
+    return { state, issues: [{ code: "RUNTIME_STATE_TAMPERED", message: "state failed integrity verification" }] };
+  }
+  if (new Set(protocol.terminalStatuses).has(state.status) || !state.pendingAction) {
+    return { state, issues: [{ code: "RUNTIME_RECEIPT_ORDER", message: "no pending action to answer" }] };
+  }
+  if (interjection === null || typeof interjection !== "object" || typeof interjection.kind !== "string" || interjection.kind.length === 0) {
+    return { state, issues: [{ code: "RUNTIME_INTERJECTION_MALFORMED", message: "interjection must be an object with a non-empty string kind" }] };
+  }
+  if (protocol.interject === void 0) {
+    return { state, issues: [{ code: "RUNTIME_INTERJECTION_UNSUPPORTED", message: "the protocol defines no interject" }] };
+  }
+  const step = interjectionStep(protocol, protocol.interject(state, interjection));
+  if (isRejection(step)) {
+    return { state, issues: [{ code: step.reject.code, message: step.reject.label }] };
+  }
+  const { actionId, kind: kind2, attempt } = state.pendingAction;
+  const ledgerEntry = { actionId, kind: kind2, attempt, outcome: "interjected", interjection: interjection.kind };
+  return { state: settle(protocol, state, ledgerEntry, step), issues: [] };
 }
 
 // node_modules/@lewisjcs/statblock/src/runtime/prompt.mjs
@@ -10267,7 +10303,7 @@ function buildProfile(brief, { sizeBytes }) {
 }
 function acceptanceOpen(state) {
   const { acceptance } = state.brief;
-  return acceptance === null || acceptance.by === "party" && state.replan !== null && state.replan.by === "person";
+  return acceptance === null || acceptance.by === "party" && !state.documents?.plan?.approved && state.replan !== null && state.replan.by === "person";
 }
 function partsInFlux(state) {
   const waiting = state.pendingWrite === null ? [] : state.pendingWrite.parts;
@@ -10459,7 +10495,7 @@ function renderQuestion(question2, change = false, format) {
     lines.unshift(`Your last reply was "${question2.reply.slice(0, 80)}". ${refused}`);
   }
   const options = change ? [...question2.options, "change <note>"] : question2.options;
-  if (options.length > 0) lines.push(`Reply with one of: ${options.join(", ")}. Reply abandon to end the run.`);
+  lines.push(options.length > 0 ? `Reply with one of: ${options.join(", ")}. Reply abandon to end the run.` : "Reply abandon to end the run.");
   lines.push("Detail: below the line in the question file.");
   const text = lines.join("\n");
   if (text.length > QUESTION_CAP) throw new RangeError(`question renders to ${text.length} characters; the cap is ${QUESTION_CAP}`);
@@ -11236,6 +11272,382 @@ function mapBorrowedReview({ result, evidence, bundle, stagedDiffBytes, lens, sc
   return { outcome: [{ status: "gap", classId, ...body, missing }], usage };
 }
 
+// src/approved-plan-shape.mjs
+import path5 from "node:path";
+var TASK = /^#{2,3} Task (\d+): (.+)$/;
+var SOURCE = /^\s*(?:[-*]\s+)?(?:\*\*)?Source ticket:(?:\*\*)?\s*(\S.*?)\s*$/i;
+var FILE_ENTRY = /^(?:[-*]\s*)?(?:\*\*)?(Files|Create|Modify|Test|Delete|Add):(?:\*\*)?\s*(.*)$/i;
+var REPOSITORY = /^(?:[-*]\s*)?(?:\*\*)?Repository:(?:\*\*)?\s*(.*)$/i;
+var AFTER_RELEASE = /^(?:[-*]\s*)?(?:\*\*)?After release:(?:\*\*)?\s*(.+)$/i;
+var DEPENDS_ON = /^(?:[-*]\s*)?(?:\*\*)?Depends on:(?:\*\*)?\s*(.*)$/i;
+var DEPENDS_ON_NONE = /* @__PURE__ */ new Set(["none", "nothing", "n/a", "-", "\u2014", "no"]);
+var BUILD_METHOD_HEADING = /^#{1,6}\s+Recommended build method\b/i;
+var BUILD_METHOD_LINE = /^Recommended build method:\s*(.+)$/i;
+var KILN_OPENER = /^(?:(?:[-*]|\d+\.)\s+)?(?:\*\*|`)*(?:Kiln build|\/kiln:build)/i;
+function shape(message, details = {}) {
+  throw new KilnError("KILN_APPROVED_PLAN_SHAPE", message, details);
+}
+function safeFile(name) {
+  if (name.trim() !== name || name.length === 0 || path5.isAbsolute(name) || name.split("/").some((part) => part === "." || part === "..") || name.includes("//") || name.includes("\\") || /[\0\r\n]/.test(name)) {
+    shape("task files must be safe repository-relative paths", { path: name });
+  }
+}
+function filePaths(lines, startLine) {
+  const files = [];
+  const fileLines = [];
+  const spans = [];
+  let inFiles = false;
+  let fileStarted = false;
+  for (const [index, raw] of lines.entries()) {
+    const line = raw.trim();
+    const entry = FILE_ENTRY.exec(line);
+    if (entry !== null) {
+      const label = entry[1].toLowerCase();
+      const names = [...entry[2].matchAll(/`([^`]+)`/g)].map((match) => match[1]);
+      if (names.length === 0 && label !== "files") shape("each task file line must name a path in backticks", { line: raw, lineNumber: startLine + index });
+      inFiles = label === "files" && names.length === 0;
+      fileStarted = false;
+      const selected = label === "files" ? names : names.slice(0, 1);
+      if (selected.length > 0) fileLines.push(raw);
+      for (const name of selected) {
+        safeFile(name);
+        if (!files.includes(name)) files.push(name);
+        spans.push({ field: "file", line: startLine + index, value: name });
+      }
+      continue;
+    }
+    if (!inFiles) continue;
+    if (line === "") {
+      if (fileStarted) inFiles = false;
+      continue;
+    }
+    const item = /^[-*]\s+`([^`]+)`(?:\s|$)/.exec(line);
+    if (item === null) {
+      inFiles = false;
+      continue;
+    }
+    safeFile(item[1]);
+    if (!files.includes(item[1])) files.push(item[1]);
+    fileStarted = true;
+    fileLines.push(raw);
+    spans.push({ field: "file", line: startLine + index, value: item[1] });
+  }
+  return { files, fileLines, spans };
+}
+function repositoryLine(lines, startLine, number) {
+  for (const [index, raw] of lines.entries()) {
+    const match = REPOSITORY.exec(raw.trim());
+    if (match === null) continue;
+    const name = match[1].trim().replace(/^`+|`+$/g, "").trim();
+    if (name === "" || /[\s]/.test(name) || name.includes("/") || name.includes("..")) {
+      shape(`task ${number}'s Repository: line is not a folder name`, { task: number, lineNumber: startLine + index });
+    }
+    return { name, span: { field: "repository", line: startLine + index, value: name } };
+  }
+  return null;
+}
+function dependsOnLine(lines, startLine, number) {
+  for (const [index, raw] of lines.entries()) {
+    const match = DEPENDS_ON.exec(raw.trim());
+    if (match === null) continue;
+    const lineNumber = startLine + index;
+    const value = match[1].trim();
+    const bare = value.replaceAll("**", "").replaceAll("`", "").trim().replace(/\.$/, "").trim().toLowerCase();
+    const span = { field: "dependsOn", line: lineNumber, value };
+    if (DEPENDS_ON_NONE.has(bare)) return { tasks: [], span };
+    const tasks = [...value.matchAll(/Task (\d+)/gi)].map((ref) => Number(ref[1]));
+    if (tasks.length === 0) shape(`task ${number}'s Depends on: line names no task`, { task: number, lineNumber });
+    const later = tasks.find((earlier) => earlier >= number || earlier < 1);
+    if (later !== void 0) shape(`task ${number}'s Depends on: line names Task ${later}, which is not an earlier task`, { task: number, lineNumber });
+    return { tasks: [...new Set(tasks)], span };
+  }
+  return null;
+}
+function afterReleaseLine(lines, startLine) {
+  for (const [index, raw] of lines.entries()) {
+    const match = AFTER_RELEASE.exec(raw.trim());
+    if (match === null) continue;
+    const refs = [...match[1].matchAll(/Task (\d+)/g)];
+    const rest2 = refs.length === 0 ? "" : match[1].slice(refs.at(-1).index + refs.at(-1)[0].length);
+    const reason = rest2.trim().replace(/^[,:\-\u2013\u2014(]/, "").trim();
+    return { tasks: refs.map((ref) => Number(ref[1])), reason, span: { field: "afterRelease", line: startLine + index, value: match[1].trim() } };
+  }
+  return null;
+}
+function readBuildMethod(lines) {
+  const heading2 = lines.findIndex((line) => BUILD_METHOD_HEADING.test(line));
+  let text;
+  if (heading2 !== -1) {
+    const end = lines.findIndex((line, at) => at > heading2 && /^#{1,6}\s/.test(line));
+    text = lines.slice(heading2 + 1, end === -1 ? void 0 : end).map((line) => line.trim()).find((line) => line !== "");
+  } else {
+    text = lines.map((line) => BUILD_METHOD_LINE.exec(line.trim())).find((match) => match !== null)?.[1].trim();
+  }
+  if (text === void 0) return null;
+  return { kiln: KILN_OPENER.test(text), text };
+}
+function acceptanceLines(lines, startLine) {
+  const entries = lines.map((line) => line.trim());
+  const firstList = entries.findIndex((line) => /^(?:[-*]|\d+\.)\s+/.test(line));
+  if (firstList === -1) {
+    const first = entries.findIndex(Boolean);
+    if (first === -1) return { acceptance: [], spans: [] };
+    const end = entries.findIndex((line, at) => at > first && line === "");
+    const acceptance2 = entries.slice(first, end === -1 ? void 0 : end).map((line) => line.replace(/\s+/g, " "));
+    return { acceptance: acceptance2, spans: acceptance2.map((value, at) => ({ field: "acceptance", line: startLine + first + at, value })) };
+  }
+  const marker = /^(?:[-*]|\d+\.)\s+(.+)$/;
+  const acceptance = [];
+  const spans = [];
+  let current = -1;
+  for (let index = firstList; index < entries.length; index += 1) {
+    const line = entries[index];
+    if (line === "") continue;
+    const match = marker.exec(line);
+    if (match !== null) {
+      acceptance.push(match[1].replace(/\s+/g, " ").trim());
+      spans.push({ field: "acceptance", line: startLine + index, value: acceptance.at(-1) });
+      current = acceptance.length - 1;
+    } else if (current !== -1 && /^\s+\S/.test(lines[index])) {
+      acceptance[current] = `${acceptance[current]} ${line.replace(/\s+/g, " ")}`;
+      spans[current].value = acceptance[current];
+      spans[current].endLine = startLine + index;
+    } else break;
+  }
+  return { acceptance, spans };
+}
+function parseApprovedPlanText(text) {
+  const lines = text.replaceAll("\r\n", "\n").split("\n");
+  const sources = lines.flatMap((line, index) => {
+    const match = SOURCE.exec(line);
+    return match === null ? [] : [{ line: index + 1, value: match[1].trim() }];
+  });
+  if (sources.length !== 1) shape("the plan needs one Source ticket line");
+  const acceptanceStart = lines.findIndex((line) => line.trim() === "## Acceptance criteria");
+  if (acceptanceStart === -1) throw new KilnError("KILN_APPROVED_PLAN_ACCEPTANCE", "the plan needs ## Acceptance criteria");
+  const acceptanceEnd = lines.findIndex((line, index) => index > acceptanceStart && (/^## /.test(line) || TASK.test(line)));
+  const { acceptance, spans: acceptanceSpans } = acceptanceLines(lines.slice(acceptanceStart + 1, acceptanceEnd === -1 ? void 0 : acceptanceEnd), acceptanceStart + 2);
+  if (acceptance.length === 0 || acceptance.some((line) => line.length === 0)) {
+    throw new KilnError("KILN_APPROVED_PLAN_ACCEPTANCE", "the plan needs acceptance criteria");
+  }
+  if (new Set(acceptance).size !== acceptance.length) {
+    throw new KilnError("KILN_APPROVED_PLAN_ACCEPTANCE", "the plan repeats an acceptance criterion");
+  }
+  const headings = lines.map((line, index) => ({ match: TASK.exec(line), index })).filter(({ match }) => match !== null);
+  if (headings.length === 0) shape("the plan needs at least one numbered task");
+  const tasks = headings.map(({ match, index }, position) => {
+    const number = Number(match[1]);
+    if (number !== position + 1) shape(`task ${number} is out of order or repeated`, { task: number, position: position + 1 });
+    const nextHeading = lines.findIndex((line, at) => at > index && /^## /.test(line));
+    const nextTask = headings[position + 1]?.index ?? lines.length;
+    const end = Math.min(nextHeading === -1 ? lines.length : nextHeading, nextTask);
+    const sourceLines = lines.slice(index + 1, end);
+    const markedNonExecutable = /^(?:BLOCKED\s+(?:on|by|pending)\b|optional\s+(?:after|if|later)\b)|\(\s*(?:BLOCKED|optional)\b/i.test(match[2]);
+    const hasBlockingStatus = sourceLines.some((line) => /^\s*\*\*Blocked by:/i.test(line) || /^\s*\*\*Status:/i.test(line) && /\b(?:blocked|optional)\b/i.test(line));
+    if (markedNonExecutable || hasBlockingStatus) {
+      shape(`task ${number} is blocked or optional; settle its executable scope before approval`, { task: number, lineNumber: index + 1 });
+    }
+    const { files, fileLines, spans } = filePaths(sourceLines, index + 2);
+    if (files.length === 0) shape(`task ${number} names no file`, { task: number, lineNumber: index + 1 });
+    const repo = repositoryLine(sourceLines, index + 2, number);
+    const gate = afterReleaseLine(sourceLines, index + 2);
+    const deps = dependsOnLine(sourceLines, index + 2, number);
+    const taskSpans = [{ field: "goal", line: index + 1, value: match[2].trim() }, ...spans, ...repo === null ? [] : [repo.span], ...gate === null ? [] : [gate.span], ...deps === null ? [] : [deps.span]];
+    return {
+      number,
+      heading: `Task ${number}: ${match[2].trim()}`,
+      goal: match[2].trim(),
+      lines: sourceLines,
+      fileLines,
+      files,
+      repository: repo?.name ?? null,
+      dependsOn: deps?.tasks ?? [],
+      afterRelease: gate === null ? null : { tasks: gate.tasks, reason: gate.reason },
+      spans: taskSpans
+    };
+  });
+  const firstNamed = tasks.find((task) => task.repository !== null);
+  if (firstNamed !== void 0) {
+    const unnamed = tasks.find((task) => task.repository === null);
+    if (unnamed !== void 0) shape(`task ${unnamed.number} names no Repository: line while task ${firstNamed.number} does`, { task: unnamed.number });
+  }
+  for (const task of tasks) {
+    if (task.afterRelease === null) continue;
+    const { number } = task;
+    if (task.afterRelease.tasks.length === 0) shape(`task ${number}'s After release: line names no task`, { task: number });
+    for (const earlier of task.afterRelease.tasks) {
+      if (earlier >= number || earlier < 1) shape(`task ${number}'s After release: line names Task ${earlier}, which is not an earlier task`, { task: number });
+      if (tasks[earlier - 1].repository === task.repository) shape(`task ${number}'s After release: line names Task ${earlier} in the same repository`, { task: number });
+    }
+  }
+  const repositories = [...new Set(tasks.flatMap((task) => task.repository === null ? [] : [task.repository]))];
+  return { sourceTicket: sources[0].value, acceptance, tasks, repositories, buildMethod: readBuildMethod(lines), spans: [{ field: "sourceTicket", line: sources[0].line, value: sources[0].value }, ...acceptanceSpans, ...tasks.flatMap((task) => task.spans)] };
+}
+
+// src/approved-plan-change.mjs
+function normalizeTask(task) {
+  const base = { ...task, spans: task.spans ?? [], repository: task.repository ?? null, afterRelease: task.afterRelease ?? null };
+  if (task.dependsOn !== void 0) return base;
+  let dependsOn;
+  try {
+    dependsOn = dependsOnLine(task.lines, 0, task.number)?.tasks ?? [];
+  } catch (error) {
+    if (error.code !== "KILN_APPROVED_PLAN_SHAPE") throw error;
+    dependsOn = [];
+  }
+  return { ...base, dependsOn };
+}
+function normalize2(plan) {
+  return { ...plan, tasks: plan.tasks.map(normalizeTask) };
+}
+var gateOf = (task) => task.afterRelease?.tasks ?? [];
+var repositoryOf = (task) => task.repository ?? null;
+var sameSet = (a, b) => {
+  const left = new Set(a);
+  const right = new Set(b);
+  return left.size === right.size && [...left].every((item) => right.has(item));
+};
+var goalLine = (task) => task.spans.find((span) => span.field === "goal")?.line ?? null;
+var spanLine = (task, field) => task.spans.find((span) => span.field === field)?.line ?? goalLine(task);
+var list = (numbers) => `[${numbers.join(", ")}]`;
+var gateText = (task) => gateOf(task).length === 0 ? "none" : gateOf(task).map((n2) => `Task ${n2}`).join(", ");
+function acceptanceDiff(before, after) {
+  if (before.length === after.length) {
+    return before.flatMap((old, i) => old === after[i] ? [] : [`acceptance ${i + 1}: "${old}" -> "${after[i]}"`]);
+  }
+  return [
+    ...after.flatMap((text, i) => before.includes(text) ? [] : [`acceptance ${i + 1} added: "${text}"`]),
+    ...before.flatMap((text, i) => after.includes(text) ? [] : [`acceptance ${i + 1} removed: "${text}"`])
+  ];
+}
+function taskDiff(n2, old, now) {
+  const lines = [];
+  if (old.goal !== now.goal) lines.push(`task ${n2} goal: "${old.goal}" -> "${now.goal}"`);
+  if (!sameSet(old.files, now.files)) {
+    const removed = old.files.filter((f) => !now.files.includes(f)).map((f) => `-\`${f}\``);
+    const added = now.files.filter((f) => !old.files.includes(f)).map((f) => `+\`${f}\``);
+    lines.push(`task ${n2} files: ${[...removed, ...added].join(" ")}`);
+  }
+  if (!sameSet(old.dependsOn, now.dependsOn)) lines.push(`task ${n2} depends on: ${list(old.dependsOn)} -> ${list(now.dependsOn)}`);
+  if (repositoryOf(old) !== repositoryOf(now)) lines.push(`task ${n2} repository: ${repositoryOf(old) ?? "none"} -> ${repositoryOf(now) ?? "none"}`);
+  if (!sameSet(gateOf(old), gateOf(now))) lines.push(`task ${n2} release gate: ${gateText(old)} -> ${gateText(now)}`);
+  return lines;
+}
+function approvedPlanDiff(before, after) {
+  const old = normalize2(before);
+  const lines = [];
+  if (old.sourceTicket !== after.sourceTicket) lines.push(`source ticket: "${old.sourceTicket}" -> "${after.sourceTicket}"`);
+  lines.push(...acceptanceDiff(old.acceptance, after.acceptance));
+  const numbers = [...new Set([...old.tasks, ...after.tasks].map((t) => t.number))].sort((a, b) => a - b);
+  for (const n2 of numbers) {
+    const was = old.tasks.find((t) => t.number === n2);
+    const now = after.tasks.find((t) => t.number === n2);
+    if (was === void 0) lines.push(`task ${n2} added: ${now.goal}`);
+    else if (now === void 0) lines.push(`task ${n2} removed: ${was.goal}`);
+    else lines.push(...taskDiff(n2, was, now));
+  }
+  return lines;
+}
+function identityChange(was, now) {
+  if (!sameSet(was.files, now.files)) {
+    const added = now.spans.find((span) => span.field === "file" && !was.files.includes(span.value));
+    return { what: "files", line: added?.line ?? goalLine(now) };
+  }
+  if (!sameSet(was.dependsOn, now.dependsOn)) return { what: "dependencies", line: spanLine(now, "dependsOn") };
+  if (repositoryOf(was) !== repositoryOf(now)) return { what: "repository", line: spanLine(now, "repository") };
+  if (!sameSet(gateOf(was), gateOf(now))) return { what: "gate", line: spanLine(now, "afterRelease") };
+  return null;
+}
+function doneTaskIdentityChange(before, after, doneNumbers) {
+  const old = normalize2(before);
+  for (const n2 of [...doneNumbers].sort((a, b) => a - b)) {
+    const was = old.tasks.find((t) => t.number === n2);
+    const now = after.tasks.find((t) => t.number === n2);
+    if (now === void 0) return { task: n2, what: "removed", line: goalLine(was) };
+    const change = identityChange(was, now);
+    if (change !== null) return { task: n2, ...change };
+  }
+  return null;
+}
+function remapCovers(covers, oldLines, newLines) {
+  const mapped = covers.flatMap((cover) => {
+    if (newLines.includes(cover)) return [cover];
+    const at = oldLines.indexOf(cover);
+    if (at === -1) return [cover];
+    return oldLines.length === newLines.length ? [newLines[at]] : [];
+  });
+  return [...new Set(mapped)];
+}
+var ids = (numbers) => numbers.map((n2) => `task-${n2}`);
+function rebindFields(task, was, now) {
+  const next = { ...task };
+  if (was.goal !== now.goal) next.goal = now.goal;
+  if (!sameSet(was.files, now.files)) next.paths = now.files;
+  if (!sameSet(was.dependsOn, now.dependsOn)) next.dependsOn = ids(now.dependsOn);
+  if (!sameSet(gateOf(was), gateOf(now))) {
+    if (now.afterRelease === null) delete next.afterRelease;
+    else next.afterRelease = ids(gateOf(now));
+  }
+  return next;
+}
+function phaseShapeRefusal(runTasks, tasks, before, after, position) {
+  if (runTasks.length === 0) return null;
+  const oldPhases = position.phasesOf(runTasks);
+  const newPhases = position.phasesOf(tasks);
+  const indexIn = (phases, id) => phases.findIndex((p) => p.taskIds.includes(id));
+  const kept = (id) => tasks.some((t) => t.taskId === id);
+  const fewer = newPhases.length < position.phase + 1;
+  const doneMoved = position.doneIds.some((id) => kept(id) && indexIn(oldPhases, id) !== indexIn(newPhases, id));
+  const cursorTask = runTasks[position.cursor];
+  const cursorOut = !fewer && cursorTask !== void 0 && kept(cursorTask.taskId) && !newPhases[position.phase].taskIds.includes(cursorTask.taskId);
+  if (!fewer && !doneMoved && !cursorOut) return null;
+  const moved = after.tasks.find((now) => {
+    const id = `task-${now.number}`;
+    return runTasks.some((t) => t.taskId === id) && indexIn(oldPhases, id) !== indexIn(newPhases, id);
+  });
+  if (moved !== void 0) return { task: moved.number, what: "gate", line: spanLine(moved, "afterRelease") };
+  const removed = before.tasks.find((was) => !after.tasks.some((now) => now.number === was.number));
+  return removed === void 0 ? null : { task: removed.number, what: "gate", line: goalLine(removed) };
+}
+function rebindTasks(runTasks, before, after, repos, position) {
+  const old = normalize2(before);
+  const doneIds = new Set(position.doneIds);
+  const movesPath = before.path !== void 0 && after.path !== void 0 && before.path !== after.path;
+  let structural = old.tasks.length !== after.tasks.length || old.acceptance.length !== after.acceptance.length;
+  const tasks = runTasks.map((task) => {
+    const number = /^task-(\d+)$/.exec(task.taskId)?.[1];
+    const was = old.tasks.find((t) => t.number === Number(number));
+    const now = after.tasks.find((t) => t.number === Number(number));
+    const rebindable = number !== void 0 && task.fixes === void 0 && was !== void 0 && now !== void 0;
+    const next = rebindable ? rebindFields(task, was, now) : { ...task };
+    next.covers = remapCovers(task.covers, old.acceptance, after.acceptance);
+    if (movesPath && next.inputs !== void 0) next.inputs = next.inputs.map((input) => input === before.path ? after.path : input);
+    if (task.covers.length > 0 && next.covers.length === 0) structural = true;
+    if (rebindable && !doneIds.has(task.taskId) && repositoryOf(was) !== repositoryOf(now)) structural = true;
+    return next;
+  });
+  const unknown = after.tasks.find((t) => repositoryOf(t) !== null && !repos.some((r) => r.name === t.repository));
+  const unknownRepo = unknown === void 0 ? null : { task: unknown.number, name: unknown.repository };
+  const addedNumber = after.tasks.map((t) => t.number).find((n2) => !old.tasks.some((t) => t.number === n2) && runTasks.some((t) => t.taskId === `task-${n2}` && t.fixes !== void 0));
+  const refused = addedNumber === void 0 ? phaseShapeRefusal(runTasks, tasks.filter((t) => t.fixes !== void 0 || after.tasks.some((now) => `task-${now.number}` === t.taskId)), old, after, position) : { task: addedNumber, what: "fix-number", fixTaskId: `task-${addedNumber}` };
+  return { tasks, structural, unknownRepo, refused };
+}
+function carriedDone(oldDone, oldPlanTasks, oldApproved, newApproved, newPlanTasks, onBranch) {
+  if (!oldApproved) return [];
+  const carried = [];
+  for (let n2 = 1; n2 <= oldApproved.tasks.length; n2 += 1) {
+    const taskId = `task-${n2}`;
+    const entry = oldDone.find((d) => d.taskId === taskId);
+    const oldTask = oldPlanTasks.find((t) => t.taskId === taskId);
+    const newTask = newPlanTasks.find((t) => t.taskId === taskId);
+    if (entry === void 0 || oldTask === void 0 || oldTask.fixes !== void 0 || newTask === void 0) break;
+    if (doneTaskIdentityChange(oldApproved, newApproved, [n2]) !== null) break;
+    if (!onBranch(newTask.repo, newTask.branch, entry.sha)) break;
+    carried.push({ taskId, sha: entry.sha, deviations: entry.deviations });
+  }
+  return carried;
+}
+
 // src/flow.mjs
 var CLASS_ID = "kiln:build";
 var CLASS_VERSION = "1.0.0";
@@ -11254,12 +11666,24 @@ var REFORM_TARGETS = /* @__PURE__ */ new Set(["designer", "planner"]);
 var MAX_REFORMS_PER_ROLE = 2;
 var BARE_YES = /^(yes|y|ok|approve)\.?$/i;
 var BARE_ABANDON = /^abandon\.?$/i;
-var CHANGE_STOPS = /* @__PURE__ */ new Set(["build", "retry", "failed", "fix", "verification", "ration", "pr"]);
+var CHANGE_STOPS = /* @__PURE__ */ new Set(["build", "retry", "failed", "fix", "verification", "ration", "pr", "reform", "plan-changed"]);
 function isBareYes(text) {
   return BARE_YES.test(text.trim());
 }
+function isBareAbandon(text) {
+  return BARE_ABANDON.test(text.trim());
+}
+function approvedTaskUnbuilt(state) {
+  const done = new Set(state.done.map((d) => d.taskId));
+  return state.brief.tasks.plan.some((t, i) => i >= state.cursor && t.fixes === void 0 && !done.has(t.taskId));
+}
 function takesChange(state) {
-  return CHANGE_STOPS.has(state.question.then) && state.brief.tasks !== null && !state.documents?.plan?.approved;
+  const q = state.question;
+  if (!CHANGE_STOPS.has(q.then) || state.brief.tasks === null || state.host?.id === "codex") return false;
+  if (q.then === "plan-changed" && !q.options.includes("yes")) return false;
+  if (!state.documents?.plan?.approved) return true;
+  if (q.then === "plan-changed") return q.plan.tasks.some((t) => !doneApprovedNumbers(state).includes(t.number));
+  return approvedTaskUnbuilt(state);
 }
 function discoverSettled(state) {
   return reposOf(state).length > 0 || state.discover !== void 0 && state.discover !== null;
@@ -11520,6 +11944,10 @@ function nextTaskIndex(state) {
   const index = state.brief.tasks.plan.findIndex((t) => taskIds.includes(t.taskId) && !done.has(t.taskId));
   return index === -1 ? null : index;
 }
+function resumeCursor(state) {
+  const { taskIds } = currentPhase(state);
+  return nextTaskIndex(state) ?? Math.max(...state.brief.tasks.plan.map((t, i) => taskIds.includes(t.taskId) ? i : -1)) + 1;
+}
 function phaseTasks(state) {
   const { taskIds } = currentPhase(state);
   return state.brief.tasks.plan.filter((t) => taskIds.includes(t.taskId));
@@ -11647,7 +12075,8 @@ function stillCleared(state, filled) {
   return (state.cleared ?? []).filter((p) => !filled.includes(p));
 }
 function changePlan(state, ctx, note, base) {
-  const { parts, brief: onTicket } = ctx.ticketChanges;
+  const { brief: onTicket } = ctx.ticketChanges;
+  const parts = state.documents?.plan?.approved ? ctx.ticketChanges.parts.filter((part) => part !== "acceptance") : ctx.ticketChanges.parts;
   if (note.length === 0 && parts.length === 0) return null;
   const brief = { ...state.brief };
   for (const part of parts) brief[part] = onTicket[part] === null ? null : { ...onTicket[part], by: "person" };
@@ -11679,16 +12108,111 @@ function askedAs(q) {
   const { reply, leaks, emptied, ...asked } = q;
   return asked;
 }
+var NO_MARKS = { lastFilled: [], lastReform: null };
+var NO_FIELD_CHANGED = "No acceptance line or task field changed; only the file's bytes did.";
+function doneApprovedNumbers(state) {
+  const plan = state.brief.tasks?.plan ?? [];
+  return state.done.flatMap((d) => {
+    const number = /^task-(\d+)$/.exec(d.taskId)?.[1];
+    return number !== void 0 && plan.find((t) => t.taskId === d.taskId)?.fixes === void 0 ? [Number(number)] : [];
+  });
+}
+function reboundTasks(state, plan) {
+  return rebindTasks(state.brief.tasks?.plan ?? [], state.documents.plan, plan, reposOf(state).map((r) => ({ ...r, name: repoNameOf(r) })), { doneIds: state.done.map((d) => d.taskId), phase: phaseOf(state), cursor: state.cursor, phasesOf });
+}
+function needsReplan(state, bound, plan) {
+  const done = doneApprovedNumbers(state);
+  return state.brief.tasks !== null && bound.structural && plan.tasks.some((t) => !done.includes(t.number));
+}
+function structuralLines(before, after) {
+  const counts = [
+    ...before.tasks.length === after.tasks.length ? [] : [`The plan has ${plural(after.tasks.length, "task")}; the approved plan had ${before.tasks.length}.`],
+    ...before.acceptance.length === after.acceptance.length ? [] : [`The plan has ${plural(after.acceptance.length, "acceptance line")}; the approved plan had ${before.acceptance.length}.`]
+  ];
+  return counts.length > 0 ? counts : ["A task now covers no acceptance line, or a task not yet built changed its repository."];
+}
+function rebindFields2(state, plan) {
+  const { documentParts, taskGoals, ...parsed } = plan;
+  const marks = NO_MARKS;
+  const documents = { ...state.documents, plan: { ...state.documents.plan, ...parsed } };
+  const acceptance = { ...state.brief.acceptance, lines: plan.acceptance };
+  const ticket = documentParts === void 0 ? {} : { ticket: { ...state.ticket, documentParts, taskGoals } };
+  if (state.brief.tasks === null) return { documents, brief: { ...state.brief, acceptance }, ...ticket, ...marks };
+  const bound = reboundTasks(state, plan);
+  const replans = needsReplan(state, bound, plan);
+  const kept = replans ? bound.tasks : bound.tasks.filter((t) => t.fixes !== void 0 || plan.tasks.some((a) => `task-${a.number}` === t.taskId));
+  const brief = { ...state.brief, acceptance, tasks: { ...state.brief.tasks, plan: kept } };
+  const cursor = kept.length === bound.tasks.length ? {} : { cursor: nextTaskIndex({ ...state, brief }) ?? kept.length };
+  const old = state.documents.plan.acceptance;
+  const acceptanceChanged = plan.acceptance.length !== old.length || plan.acceptance.some((l, i) => l !== old[i]);
+  const rejudge = state.judge !== null && acceptanceChanged ? { judgeDue: true, prApproved: false } : {};
+  const reasons = [state.replan?.reason, state.question.displaced?.then === "reform" ? state.question.displaced.reason : void 0, `the approved plan changed: ${approvedPlanDiff(state.documents.plan, plan).join("; ")}`].filter((r) => r !== void 0);
+  const replan = replans ? { replan: { from: state.cursor, reason: reasons.join("\n"), by: "person" } } : {};
+  return { documents, brief, ...cursor, ...rejudge, ...ticket, ...replan, ...marks };
+}
+function resumeDisplaced(state, ctx, fields, displaced) {
+  if (fields.replan !== void 0 || fields.cursor !== void 0 || displaced === null || fields.judgeDue === true && (displaced.then === "pr" || displaced.then === "release") || displaced.then === "build" || displaced.then === "reform") return accepted(state, ctx, fields);
+  return ask(displaced, fields);
+}
+function planChangedStep(state, ctx, interjection) {
+  const pending = state.pendingAction.kind === "ask-person" && state.question.then === "plan-changed";
+  if (interjection.restored === true) {
+    if (!pending) return { reject: { code: "KILN_PLAN_NOT_CHANGED", label: "no question about a changed plan is pending, so there is nothing to restore" } };
+    const { displaced: displaced2, writeBaseline } = state.question;
+    return displaced2 === null ? accepted(state, ctx, { ...NO_MARKS, question: null, ...writeBaseline === void 0 ? {} : { writeBaseline } }) : ask(displaced2, NO_MARKS);
+  }
+  const displaced = state.pendingAction.kind !== "ask-person" ? null : state.question.then === "plan-changed" ? state.question.displaced : askedAs(state.question);
+  const pendingAction = state.pendingAction;
+  const baseline = pending ? state.question.writeBaseline : pendingAction.write !== void 0 && pendingAction.attempt > 1 && state.writeBaseline === null ? firstAttemptOf(pendingAction.actionId) : void 0;
+  const kept = baseline === void 0 ? {} : { writeBaseline: baseline };
+  const planFile = `Plan file: ${interjection.path}${interjection.path === state.documents.plan.path ? "" : ` (not the saved plan ${state.documents.plan.path})`}`;
+  const stop = (text, detail) => ask(question("plan-changed", text, [], { plan: null, planSha256: interjection.sha256, planPath: interjection.path, displaced, ...kept, detail: `${planFile}
+${detail}` }), NO_MARKS);
+  if (interjection.fault !== void 0) return stop("The plan changed since approval and cannot be read. The reason is in the detail. Fix the file and run next, or reply abandon.", interjection.fault);
+  const { plan } = interjection;
+  const diff = approvedPlanDiff(state.documents.plan, plan);
+  const shown = diff.length === 0 ? [NO_FIELD_CHANGED] : diff;
+  const identity = doneTaskIdentityChange(state.documents.plan, plan, doneApprovedNumbers(state));
+  if (identity !== null) {
+    const what = identity.what === "removed" ? "id" : identity.what === "gate" ? "release gate" : identity.what;
+    const head = `Task ${identity.task} is done and ${identity.what === "removed" ? "is missing from the plan" : `its ${what} changed`}${identity.line === null ? "" : `, at line ${identity.line}`}.`;
+    return stop(`The plan changed since approval, and task ${identity.task} is done: its ${what} changed. A done task's id, position, files, dependencies, repository, or release gate cannot change. Restore them and run next, or reply abandon.`, [head, ...shown].join("\n"));
+  }
+  const bound = reboundTasks(state, plan);
+  if (bound.unknownRepo !== null) return stop(`The plan changed since approval, and task ${bound.unknownRepo.task} names repository ${bound.unknownRepo.name}, which this run has no worktree for. Name a repository of the run and run next, or reply abandon.`, shown.join("\n"));
+  const { refused } = bound;
+  if (state.brief.tasks !== null && refused !== null) {
+    if (refused.what === "gate") return stop(`The plan changed since approval, and task ${refused.task}'s release gate moves the run's phases. Restore the gate and run next, or reply abandon.`, [...refused.line === null ? [] : [`Task ${refused.task}'s release gate is at line ${refused.line}.`], ...shown].join("\n"));
+    return stop(`The plan changed since approval, and new task ${refused.task} takes the number of fix task ${refused.fixTaskId}. Remove the task and run next, or reply abandon.`, shown.join("\n"));
+  }
+  if (state.host?.id === "codex" && needsReplan(state, bound, plan)) {
+    return stop("The plan changed since approval in a way that needs a re-plan, and this host cannot re-plan. Restore what the detail names, such as the task and acceptance count, and run next, or reply abandon.", [...structuralLines(state.documents.plan, plan), ...shown].join("\n"));
+  }
+  const { documentParts, taskGoals } = interjection;
+  const shownPlan = { ...plan, path: interjection.path, sha256: interjection.sha256, ...documentParts === void 0 ? {} : { documentParts, taskGoals } };
+  return ask(question("plan-changed", "The plan changed since approval. The diff is in the detail. Continue with the new plan?", ["yes"], { plan: shownPlan, planSha256: interjection.sha256, planPath: interjection.path, displaced, ...kept, detail: [planFile, ...shown].join("\n") }), NO_MARKS);
+}
+function interject(state, ctx, interjection) {
+  if (interjection.kind === "abandon") return { fields: { question: null, ...NO_MARKS }, status: "abandoned" };
+  if (interjection.kind === "plan-changed") return planChangedStep(state, ctx, interjection);
+  return { reject: { code: "KILN_INTERJECTION_UNKNOWN", label: `the flow takes the interjections abandon and plan-changed, not "${interjection.kind}"` } };
+}
 function acceptPerson(state, ctx, text) {
   const { word, rest: rest2 } = parseReply(text);
   const q = state.question;
   const reask = (leaks = []) => ({ fields: { question: { ...askedAs(q), reply: text, leaks }, lastFilled: [] }, status: "asking", nextKind: "ask-person" });
   if (BARE_ABANDON.test(text.trim())) return { fields: { question: null, lastFilled: [] }, status: "abandoned" };
   const consent = isBareYes(text);
-  const base = { question: null, lastFilled: [], lastReform: null };
+  const base = { question: null, ...NO_MARKS };
   if (word === "change" && takesChange(state)) {
     const emptied = partsAChangeEmpties(state, ctx);
-    if (emptied.length === 0) return changePlan(state, ctx, rest2, base) ?? reask();
+    if (emptied.length === 0) {
+      const rebind = q.then === "plan-changed" ? rebindFields2(state, q.plan) : {};
+      const inspectorReason = q.then === "reform" ? q.reason : q.displaced?.then === "reform" && rebind.replan === void 0 ? q.displaced.reason : void 0;
+      const note = inspectorReason !== void 0 && rest2.length > 0 ? `${inspectorReason}
+${rest2}` : rest2;
+      return changePlan({ ...state, ...rebind }, ctx, note, { ...base, ...rebind }) ?? reask();
+    }
     return { fields: { question: { ...askedAs(q), emptied }, lastFilled: [] }, status: "asking", nextKind: "ask-person" };
   }
   switch (q.then) {
@@ -11719,6 +12243,10 @@ The answer to ${repositoryGap.n} must be the absolute path of a folder directly 
       return consent ? accepted(state, ctx, { ...base, pendingWrite: null, buildApproved: true, ...unwrittenAtBuild(state) }) : reask();
     case "approved-drift":
       return reask();
+    case "plan-changed":
+      return consent && q.options.includes("yes") ? resumeDisplaced(state, ctx, { ...rebindFields2(state, q.plan), ...q.writeBaseline === void 0 ? {} : { writeBaseline: q.writeBaseline } }, q.displaced) : reask();
+    case "reform":
+      return consent ? accepted(state, ctx, base) : reask();
     case "retry":
       return word === "retry" ? retryStage(base, q.retryKind, rest2, null, null) : reask();
     case "failed":
@@ -11751,7 +12279,7 @@ The answer to ${repositoryGap.n} must be the absolute path of a folder directly 
         prApproved: false,
         findings: [],
         fixRounds: 0,
-        cursor: nextTaskIndex({ ...state, phase: phase + 1 })
+        cursor: resumeCursor({ ...state, phase: phase + 1 })
       });
     }
     default:
@@ -12382,6 +12910,11 @@ function cutReason(reason) {
 }
 function acceptJudge(state, ctx, items) {
   const o = items[0];
+  if (o.status === "reform-party" && classKeyOf(o.requiredRole) === "planner") {
+    const q = question("reform", "", ["yes"], { detail: o.reason, reason: o.reason });
+    const change = takesChange({ ...state, question: q }) ? ", or reply change <note> for a Planner re-plan" : "";
+    return ask({ ...q, ask: `The Inspector asks for a re-plan. Its reason is in the detail. Fix the plan by hand and reply yes${change}.` }, { judgeDue: true, lastFilled: [], lastReform: null });
+  }
   if (o.status === "reform-party") return memberReform(state, ctx, o.requiredRole, o.reason, { lastFilled: [], judgeDue: false });
   if (o.status === "gap") {
     const taskIds = [...new Set(o.rulings.filter((r) => r.ruling === "unjustified").flatMap((r) => rulingTaskIds(r, state)))];
@@ -12465,10 +12998,10 @@ function baseStateOf({ bundle, roles, extras }) {
     unread: [],
     drift: [],
     designerRan: false,
-    cursor: 0,
+    cursor: extras.cursor ?? 0,
     phase: 0,
     phaseReviews: [],
-    done: [],
+    done: extras.done ?? [],
     findings: [],
     question: null,
     pendingWrite: null,
@@ -12517,6 +13050,7 @@ function flowFor(ctx) {
     terminalStatuses: TERMINAL_STATUSES,
     validateOutput: validateKilnContract,
     onRetriesExhausted: retriesExhausted,
+    interject: (state, interjection) => interject(state, ctx, interjection),
     admit({ bundle, roles, extras }) {
       if (!roles.person) throw new TypeError("admit: roles.person is required");
       const base = baseStateOf({ bundle, roles, extras });
@@ -12814,7 +13348,7 @@ function hasOmission(envelope) {
 }
 function computeScoreboard({ roles, envelopes, rations: rations2, priceTable: priceTable2, ledger = [] }) {
   const byRole = (roleKey) => envelopes.filter((e) => ROLE_OF_KIND[e.kind] === roleKey);
-  const sum = (list, pick) => list.reduce((acc, e) => acc + (pick(e) ?? 0), 0);
+  const sum = (list2, pick) => list2.reduce((acc, e) => acc + (pick(e) ?? 0), 0);
   const perMember = Object.entries(roles).filter(([roleKey]) => roleKey !== "person").map(([roleKey, role]) => {
     const mine = byRole(roleKey);
     const ration = rationFor(rations2, role.roleId);
@@ -12873,7 +13407,7 @@ function worktreeLines2(worktrees) {
   if (worktrees === null) return [];
   return ["## Worktrees", ...worktrees.removed.map((root) => `- removed: ${root}`), ...worktrees.kept.map((k) => `- kept: ${k.root} (${k.reason})`), ""];
 }
-function renderReadout({ state, scoreboard, pullRequests = [], worktrees = null }) {
+function renderReadout({ state, scoreboard, pullRequests = [], carried = [], worktrees = null }) {
   const cost = Object.fromEntries(scoreboard.cost.perLane.map((l) => [l.classKey, l.bookedUsd]));
   const rows = scoreboard.perMember.map((m) => `| ${m.roleKey} | ${m.dispatches} | ${n(m.turns)} / ${n(m.rationTurns)} | ${n(m.tokens)} / ${n(m.rationTokens)} | ${n(m.cacheReadTokens)} | $${cost[m.roleKey]} |`);
   const t = scoreboard.totals;
@@ -12890,7 +13424,7 @@ function renderReadout({ state, scoreboard, pullRequests = [], worktrees = null 
     ...skipped.length > 0 ? [`ticket blocks not read: ${skipped.map((s) => `${s.kind} (${s.count})`).join(", ")}`] : [],
     "",
     "## Tasks",
-    ...state.done.map((d) => `- ${d.taskId}: ${state.brief.tasks.plan.find((x) => x.taskId === d.taskId).goal} (${d.sha.slice(0, 12)})`),
+    ...state.done.map((d) => `- ${d.taskId}: ${state.brief.tasks.plan.find((x) => x.taskId === d.taskId).goal} (${d.sha.slice(0, 12)}${carried.some((c) => c.taskId === d.taskId) ? ", carried forward" : ""})`),
     "",
     ...reviewLines(state),
     "",
@@ -12914,202 +13448,6 @@ function renderReadout({ state, scoreboard, pullRequests = [], worktrees = null 
 import { createHash as createHash3 } from "node:crypto";
 import { readFileSync as readFileSync10, writeFileSync as writeFileSync2 } from "node:fs";
 import path6 from "node:path";
-
-// src/approved-plan-shape.mjs
-import path5 from "node:path";
-var TASK = /^#{2,3} Task (\d+): (.+)$/;
-var SOURCE = /^\s*(?:[-*]\s+)?(?:\*\*)?Source ticket:(?:\*\*)?\s*(\S.*?)\s*$/i;
-var FILE_ENTRY = /^(?:[-*]\s*)?(?:\*\*)?(Files|Create|Modify|Test|Delete|Add):(?:\*\*)?\s*(.*)$/i;
-var REPOSITORY = /^(?:[-*]\s*)?(?:\*\*)?Repository:(?:\*\*)?\s*(.*)$/i;
-var AFTER_RELEASE = /^(?:[-*]\s*)?(?:\*\*)?After release:(?:\*\*)?\s*(.+)$/i;
-var BUILD_METHOD_HEADING = /^#{1,6}\s+Recommended build method\b/i;
-var BUILD_METHOD_LINE = /^Recommended build method:\s*(.+)$/i;
-var KILN_OPENER = /^(?:(?:[-*]|\d+\.)\s+)?(?:\*\*|`)*(?:Kiln build|\/kiln:build)/i;
-function shape(message, details = {}) {
-  throw new KilnError("KILN_APPROVED_PLAN_SHAPE", message, details);
-}
-function safeFile(name) {
-  if (name.trim() !== name || name.length === 0 || path5.isAbsolute(name) || name.split("/").some((part) => part === "." || part === "..") || name.includes("//") || name.includes("\\") || /[\0\r\n]/.test(name)) {
-    shape("task files must be safe repository-relative paths", { path: name });
-  }
-}
-function filePaths(lines, startLine) {
-  const files = [];
-  const fileLines = [];
-  const spans = [];
-  let inFiles = false;
-  let fileStarted = false;
-  for (const [index, raw] of lines.entries()) {
-    const line = raw.trim();
-    const entry = FILE_ENTRY.exec(line);
-    if (entry !== null) {
-      const label = entry[1].toLowerCase();
-      const names = [...entry[2].matchAll(/`([^`]+)`/g)].map((match) => match[1]);
-      if (names.length === 0 && label !== "files") shape("each task file line must name a path in backticks", { line: raw, lineNumber: startLine + index });
-      inFiles = label === "files" && names.length === 0;
-      fileStarted = false;
-      const selected = label === "files" ? names : names.slice(0, 1);
-      if (selected.length > 0) fileLines.push(raw);
-      for (const name of selected) {
-        safeFile(name);
-        if (!files.includes(name)) files.push(name);
-        spans.push({ field: "file", line: startLine + index, value: name });
-      }
-      continue;
-    }
-    if (!inFiles) continue;
-    if (line === "") {
-      if (fileStarted) inFiles = false;
-      continue;
-    }
-    const item = /^[-*]\s+`([^`]+)`(?:\s|$)/.exec(line);
-    if (item === null) {
-      inFiles = false;
-      continue;
-    }
-    safeFile(item[1]);
-    if (!files.includes(item[1])) files.push(item[1]);
-    fileStarted = true;
-    fileLines.push(raw);
-    spans.push({ field: "file", line: startLine + index, value: item[1] });
-  }
-  return { files, fileLines, spans };
-}
-function repositoryLine(lines, startLine, number) {
-  for (const [index, raw] of lines.entries()) {
-    const match = REPOSITORY.exec(raw.trim());
-    if (match === null) continue;
-    const name = match[1].trim().replace(/^`+|`+$/g, "").trim();
-    if (name === "" || /[\s]/.test(name) || name.includes("/") || name.includes("..")) {
-      shape(`task ${number}'s Repository: line is not a folder name`, { task: number, lineNumber: startLine + index });
-    }
-    return { name, span: { field: "repository", line: startLine + index, value: name } };
-  }
-  return null;
-}
-function afterReleaseLine(lines, startLine) {
-  for (const [index, raw] of lines.entries()) {
-    const match = AFTER_RELEASE.exec(raw.trim());
-    if (match === null) continue;
-    const refs = [...match[1].matchAll(/Task (\d+)/g)];
-    const rest2 = refs.length === 0 ? "" : match[1].slice(refs.at(-1).index + refs.at(-1)[0].length);
-    const reason = rest2.trim().replace(/^[,:\-\u2013\u2014(]/, "").trim();
-    return { tasks: refs.map((ref) => Number(ref[1])), reason, span: { field: "afterRelease", line: startLine + index, value: match[1].trim() } };
-  }
-  return null;
-}
-function readBuildMethod(lines) {
-  const heading2 = lines.findIndex((line) => BUILD_METHOD_HEADING.test(line));
-  let text;
-  if (heading2 !== -1) {
-    const end = lines.findIndex((line, at) => at > heading2 && /^#{1,6}\s/.test(line));
-    text = lines.slice(heading2 + 1, end === -1 ? void 0 : end).map((line) => line.trim()).find((line) => line !== "");
-  } else {
-    text = lines.map((line) => BUILD_METHOD_LINE.exec(line.trim())).find((match) => match !== null)?.[1].trim();
-  }
-  if (text === void 0) return null;
-  return { kiln: KILN_OPENER.test(text), text };
-}
-function acceptanceLines(lines, startLine) {
-  const entries = lines.map((line) => line.trim());
-  const firstList = entries.findIndex((line) => /^(?:[-*]|\d+\.)\s+/.test(line));
-  if (firstList === -1) {
-    const first = entries.findIndex(Boolean);
-    if (first === -1) return { acceptance: [], spans: [] };
-    const end = entries.findIndex((line, at) => at > first && line === "");
-    const acceptance2 = entries.slice(first, end === -1 ? void 0 : end);
-    return { acceptance: acceptance2, spans: acceptance2.map((value, at) => ({ field: "acceptance", line: startLine + first + at, value })) };
-  }
-  const marker = /^(?:[-*]|\d+\.)\s+(.+)$/;
-  const acceptance = [];
-  const spans = [];
-  let current = -1;
-  for (let index = firstList; index < entries.length; index += 1) {
-    const line = entries[index];
-    if (line === "") {
-      if (current !== -1) break;
-      continue;
-    }
-    const match = marker.exec(line);
-    if (match !== null) {
-      acceptance.push(match[1].trim());
-      spans.push({ field: "acceptance", line: startLine + index, value: acceptance.at(-1) });
-      current = acceptance.length - 1;
-    } else if (current !== -1 && /^\s+\S/.test(lines[index])) {
-      acceptance[current] += ` ${line}`;
-      spans[current].value = acceptance[current];
-      spans[current].endLine = startLine + index;
-    } else break;
-  }
-  return { acceptance, spans };
-}
-function parseApprovedPlanText(text) {
-  const lines = text.replaceAll("\r\n", "\n").split("\n");
-  const sources = lines.flatMap((line, index) => {
-    const match = SOURCE.exec(line);
-    return match === null ? [] : [{ line: index + 1, value: match[1].trim() }];
-  });
-  if (sources.length !== 1) shape("the plan needs one Source ticket line");
-  const acceptanceStart = lines.findIndex((line) => line.trim() === "## Acceptance criteria");
-  if (acceptanceStart === -1) throw new KilnError("KILN_APPROVED_PLAN_ACCEPTANCE", "the plan needs ## Acceptance criteria");
-  const acceptanceEnd = lines.findIndex((line, index) => index > acceptanceStart && (/^## /.test(line) || TASK.test(line)));
-  const { acceptance, spans: acceptanceSpans } = acceptanceLines(lines.slice(acceptanceStart + 1, acceptanceEnd === -1 ? void 0 : acceptanceEnd), acceptanceStart + 2);
-  if (acceptance.length === 0 || acceptance.some((line) => line.length === 0)) {
-    throw new KilnError("KILN_APPROVED_PLAN_ACCEPTANCE", "the plan needs acceptance criteria");
-  }
-  if (new Set(acceptance).size !== acceptance.length) {
-    throw new KilnError("KILN_APPROVED_PLAN_ACCEPTANCE", "the plan repeats an acceptance criterion");
-  }
-  const headings = lines.map((line, index) => ({ match: TASK.exec(line), index })).filter(({ match }) => match !== null);
-  if (headings.length === 0) shape("the plan needs at least one numbered task");
-  const tasks = headings.map(({ match, index }, position) => {
-    const number = Number(match[1]);
-    if (number !== position + 1) shape(`task ${number} is out of order or repeated`, { task: number, position: position + 1 });
-    const nextHeading = lines.findIndex((line, at) => at > index && /^## /.test(line));
-    const nextTask = headings[position + 1]?.index ?? lines.length;
-    const end = Math.min(nextHeading === -1 ? lines.length : nextHeading, nextTask);
-    const sourceLines = lines.slice(index + 1, end);
-    const markedNonExecutable = /^(?:BLOCKED\s+(?:on|by|pending)\b|optional\s+(?:after|if|later)\b)|\(\s*(?:BLOCKED|optional)\b/i.test(match[2]);
-    const hasBlockingStatus = sourceLines.some((line) => /^\s*\*\*Blocked by:/i.test(line) || /^\s*\*\*Status:/i.test(line) && /\b(?:blocked|optional)\b/i.test(line));
-    if (markedNonExecutable || hasBlockingStatus) {
-      shape(`task ${number} is blocked or optional; settle its executable scope before approval`, { task: number, lineNumber: index + 1 });
-    }
-    const { files, fileLines, spans } = filePaths(sourceLines, index + 2);
-    if (files.length === 0) shape(`task ${number} names no file`, { task: number, lineNumber: index + 1 });
-    const repo = repositoryLine(sourceLines, index + 2, number);
-    const gate = afterReleaseLine(sourceLines, index + 2);
-    const taskSpans = [{ field: "goal", line: index + 1, value: match[2].trim() }, ...spans, ...repo === null ? [] : [repo.span], ...gate === null ? [] : [gate.span]];
-    return {
-      number,
-      heading: `Task ${number}: ${match[2].trim()}`,
-      goal: match[2].trim(),
-      lines: sourceLines,
-      fileLines,
-      files,
-      repository: repo?.name ?? null,
-      afterRelease: gate === null ? null : { tasks: gate.tasks, reason: gate.reason },
-      spans: taskSpans
-    };
-  });
-  const firstNamed = tasks.find((task) => task.repository !== null);
-  if (firstNamed !== void 0) {
-    const unnamed = tasks.find((task) => task.repository === null);
-    if (unnamed !== void 0) shape(`task ${unnamed.number} names no Repository: line while task ${firstNamed.number} does`, { task: unnamed.number });
-  }
-  for (const task of tasks) {
-    if (task.afterRelease === null) continue;
-    const { number } = task;
-    if (task.afterRelease.tasks.length === 0) shape(`task ${number}'s After release: line names no task`, { task: number });
-    for (const earlier of task.afterRelease.tasks) {
-      if (earlier >= number || earlier < 1) shape(`task ${number}'s After release: line names Task ${earlier}, which is not an earlier task`, { task: number });
-      if (tasks[earlier - 1].repository === task.repository) shape(`task ${number}'s After release: line names Task ${earlier} in the same repository`, { task: number });
-    }
-  }
-  const repositories = [...new Set(tasks.flatMap((task) => task.repository === null ? [] : [task.repository]))];
-  return { sourceTicket: sources[0].value, acceptance, tasks, repositories, buildMethod: readBuildMethod(lines), spans: [{ field: "sourceTicket", line: sources[0].line, value: sources[0].value }, ...acceptanceSpans, ...tasks.flatMap((task) => task.spans)] };
-}
-
-// src/kickoff-approval.mjs
 function readPlanBytes(planPath) {
   try {
     return readFileSync10(planPath);
@@ -13134,7 +13472,7 @@ function readPlanPreview(planPath) {
   return { planPath: absolute, text, sha256: sha256(bytes), buildContract: {
     sourceTicket,
     acceptance,
-    tasks: tasks.map(({ number, goal, files, repository, afterRelease }) => ({ number, goal, files, repository, afterRelease })),
+    tasks: tasks.map(({ number, goal, files, repository, dependsOn, afterRelease }) => ({ number, goal, files, repository, dependsOn, afterRelease })),
     repositories,
     buildMethod,
     spans
@@ -13203,15 +13541,6 @@ function mappingFor(mapping, taskId, field) {
   if (!Array.isArray(value)) throw new KilnError("KILN_APPROVED_SCAFFOLD_MAPPING", `${field}.${taskId} must be an array`);
   return value;
 }
-function dependenciesFor(task) {
-  const line = task.lines.find((value) => /^(?:\s*\*\*)?Depends on:/i.test(value.trim()));
-  if (line === void 0 || /\b(?:nothing|none)\b/i.test(line)) return [];
-  const dependencies = [...line.matchAll(/\bTask (\d+)\b/gi)].map((match) => Number(match[1]));
-  if (dependencies.length === 0 || dependencies.some((number) => number >= task.number || number < 1)) {
-    throw new KilnError("KILN_APPROVED_SCAFFOLD_DEPENDENCY", `task ${task.number} has an unresolved dependency`, { line });
-  }
-  return [...new Set(dependencies)].map((number) => `task-${number}`);
-}
 function createApprovedTaskScaffold(approved, { ticketRef, repo = null, branch = null, repos = null, coverage = null, checks = null }) {
   const names = approved.repositories;
   if (names.length === 0 && (typeof repo !== "string" || typeof branch !== "string")) {
@@ -13237,7 +13566,7 @@ function createApprovedTaskScaffold(approved, { ticketRef, repo = null, branch =
       taskId,
       goal: task.goal,
       covers: chosen.map((number) => approved.acceptance[number - 1]),
-      dependsOn: dependenciesFor(task),
+      dependsOn: task.dependsOn.map((n2) => `task-${n2}`),
       doneWhen: mappingFor(checks, taskId, "checks") ?? [],
       inputs: [approved.path, target.repo],
       paths: task.files,
@@ -14215,24 +14544,65 @@ function hostBindingFor(state, action, registry) {
   const play = registry[classId].play;
   return play.kind === "skill" ? { kind: "skill", invoke: play.invoke, model: bindings[classId] } : { kind: "agent", agentType: play.agentType, model: bindings[classId] };
 }
-function openRun(v) {
+function openRun(v, { planCheck = false } = {}) {
   const ref = canonicalTicketRef(requireFlag(v, "ticket"));
   const root = resolveRunsRoot({ flag: v.root });
   const paths = runPathsFor(root, ref);
   if (!runExists(paths)) throw new KilnError("KILN_RUN_MISSING", `no run for this ticket; run open first`, { ticket: ref });
   const meta = readRunMeta(paths);
-  const state = loadState(paths);
-  refuseOldRelease(paths, state);
+  const loaded = loadState(paths);
+  refuseOldRelease(paths, loaded);
+  const state = planCheck && loaded.pendingAction?.kind === "ask-person" ? checkPlan({ paths, meta, state: loaded }) : loaded;
   return { ref, root, paths, meta, state };
 }
-function checkSavedApprovedPlan(state) {
-  const approved = state.documents?.plan?.approved ? state.documents.plan : null;
-  if (approved === null) return null;
-  const approval = verifyPlanApproval(approved.path);
-  if (!approval.valid || approval.sha256 !== approved.sha256) {
-    throw new KilnError("KILN_APPROVED_PLAN_STALE", "the approved plan changed or its approval is missing; return to kickoff before build", { planPath: approved.path, savedSha256: approved.sha256, approval });
+function planFileNow(file, ticketRef, approvedSha256) {
+  let sha2562;
+  try {
+    sha2562 = planHash(file);
+  } catch (err) {
+    if (!(err instanceof KilnError)) throw err;
+    return { path: file, sha256: sha256Utf8(err.message), fault: err.message };
   }
-  return approved;
+  if (sha2562 === approvedSha256) return { path: file, sha256: sha2562 };
+  try {
+    const { text, sha256: read } = readPlanPreview(file);
+    const parsed = parseApprovedPlanText(text);
+    const isTicket = path10.resolve(ticketRef) === file;
+    if (!isTicket && canonicalTicketRef(parsed.sourceTicket) !== ticketRef) return { path: file, sha256: read, fault: `the plan names ${parsed.sourceTicket}, not ${ticketRef}` };
+    const doc = isTicket ? documentBriefFor(ticketRef, text, null) : null;
+    const documentParts = doc === null ? {} : { documentParts: Object.fromEntries(Object.entries(doc.parts).filter(([, part]) => part !== null)), taskGoals: doc.taskGoals };
+    return { path: file, sha256: read, ...parsed, ...documentParts };
+  } catch (err) {
+    if (!(err instanceof KilnError)) throw err;
+    return { path: file, sha256: sha2562, fault: err.message };
+  }
+}
+function planChangeFor({ meta, state, override = null }) {
+  const approved = state.documents?.plan;
+  if (approved?.approved !== true || TERMINAL_STATUSES.includes(state.status)) return null;
+  const asked = state.pendingAction?.kind === "ask-person" && state.question?.then === "plan-changed" ? state.question : null;
+  const current = override ?? planFileNow(asked?.planPath ?? approved.path, meta.ticketRef, approved.sha256);
+  const { path: file, sha256: sha2562, fault, documentParts, taskGoals, ...plan } = current;
+  if (sha2562 === approved.sha256) return asked === null ? null : { kind: "plan-changed", path: file, sha256: sha2562, restored: true };
+  if (asked !== null && asked.planSha256 === sha2562) return null;
+  if (fault !== void 0) return { kind: "plan-changed", path: file, sha256: sha2562, fault };
+  return { kind: "plan-changed", path: file, sha256: sha2562, plan, ...documentParts === void 0 ? {} : { documentParts, taskGoals } };
+}
+function applyHostInterjection({ flow, paths, state, interjection }) {
+  const displaced = state.pendingAction.actionId;
+  const { state: next, issues } = applyInterjection(flow, state, interjection);
+  if (next === state) throw new KilnError(issues[0].code, issues[0].message);
+  saveRunState(paths, next);
+  const terminal = nextAction(flow, next).terminal;
+  appendRunEvents(paths.dir, [
+    { kind: "interjection-applied", data: { actionId: displaced, interjection: interjection.kind, ...interjection.kind === "plan-changed" ? { sha256: interjection.sha256 } : {} } },
+    terminal ? { kind: "run-terminal", data: { status: next.status } } : pendingEvent(next)
+  ]);
+  return next;
+}
+function checkPlan({ paths, meta, state, override = null }) {
+  const interjection = planChangeFor({ meta, state, override });
+  return interjection === null ? state : applyHostInterjection({ flow: flowFor(flowCtx(meta)), paths, state, interjection });
 }
 function isOldReleaseRun(state) {
   return reposOf(state).length === 0 && state.discover === void 0;
@@ -14300,13 +14670,21 @@ function detailTicketBody(meta) {
 function questionDetail(meta, state) {
   const q = state.question;
   const { body, notRead } = detailTicketBody(meta);
-  const changed = body === null ? [] : ticketChangesFor(state, body).parts.map((p) => sectionNameOf(body, p, ticketFormat));
+  const holdsPlan = state.documents?.plan?.approved === true;
+  const ticketParts = body === null ? [] : ticketChangesFor(state, body).parts;
+  const ticketLines = body === null || !holdsPlan || meta.ticketRef === state.documents.plan.path ? null : readTicket(withContextHeading(body, ticketFormat), ticketFormat).brief.acceptance?.lines ?? null;
+  const planLines = state.documents?.plan?.acceptance ?? null;
+  const readAtOpen = state.documents?.plan?.ticketAcceptance ?? null;
+  const differs = (lines, other) => other === null || lines.length !== other.length || lines.some((line, i) => line !== other[i]);
+  const acceptanceDiffers = ticketLines !== null && planLines !== null && differs(ticketLines, planLines) && differs(ticketLines, readAtOpen);
+  const changed = (holdsPlan ? ticketParts.filter((p) => p !== "acceptance") : ticketParts).map((p) => sectionNameOf(body, p, ticketFormat));
   const parts = notRead !== null ? [notRead] : changed.length === 0 ? [] : [`Changed on the ticket since the run read it: ${changed.join(", ")}.${takesChange(state) ? " Reply change to read the new text into the run and have the plan written again." : ""}`];
+  if (acceptanceDiffers) parts.push("The ticket's acceptance differs from the approved plan's. The plan file is the contract: change the acceptance there.");
   if (q.detail !== null) parts.push(q.detail);
   if (q.then === "write" || q.then === "build") {
     const written = pendingTicketParts(state);
     if (written.length === 0) parts.push(`Tasks:
-${state.brief.tasks.plan.map((t) => `- ${t.taskId}: ${t.goal}`).join("\n")}`);
+${state.brief.tasks.plan.map((t) => `- ${t.taskId}: ${t.goal}${(meta.carried ?? []).some((c) => c.taskId === t.taskId) ? " (done, carried forward)" : ""}`).join("\n")}`);
     else if (meta.source === "jira" || body === null) parts.push(filledSections(state, written));
     else parts.push(positionalDiff(normalizeBody(body), bodyWithParts(body, state, written)));
     if (q.then === "build" && state.documents?.plan?.approved && state.mode === "EXECUTE") {
@@ -14482,7 +14860,7 @@ function againFor(paths, replacingUnbuilt = false) {
   const { status } = state;
   const unbuilt = replacingUnbuilt && !state.buildApproved && state.done.length === 0 && state.cursor === 0;
   if (!ENDED.has(status) && !isOldReleaseRun(state) && !unbuilt) throw new KilnError("KILN_RUN_NOT_ENDED", `the run is ${status}; open --again can replace it only before build approval and code tasks`, { status });
-  return setRunAside(paths, (/* @__PURE__ */ new Date()).toISOString().replace(/[-:]/g, "").replace(/\.\d+Z$/, "Z"));
+  return { setAside: setRunAside(paths, (/* @__PURE__ */ new Date()).toISOString().replace(/[-:]/g, "").replace(/\.\d+Z$/, "Z")), previous: state };
 }
 function isRootPath(value) {
   return typeof value === "string" && path10.isAbsolute(value);
@@ -14676,17 +15054,20 @@ ${prepared.addedText}`;
     const v = flags(args, { root: { type: "string" }, ticket: { type: "string" }, idea: { type: "string" }, again: { type: "boolean" }, base: { type: "string" }, plan: { type: "string" }, "approved-plan": { type: "string" }, "ticket-plan": { type: "string" }, host: { type: "string" } });
     const ref = canonicalTicketRef(requireFlag(v, "ticket"));
     if (v.plan !== void 0 && v["approved-plan"] !== void 0) throw new KilnError("KILN_PLAN_FLAGS_CONFLICT", "use either --plan or --approved-plan");
-    const approvedPlan = v["approved-plan"] === void 0 ? null : readApprovedPlan(v["approved-plan"], ref);
-    if (v["ticket-plan"] !== void 0 && approvedPlan === null) throw new KilnError("KILN_TICKET_PLAN_NEEDS_APPROVAL", "--ticket-plan requires --approved-plan");
+    const root = resolveRunsRoot({ flag: v.root });
+    const paths = runPathsFor(root, ref);
+    const saved = runExists(paths) ? loadState(paths) : null;
+    const savedHoldsPlan = saved !== null && v.again !== true && saved.documents?.plan?.approved === true;
+    const approvedPlan = v["approved-plan"] === void 0 || savedHoldsPlan ? null : readApprovedPlan(v["approved-plan"], ref);
+    if (savedHoldsPlan && v["approved-plan"] !== void 0 && !path10.isAbsolute(v["approved-plan"])) throw new KilnError("KILN_APPROVED_PLAN_SHAPE", "the approved plan path must be absolute", { planPath: v["approved-plan"] });
+    if (v["ticket-plan"] !== void 0 && v["approved-plan"] === void 0) throw new KilnError("KILN_TICKET_PLAN_NEEDS_APPROVAL", "--ticket-plan requires --approved-plan");
     const taskPlan = v["ticket-plan"] === void 0 ? null : readJsonInput(v, "ticket-plan");
     const source = sourceOf(ref);
     const checkoutRoots = checkoutRootsOf();
-    const root = resolveRunsRoot({ flag: v.root });
-    const paths = runPathsFor(root, ref);
-    const savedHostId = runExists(paths) ? loadState(paths).host?.id ?? "claude-code" : null;
+    const savedHostId = saved === null ? null : saved.host?.id ?? "claude-code";
     const host = selectedHost(v.host ?? savedHostId ?? "claude-code");
     if (savedHostId !== null && v.host !== void 0 && host.id !== savedHostId) throw new KilnError("KILN_HOST_RUN_MISMATCH", `the saved run uses ${savedHostId}; requested ${host.id}`, { runDir: paths.dir, savedHostId, requestedHostId: host.id });
-    if (host.id === "codex" && approvedPlan === null) throw new KilnError("KILN_CODEX_APPROVED_PLAN_REQUIRED", "the Codex host currently requires an approved plan", { ticket: ref });
+    if (host.id === "codex" && v["approved-plan"] === void 0) throw new KilnError("KILN_CODEX_APPROVED_PLAN_REQUIRED", "the Codex host currently requires an approved plan", { ticket: ref });
     const codexModelBinding = host.id === "codex" ? activeCodexModelBinding() : null;
     if (v.idea !== void 0) {
       if (source !== "markdown") throw new KilnError("KILN_IDEA_NEEDS_FILE", "an idea opens a new markdown ticket; pass a file path as --ticket", { ticket: ref });
@@ -14725,12 +15106,12 @@ ${v.idea.trim()}
       if (change !== null) throw new KilnError("KILN_APPROVED_TASK_CHANGED", change);
       directRepos = reposForApprovedTasks(taskPlan, approvedPlan, checkoutRoots, v.base ?? null, issueTitle, ref);
     }
-    if (approvedPlan !== null && taskPlan === null && !runExists(paths)) throw new KilnError("KILN_APPROVED_TASK_PLAN_REQUIRED", "build must translate this approved plan into a validated task plan before opening a run");
+    if (approvedPlan !== null && taskPlan === null && (!runExists(paths) || v.again === true)) throw new KilnError("KILN_APPROVED_TASK_PLAN_REQUIRED", "build must translate this approved plan into a validated task plan before opening a run");
     const direct = directRepos.length > 0;
-    const setAside = v.again === true && runExists(paths) ? againFor(paths, direct) : null;
+    const { setAside, previous } = v.again === true && runExists(paths) ? againFor(paths, direct) : { setAside: null, previous: null };
     if (runExists(paths)) {
       const meta2 = readRunMeta(paths);
-      const state2 = loadState(paths);
+      const state2 = saved;
       refuseOldRelease(paths, state2);
       if (host.id === "codex" && (state2.host.modelBinding?.model !== codexModelBinding.model || state2.host.modelBinding?.reasoningEffort !== codexModelBinding.reasoningEffort)) {
         throw new KilnError("KILN_CODEX_MODEL_RUN_MISMATCH", "the active Codex model or reasoning effort differs from the saved run", { saved: state2.host.modelBinding, active: codexModelBinding });
@@ -14738,16 +15119,15 @@ ${v.idea.trim()}
       if (taskPlan !== null && state2.documents?.plan?.approved && state2.brief.tasks === null) {
         throw new KilnError("KILN_APPROVED_RUN_NEEDS_RESTART", "this saved run still waits on discovery or planning; use open --again to keep its record and start the approved task route", { runDir: paths.dir });
       }
-      if (approvedPlan !== null && (state2.documents?.plan?.approved !== true || state2.documents.plan.path !== approvedPlan.path || state2.documents.plan.sha256 !== approvedPlan.sha256)) {
-        throw new KilnError("KILN_APPROVED_PLAN_RUN_MISMATCH", "this existing run does not hold the selected approved plan; end it before opening a new run", { planPath: approvedPlan.path, runDir: paths.dir });
-      }
-      if (approvedPlan !== null && !matchesApprovedTicketAcceptance(ticketBrief.acceptance, state2.documents.plan)) {
-        throw new KilnError("KILN_APPROVED_PLAN_ACCEPTANCE_MISMATCH", "the ticket acceptance changed since the run opened; return to kickoff", { ticket: ref, planPath: approvedPlan.path });
-      }
-      checkSavedApprovedPlan(state2);
+      if (approvedPlan !== null) throw new KilnError("KILN_APPROVED_PLAN_RUN_MISMATCH", "this existing run does not hold the selected approved plan; end it before opening a new run", { planPath: approvedPlan.path, runDir: paths.dir });
+      const atStop = state2.pendingAction?.kind === "ask-person";
+      const override = atStop && savedHoldsPlan && v["approved-plan"] !== void 0 ? planFileNow(path10.resolve(v["approved-plan"]), meta2.ticketRef, state2.documents.plan.sha256) : null;
+      const checked = atStop ? checkPlan({ paths, meta: meta2, state: state2, override }) : state2;
+      const resolvedPlan = v["approved-plan"] === void 0 ? null : path10.resolve(v["approved-plan"]);
+      const deferred = resolvedPlan !== null && !atStop && savedHoldsPlan && state2.pendingAction?.kind.startsWith("dispatch-") && resolvedPlan !== state2.documents.plan.path ? { approvedPlanDeferred: resolvedPlan } : {};
       const record2 = JSON.parse(readFileSync12(paths.party.record, "utf8"));
       const flow2 = flowFor(flowCtx(meta2));
-      return { resumed: true, dir: paths.dir, ...ENDED.has(state2.status) ? { again: `this run ended ${state2.status}; open --again sets it aside and starts a fresh run on this ticket` } : {}, fillState: openFillState(fillStateLines({ brief: state2.brief, taskGoals, roster: record2.roster, changed: ticketChangesFor(state2, ticketRead.body).parts }), source, ticketRead), roster: { rowId: record2.roster.rowId, fielded: record2.roster.fielded.map((m) => m.classKey) }, next: nextSummary(flow2, state2, paths, meta2) };
+      return { resumed: true, dir: paths.dir, ...deferred, ...ENDED.has(checked.status) ? { again: `this run ended ${checked.status}; open --again sets it aside and starts a fresh run on this ticket` } : {}, fillState: openFillState(fillStateLines({ brief: checked.brief, taskGoals, roster: record2.roster, changed: ticketChangesFor(checked, ticketRead.body).parts }), source, ticketRead), roster: { rowId: record2.roster.rowId, fielded: record2.roster.fielded.map((m) => m.classKey) }, next: nextSummary(flow2, checked, paths, meta2) };
     }
     const planBrief = direct ? briefFromPlan(readInput({ plan: approvedPlan.path }, "plan"), approvedPlan.path) : null;
     const readyBrief = !direct ? brief : {
@@ -14764,7 +15144,14 @@ ${v.idea.trim()}
     const roles = rolesFor(roster, registry, host.id);
     const bundle = buildBundle({ ticketText: body });
     const outward = outwardOf(source);
-    const extras = { runDir: paths.dir, cliPath: path10.resolve(process.argv[1]), ticket: { ref, source, outward, title: issueTitle, taskGoals, kind: ticketShape?.kind ?? "ticket", shape: ticketShape?.shape ?? null, readOnly: ticketShape !== null, ...source === "jira" ? { skipped: ticketRead.skipped, descriptionForm: ticketRead.form } : {}, ...documentParts === null ? {} : { documentParts } }, brief: readyBrief, repos: stateRepos, checkoutRoots, base: v.base ?? null, documents, ...direct ? { mode: "EXECUTE" } : {} };
+    const onBranch = (repo, branch, sha) => {
+      const record2 = directRepos.find((r) => r.root === realRootOf(repo));
+      return commitBranchesOf(record2.checkout, sha).branches.includes(branch);
+    };
+    const carriedTasks = direct && previous?.brief?.tasks && previous.documents?.plan?.approved === true && previous.done.length > 0 ? carriedDone(previous.done, previous.brief.tasks.plan, previous.documents.plan, approvedPlan, taskPlan.tasks, onBranch) : [];
+    const carried = carriedTasks.map(({ taskId, sha }) => ({ taskId, sha, from: setAside }));
+    const carryCursor = carried.length === 0 ? 0 : resumeCursor({ brief: readyBrief, done: carriedTasks, phase: 0 });
+    const extras = { runDir: paths.dir, cliPath: path10.resolve(process.argv[1]), ticket: { ref, source, outward, title: issueTitle, taskGoals, kind: ticketShape?.kind ?? "ticket", shape: ticketShape?.shape ?? null, readOnly: ticketShape !== null, ...source === "jira" ? { skipped: ticketRead.skipped, descriptionForm: ticketRead.form } : {}, ...documentParts === null ? {} : { documentParts } }, brief: readyBrief, repos: stateRepos, checkoutRoots, base: v.base ?? null, documents, ...direct ? { mode: "EXECUTE" } : {}, ...carried.length === 0 ? {} : { done: carriedTasks, cursor: carryCursor } };
     const firstKind = route(baseStateOf({ bundle, roles, extras }), flowCtx({ ticketRef: ref, source, firstKind: null, hostId: host.id })).nextKind;
     const flow = flowFor(flowCtx({ ticketRef: ref, source, firstKind, hostId: host.id }));
     const boundHost = host.id === "codex" ? { ...host, sessionId: process.env.CODEX_SESSION_ID, modelBinding: codexModelBinding } : host;
@@ -14801,6 +15188,7 @@ ${v.idea.trim()}
       base: first?.base ?? null,
       repos: directRepos.map(({ name, checkout, root: root2, branch, base, created }) => ({ name, checkout, root: root2, branch, base, created })),
       ...direct ? { repoWords } : {},
+      ...carried.length === 0 ? {} : { carried },
       firstKind,
       original,
       createdAt: (/* @__PURE__ */ new Date()).toISOString()
@@ -14822,11 +15210,11 @@ ${v.idea.trim()}
     ]);
     writeRunMeta(paths, meta);
     const installed = installDependencies(toCreate.map((repo) => repo.root));
-    return { resumed: false, dir: paths.dir, ...setAside === null ? {} : { setAside }, fillState: openFillState(fillStateLines({ brief: readyBrief, taskGoals, roster, ready: direct }), source, ticketRead), roster: { rowId: roster.rowId, fielded: roster.fielded.map((m) => m.classKey) }, installed, next: nextSummary(flow, state, paths, meta) };
+    return { resumed: false, dir: paths.dir, ...setAside === null ? {} : { setAside }, ...carried.length === 0 ? {} : { carried }, fillState: openFillState(fillStateLines({ brief: readyBrief, taskGoals, roster, ready: direct }), source, ticketRead), roster: { rowId: roster.rowId, fielded: roster.fielded.map((m) => m.classKey) }, installed, next: nextSummary(flow, state, paths, meta) };
   },
   next(args) {
     const v = flags(args, { root: { type: "string" }, ticket: { type: "string" } });
-    const { paths, meta, state } = openRun(v);
+    const { paths, meta, state } = openRun(v, { planCheck: true });
     return { next: nextSummary(flowFor(flowCtx(meta)), state, paths, meta) };
   },
   receipt(args) {
@@ -14853,38 +15241,41 @@ ${v.idea.trim()}
     const flow = flowFor(flowCtx(meta, { toolCalls: evidenceToolCalls(paths, pending, envelope.toolCalls), attachments: attachmentsFor(found), hostNotes: hostMeta.repairs ?? [], commitBranches, breach: ration.breached ? { actionId, visitTokens: ration.visitTokens, threshold: ration.threshold } : null }));
     const { state: nextState, issues } = applyReceipt(flow, state, { actionId, rawOutput, hostMeta });
     if (nextState === state) throw new KilnError(issues[0].code, issues[0].message);
-    const accepted2 = isAcceptedOutcome(nextState.ledger.at(-1).outcome);
+    const outcome = nextState.ledger.at(-1).outcome;
+    const accepted2 = isAcceptedOutcome(outcome);
     const { installed } = settleRepo({ paths, meta, state, nextState, apply: () => {
       afterReceipt({ flow, paths, meta, state, nextState, actionId, pending, accepted: accepted2 });
       writeFileAtomic(paths.envelope(actionId), JSON.stringify(envelope, null, 2) + "\n");
     } });
-    return { ledger: { outcome: nextState.ledger.at(-1).outcome }, runStatus: nextState.status, breach: ration.breached ? { visitTokens: ration.visitTokens, threshold: ration.threshold } : null, omissions: ration.omissions, issues, installed, mode: modeLineFor(state, nextState), next: nextSummary(flow, nextState, paths, meta) };
+    const checked = checkPlan({ paths, meta, state: nextState });
+    return { ledger: { outcome }, runStatus: checked.status, breach: ration.breached ? { visitTokens: ration.visitTokens, threshold: ration.threshold } : null, omissions: ration.omissions, issues, installed, mode: modeLineFor(state, nextState), next: nextSummary(flow, checked, paths, meta) };
   },
   reply(args) {
     const v = flags(args, { root: { type: "string" }, ticket: { type: "string" }, action: { type: "string" }, text: { type: "string" }, file: { type: "string" } });
-    const { paths, meta, state } = openRun(v);
+    const { paths, meta, state } = openRun(v, { planCheck: true });
     const actionId = requireFlag(v, "action");
-    const pending = nextAction(flowFor(flowCtx(meta)), state);
+    const probe = flowFor(flowCtx(meta));
+    const pending = nextAction(probe, state);
     if (pending.terminal) throw new KilnError("KILN_RUN_TERMINAL", `the run is ${state.status}; nothing to reply to`);
     if (pending.actionId !== actionId) throw new KilnError("KILN_ACTION_STALE", `actionId ${actionId} is not the pending action (${pending.actionId})`);
-    if (pending.kind !== "ask-person") throw new KilnError("KILN_REPLY_IS_RECEIPT", "the pending action is a dispatch; use receipt");
     const text = v.text !== void 0 ? v.text : readInput(v, "file");
-    const q = state.question;
-    if (q.then === "build" && isBareYes(text)) {
-      const approved = checkSavedApprovedPlan(state);
-      if (approved !== null && meta.ticketRef !== approved.path) {
-        const current = readTicket(withContextHeading(readTicketBody(meta.ticketRef, meta.source, null).body, ticketFormat), ticketFormat).brief.acceptance;
-        if (!matchesApprovedTicketAcceptance(current, approved)) throw new KilnError("KILN_APPROVED_PLAN_ACCEPTANCE_MISMATCH", "the ticket acceptance changed since the run opened; return to kickoff", { ticket: meta.ticketRef, planPath: approved.path });
-      }
+    if (pending.kind !== "ask-person") {
+      if (!isBareAbandon(text)) throw new KilnError("KILN_REPLY_IS_RECEIPT", "the pending action is a dispatch; use receipt, or reply abandon to end the run");
+      const ended = applyHostInterjection({ flow: probe, paths, state, interjection: { kind: "abandon" } });
+      return { ledger: { outcome: "interjected" }, runStatus: ended.status, issues: [], next: nextSummary(probe, ended, paths, meta) };
     }
+    const q = state.question;
     const changes = parseReply(text).word === "change" && takesChange(state) ? { ticketChanges: ticketChangesFor(state, readTicketBody(meta.ticketRef, meta.source, null).body) } : {};
     const flow = flowFor(flowCtx(meta, changes));
     const toWrite = pendingTicketParts(state);
     if ((q.then === "write" || q.then === "build") && isBareYes(text) && meta.outward && meta.source !== "jira" && toWrite.length > 0 && state.ticket.readOnly !== true) writeParts(paths, meta, state, toWrite);
     const { state: nextState, issues } = applyReceipt(flow, state, { actionId, rawOutput: text, hostMeta: {} });
     if (nextState === state) throw new KilnError(issues[0].code, issues[0].message);
+    if (q.then === "plan-changed" && q.plan !== null && nextState.documents.plan.sha256 === q.plan.sha256 && q.plan.sha256 !== state.documents.plan.sha256) writePlanApproval(q.plan.path, q.plan.sha256);
+    const outcome = nextState.ledger.at(-1).outcome;
     const { installed } = settleRepo({ paths, meta, state, nextState, apply: () => afterReceipt({ flow, paths, meta, state, nextState, actionId, pending, accepted: true }) });
-    return { ledger: { outcome: nextState.ledger.at(-1).outcome }, runStatus: nextState.status, issues, installed, mode: modeLineFor(state, nextState), next: nextSummary(flow, nextState, paths, meta) };
+    const checked = checkPlan({ paths, meta, state: nextState });
+    return { ledger: { outcome }, runStatus: checked.status, issues, installed, mode: modeLineFor(state, nextState), next: nextSummary(flow, checked, paths, meta) };
   },
   writes(args) {
     const [sub, ...rest2] = args;
@@ -15031,7 +15422,7 @@ ${v.idea.trim()}
     const { paths, meta, state } = openRun(v);
     const scoreboard = computeScoreboard({ roles: state.roles, envelopes: readEnvelopes(paths), rations, priceTable, ledger: state.ledger });
     const pullRequests = meta.pullRequests === void 0 ? [] : pullRequestsInLandingOrder(state, meta.pullRequests);
-    writeFileAtomic(paths.readout, renderReadout({ state, scoreboard, pullRequests }));
+    writeFileAtomic(paths.readout, renderReadout({ state, scoreboard, pullRequests, carried: meta.carried ?? [] }));
     return { readoutPath: paths.readout, scoreboard };
   },
   pr(args) {
@@ -15095,7 +15486,7 @@ ${v.idea.trim()}
     const nextBody = writes ? bodyWithReferencesLinks(meta, state, pullRequests.map((p) => p.url)) : null;
     const scoreboard = computeScoreboard({ roles: state.roles, envelopes: readEnvelopes(paths), rations, priceTable, ledger: state.ledger });
     const worktrees = removeRunWorktrees(repos);
-    const readout = renderReadout({ state, scoreboard, pullRequests, worktrees: meta.repos === void 0 ? null : worktrees });
+    const readout = renderReadout({ state, scoreboard, pullRequests, carried: meta.carried ?? [], worktrees: meta.repos === void 0 ? null : worktrees });
     const record = JSON.parse(readFileSync12(paths.party.record, "utf8"));
     const reportedAt = (/* @__PURE__ */ new Date()).toISOString();
     const completed = completePartyRecord(record, { laneRuns: record.laneRuns.map((l) => ({ ...l, executionStatus: "complete" })), cost: scoreboard.cost, report: { path: paths.party.report, sha256: sha256Utf8(readout) }, reportedAt });
