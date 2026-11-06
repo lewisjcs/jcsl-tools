@@ -13448,6 +13448,31 @@ function renderReadout({ state, scoreboard, pullRequests = [], carried = [], wor
 import { createHash as createHash3 } from "node:crypto";
 import { readFileSync as readFileSync10, writeFileSync as writeFileSync2 } from "node:fs";
 import path6 from "node:path";
+
+// src/plan-digest.mjs
+function planDigest({ planPath, sha256: sha2562, buildContract }) {
+  const { sourceTicket, acceptance, tasks, repositories, buildMethod } = buildContract;
+  const gated = tasks.filter((task) => task.afterRelease);
+  const lines = [
+    `Plan: ${planPath}`,
+    `SHA-256: ${sha2562}`,
+    `Source ticket: ${sourceTicket}`,
+    "Acceptance criteria:",
+    ...acceptance.map((line, index) => `${index + 1}. ${line}`),
+    "Tasks:",
+    ...tasks.map((task) => [`${task.number}. ${task.goal}`, task.repository, task.files.join(", ")].filter((part) => part !== null).join(" | ")),
+    ...gated.length === 0 ? ["Release gates: none"] : [
+      "Release gates:",
+      ...gated.map(({ number, afterRelease: { tasks: waits, reason } }) => `Task ${number} waits on the release of ${waits.map((n2) => `Task ${n2}`).join(", ")}${reason ? `: ${reason}` : ""}`)
+    ],
+    `Repositories: ${repositories.length === 0 ? "one repository, not named" : repositories.join(", ")}`,
+    `Build method: ${buildMethod ? buildMethod.text : "not stated"}`
+  ];
+  return `${lines.join("\n")}
+`;
+}
+
+// src/kickoff-approval.mjs
 function readPlanBytes(planPath) {
   try {
     return readFileSync10(planPath);
@@ -13469,14 +13494,16 @@ function readPlanPreview(planPath) {
     throw new KilnError("KILN_PLAN_ENCODING", "the plan is not valid UTF-8", { planPath: absolute });
   }
   const { sourceTicket, acceptance, tasks, repositories, buildMethod, spans } = parseApprovedPlanText(text);
-  return { planPath: absolute, text, sha256: sha256(bytes), buildContract: {
+  const hash = sha256(bytes);
+  const buildContract = {
     sourceTicket,
     acceptance,
     tasks: tasks.map(({ number, goal, files, repository, dependsOn, afterRelease }) => ({ number, goal, files, repository, dependsOn, afterRelease })),
     repositories,
     buildMethod,
     spans
-  } };
+  };
+  return { planPath: absolute, text, sha256: hash, digest: planDigest({ planPath: absolute, sha256: hash, buildContract }), buildContract };
 }
 function writePlanApproval(planPath, displayedSha256) {
   const absolute = path6.resolve(planPath);
@@ -15318,7 +15345,7 @@ ${v.idea.trim()}
     if (v.input === void 0 === (v.output === void 0)) throw new KilnError("KILN_CLASS_CHECK_KIND", "provide exactly one of --input or --output");
     const kind2 = v.input === void 0 ? "output" : "input";
     const value = readJsonInput(v, kind2);
-    if (kind2 === "input" && classId !== "kiln:prospector" && value?.mode !== "kickoff") throw new KilnError("KILN_CLASS_MODE_REQUIRED", "a direct Class input needs mode kickoff", { classId });
+    if (kind2 === "input" && classId !== "kiln:prospector" && !(value?.mode === "kickoff" || value?.mode === "amend" && classId === "kiln:planner")) throw new KilnError("KILN_CLASS_MODE_REQUIRED", "a direct Class input needs mode kickoff, or mode amend for the Planner", { classId });
     const checked = kind2 === "input" ? validateClassInput(classId, value) : validateKilnContract(entry.outputContractId, value);
     if (!checked.valid) throw new KilnError("KILN_CLASS_CHECK_INVALID", `${classId} ${kind2} fails its contract`, { classId, kind: kind2, issues: checked.issues });
     return { valid: true, classId, kind: kind2 };

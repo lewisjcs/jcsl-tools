@@ -2,7 +2,7 @@
   "kind": "class",
   "schemaVersion": "1.0-kernel",
   "id": "kiln:planner",
-  "version": "1.8.1",
+  "version": "1.9.0",
   "audience": "personal",
   "identity": {
     "name": "Planner",
@@ -67,7 +67,8 @@
               "mode",
               "intent",
               "sources",
-              "planPath"
+              "planPath",
+              "facts"
             ],
             "properties": {
               "mode": {
@@ -103,6 +104,60 @@
                 "minLength": 1
               },
               "changeNote": {
+                "type": "string",
+                "minLength": 1
+              },
+              "facts": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "fact",
+                    "source"
+                  ],
+                  "properties": {
+                    "fact": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "source": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  }
+                }
+              },
+              "given": {
+                "type": "array",
+                "minItems": 1,
+                "uniqueItems": true,
+                "items": {
+                  "enum": [
+                    "outcome",
+                    "acceptance"
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "mode",
+              "planPath",
+              "note"
+            ],
+            "properties": {
+              "mode": {
+                "const": "amend"
+              },
+              "planPath": {
+                "type": "string",
+                "minLength": 1
+              },
+              "note": {
                 "type": "string",
                 "minLength": 1
               }
@@ -274,7 +329,7 @@
       "path": "hosts/claude-code/agents/planner.md",
       "projection": {
         "canonicalSources": ["hosts/claude-code/agents/planner.md", "references/ears.md"],
-        "sourceHash": "569b1ed1e51df28802cf8524cab7de27d604942d1a371d2f2374ac53adcf81cf"
+        "sourceHash": "918bf7c161c71e78ea97f66968d7d54c10ce47127cf88f5255db1909847dec1c"
       }
     },
     "codex": {
@@ -282,7 +337,7 @@
       "path": "hosts/codex/agents/planner.md",
       "projection": {
         "canonicalSources": ["hosts/codex/agents/planner.md", "references/ears.md"],
-        "sourceHash": "ba2d67a815e19208424e8db61774fac61f24358b41b7e7844ff98a1aacf5e4bd"
+        "sourceHash": "aaa3e1878e52e5d5ead193f895e71b80b348a1ecc9d18c777b7a473b83e4dfa0"
       }
     }
   },

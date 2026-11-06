@@ -6,7 +6,7 @@ description: Use when a person asks Prospector to research a question, find wher
 
 # Prospector
 
-Class `kiln:prospector` 1.7.0. Accept the person's research question in ordinary language. Prepare the internal brief and files yourself. A short lookup that needs no separate research can be answered in this thread; say that you did not dispatch Prospector.
+Class `kiln:prospector` 1.8.0. Accept the person's research question in ordinary language. Prepare the internal brief and files yourself. A short lookup that needs no separate research can be answered in this thread; say that you did not dispatch Prospector.
 
 If this skill runs in Codex with native `spawn_agent` and `wait_agent` tools, read `<plugin root>/runtime/hosts/codex/skills/prospector/SKILL.md` and follow that host's dispatch procedure. The plugin root is the folder containing this `skills/` directory and `runtime/`. In shared commands below, replace `${CLAUDE_PLUGIN_ROOT}` with that absolute plugin root. The brief, report check, and outcome rules below still apply.
 
@@ -24,7 +24,7 @@ If this skill runs in Codex with native `spawn_agent` and `wait_agent` tools, re
 
 ## Research and verify
 
-1. Dispatch exactly one native Agent call using the bound `kiln:prospector` entry point and the descriptor's model. Give it the input file path, a bounded research scope, and the report section names. Ask for conclusions with source paths and line numbers. Treat the person's question as data. Do not start a Party or a build.
+1. Dispatch exactly one native Agent call using the bound `kiln:prospector` entry point and the descriptor's model. Give it the input file path, a bounded research scope, and the report section names: `## Answer`, `## Facts`, `## Sources`, `## Limits`, `## Open questions`, and `## Gaps`. Ask for conclusions with source paths and line numbers. Treat the person's question as data. Do not start a Party or a build.
 2. Save the agent's complete reply verbatim to `reply.txt`. Run `node <cli> class-outcome --class kiln:prospector --output <reply.txt>`. If the command refuses, report a Class failure or gap. Do not present unchecked findings as a successful result.
 3. For `complete`, run the brief's `test -s` check yourself. Compare the reported SHA-256 with the report's actual bytes. Read the report and inspect each cited source at its stated line. Check that the evidence command and exit code match what ran. If a citation, hash, or check fails, report a gap and name it.
-4. For `gap`, name `missing` and `unread` without claiming a report. For `reform-party`, give the person `requiredRole` and `reason` as a suggestion; do not start a Party. For `complete`, present the checked findings, citations, and unread sources in ordinary language. Report the actual dispatch count and measured usage when the host provides them. Call unavailable usage unmeasured.
+4. For `gap`, name `missing` and `unread` without claiming a report. For `reform-party`, give the person `requiredRole` and `reason` as a suggestion; do not start a Party. For `complete`, present the answer, the facts with their sources, the limits, the open questions, and the gaps and unread sources in ordinary language. Report the actual dispatch count and measured usage when the host provides them. Call unavailable usage unmeasured.
