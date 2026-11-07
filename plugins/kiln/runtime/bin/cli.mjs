@@ -9778,65 +9778,8 @@ function verifyInstalledBody(entry, installedPath, root = REPO_ROOT) {
 // src/contracts.mjs
 var import__4 = __toESM(require__(), 1);
 import { readFileSync as readFileSync8 } from "node:fs";
-var SCHEMA_FILE_BY_CONTRACT_ID3 = {
-  "kiln:step-outcome@1": "step-outcome.schema.json",
-  "kiln:ticket-plan@1": "ticket-plan.schema.json",
-  "kiln:borrowed-review-outcome@1": "borrowed-review-outcome.schema.json",
-  "kiln:brief@1": "brief.schema.json"
-};
-function readKilnSchema(fileName) {
-  return JSON.parse(readFileSync8(new URL(`../format/schemas/${fileName}`, import.meta.url), "utf8"));
-}
-function readClassManifest(rel) {
-  return JSON.parse(readFileSync8(new URL(`../${rel}`, import.meta.url), "utf8"));
-}
-var ajv4 = new import__4.default({ allErrors: true, strictTypes: false });
-var classManifests = CLASS_MANIFESTS.map(readClassManifest);
-var schemasByContractId = new Map([
-  ...Object.entries(SCHEMA_FILE_BY_CONTRACT_ID3).map(([contractId, fileName]) => [contractId, readKilnSchema(fileName)]),
-  ...classManifests.map(({ contract }) => [contract.output.id, contract.output.schema])
-]);
-var validatorsByContractId3 = new Map([...schemasByContractId].map(([contractId, schema]) => [contractId, ajv4.compile(schema)]));
-var inputSchemasByClassId = new Map(classManifests.map((manifest) => [manifest.id, manifest.contract.input.schema]));
-var inputValidatorsByClassId = /* @__PURE__ */ new Map();
-function validateClassInput(classId, value) {
-  const schema = inputSchemasByClassId.get(classId);
-  if (!schema) return { valid: false, issues: [{ instancePath: "", message: `unknown Class: ${classId}` }] };
-  if (!inputValidatorsByClassId.has(classId)) inputValidatorsByClassId.set(classId, ajv4.compile(schema));
-  const validate2 = inputValidatorsByClassId.get(classId);
-  return validate2(value) ? { valid: true, issues: [] } : { valid: false, issues: validate2.errors ?? [] };
-}
-function compileStatusBranches(schema) {
-  if (!Array.isArray(schema.oneOf)) return null;
-  const statuses = schema.oneOf.map((branch) => branch.properties?.status?.const);
-  if (statuses.some((status) => typeof status !== "string")) return null;
-  const { oneOf, ...shared } = schema;
-  return { statuses, byStatus: new Map(schema.oneOf.map((branch, i) => [statuses[i], ajv4.compile({ ...shared, ...branch })])) };
-}
-var branchesByContractId = new Map([...schemasByContractId].map(([contractId, schema]) => [contractId, compileStatusBranches(schema)]));
-function describeIssue(issue) {
-  if (issue.keyword === "additionalProperties" && issue.params?.additionalProperty) {
-    return { ...issue, message: `${issue.message} (${issue.params.additionalProperty})` };
-  }
-  return issue;
-}
-function validateKilnContract(contractId, value) {
-  const validate2 = validatorsByContractId3.get(contractId);
-  if (!validate2) {
-    return { valid: false, issues: [{ instancePath: "", message: `unknown contract: ${contractId}` }] };
-  }
-  if (validate2(value)) return { valid: true, issues: [] };
-  const allIssues = validate2.errors ?? [];
-  const branches = branchesByContractId.get(contractId);
-  if (!branches || !value || typeof value !== "object") return { valid: false, issues: allIssues };
-  const branch = branches.byStatus.get(value.status);
-  if (!branch) {
-    return { valid: false, issues: [{ instancePath: "/status", message: `must be one of ${branches.statuses.join(", ")}` }] };
-  }
-  branch(value);
-  const branchIssues = branch.errors ?? [];
-  return { valid: false, issues: (branchIssues.length > 0 ? branchIssues : allIssues).map(describeIssue) };
-}
+
+// src/check-rules.mjs
 function chainsCommands(command) {
   const stack = ["outside"];
   const closers = [];
@@ -9951,6 +9894,67 @@ function isBoundaryPath(entry) {
   const named = hasTrailingSlash ? segments.slice(0, -1) : segments;
   return named.every((segment) => segment !== "." && segment !== "..");
 }
+
+// src/contracts.mjs
+var SCHEMA_FILE_BY_CONTRACT_ID3 = {
+  "kiln:step-outcome@1": "step-outcome.schema.json",
+  "kiln:ticket-plan@1": "ticket-plan.schema.json",
+  "kiln:borrowed-review-outcome@1": "borrowed-review-outcome.schema.json",
+  "kiln:brief@1": "brief.schema.json"
+};
+function readKilnSchema(fileName) {
+  return JSON.parse(readFileSync8(new URL(`../format/schemas/${fileName}`, import.meta.url), "utf8"));
+}
+function readClassManifest(rel) {
+  return JSON.parse(readFileSync8(new URL(`../${rel}`, import.meta.url), "utf8"));
+}
+var ajv4 = new import__4.default({ allErrors: true, strictTypes: false });
+var classManifests = CLASS_MANIFESTS.map(readClassManifest);
+var schemasByContractId = new Map([
+  ...Object.entries(SCHEMA_FILE_BY_CONTRACT_ID3).map(([contractId, fileName]) => [contractId, readKilnSchema(fileName)]),
+  ...classManifests.map(({ contract }) => [contract.output.id, contract.output.schema])
+]);
+var validatorsByContractId3 = new Map([...schemasByContractId].map(([contractId, schema]) => [contractId, ajv4.compile(schema)]));
+var inputSchemasByClassId = new Map(classManifests.map((manifest) => [manifest.id, manifest.contract.input.schema]));
+var inputValidatorsByClassId = /* @__PURE__ */ new Map();
+function validateClassInput(classId, value) {
+  const schema = inputSchemasByClassId.get(classId);
+  if (!schema) return { valid: false, issues: [{ instancePath: "", message: `unknown Class: ${classId}` }] };
+  if (!inputValidatorsByClassId.has(classId)) inputValidatorsByClassId.set(classId, ajv4.compile(schema));
+  const validate2 = inputValidatorsByClassId.get(classId);
+  return validate2(value) ? { valid: true, issues: [] } : { valid: false, issues: validate2.errors ?? [] };
+}
+function compileStatusBranches(schema) {
+  if (!Array.isArray(schema.oneOf)) return null;
+  const statuses = schema.oneOf.map((branch) => branch.properties?.status?.const);
+  if (statuses.some((status) => typeof status !== "string")) return null;
+  const { oneOf, ...shared } = schema;
+  return { statuses, byStatus: new Map(schema.oneOf.map((branch, i) => [statuses[i], ajv4.compile({ ...shared, ...branch })])) };
+}
+var branchesByContractId = new Map([...schemasByContractId].map(([contractId, schema]) => [contractId, compileStatusBranches(schema)]));
+function describeIssue(issue) {
+  if (issue.keyword === "additionalProperties" && issue.params?.additionalProperty) {
+    return { ...issue, message: `${issue.message} (${issue.params.additionalProperty})` };
+  }
+  return issue;
+}
+function validateKilnContract(contractId, value) {
+  const validate2 = validatorsByContractId3.get(contractId);
+  if (!validate2) {
+    return { valid: false, issues: [{ instancePath: "", message: `unknown contract: ${contractId}` }] };
+  }
+  if (validate2(value)) return { valid: true, issues: [] };
+  const allIssues = validate2.errors ?? [];
+  const branches = branchesByContractId.get(contractId);
+  if (!branches || !value || typeof value !== "object") return { valid: false, issues: allIssues };
+  const branch = branches.byStatus.get(value.status);
+  if (!branch) {
+    return { valid: false, issues: [{ instancePath: "/status", message: `must be one of ${branches.statuses.join(", ")}` }] };
+  }
+  branch(value);
+  const branchIssues = branch.errors ?? [];
+  return { valid: false, issues: (branchIssues.length > 0 ? branchIssues : allIssues).map(describeIssue) };
+}
 function pathsIssues(plan) {
   const tasks = Array.isArray(plan?.tasks) ? plan.tasks : [];
   return tasks.flatMap((task) => (Array.isArray(task?.paths) ? task.paths : []).filter((entry) => typeof entry === "string" && !isBoundaryPath(entry)).map((entry) => ({ message: `${task.taskId}: paths entry "${entry}" breaks the rule: ${PATHS_RULE}` })));
@@ -9968,13 +9972,13 @@ function validateTicketPlan(plan) {
     for (const id of task.afterRelease ?? []) {
       if (!seen.has(id)) problems.push({ message: `${task.taskId} waits on ${id}, which is not an earlier task` });
     }
-    task.doneWhen.forEach((check, i) => {
-      const fault = chainsCommands(check.command);
+    task.doneWhen.forEach((check2, i) => {
+      const fault = chainsCommands(check2.command);
       if (fault === "chains") problems.push({ message: `check ${i + 1} of ${task.taskId} chains commands (&&, ||, ;, |); one command per check` });
       if (fault === "unclosed") problems.push({ message: `check ${i + 1} of ${task.taskId} has an unclosed quote; one command per check` });
     });
-    for (const check of task.doneWhen) {
-      if (!isAbsoluteForm(check.command)) problems.push({ message: `${task.taskId}: check command is not an absolute form (no cd; npm/npx with --prefix /\u2026; git -C /\u2026; node /\u2026): ${check.command}` });
+    for (const check2 of task.doneWhen) {
+      if (!isAbsoluteForm(check2.command)) problems.push({ message: `${task.taskId}: check command is not an absolute form (no cd; npm/npx with --prefix /\u2026; git -C /\u2026; node /\u2026): ${check2.command}` });
     }
     seen.add(task.taskId);
   }
@@ -10399,6 +10403,313 @@ function metaReposOf(meta) {
   return meta.repos ?? (meta.repo ? [{ name: nameOf(meta.repo), checkout: checkoutOf(meta.repo), root: meta.repo, branch: meta.branch, base: meta.base, created: false }] : []);
 }
 
+// src/approved-plan-shape.mjs
+import path4 from "node:path";
+
+// hosts/codex/check-expectation.mjs
+function parseCheckExpectation(value) {
+  const expect = value.trim();
+  const exit = /^exit (0|[1-9][0-9]*)$/i.exec(expect);
+  if (exit && Number.isSafeInteger(Number(exit[1])) && Number(exit[1]) <= 255) return { kind: "exit", code: Number(exit[1]) };
+  if (/^[0-9]+$/.test(expect)) return { kind: "exact-count", count: expect };
+  const minimum = /^a count of at least ([0-9]+)$/i.exec(expect);
+  if (minimum && Number.isSafeInteger(Number(minimum[1]))) return { kind: "minimum-count", count: Number(minimum[1]) };
+  const literal = /^`([^`\n]+)`$/.exec(expect);
+  if (literal) return { kind: "contains", text: literal[1] };
+  return null;
+}
+
+// src/approved-plan-shape.mjs
+var WORKTREE_TOKEN = "<worktree>";
+var TASK = /^#{2,3} Task (\d+): (.+)$/;
+var SOURCE = /^\s*(?:[-*]\s+)?(?:\*\*)?Source ticket:(?:\*\*)?\s*(\S.*?)\s*$/i;
+var FILE_ENTRY = /^(?:[-*]\s*)?(?:\*\*)?(Files|Create|Modify|Test|Delete|Add):(?:\*\*)?\s*(.*)$/i;
+var REPOSITORY = /^(?:[-*]\s*)?(?:\*\*)?Repository:(?:\*\*)?\s*(.*)$/i;
+var AFTER_RELEASE = /^(?:[-*]\s*)?(?:\*\*)?After release:(?:\*\*)?\s*(.+)$/i;
+var DEPENDS_ON = /^(?:[-*]\s*)?(?:\*\*)?Depends on:(?:\*\*)?\s*(.*)$/i;
+var COVERS = /^(?:[-*]\s*)?(?:\*\*)?Covers:(?:\*\*)?\s*(.*)$/i;
+var CHECK = /^(?:[-*]\s*)?(?:\*\*)?Check:(?:\*\*)?\s*(.*)$/i;
+var DEPENDS_ON_NONE = /* @__PURE__ */ new Set(["none", "nothing", "n/a", "-", "\u2014", "no"]);
+var BUILD_METHOD_HEADING = /^#{1,6}\s+Recommended build method\b/i;
+var BUILD_METHOD_LINE = /^Recommended build method:\s*(.+)$/i;
+var KILN_OPENER = /^(?:(?:[-*]|\d+\.)\s+)?(?:\*\*|`)*(?:Kiln build|\/kiln:build)/i;
+function shape(message, details = {}) {
+  throw new KilnError("KILN_APPROVED_PLAN_SHAPE", message, details);
+}
+function coverage(message, details = {}) {
+  throw new KilnError("KILN_APPROVED_PLAN_COVERAGE", message, details);
+}
+function check(message, details = {}) {
+  throw new KilnError("KILN_APPROVED_PLAN_CHECK", message, details);
+}
+function safeFile(name) {
+  if (name.trim() !== name || name.length === 0 || path4.isAbsolute(name) || name.split("/").some((part) => part === "." || part === "..") || name.includes("//") || name.includes("\\") || /[\0\r\n]/.test(name) || !isBoundaryPath(name)) {
+    shape("task files must be safe repository-relative paths", { path: name });
+  }
+}
+function filePaths(lines, startLine) {
+  const files = [];
+  const fileLines = [];
+  const spans = [];
+  let inFiles = false;
+  let fileStarted = false;
+  for (const [index, raw] of lines.entries()) {
+    const line = raw.trim();
+    const entry = FILE_ENTRY.exec(line);
+    if (entry !== null) {
+      const label = entry[1].toLowerCase();
+      const names = [...entry[2].matchAll(/`([^`]+)`/g)].map((match) => match[1]);
+      if (names.length === 0 && label !== "files") shape("each task file line must name a path in backticks", { line: raw, lineNumber: startLine + index });
+      inFiles = label === "files" && names.length === 0;
+      fileStarted = false;
+      const selected = label === "files" ? names : names.slice(0, 1);
+      if (selected.length > 0) fileLines.push(raw);
+      for (const name of selected) {
+        safeFile(name);
+        if (!files.includes(name)) files.push(name);
+        spans.push({ field: "file", line: startLine + index, value: name });
+      }
+      continue;
+    }
+    if (COVERS.test(line) || CHECK.test(line)) continue;
+    if (!inFiles) continue;
+    if (line === "") {
+      if (fileStarted) inFiles = false;
+      continue;
+    }
+    const item = /^[-*]\s+`([^`]+)`(?:\s|$)/.exec(line);
+    if (item === null) {
+      inFiles = false;
+      continue;
+    }
+    safeFile(item[1]);
+    if (!files.includes(item[1])) files.push(item[1]);
+    fileStarted = true;
+    fileLines.push(raw);
+    spans.push({ field: "file", line: startLine + index, value: item[1] });
+  }
+  return { files, fileLines, spans };
+}
+function repositoryLine(lines, startLine, number) {
+  for (const [index, raw] of lines.entries()) {
+    const match = REPOSITORY.exec(raw.trim());
+    if (match === null) continue;
+    const name = match[1].trim().replace(/^`+|`+$/g, "").trim();
+    if (name === "" || /[\s]/.test(name) || name.includes("/") || name.includes("..")) {
+      shape(`task ${number}'s Repository: line is not a folder name`, { task: number, lineNumber: startLine + index });
+    }
+    return { name, span: { field: "repository", line: startLine + index, value: name } };
+  }
+  return null;
+}
+function dependsOnLine(lines, startLine, number) {
+  for (const [index, raw] of lines.entries()) {
+    const match = DEPENDS_ON.exec(raw.trim());
+    if (match === null) continue;
+    const lineNumber = startLine + index;
+    const value = match[1].trim();
+    const bare = value.replaceAll("**", "").replaceAll("`", "").trim().replace(/\.$/, "").trim().toLowerCase();
+    const span = { field: "dependsOn", line: lineNumber, value };
+    if (DEPENDS_ON_NONE.has(bare)) return { tasks: [], span };
+    const tasks = [...value.matchAll(/Task (\d+)/gi)].map((ref) => Number(ref[1]));
+    if (tasks.length === 0) shape(`task ${number}'s Depends on: line names no task`, { task: number, lineNumber });
+    const later = tasks.find((earlier) => earlier >= number || earlier < 1);
+    if (later !== void 0) shape(`task ${number}'s Depends on: line names Task ${later}, which is not an earlier task`, { task: number, lineNumber });
+    return { tasks: [...new Set(tasks)], span };
+  }
+  return null;
+}
+function afterReleaseLine(lines, startLine) {
+  for (const [index, raw] of lines.entries()) {
+    const match = AFTER_RELEASE.exec(raw.trim());
+    if (match === null) continue;
+    const refs = [...match[1].matchAll(/Task (\d+)/g)];
+    const rest2 = refs.length === 0 ? "" : match[1].slice(refs.at(-1).index + refs.at(-1)[0].length);
+    const reason = rest2.trim().replace(/^[,:\-\u2013\u2014(]/, "").trim();
+    return { tasks: [...new Set(refs.map((ref) => Number(ref[1])))], reason, span: { field: "afterRelease", line: startLine + index, value: match[1].trim() } };
+  }
+  return null;
+}
+function readBuildMethod(lines) {
+  const heading2 = lines.findIndex((line) => BUILD_METHOD_HEADING.test(line));
+  let text;
+  if (heading2 !== -1) {
+    const end = lines.findIndex((line, at) => at > heading2 && /^#{1,6}\s/.test(line));
+    text = lines.slice(heading2 + 1, end === -1 ? void 0 : end).map((line) => line.trim()).find((line) => line !== "");
+  } else {
+    text = lines.map((line) => BUILD_METHOD_LINE.exec(line.trim())).find((match) => match !== null)?.[1].trim();
+  }
+  if (text === void 0) return null;
+  return { kiln: KILN_OPENER.test(text), text };
+}
+function acceptanceLines(lines, startLine) {
+  const entries = lines.map((line) => line.trim());
+  const firstList = entries.findIndex((line) => /^(?:[-*]|\d+\.)\s+/.test(line));
+  if (firstList === -1) {
+    const first = entries.findIndex(Boolean);
+    if (first === -1) return { acceptance: [], spans: [] };
+    const end = entries.findIndex((line, at) => at > first && line === "");
+    const acceptance2 = entries.slice(first, end === -1 ? void 0 : end).map((line) => line.replace(/\s+/g, " "));
+    return { acceptance: acceptance2, spans: acceptance2.map((value, at) => ({ field: "acceptance", line: startLine + first + at, value })) };
+  }
+  const marker = /^(?:[-*]|(\d+)\.)\s+(.+)$/;
+  const acceptance = [];
+  const spans = [];
+  let current = -1;
+  for (let index = firstList; index < entries.length; index += 1) {
+    const line = entries[index];
+    if (line === "") continue;
+    const match = marker.exec(line);
+    if (match !== null) {
+      const position = acceptance.length + 1;
+      if (match[1] !== void 0 && Number(match[1]) !== position) {
+        throw new KilnError("KILN_APPROVED_PLAN_ACCEPTANCE", `acceptance item written as ${match[1]} sits at position ${position}`);
+      }
+      acceptance.push(match[2].replace(/\s+/g, " ").trim());
+      spans.push({ field: "acceptance", line: startLine + index, value: acceptance.at(-1) });
+      current = acceptance.length - 1;
+    } else if (current !== -1 && /^\s+\S/.test(lines[index])) {
+      acceptance[current] = `${acceptance[current]} ${line.replace(/\s+/g, " ")}`;
+      spans[current].value = acceptance[current];
+      spans[current].endLine = startLine + index;
+    } else break;
+  }
+  return { acceptance, spans };
+}
+function coversLine(lines, startLine, number, criteriaCount) {
+  const found = lines.flatMap((raw, index) => {
+    const match2 = COVERS.exec(raw.trim());
+    return match2 === null ? [] : [{ match: match2, lineNumber: startLine + index }];
+  });
+  if (found.length === 0) return null;
+  if (found.length > 1) coverage(`task ${number} has two Covers: lines`, { task: number, lineNumber: found[1].lineNumber });
+  const { match, lineNumber } = found[0];
+  const tokens = match[1].trim().replace(/\.$/, "").split(/[\s,]+/).filter((token) => token !== "" && token.toLowerCase() !== "and");
+  if (tokens.length === 0 || tokens.some((token) => !/^\d+$/.test(token))) {
+    coverage(`task ${number}'s Covers: line must list criterion numbers`, { task: number, lineNumber });
+  }
+  const numbers = tokens.map(Number);
+  for (const [at, criterion] of numbers.entries()) {
+    if (criterion < 1 || criterion > criteriaCount) coverage(`task ${number} covers criterion ${criterion}, which the plan does not list`, { task: number, lineNumber });
+    if (numbers.indexOf(criterion) !== at) coverage(`task ${number} repeats criterion ${criterion}`, { task: number, lineNumber });
+  }
+  numbers.sort((x, y) => x - y);
+  return { numbers, span: { field: "covers", line: lineNumber, value: numbers.join(", ") } };
+}
+function checkLines(lines, startLine, number, taskLines) {
+  const checks = [];
+  const spans = [];
+  for (const [index, raw] of lines.entries()) {
+    const match = CHECK.exec(raw.trim());
+    if (match === null) continue;
+    const lineNumber = startLine + index;
+    const fail5 = (message) => check(`task ${number}${message}`, { task: number, lineNumber });
+    const parts = /^`([^`]*)`\s+expects\s+(.+?)\s*$/i.exec(match[1].trim());
+    if (parts === null) fail5("'s Check: line needs a backticked command and expects <result>");
+    const i = checks.length + 1;
+    const command = parts[1].trim();
+    if (command === "") fail5(` check ${i} has no command`);
+    const expect = parts[2].startsWith("`") ? parts[2] : parts[2].replace(/\.$/, "");
+    const chained = chainsCommands(command);
+    if (chained === "chains") fail5(` check ${i} chains commands (&&, ||, ;, |); one command per check`);
+    if (chained === "unclosed") fail5(` check ${i} has an unclosed quote; one command per check`);
+    const substituted = command.replaceAll(WORKTREE_TOKEN, "/worktree");
+    if (/[<>]/.test(substituted)) fail5(` check ${i} redirects; one command per check`);
+    if (!isAbsoluteForm(substituted)) fail5(` check ${i} is not an absolute form (no cd; npm/npx with --prefix <worktree>; git -C <worktree>; node <worktree>/\u2026)`);
+    if (parseCheckExpectation(expect) === null) fail5(` check ${i} expects a result no host can verify: use exit N, a count, a count of at least N, or a backticked line`);
+    checks.push({ command, expect });
+    spans.push({ field: "check", line: lineNumber, value: `${command} expects ${expect}` });
+  }
+  if (checks.length === 0) {
+    if (taskLines === "optional") return { checks: null, spans };
+    check(`task ${number} has no Check: line`, { task: number, lineNumber: startLine - 1 });
+  }
+  return { checks, spans };
+}
+function parseApprovedPlanText(text, { taskLines = "required" } = {}) {
+  const lines = text.replaceAll("\r\n", "\n").split("\n");
+  const sources = lines.flatMap((line, index) => {
+    const match = SOURCE.exec(line);
+    return match === null ? [] : [{ line: index + 1, value: match[1].trim() }];
+  });
+  if (sources.length !== 1) shape("the plan needs one Source ticket line");
+  const acceptanceStart = lines.findIndex((line) => line.trim() === "## Acceptance criteria");
+  if (acceptanceStart === -1) throw new KilnError("KILN_APPROVED_PLAN_ACCEPTANCE", "the plan needs ## Acceptance criteria");
+  const acceptanceEnd = lines.findIndex((line, index) => index > acceptanceStart && (/^## /.test(line) || TASK.test(line)));
+  const { acceptance, spans: acceptanceSpans } = acceptanceLines(lines.slice(acceptanceStart + 1, acceptanceEnd === -1 ? void 0 : acceptanceEnd), acceptanceStart + 2);
+  if (acceptance.length === 0 || acceptance.some((line) => line.length === 0)) {
+    throw new KilnError("KILN_APPROVED_PLAN_ACCEPTANCE", "the plan needs acceptance criteria");
+  }
+  if (new Set(acceptance).size !== acceptance.length) {
+    throw new KilnError("KILN_APPROVED_PLAN_ACCEPTANCE", "the plan repeats an acceptance criterion");
+  }
+  const headings = lines.map((line, index) => ({ match: TASK.exec(line), index })).filter(({ match }) => match !== null);
+  if (headings.length === 0) shape("the plan needs at least one numbered task");
+  const tasks = headings.map(({ match, index }, position) => {
+    const number = Number(match[1]);
+    if (number !== position + 1) shape(`task ${number} is out of order or repeated`, { task: number, position: position + 1 });
+    const goal = match[2].trim();
+    if (goal.length === 0) shape(`task ${number} has no goal`, { task: number, lineNumber: index + 1 });
+    const nextHeading = lines.findIndex((line, at) => at > index && /^## /.test(line));
+    const nextTask = headings[position + 1]?.index ?? lines.length;
+    const end = Math.min(nextHeading === -1 ? lines.length : nextHeading, nextTask);
+    const sourceLines = lines.slice(index + 1, end);
+    const markedNonExecutable = /^(?:BLOCKED\s+(?:on|by|pending)\b|optional\s+(?:after|if|later)\b)|\(\s*(?:BLOCKED|optional)\b/i.test(match[2]);
+    const hasBlockingStatus = sourceLines.some((line) => /^\s*\*\*Blocked by:/i.test(line) || /^\s*\*\*Status:/i.test(line) && /\b(?:blocked|optional)\b/i.test(line));
+    if (markedNonExecutable || hasBlockingStatus) {
+      shape(`task ${number} is blocked or optional; settle its executable scope before approval`, { task: number, lineNumber: index + 1 });
+    }
+    const { files, fileLines, spans } = filePaths(sourceLines, index + 2);
+    if (files.length === 0) shape(`task ${number} names no file`, { task: number, lineNumber: index + 1 });
+    const repo = repositoryLine(sourceLines, index + 2, number);
+    const gate = afterReleaseLine(sourceLines, index + 2);
+    const deps = dependsOnLine(sourceLines, index + 2, number);
+    const cover = coversLine(sourceLines, index + 2, number, acceptance.length);
+    let covers = cover?.numbers ?? null;
+    if (cover === null) {
+      if (headings.length === 1) covers = acceptance.map((_, at) => at + 1);
+      else if (taskLines !== "optional") coverage(`task ${number} has no Covers: line`, { task: number, lineNumber: index + 1 });
+    }
+    const verified = checkLines(sourceLines, index + 2, number, taskLines);
+    const taskSpans = [{ field: "goal", line: index + 1, value: match[2].trim() }, ...spans, ...cover === null ? [] : [cover.span], ...verified.spans, ...repo === null ? [] : [repo.span], ...gate === null ? [] : [gate.span], ...deps === null ? [] : [deps.span]];
+    return {
+      number,
+      heading: `Task ${number}: ${match[2].trim()}`,
+      goal: match[2].trim(),
+      lines: sourceLines,
+      fileLines,
+      files,
+      repository: repo?.name ?? null,
+      dependsOn: deps?.tasks ?? [],
+      afterRelease: gate === null ? null : { tasks: gate.tasks, reason: gate.reason },
+      covers,
+      checks: verified.checks,
+      spans: taskSpans
+    };
+  });
+  if (tasks.every((task) => task.covers !== null)) {
+    const covered = new Set(tasks.flatMap((task) => task.covers));
+    const missing = acceptance.findIndex((_, at) => !covered.has(at + 1));
+    if (missing !== -1) coverage(`criterion ${missing + 1} is covered by no task`, { criterion: missing + 1 });
+  }
+  const firstNamed = tasks.find((task) => task.repository !== null);
+  if (firstNamed !== void 0) {
+    const unnamed = tasks.find((task) => task.repository === null);
+    if (unnamed !== void 0) shape(`task ${unnamed.number} names no Repository: line while task ${firstNamed.number} does`, { task: unnamed.number });
+  }
+  for (const task of tasks) {
+    if (task.afterRelease === null) continue;
+    const { number } = task;
+    if (task.afterRelease.tasks.length === 0) shape(`task ${number}'s After release: line names no task`, { task: number });
+    for (const earlier of task.afterRelease.tasks) {
+      if (earlier >= number || earlier < 1) shape(`task ${number}'s After release: line names Task ${earlier}, which is not an earlier task`, { task: number });
+      if (tasks[earlier - 1].repository === task.repository) shape(`task ${number}'s After release: line names Task ${earlier} in the same repository`, { task: number });
+    }
+  }
+  const repositories = [...new Set(tasks.flatMap((task) => task.repository === null ? [] : [task.repository]))];
+  return { sourceTicket: sources[0].value, acceptance, tasks, repositories, buildMethod: readBuildMethod(lines), spans: [{ field: "sourceTicket", line: sources[0].line, value: sources[0].value }, ...acceptanceSpans, ...tasks.flatMap((task) => task.spans)] };
+}
+
 // src/prompts.mjs
 var QUESTION_CAP = 700;
 var NO_CD = "Absolute paths only, from any directory, never after a cd. Run every numbered check as the absolute command written: the host records the whole command of each Bash call and matches your evidence commands against them, so a cd form or a changed form does not match. Run each check as its own Bash call, nothing before it and nothing after it; a check inside a compound call is recorded as the compound and matches nothing. When two checks name the same command, one run serves both; quote it under each number.";
@@ -10654,6 +10965,7 @@ function renderDesignerPrompt(state) {
     ...artifact(state, fence)
   ].join("\n");
 }
+var withRunWorktree = (line, root) => root === void 0 ? line : line.replaceAll(WORKTREE_TOKEN, () => root);
 function renderPlannerPrompt(state) {
   const planPath = `${state.runDir}/ticket-plan.json`;
   const replan = state.replan !== null;
@@ -10681,8 +10993,8 @@ function renderPlannerPrompt(state) {
     ...approved !== null ? [
       `## Approved kickoff plan: ${approved.path}`,
       `Approved SHA-256: ${approved.sha256}`,
-      "Read the full approved plan. Copy its task count, order, heading text, and named file scope exactly. Use task-1 through task-N in that order. Add checks, dependencies, inputs, repository, branch, and acceptance coverage without changing an approved task.",
-      ...fenced(fence, approved.tasks.flatMap((task) => [task.heading, ...task.lines])),
+      "Read the full approved plan. Copy its task count, order, heading text, and named file scope exactly. Use task-1 through task-N in that order. Add checks, dependencies, inputs, repository, branch, and acceptance coverage without changing an approved task. Copy each task's Check: lines as its checks.",
+      ...fenced(fence, [...approved.acceptance.map((text, i) => `${i + 1}. ${text}`), ...approved.tasks.flatMap((task) => [task.heading, ...task.lines.map((line) => withRunWorktree(line, brief.tasks?.plan.find((t) => t.taskId === `task-${task.number}`)?.repo ?? (reposOf(state).length === 1 ? reposOf(state)[0].root : void 0)))])]),
       ""
     ] : state.documents?.plan !== null && state.documents?.plan !== void 0 && state.documents.plan.kind === "plan" && ["EXECUTE", "ORIENT"].includes(state.mode) ? [
       `## The plan to copy: ${state.documents.plan.path}`,
@@ -11065,7 +11377,7 @@ function codeSignals(rawBody, format) {
 // src/runs.mjs
 import { mkdirSync as mkdirSync2, existsSync, readFileSync as readFileSync9, readdirSync as readdirSync2, rmSync, renameSync as renameSync2 } from "node:fs";
 import { homedir } from "node:os";
-import path4 from "node:path";
+import path5 from "node:path";
 var SLUG_SAFE = (s) => s.toLowerCase().replace(/[._]/g, "-");
 function slugOf(ref) {
   const source = sourceOf(ref);
@@ -11074,7 +11386,7 @@ function slugOf(ref) {
     return `gh-${SLUG_SAFE(repo).replace("/", "-")}-${number}`;
   }
   if (source === "jira") return `jira-${ref.toLowerCase()}`;
-  return `md-${sha256Utf8(path4.resolve(ref)).slice(0, 12)}`;
+  return `md-${sha256Utf8(path5.resolve(ref)).slice(0, 12)}`;
 }
 function resolveRunsRoot({ flag, env = process.env, home = homedir() }) {
   return resolveStoreRoot({ flag, env, home, stateSubpath: ["kiln", "runs"] });
@@ -11083,8 +11395,8 @@ function resolveJiraStore({ env = process.env, home = homedir() } = {}) {
   return resolveStoreRoot({ env, home, stateSubpath: ["kiln", "jira"] });
 }
 function jiraCapturePaths(store, key) {
-  const dir = path4.join(store, key);
-  return Object.freeze({ dir, request: path4.join(dir, "request.json"), capture: path4.join(dir, "capture.json"), answer: path4.join(dir, "answer.json"), refusedCapture: path4.join(dir, "refused-capture.json"), refusedAnswer: path4.join(dir, "refused-answer.json") });
+  const dir = path5.join(store, key);
+  return Object.freeze({ dir, request: path5.join(dir, "request.json"), capture: path5.join(dir, "capture.json"), answer: path5.join(dir, "answer.json"), refusedCapture: path5.join(dir, "refused-capture.json"), refusedAnswer: path5.join(dir, "refused-answer.json") });
 }
 function readJsonOrNull(file) {
   try {
@@ -11119,38 +11431,38 @@ function clearJiraCapture(paths) {
   rmSync(paths.answer, { force: true });
 }
 function saveJiraPreview(store, key, sha2562, bytes) {
-  const dir = path4.join(store, key, "previews");
+  const dir = path5.join(store, key, "previews");
   mkdirSync2(dir, { recursive: true });
-  const file = path4.join(dir, `${sha2562}.json`);
+  const file = path5.join(dir, `${sha2562}.json`);
   writeFileAtomic(file, bytes);
   return file;
 }
 function runPathsFor(root, ref) {
   const slug = slugOf(ref);
-  const dir = path4.join(root, slug);
+  const dir = path5.join(root, slug);
   return Object.freeze({
     slug,
     dir,
-    meta: path4.join(dir, "run.json"),
-    bundle: path4.join(dir, "bundle.json"),
-    state: path4.join(dir, "state.json"),
-    events: path4.join(dir, "events.jsonl"),
-    handed: path4.join(dir, "handed"),
-    writes: path4.join(dir, "writes"),
-    fetched: path4.join(dir, "fetched"),
-    original: path4.join(dir, "original"),
-    discoverReport: path4.join(dir, "discover-report.md"),
-    party: Object.freeze({ dir: path4.join(dir, "party"), record: path4.join(dir, "party", "party-record.json"), report: path4.join(dir, "party", "report.md") }),
-    ticketBody: path4.join(dir, "ticket-body.md"),
-    evidenceBlock: (name) => path4.join(dir, `evidence-block.${name}.md`),
-    readout: path4.join(dir, "readout.md"),
-    prTitle: (name) => path4.join(dir, `pr-title.${name}.txt`),
-    envelope: (actionId) => path4.join(dir, envelopeBasename(actionId)),
-    classInput: (actionId) => path4.join(dir, actionId + ".class-input.json"),
-    before: (actionId, name) => path4.join(dir, "writes", name === void 0 ? `${actionId}.before.json` : `${actionId}.${name}.before.json`),
-    checks: (actionId) => path4.join(dir, "handed", `${actionId}-checks.json`),
-    question: (actionId) => path4.join(dir, `${actionId}.question.md`),
-    brief: (actionId) => path4.join(dir, `${actionId}.brief.md`)
+    meta: path5.join(dir, "run.json"),
+    bundle: path5.join(dir, "bundle.json"),
+    state: path5.join(dir, "state.json"),
+    events: path5.join(dir, "events.jsonl"),
+    handed: path5.join(dir, "handed"),
+    writes: path5.join(dir, "writes"),
+    fetched: path5.join(dir, "fetched"),
+    original: path5.join(dir, "original"),
+    discoverReport: path5.join(dir, "discover-report.md"),
+    party: Object.freeze({ dir: path5.join(dir, "party"), record: path5.join(dir, "party", "party-record.json"), report: path5.join(dir, "party", "report.md") }),
+    ticketBody: path5.join(dir, "ticket-body.md"),
+    evidenceBlock: (name) => path5.join(dir, `evidence-block.${name}.md`),
+    readout: path5.join(dir, "readout.md"),
+    prTitle: (name) => path5.join(dir, `pr-title.${name}.txt`),
+    envelope: (actionId) => path5.join(dir, envelopeBasename(actionId)),
+    classInput: (actionId) => path5.join(dir, actionId + ".class-input.json"),
+    before: (actionId, name) => path5.join(dir, "writes", name === void 0 ? `${actionId}.before.json` : `${actionId}.${name}.before.json`),
+    checks: (actionId) => path5.join(dir, "handed", `${actionId}-checks.json`),
+    question: (actionId) => path5.join(dir, `${actionId}.question.md`),
+    brief: (actionId) => path5.join(dir, `${actionId}.brief.md`)
   });
 }
 function runExists(paths) {
@@ -11193,7 +11505,7 @@ function readEnvelopes(paths) {
     const ib = indexOf(b);
     return ia !== ib ? ia - ib : a < b ? -1 : a > b ? 1 : 0;
   });
-  return files.map((f) => JSON.parse(readFileSync9(path4.join(paths.dir, f), "utf8")));
+  return files.map((f) => JSON.parse(readFileSync9(path5.join(paths.dir, f), "utf8")));
 }
 function pendingEvent(state) {
   const { kind: kind2, attempt, actionId } = state.pendingAction;
@@ -11272,221 +11584,9 @@ function mapBorrowedReview({ result, evidence, bundle, stagedDiffBytes, lens, sc
   return { outcome: [{ status: "gap", classId, ...body, missing }], usage };
 }
 
-// src/approved-plan-shape.mjs
-import path5 from "node:path";
-var TASK = /^#{2,3} Task (\d+): (.+)$/;
-var SOURCE = /^\s*(?:[-*]\s+)?(?:\*\*)?Source ticket:(?:\*\*)?\s*(\S.*?)\s*$/i;
-var FILE_ENTRY = /^(?:[-*]\s*)?(?:\*\*)?(Files|Create|Modify|Test|Delete|Add):(?:\*\*)?\s*(.*)$/i;
-var REPOSITORY = /^(?:[-*]\s*)?(?:\*\*)?Repository:(?:\*\*)?\s*(.*)$/i;
-var AFTER_RELEASE = /^(?:[-*]\s*)?(?:\*\*)?After release:(?:\*\*)?\s*(.+)$/i;
-var DEPENDS_ON = /^(?:[-*]\s*)?(?:\*\*)?Depends on:(?:\*\*)?\s*(.*)$/i;
-var DEPENDS_ON_NONE = /* @__PURE__ */ new Set(["none", "nothing", "n/a", "-", "\u2014", "no"]);
-var BUILD_METHOD_HEADING = /^#{1,6}\s+Recommended build method\b/i;
-var BUILD_METHOD_LINE = /^Recommended build method:\s*(.+)$/i;
-var KILN_OPENER = /^(?:(?:[-*]|\d+\.)\s+)?(?:\*\*|`)*(?:Kiln build|\/kiln:build)/i;
-function shape(message, details = {}) {
-  throw new KilnError("KILN_APPROVED_PLAN_SHAPE", message, details);
-}
-function safeFile(name) {
-  if (name.trim() !== name || name.length === 0 || path5.isAbsolute(name) || name.split("/").some((part) => part === "." || part === "..") || name.includes("//") || name.includes("\\") || /[\0\r\n]/.test(name)) {
-    shape("task files must be safe repository-relative paths", { path: name });
-  }
-}
-function filePaths(lines, startLine) {
-  const files = [];
-  const fileLines = [];
-  const spans = [];
-  let inFiles = false;
-  let fileStarted = false;
-  for (const [index, raw] of lines.entries()) {
-    const line = raw.trim();
-    const entry = FILE_ENTRY.exec(line);
-    if (entry !== null) {
-      const label = entry[1].toLowerCase();
-      const names = [...entry[2].matchAll(/`([^`]+)`/g)].map((match) => match[1]);
-      if (names.length === 0 && label !== "files") shape("each task file line must name a path in backticks", { line: raw, lineNumber: startLine + index });
-      inFiles = label === "files" && names.length === 0;
-      fileStarted = false;
-      const selected = label === "files" ? names : names.slice(0, 1);
-      if (selected.length > 0) fileLines.push(raw);
-      for (const name of selected) {
-        safeFile(name);
-        if (!files.includes(name)) files.push(name);
-        spans.push({ field: "file", line: startLine + index, value: name });
-      }
-      continue;
-    }
-    if (!inFiles) continue;
-    if (line === "") {
-      if (fileStarted) inFiles = false;
-      continue;
-    }
-    const item = /^[-*]\s+`([^`]+)`(?:\s|$)/.exec(line);
-    if (item === null) {
-      inFiles = false;
-      continue;
-    }
-    safeFile(item[1]);
-    if (!files.includes(item[1])) files.push(item[1]);
-    fileStarted = true;
-    fileLines.push(raw);
-    spans.push({ field: "file", line: startLine + index, value: item[1] });
-  }
-  return { files, fileLines, spans };
-}
-function repositoryLine(lines, startLine, number) {
-  for (const [index, raw] of lines.entries()) {
-    const match = REPOSITORY.exec(raw.trim());
-    if (match === null) continue;
-    const name = match[1].trim().replace(/^`+|`+$/g, "").trim();
-    if (name === "" || /[\s]/.test(name) || name.includes("/") || name.includes("..")) {
-      shape(`task ${number}'s Repository: line is not a folder name`, { task: number, lineNumber: startLine + index });
-    }
-    return { name, span: { field: "repository", line: startLine + index, value: name } };
-  }
-  return null;
-}
-function dependsOnLine(lines, startLine, number) {
-  for (const [index, raw] of lines.entries()) {
-    const match = DEPENDS_ON.exec(raw.trim());
-    if (match === null) continue;
-    const lineNumber = startLine + index;
-    const value = match[1].trim();
-    const bare = value.replaceAll("**", "").replaceAll("`", "").trim().replace(/\.$/, "").trim().toLowerCase();
-    const span = { field: "dependsOn", line: lineNumber, value };
-    if (DEPENDS_ON_NONE.has(bare)) return { tasks: [], span };
-    const tasks = [...value.matchAll(/Task (\d+)/gi)].map((ref) => Number(ref[1]));
-    if (tasks.length === 0) shape(`task ${number}'s Depends on: line names no task`, { task: number, lineNumber });
-    const later = tasks.find((earlier) => earlier >= number || earlier < 1);
-    if (later !== void 0) shape(`task ${number}'s Depends on: line names Task ${later}, which is not an earlier task`, { task: number, lineNumber });
-    return { tasks: [...new Set(tasks)], span };
-  }
-  return null;
-}
-function afterReleaseLine(lines, startLine) {
-  for (const [index, raw] of lines.entries()) {
-    const match = AFTER_RELEASE.exec(raw.trim());
-    if (match === null) continue;
-    const refs = [...match[1].matchAll(/Task (\d+)/g)];
-    const rest2 = refs.length === 0 ? "" : match[1].slice(refs.at(-1).index + refs.at(-1)[0].length);
-    const reason = rest2.trim().replace(/^[,:\-\u2013\u2014(]/, "").trim();
-    return { tasks: refs.map((ref) => Number(ref[1])), reason, span: { field: "afterRelease", line: startLine + index, value: match[1].trim() } };
-  }
-  return null;
-}
-function readBuildMethod(lines) {
-  const heading2 = lines.findIndex((line) => BUILD_METHOD_HEADING.test(line));
-  let text;
-  if (heading2 !== -1) {
-    const end = lines.findIndex((line, at) => at > heading2 && /^#{1,6}\s/.test(line));
-    text = lines.slice(heading2 + 1, end === -1 ? void 0 : end).map((line) => line.trim()).find((line) => line !== "");
-  } else {
-    text = lines.map((line) => BUILD_METHOD_LINE.exec(line.trim())).find((match) => match !== null)?.[1].trim();
-  }
-  if (text === void 0) return null;
-  return { kiln: KILN_OPENER.test(text), text };
-}
-function acceptanceLines(lines, startLine) {
-  const entries = lines.map((line) => line.trim());
-  const firstList = entries.findIndex((line) => /^(?:[-*]|\d+\.)\s+/.test(line));
-  if (firstList === -1) {
-    const first = entries.findIndex(Boolean);
-    if (first === -1) return { acceptance: [], spans: [] };
-    const end = entries.findIndex((line, at) => at > first && line === "");
-    const acceptance2 = entries.slice(first, end === -1 ? void 0 : end).map((line) => line.replace(/\s+/g, " "));
-    return { acceptance: acceptance2, spans: acceptance2.map((value, at) => ({ field: "acceptance", line: startLine + first + at, value })) };
-  }
-  const marker = /^(?:[-*]|\d+\.)\s+(.+)$/;
-  const acceptance = [];
-  const spans = [];
-  let current = -1;
-  for (let index = firstList; index < entries.length; index += 1) {
-    const line = entries[index];
-    if (line === "") continue;
-    const match = marker.exec(line);
-    if (match !== null) {
-      acceptance.push(match[1].replace(/\s+/g, " ").trim());
-      spans.push({ field: "acceptance", line: startLine + index, value: acceptance.at(-1) });
-      current = acceptance.length - 1;
-    } else if (current !== -1 && /^\s+\S/.test(lines[index])) {
-      acceptance[current] = `${acceptance[current]} ${line.replace(/\s+/g, " ")}`;
-      spans[current].value = acceptance[current];
-      spans[current].endLine = startLine + index;
-    } else break;
-  }
-  return { acceptance, spans };
-}
-function parseApprovedPlanText(text) {
-  const lines = text.replaceAll("\r\n", "\n").split("\n");
-  const sources = lines.flatMap((line, index) => {
-    const match = SOURCE.exec(line);
-    return match === null ? [] : [{ line: index + 1, value: match[1].trim() }];
-  });
-  if (sources.length !== 1) shape("the plan needs one Source ticket line");
-  const acceptanceStart = lines.findIndex((line) => line.trim() === "## Acceptance criteria");
-  if (acceptanceStart === -1) throw new KilnError("KILN_APPROVED_PLAN_ACCEPTANCE", "the plan needs ## Acceptance criteria");
-  const acceptanceEnd = lines.findIndex((line, index) => index > acceptanceStart && (/^## /.test(line) || TASK.test(line)));
-  const { acceptance, spans: acceptanceSpans } = acceptanceLines(lines.slice(acceptanceStart + 1, acceptanceEnd === -1 ? void 0 : acceptanceEnd), acceptanceStart + 2);
-  if (acceptance.length === 0 || acceptance.some((line) => line.length === 0)) {
-    throw new KilnError("KILN_APPROVED_PLAN_ACCEPTANCE", "the plan needs acceptance criteria");
-  }
-  if (new Set(acceptance).size !== acceptance.length) {
-    throw new KilnError("KILN_APPROVED_PLAN_ACCEPTANCE", "the plan repeats an acceptance criterion");
-  }
-  const headings = lines.map((line, index) => ({ match: TASK.exec(line), index })).filter(({ match }) => match !== null);
-  if (headings.length === 0) shape("the plan needs at least one numbered task");
-  const tasks = headings.map(({ match, index }, position) => {
-    const number = Number(match[1]);
-    if (number !== position + 1) shape(`task ${number} is out of order or repeated`, { task: number, position: position + 1 });
-    const nextHeading = lines.findIndex((line, at) => at > index && /^## /.test(line));
-    const nextTask = headings[position + 1]?.index ?? lines.length;
-    const end = Math.min(nextHeading === -1 ? lines.length : nextHeading, nextTask);
-    const sourceLines = lines.slice(index + 1, end);
-    const markedNonExecutable = /^(?:BLOCKED\s+(?:on|by|pending)\b|optional\s+(?:after|if|later)\b)|\(\s*(?:BLOCKED|optional)\b/i.test(match[2]);
-    const hasBlockingStatus = sourceLines.some((line) => /^\s*\*\*Blocked by:/i.test(line) || /^\s*\*\*Status:/i.test(line) && /\b(?:blocked|optional)\b/i.test(line));
-    if (markedNonExecutable || hasBlockingStatus) {
-      shape(`task ${number} is blocked or optional; settle its executable scope before approval`, { task: number, lineNumber: index + 1 });
-    }
-    const { files, fileLines, spans } = filePaths(sourceLines, index + 2);
-    if (files.length === 0) shape(`task ${number} names no file`, { task: number, lineNumber: index + 1 });
-    const repo = repositoryLine(sourceLines, index + 2, number);
-    const gate = afterReleaseLine(sourceLines, index + 2);
-    const deps = dependsOnLine(sourceLines, index + 2, number);
-    const taskSpans = [{ field: "goal", line: index + 1, value: match[2].trim() }, ...spans, ...repo === null ? [] : [repo.span], ...gate === null ? [] : [gate.span], ...deps === null ? [] : [deps.span]];
-    return {
-      number,
-      heading: `Task ${number}: ${match[2].trim()}`,
-      goal: match[2].trim(),
-      lines: sourceLines,
-      fileLines,
-      files,
-      repository: repo?.name ?? null,
-      dependsOn: deps?.tasks ?? [],
-      afterRelease: gate === null ? null : { tasks: gate.tasks, reason: gate.reason },
-      spans: taskSpans
-    };
-  });
-  const firstNamed = tasks.find((task) => task.repository !== null);
-  if (firstNamed !== void 0) {
-    const unnamed = tasks.find((task) => task.repository === null);
-    if (unnamed !== void 0) shape(`task ${unnamed.number} names no Repository: line while task ${firstNamed.number} does`, { task: unnamed.number });
-  }
-  for (const task of tasks) {
-    if (task.afterRelease === null) continue;
-    const { number } = task;
-    if (task.afterRelease.tasks.length === 0) shape(`task ${number}'s After release: line names no task`, { task: number });
-    for (const earlier of task.afterRelease.tasks) {
-      if (earlier >= number || earlier < 1) shape(`task ${number}'s After release: line names Task ${earlier}, which is not an earlier task`, { task: number });
-      if (tasks[earlier - 1].repository === task.repository) shape(`task ${number}'s After release: line names Task ${earlier} in the same repository`, { task: number });
-    }
-  }
-  const repositories = [...new Set(tasks.flatMap((task) => task.repository === null ? [] : [task.repository]))];
-  return { sourceTicket: sources[0].value, acceptance, tasks, repositories, buildMethod: readBuildMethod(lines), spans: [{ field: "sourceTicket", line: sources[0].line, value: sources[0].value }, ...acceptanceSpans, ...tasks.flatMap((task) => task.spans)] };
-}
-
 // src/approved-plan-change.mjs
 function normalizeTask(task) {
-  const base = { ...task, spans: task.spans ?? [], repository: task.repository ?? null, afterRelease: task.afterRelease ?? null };
+  const base = { ...task, spans: task.spans ?? [], repository: task.repository ?? null, afterRelease: task.afterRelease ?? null, covers: task.covers ?? null, checks: task.checks ?? null };
   if (task.dependsOn !== void 0) return base;
   let dependsOn;
   try {
@@ -11497,6 +11597,7 @@ function normalizeTask(task) {
   }
   return { ...base, dependsOn };
 }
+var planStoredBeforeTaskLines = (plan) => plan.tasks.some((t) => (t.covers ?? null) === null || (t.checks ?? null) === null);
 function normalize2(plan) {
   return { ...plan, tasks: plan.tasks.map(normalizeTask) };
 }
@@ -11509,6 +11610,10 @@ var sameSet = (a, b) => {
 };
 var goalLine = (task) => task.spans.find((span) => span.field === "goal")?.line ?? null;
 var spanLine = (task, field) => task.spans.find((span) => span.field === field)?.line ?? goalLine(task);
+var coversText = (task, plan) => task.covers.map((n2) => plan.acceptance[n2 - 1]);
+var checkText = (check2) => `${check2.command} expects ${check2.expect}`;
+var coversChanged = (was, now, oldPlan, newPlan) => was.covers !== null && now.covers !== null && !sameSet(coversText(was, oldPlan), coversText(now, newPlan));
+var checksChanged = (was, now) => was.checks !== null && now.checks !== null && JSON.stringify(was.checks.map(checkText)) !== JSON.stringify(now.checks.map(checkText));
 var list = (numbers) => `[${numbers.join(", ")}]`;
 var gateText = (task) => gateOf(task).length === 0 ? "none" : gateOf(task).map((n2) => `Task ${n2}`).join(", ");
 function acceptanceDiff(before, after) {
@@ -11520,7 +11625,7 @@ function acceptanceDiff(before, after) {
     ...before.flatMap((text, i) => after.includes(text) ? [] : [`acceptance ${i + 1} removed: "${text}"`])
   ];
 }
-function taskDiff(n2, old, now) {
+function taskDiff(n2, old, now, oldPlan, newPlan) {
   const lines = [];
   if (old.goal !== now.goal) lines.push(`task ${n2} goal: "${old.goal}" -> "${now.goal}"`);
   if (!sameSet(old.files, now.files)) {
@@ -11531,6 +11636,14 @@ function taskDiff(n2, old, now) {
   if (!sameSet(old.dependsOn, now.dependsOn)) lines.push(`task ${n2} depends on: ${list(old.dependsOn)} -> ${list(now.dependsOn)}`);
   if (repositoryOf(old) !== repositoryOf(now)) lines.push(`task ${n2} repository: ${repositoryOf(old) ?? "none"} -> ${repositoryOf(now) ?? "none"}`);
   if (!sameSet(gateOf(old), gateOf(now))) lines.push(`task ${n2} release gate: ${gateText(old)} -> ${gateText(now)}`);
+  if (coversChanged(old, now, oldPlan, newPlan)) {
+    const was = coversText(old, oldPlan);
+    const is = coversText(now, newPlan);
+    const removed = was.filter((t) => !is.includes(t)).map((t) => `-"${t}"`);
+    const added = is.filter((t) => !was.includes(t)).map((t) => `+"${t}"`);
+    lines.push(`task ${n2} covers: ${[...removed, ...added].join(" ")}`);
+  }
+  if (checksChanged(old, now)) lines.push(`task ${n2} checks: ${old.checks.map(checkText).join("; ")} -> ${now.checks.map(checkText).join("; ")}`);
   return lines;
 }
 function approvedPlanDiff(before, after) {
@@ -11544,11 +11657,12 @@ function approvedPlanDiff(before, after) {
     const now = after.tasks.find((t) => t.number === n2);
     if (was === void 0) lines.push(`task ${n2} added: ${now.goal}`);
     else if (now === void 0) lines.push(`task ${n2} removed: ${was.goal}`);
-    else lines.push(...taskDiff(n2, was, now));
+    else lines.push(...taskDiff(n2, was, now, old, after));
   }
   return lines;
 }
-function identityChange(was, now) {
+function identityChange(was, now, oldPlan, newPlan) {
+  const coversMoved = was.covers !== null && now.covers !== null && !sameSet(remapCovers(coversText(was, oldPlan), oldPlan.acceptance, newPlan.acceptance), coversText(now, newPlan));
   if (!sameSet(was.files, now.files)) {
     const added = now.spans.find((span) => span.field === "file" && !was.files.includes(span.value));
     return { what: "files", line: added?.line ?? goalLine(now) };
@@ -11556,6 +11670,8 @@ function identityChange(was, now) {
   if (!sameSet(was.dependsOn, now.dependsOn)) return { what: "dependencies", line: spanLine(now, "dependsOn") };
   if (repositoryOf(was) !== repositoryOf(now)) return { what: "repository", line: spanLine(now, "repository") };
   if (!sameSet(gateOf(was), gateOf(now))) return { what: "gate", line: spanLine(now, "afterRelease") };
+  if (coversMoved) return { what: "covers", line: spanLine(now, "covers") };
+  if (checksChanged(was, now)) return { what: "checks", line: spanLine(now, "check") };
   return null;
 }
 function doneTaskIdentityChange(before, after, doneNumbers) {
@@ -11564,7 +11680,7 @@ function doneTaskIdentityChange(before, after, doneNumbers) {
     const was = old.tasks.find((t) => t.number === n2);
     const now = after.tasks.find((t) => t.number === n2);
     if (now === void 0) return { task: n2, what: "removed", line: goalLine(was) };
-    const change = identityChange(was, now);
+    const change = identityChange(was, now, old, after);
     if (change !== null) return { task: n2, ...change };
   }
   return null;
@@ -11588,6 +11704,7 @@ function rebindFields(task, was, now) {
     if (now.afterRelease === null) delete next.afterRelease;
     else next.afterRelease = ids(gateOf(now));
   }
+  if (checksChanged(was, now)) next.doneWhen = now.checks.map(({ command, expect }) => ({ command: command.replaceAll(WORKTREE_TOKEN, () => task.repo), expect, repo: task.repo }));
   return next;
 }
 function phaseShapeRefusal(runTasks, tasks, before, after, position) {
@@ -11620,7 +11737,7 @@ function rebindTasks(runTasks, before, after, repos, position) {
     const now = after.tasks.find((t) => t.number === Number(number));
     const rebindable = number !== void 0 && task.fixes === void 0 && was !== void 0 && now !== void 0;
     const next = rebindable ? rebindFields(task, was, now) : { ...task };
-    next.covers = remapCovers(task.covers, old.acceptance, after.acceptance);
+    next.covers = rebindable && was.covers !== null && now.covers !== null ? coversText(now, after) : remapCovers(task.covers, old.acceptance, after.acceptance);
     if (movesPath && next.inputs !== void 0) next.inputs = next.inputs.map((input) => input === before.path ? after.path : input);
     if (task.covers.length > 0 && next.covers.length === 0) structural = true;
     if (rebindable && !doneIds.has(task.taskId) && repositoryOf(was) !== repositoryOf(now)) structural = true;
@@ -12176,7 +12293,7 @@ ${detail}` }), NO_MARKS);
   if (identity !== null) {
     const what = identity.what === "removed" ? "id" : identity.what === "gate" ? "release gate" : identity.what;
     const head = `Task ${identity.task} is done and ${identity.what === "removed" ? "is missing from the plan" : `its ${what} changed`}${identity.line === null ? "" : `, at line ${identity.line}`}.`;
-    return stop(`The plan changed since approval, and task ${identity.task} is done: its ${what} changed. A done task's id, position, files, dependencies, repository, or release gate cannot change. Restore them and run next, or reply abandon.`, [head, ...shown].join("\n"));
+    return stop(`The plan changed since approval, and task ${identity.task} is done: its ${what} changed. A done task's id, position, files, dependencies, repository, release gate, covers, or checks cannot change. Restore them and run next, or reply abandon.`, [head, ...shown].join("\n"));
   }
   const bound = reboundTasks(state, plan);
   if (bound.unknownRepo !== null) return stop(`The plan changed since approval, and task ${bound.unknownRepo.task} names repository ${bound.unknownRepo.name}, which this run has no worktree for. Name a repository of the run and run next, or reply abandon.`, shown.join("\n"));
@@ -12845,9 +12962,9 @@ function fillPlanFromRun(plan, state) {
     const [{ root, branch }] = repos;
     if (replaced(task.repo, root)) notes.push(`${task.taskId} repo: the plan said ${task.repo}; the run uses ${root}`);
     if (replaced(task.branch, branch)) notes.push(`${task.taskId} branch: the plan said ${task.branch}; the run uses ${branch}`);
-    const doneWhen = task.doneWhen.map((check, i) => {
-      if (replaced(check.repo, root)) notes.push(`${task.taskId} check ${i + 1} repo: the plan said ${check.repo}; the run uses ${root}`);
-      return { ...check, repo: root };
+    const doneWhen = task.doneWhen.map((check2, i) => {
+      if (replaced(check2.repo, root)) notes.push(`${task.taskId} check ${i + 1} repo: the plan said ${check2.repo}; the run uses ${root}`);
+      return { ...check2, repo: root };
     });
     const { afterRelease, ...rest2 } = task;
     if (afterRelease?.length > 0) notes.push(`${task.taskId} afterRelease: the plan said ${afterRelease.join(", ")}; a run with one repository builds in one phase`);
@@ -13460,7 +13577,10 @@ function planDigest({ planPath, sha256: sha2562, buildContract }) {
     "Acceptance criteria:",
     ...acceptance.map((line, index) => `${index + 1}. ${line}`),
     "Tasks:",
-    ...tasks.map((task) => [`${task.number}. ${task.goal}`, task.repository, task.files.join(", ")].filter((part) => part !== null).join(" | ")),
+    ...tasks.flatMap((task) => [
+      [`${task.number}. ${task.goal}`, task.covers === null ? null : `covers ${task.covers.join(", ")}`, task.repository, task.files.join(", ")].filter((part) => part !== null).join(" | "),
+      ...(task.checks ?? []).map(({ command, expect }) => `    check: ${command} expects ${expect}`)
+    ]),
     ...gated.length === 0 ? ["Release gates: none"] : [
       "Release gates:",
       ...gated.map(({ number, afterRelease: { tasks: waits, reason } }) => `Task ${number} waits on the release of ${waits.map((n2) => `Task ${n2}`).join(", ")}${reason ? `: ${reason}` : ""}`)
@@ -13486,26 +13606,26 @@ function sha256(bytes) {
 function planHash(planPath) {
   return sha256(readPlanBytes(planPath));
 }
-function readPlanPreview(planPath) {
+function readPlanPreview(planPath, options = {}) {
   const absolute = path6.resolve(planPath);
   const bytes = readPlanBytes(absolute);
   const text = bytes.toString("utf8");
   if (!Buffer.from(text, "utf8").equals(bytes)) {
     throw new KilnError("KILN_PLAN_ENCODING", "the plan is not valid UTF-8", { planPath: absolute });
   }
-  const { sourceTicket, acceptance, tasks, repositories, buildMethod, spans } = parseApprovedPlanText(text);
+  const { sourceTicket, acceptance, tasks, repositories, buildMethod, spans } = parseApprovedPlanText(text, options);
   const hash = sha256(bytes);
   const buildContract = {
     sourceTicket,
     acceptance,
-    tasks: tasks.map(({ number, goal, files, repository, dependsOn, afterRelease }) => ({ number, goal, files, repository, dependsOn, afterRelease })),
+    tasks: tasks.map(({ number, goal, files, repository, dependsOn, afterRelease, covers, checks }) => ({ number, goal, files, repository, dependsOn, afterRelease, covers, checks })),
     repositories,
     buildMethod,
     spans
   };
   return { planPath: absolute, text, sha256: hash, digest: planDigest({ planPath: absolute, sha256: hash, buildContract }), buildContract };
 }
-function writePlanApproval(planPath, displayedSha256) {
+function writePlanApproval(planPath, displayedSha256, options = {}) {
   const absolute = path6.resolve(planPath);
   if (!/^[0-9a-f]{64}$/.test(displayedSha256)) {
     throw new KilnError("KILN_PLAN_APPROVAL_HASH_INVALID", "the displayed plan SHA-256 is invalid", { planPath: absolute });
@@ -13514,7 +13634,7 @@ function writePlanApproval(planPath, displayedSha256) {
   if (actualSha256 !== displayedSha256) {
     throw new KilnError("KILN_PLAN_CHANGED_SINCE_DISPLAY", "the plan changed after display. Show it again before approval.", { planPath: absolute, displayedSha256, actualSha256 });
   }
-  if (readPlanPreview(absolute).sha256 !== displayedSha256) {
+  if (readPlanPreview(absolute, options).sha256 !== displayedSha256) {
     throw new KilnError("KILN_PLAN_CHANGED_SINCE_DISPLAY", "the plan changed after display. Show it again before approval.", { planPath: absolute, displayedSha256 });
   }
   const approval = { planPath: absolute, sha256: actualSha256, approvedAt: (/* @__PURE__ */ new Date()).toISOString() };
@@ -13558,43 +13678,24 @@ function readApprovedPlan(planPath, ticketRef) {
 }
 
 // src/approved-plan-scaffold.mjs
-function mappingFor(mapping, taskId, field) {
-  if (mapping === null) return null;
-  if (mapping === void 0 || typeof mapping !== "object" || Array.isArray(mapping)) {
-    throw new KilnError("KILN_APPROVED_SCAFFOLD_MAPPING", `${field} must be an object keyed by task ID`);
-  }
-  const value = mapping[taskId];
-  if (value === void 0) return null;
-  if (!Array.isArray(value)) throw new KilnError("KILN_APPROVED_SCAFFOLD_MAPPING", `${field}.${taskId} must be an array`);
-  return value;
-}
-function createApprovedTaskScaffold(approved, { ticketRef, repo = null, branch = null, repos = null, coverage = null, checks = null }) {
+var UNSAFE_PATH = /[^A-Za-z0-9._\/@+-]/;
+function createApprovedTaskScaffold(approved, { ticketRef, repo = null, branch = null, repos = null }) {
   const names = approved.repositories;
   if (names.length === 0 && (typeof repo !== "string" || typeof branch !== "string")) {
     throw new KilnError("KILN_APPROVED_SCAFFOLD_REPOS", "a one-repository plan needs --repo and --branch");
   }
   const missingName = names.find((name) => repos?.[name]?.repo === void 0 || repos[name].branch === void 0);
   if (missingName !== void 0) throw new KilnError("KILN_APPROVED_SCAFFOLD_REPOS", `the plan names ${missingName}; --repos must give its worktree and branch`);
-  const known = new Set(approved.tasks.map((task) => `task-${task.number}`));
-  for (const [field, mapping] of [["coverage", coverage], ["checks", checks]]) {
-    if (mapping === null) continue;
-    if (typeof mapping !== "object" || Array.isArray(mapping)) throw new KilnError("KILN_APPROVED_SCAFFOLD_MAPPING", `${field} must be an object keyed by task ID`);
-    const unknown = Object.keys(mapping).find((taskId) => !known.has(taskId));
-    if (unknown !== void 0) throw new KilnError("KILN_APPROVED_SCAFFOLD_MAPPING", `${field} names unknown ${unknown}`);
-  }
+  const unsafe = [repo, ...names.map((name) => repos[name].repo)].find((worktree) => typeof worktree === "string" && UNSAFE_PATH.test(worktree));
+  if (unsafe !== void 0) throw new KilnError("KILN_APPROVED_SCAFFOLD_REPOS", "the worktree path must hold no space or shell character", { worktree: unsafe });
   const tasks = approved.tasks.map((task) => {
-    const taskId = `task-${task.number}`;
-    const chosen = mappingFor(coverage, taskId, "coverage") ?? (approved.tasks.length === 1 ? approved.acceptance.map((_, index) => index + 1) : []);
-    if (chosen.some((number) => !Number.isInteger(number) || number < 1 || number > approved.acceptance.length) || new Set(chosen).size !== chosen.length) {
-      throw new KilnError("KILN_APPROVED_SCAFFOLD_COVERAGE", `${taskId} names an invalid acceptance number`, { chosen });
-    }
     const target = task.repository === null ? { repo, branch } : repos[task.repository];
     return {
-      taskId,
+      taskId: `task-${task.number}`,
       goal: task.goal,
-      covers: chosen.map((number) => approved.acceptance[number - 1]),
+      covers: task.covers.map((number) => approved.acceptance[number - 1]),
       dependsOn: task.dependsOn.map((n2) => `task-${n2}`),
-      doneWhen: mappingFor(checks, taskId, "checks") ?? [],
+      doneWhen: task.checks.map(({ command, expect }) => ({ command: command.replaceAll(WORKTREE_TOKEN, () => target.repo), expect, repo: target.repo })),
       inputs: [approved.path, target.repo],
       paths: task.files,
       repo: target.repo,
@@ -13602,10 +13703,6 @@ function createApprovedTaskScaffold(approved, { ticketRef, repo = null, branch =
       ...task.afterRelease === null ? {} : { afterRelease: task.afterRelease.tasks.map((number) => `task-${number}`) }
     };
   });
-  const covered = new Set(tasks.flatMap((task) => task.covers));
-  const missing = [];
-  if (approved.acceptance.some((line) => !covered.has(line))) missing.push("coverage");
-  if (tasks.some((task) => task.doneWhen.length === 0)) missing.push("checks");
   return {
     plan: {
       contractId: "kiln:ticket-plan@1",
@@ -13613,9 +13710,7 @@ function createApprovedTaskScaffold(approved, { ticketRef, repo = null, branch =
       source: { path: approved.path, sha256: approved.sha256 },
       summary: approved.tasks.map((task) => task.goal).join("; "),
       tasks
-    },
-    missing,
-    acceptanceChoices: approved.acceptance.map((value, index) => ({ number: index + 1, value }))
+    }
   };
 }
 
@@ -13877,19 +13972,6 @@ function activeCodexModelBinding(env = process.env) {
   return binding;
 }
 
-// hosts/codex/check-expectation.mjs
-function parseCheckExpectation(value) {
-  const expect = value.trim();
-  const exit = /^exit (0|[1-9][0-9]*)$/i.exec(expect);
-  if (exit && Number.isSafeInteger(Number(exit[1])) && Number(exit[1]) <= 255) return { kind: "exit", code: Number(exit[1]) };
-  if (/^[0-9]+$/.test(expect)) return { kind: "exact-count", count: expect };
-  const minimum = /^a count of at least ([0-9]+)$/i.exec(expect);
-  if (minimum && Number.isSafeInteger(Number(minimum[1]))) return { kind: "minimum-count", count: Number(minimum[1]) };
-  const literal = /^`([^`\n]+)`$/.exec(expect);
-  if (literal) return { kind: "contains", text: literal[1] };
-  return null;
-}
-
 // src/codex-binding.mjs
 var CLASS_OF_KIND = Object.freeze({ "dispatch-changer": "kiln:crafter", "dispatch-judge": "kiln:inspector" });
 function inputFor(state, kind2) {
@@ -13937,9 +14019,9 @@ function bindCodexMember({ state, kind: kind2, catalog, rations: rations2 }) {
   const modelRequirement = record.manifest.modelRequirements[0];
   const ration = rationFor(rations2, classId);
   for (const task of state.brief.tasks.plan) {
-    task.doneWhen.forEach((check, i) => {
-      if (parseCheckExpectation(check.expect) === null) {
-        throw new KilnError("KILN_CODEX_CHECK_EXPECT_UNSUPPORTED", `Codex cannot verify check ${i + 1} of ${task.taskId} from its expected result. Use exit N, a numeric count, a count of at least N, or a backticked output literal in the task scaffold.`, { taskId: task.taskId, check: i + 1, expect: check.expect });
+    task.doneWhen.forEach((check2, i) => {
+      if (parseCheckExpectation(check2.expect) === null) {
+        throw new KilnError("KILN_CODEX_CHECK_EXPECT_UNSUPPORTED", `Codex cannot verify check ${i + 1} of ${task.taskId} from its expected result. Use exit N, a numeric count, a count of at least N, or a backticked output literal in the task scaffold.`, { taskId: task.taskId, check: i + 1, expect: check2.expect });
       }
     });
   }
@@ -13968,9 +14050,9 @@ import path9 from "node:path";
 function shellQuote(value) {
   return `'${String(value).replaceAll("'", "'\\''")}'`;
 }
-function checkInvocation({ run, action, check, cli }) {
+function checkInvocation({ run, action, check: check2, cli }) {
   const runner = path9.resolve(path9.dirname(cli), "../hosts/codex/bin/check.mjs");
-  return `node ${shellQuote(runner)} --run ${shellQuote(run)} --action ${shellQuote(action)} --check ${check} --cli ${shellQuote(cli)}`;
+  return `node ${shellQuote(runner)} --run ${shellQuote(run)} --action ${shellQuote(action)} --check ${check2} --cli ${shellQuote(cli)}`;
 }
 
 // src/cli.mjs
@@ -14582,7 +14664,8 @@ function openRun(v, { planCheck = false } = {}) {
   const state = planCheck && loaded.pendingAction?.kind === "ask-person" ? checkPlan({ paths, meta, state: loaded }) : loaded;
   return { ref, root, paths, meta, state };
 }
-function planFileNow(file, ticketRef, approvedSha256) {
+var planParseOptions = (state) => planStoredBeforeTaskLines(state.documents.plan) ? { taskLines: "optional" } : void 0;
+function planFileNow(file, ticketRef, approvedSha256, parseOptions) {
   let sha2562;
   try {
     sha2562 = planHash(file);
@@ -14592,8 +14675,8 @@ function planFileNow(file, ticketRef, approvedSha256) {
   }
   if (sha2562 === approvedSha256) return { path: file, sha256: sha2562 };
   try {
-    const { text, sha256: read } = readPlanPreview(file);
-    const parsed = parseApprovedPlanText(text);
+    const { text, sha256: read } = readPlanPreview(file, parseOptions);
+    const parsed = parseApprovedPlanText(text, parseOptions);
     const isTicket = path10.resolve(ticketRef) === file;
     if (!isTicket && canonicalTicketRef(parsed.sourceTicket) !== ticketRef) return { path: file, sha256: read, fault: `the plan names ${parsed.sourceTicket}, not ${ticketRef}` };
     const doc = isTicket ? documentBriefFor(ticketRef, text, null) : null;
@@ -14608,7 +14691,7 @@ function planChangeFor({ meta, state, override = null }) {
   const approved = state.documents?.plan;
   if (approved?.approved !== true || TERMINAL_STATUSES.includes(state.status)) return null;
   const asked = state.pendingAction?.kind === "ask-person" && state.question?.then === "plan-changed" ? state.question : null;
-  const current = override ?? planFileNow(asked?.planPath ?? approved.path, meta.ticketRef, approved.sha256);
+  const current = override ?? planFileNow(asked?.planPath ?? approved.path, meta.ticketRef, approved.sha256, planParseOptions(state));
   const { path: file, sha256: sha2562, fault, documentParts, taskGoals, ...plan } = current;
   if (sha2562 === approved.sha256) return asked === null ? null : { kind: "plan-changed", path: file, sha256: sha2562, restored: true };
   if (asked !== null && asked.planSha256 === sha2562) return null;
@@ -14715,7 +14798,7 @@ ${state.brief.tasks.plan.map((t) => `- ${t.taskId}: ${t.goal}${(meta.carried ?? 
     else if (meta.source === "jira" || body === null) parts.push(filledSections(state, written));
     else parts.push(positionalDiff(normalizeBody(body), bodyWithParts(body, state, written)));
     if (q.then === "build" && state.documents?.plan?.approved && state.mode === "EXECUTE") {
-      parts.push([`Approved plan: ${state.documents.plan.path}`, ...worktreeLines(state), "Chosen task checks:", ...state.brief.tasks.plan.flatMap((task) => task.doneWhen.map((check) => `- ${task.taskId}: ${check.command} expects ${check.expect}`))].join("\n"));
+      parts.push([`Approved plan: ${state.documents.plan.path}`, ...worktreeLines(state), "Task checks:", ...state.brief.tasks.plan.flatMap((task) => task.doneWhen.map((check2) => `- ${task.taskId}: ${check2.command} expects ${check2.expect}`))].join("\n"));
     }
   }
   if (q.then === "release") {
@@ -14928,7 +15011,7 @@ function reposForApprovedTasks(plan, approved, roots, baseFlag, title, ref) {
   const recordOf = (repo) => isRootPath(repo) ? records.find((r) => r.root === realRootOf(repo)) : void 0;
   for (const task of plan.tasks) {
     const record = recordOf(task.repo);
-    if (record === void 0 || typeof task.branch !== "string" || task.branch !== record.branch || task.doneWhen.some((check) => recordOf(check.repo) !== record)) {
+    if (record === void 0 || typeof task.branch !== "string" || task.branch !== record.branch || task.doneWhen.some((check2) => recordOf(check2.repo) !== record)) {
       throw new KilnError("KILN_PLAN_REPO", "each check must name its task's worktree, and each task's branch must be its worktree's branch", { taskId: task.taskId });
     }
   }
@@ -15148,7 +15231,7 @@ ${v.idea.trim()}
       }
       if (approvedPlan !== null) throw new KilnError("KILN_APPROVED_PLAN_RUN_MISMATCH", "this existing run does not hold the selected approved plan; end it before opening a new run", { planPath: approvedPlan.path, runDir: paths.dir });
       const atStop = state2.pendingAction?.kind === "ask-person";
-      const override = atStop && savedHoldsPlan && v["approved-plan"] !== void 0 ? planFileNow(path10.resolve(v["approved-plan"]), meta2.ticketRef, state2.documents.plan.sha256) : null;
+      const override = atStop && savedHoldsPlan && v["approved-plan"] !== void 0 ? planFileNow(path10.resolve(v["approved-plan"]), meta2.ticketRef, state2.documents.plan.sha256, planParseOptions(state2)) : null;
       const checked = atStop ? checkPlan({ paths, meta: meta2, state: state2, override }) : state2;
       const resolvedPlan = v["approved-plan"] === void 0 ? null : path10.resolve(v["approved-plan"]);
       const deferred = resolvedPlan !== null && !atStop && savedHoldsPlan && state2.pendingAction?.kind.startsWith("dispatch-") && resolvedPlan !== state2.documents.plan.path ? { approvedPlanDeferred: resolvedPlan } : {};
@@ -15163,7 +15246,7 @@ ${v.idea.trim()}
       facts: planBrief.facts,
       decision: planBrief.decision ?? { by: "party", text: taskPlan.summary },
       // Each task and check keeps its own worktree, in the real-path form of its record's root; a root that `open` creates below is already in that form.
-      tasks: { by: "party", summary: taskPlan.summary, plan: taskPlan.tasks.map((task) => ({ ...task, repo: realRootOf(task.repo), doneWhen: task.doneWhen.map((check) => ({ ...check, repo: realRootOf(check.repo) })) })) }
+      tasks: { by: "party", summary: taskPlan.summary, plan: taskPlan.tasks.map((task) => ({ ...task, repo: realRootOf(task.repo), doneWhen: task.doneWhen.map((check2) => ({ ...check2, repo: realRootOf(check2.repo) })) })) }
     };
     const stateRepos = directRepos.map(({ name, checkout, root: root2, branch, base, prTitle }) => ({ name, checkout, root: root2, branch, base, prTitle }));
     const profile = buildProfile(readyBrief, { sizeBytes: Buffer.byteLength(body, "utf8") });
@@ -15298,7 +15381,7 @@ ${v.idea.trim()}
     if ((q.then === "write" || q.then === "build") && isBareYes(text) && meta.outward && meta.source !== "jira" && toWrite.length > 0 && state.ticket.readOnly !== true) writeParts(paths, meta, state, toWrite);
     const { state: nextState, issues } = applyReceipt(flow, state, { actionId, rawOutput: text, hostMeta: {} });
     if (nextState === state) throw new KilnError(issues[0].code, issues[0].message);
-    if (q.then === "plan-changed" && q.plan !== null && nextState.documents.plan.sha256 === q.plan.sha256 && q.plan.sha256 !== state.documents.plan.sha256) writePlanApproval(q.plan.path, q.plan.sha256);
+    if (q.then === "plan-changed" && q.plan !== null && nextState.documents.plan.sha256 === q.plan.sha256 && q.plan.sha256 !== state.documents.plan.sha256) writePlanApproval(q.plan.path, q.plan.sha256, planParseOptions(state));
     const outcome = nextState.ledger.at(-1).outcome;
     const { installed } = settleRepo({ paths, meta, state, nextState, apply: () => afterReceipt({ flow, paths, meta, state, nextState, actionId, pending, accepted: true }) });
     const checked = checkPlan({ paths, meta, state: nextState });
@@ -15402,20 +15485,18 @@ ${v.idea.trim()}
     return result;
   },
   "plan-scaffold"(args) {
-    const v = flags(args, { file: { type: "string" }, ticket: { type: "string" }, repo: { type: "string" }, branch: { type: "string" }, repos: { type: "string" }, out: { type: "string" }, coverage: { type: "string" }, checks: { type: "string" } });
+    const v = flags(args, { file: { type: "string" }, ticket: { type: "string" }, repo: { type: "string" }, branch: { type: "string" }, repos: { type: "string" }, out: { type: "string" } });
     const ticketRef = canonicalTicketRef(requireFlag(v, "ticket"));
     const approved = readApprovedPlan(requireFlag(v, "file"), ticketRef);
     if (v.repos !== void 0 && (v.repo !== void 0 || v.branch !== void 0)) throw new KilnError("KILN_PLAN_FLAGS_CONFLICT", "use either --repo and --branch or --repos");
     const repos = v.repos === void 0 ? null : Object.fromEntries(Object.entries(readJsonInput(v, "repos")).map(([name, target]) => [name, { ...target, repo: path10.resolve(target.repo) }]));
     const repo = repos === null && approved.repositories.length === 0 ? path10.resolve(requireFlag(v, "repo")) : null;
     const branch = repos === null && approved.repositories.length === 0 ? requireFlag(v, "branch") : null;
-    const coverage = v.coverage === void 0 ? null : readJsonInput(v, "coverage");
-    const checks = v.checks === void 0 ? null : readJsonInput(v, "checks");
-    const { plan, missing, acceptanceChoices } = createApprovedTaskScaffold(approved, { ticketRef, repo, branch, repos, coverage, checks });
+    const { plan } = createApprovedTaskScaffold(approved, { ticketRef, repo, branch, repos });
     const out = path10.resolve(requireFlag(v, "out"));
     writeFileAtomic(out, `${JSON.stringify(plan, null, 2)}
 `);
-    return { path: out, sourceSha256: approved.sha256, taskCount: plan.tasks.length, repositories: approved.repositories, missing, acceptanceChoices, spans: approved.spans };
+    return { path: out, sourceSha256: approved.sha256, taskCount: plan.tasks.length, repositories: approved.repositories, spans: approved.spans };
   },
   borrowed(args) {
     const v = flags(args, { root: { type: "string" }, ticket: { type: "string" }, action: { type: "string" }, result: { type: "string" }, evidence: { type: "string" }, bundle: { type: "string" }, scope: { type: "string" }, lens: { type: "string" } });

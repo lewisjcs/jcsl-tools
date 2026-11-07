@@ -11,7 +11,7 @@ Before `open`, confirm Node 22 or newer, a writable Kiln run store, native `spaw
 
 Run `plan-approval-check`, `plan-scaffold`, `plan-check`, and `open` as the top-level skill describes. A failed `plan-approval-check` on a plan that a saved run already holds is a changed plan, not a return to kickoff: run `open` with the same `--approved-plan` path and show the question it returns. `open` on a saved approved build reads the plan file as it is now and, when its bytes changed, answers with the plan-changed question. Show the build approval question and every selected worktree, with its branch, its base, and its tasks. Save the person's clear consent with `reply`; do not infer it from a request to discuss the plan. For every result, follow the returned `next` action without reordering it.
 
-Choose task-scaffold checks with expected results Codex can verify: `exit N`, an exact numeric count, `a count of at least N`, or a backticked output literal. For a silent syntax check, use `exit 0`. For output text, use a backticked deciding line. `KILN_CODEX_CHECK_EXPECT_UNSUPPORTED` names a scaffold check to restate before opening the run. Keep the approved plan and its approval bytes unchanged.
+Checks come from the approved plan's `Check:` lines, in the result forms this host verifies: `exit N`, an exact numeric count, `a count of at least N`, or a backticked output literal. The preview enforces those forms, so `KILN_CODEX_CHECK_EXPECT_UNSUPPORTED` cannot fire on a previewed plan. If it fires anyway, it is a runtime defect: report it and stop before `open`. Never edit the approved plan to fit a check.
 
 ## Native member dispatch
 
