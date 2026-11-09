@@ -13297,13 +13297,12 @@ function carriedRowsFrom(model) {
     reason: CLOSED.has(f.status) ? f.reason : null
   }));
 }
-var VERIFIER_LANE = "revision-review";
 var NO_NEW_CONTENT_TRIGGER = "revision-no-new-content";
-function checkpointRoundOutcomes(roster, laneResults, reviewScopeByClassKey, laneFailureReasons = {}) {
+function checkpointRoundOutcomes(roster, laneResults, reviewScopeByClassKey, verifierLane, laneFailureReasons = {}) {
   const failedOrSkipped = [];
   const fullScopeSucceeded = [];
   for (const { classKey, result } of laneResults) {
-    if (classKey === VERIFIER_LANE) continue;
+    if (classKey === verifierLane) continue;
     if (result === null) {
       failedOrSkipped.push({ classKey, reason: laneFailureReasons[classKey] ?? "the lane produced no result" });
     } else if ((reviewScopeByClassKey[classKey] ?? "full") === "full") {
@@ -13311,7 +13310,7 @@ function checkpointRoundOutcomes(roster, laneResults, reviewScopeByClassKey, lan
     }
   }
   for (const entry of roster.skipped) {
-    if (entry.classKey === VERIFIER_LANE) continue;
+    if (entry.classKey === verifierLane) continue;
     if (entry.via === "policy") continue;
     if (entry.trigger === NO_NEW_CONTENT_TRIGGER) continue;
     failedOrSkipped.push({ classKey: entry.classKey, reason: entry.reason });
@@ -13551,6 +13550,9 @@ function classes() {
     }
   }
   return loadedClasses;
+}
+function revisionLaneKey() {
+  return Object.entries(classes().byKey).find(([, record]) => record.build.requires.includes("revision-link"))[0];
 }
 function recordForKey(classKey, flagName = "--class") {
   const record = classes().byKey[classKey];
@@ -13910,7 +13912,7 @@ function linkRevision({ flags, parsedOrigin, partyRoot, runsStoreRoot, repoRoot,
     }
     coverageGaps = coverageGapsFor(
       priorRevision?.coverageGaps ?? [],
-      checkpointRoundOutcomes(prior.record.roster, priorLaneResults, reviewScopeByClassKey, laneFailureReasons)
+      checkpointRoundOutcomes(prior.record.roster, priorLaneResults, reviewScopeByClassKey, revisionLaneKey(), laneFailureReasons)
     );
   } catch (err) {
     if (err instanceof TypeError) throw err;
@@ -14071,10 +14073,11 @@ function cmdPartyForm(flags) {
       trigger: "revision-isolation-failed",
       reason: `revision delta could not be isolated (${link.revision.fallbackReason}); rerun with --full to review the whole pull request`
     } : link.revision.mode === "narrow" && link.files.length === 0 ? { trigger: "revision-no-new-content", reason: "no pull-request file changed since the prior review; nothing new to verify this round" } : null;
-    const demoted = demotion === null ? [] : cliRoster.fielded.filter((lane) => lane.classKey !== "revision-review");
+    const verifierKey = demotion === null ? null : revisionLaneKey();
+    const demoted = demotion === null ? [] : cliRoster.fielded.filter((lane) => lane.classKey !== verifierKey);
     const roster = demoted.length === 0 ? cliRoster : {
       ...cliRoster,
-      fielded: cliRoster.fielded.filter((lane) => lane.classKey === "revision-review"),
+      fielded: cliRoster.fielded.filter((lane) => lane.classKey === verifierKey),
       skipped: [
         ...cliRoster.skipped,
         ...demoted.map((lane) => ({ classKey: lane.classKey, reason: demotion.reason, via: "override", trigger: demotion.trigger }))

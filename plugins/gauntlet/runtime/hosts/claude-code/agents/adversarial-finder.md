@@ -2,7 +2,7 @@
 name: adversarial-finder
 description: Hostile systems engineer that pressure-tests an artifact (code diff, plan, or doc) to surface hidden assumptions, failure modes, and blast radius. Runs only inside the adversarial-review skill's runtime-driven handshake, in a fresh isolated dispatch — never invoked standalone.
 tools: Read, Grep, Glob, Bash
-model: claude-sonnet-5
+model: claude-sonnet-5-5
 ---
 <!-- generated from canon; do not edit -->
 
