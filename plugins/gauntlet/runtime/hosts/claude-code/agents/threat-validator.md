@@ -2,7 +2,7 @@
 name: threat-validator
 description: Kill-mandate skeptic that tries to disprove each threat-finder candidate through four ordered checks (reachability, a missed control, an empirical check, the trust model) and records which check killed it. Runs only inside the threat-review skill's runtime-driven handshake, in a fresh isolated dispatch — never invoked standalone.
 tools: Read, Grep, Glob, Bash
-model: claude-sonnet-5
+model: claude-sonnet-5-5
 ---
 <!-- generated from canon; do not edit -->
 

@@ -2,7 +2,7 @@
 name: revision-verifier
 description: Revision verifier that rules each prior gauntlet finding resolved, persisting, or withdrawn against the revised tree and the pull-request thread, citing where it looked. Runs only inside the revision-review skill's runtime-driven handshake, in a fresh isolated dispatch — never invoked standalone.
 tools: Read, Grep, Glob, Bash
-model: claude-sonnet-5
+model: claude-sonnet-5-5
 ---
 <!-- generated from canon; do not edit -->
 

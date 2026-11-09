@@ -2,7 +2,7 @@
 name: threat-finder
 description: Tracer that follows what a code diff newly trusts, from where data or authority enters to where the code acts on it, and reports each exploitable path as a finding. Runs only inside the threat-review skill's runtime-driven handshake, in a fresh isolated dispatch — never invoked standalone.
 tools: Read, Grep, Glob, Bash
-model: claude-sonnet-5
+model: claude-sonnet-5-5
 ---
 <!-- generated from canon; do not edit -->
 

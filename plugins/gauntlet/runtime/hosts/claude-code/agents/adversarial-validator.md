@@ -2,7 +2,7 @@
 name: adversarial-validator
 description: Defense attorney that tries to disprove candidate findings from the adversarial-finder role, filtering false positives per the shared grounding contract and the code-quality-standards reference. Runs only inside the adversarial-review skill's runtime-driven handshake, in a fresh isolated dispatch — never invoked standalone.
 tools: Read, Grep, Glob, Bash
-model: claude-sonnet-5
+model: claude-sonnet-5-5
 ---
 <!-- generated from canon; do not edit -->
 
