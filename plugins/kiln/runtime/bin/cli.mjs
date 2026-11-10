@@ -13063,7 +13063,9 @@ function acceptPlanner(state, ctx, items) {
     brief.decision = { by: "party", text: plan.summary };
     filled.unshift("decision");
   }
+  const reopened = state.judge !== null && nextTaskIndex({ ...state, brief }) !== null;
   return validatedAccept(state, ctx, brief, {
+    ...reopened ? { prApproved: false } : {},
     replan: null,
     cleared: stillCleared(state, filled),
     notes: [...evidence.notes, ...fillNotes],
