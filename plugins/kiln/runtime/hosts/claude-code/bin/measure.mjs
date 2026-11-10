@@ -17,7 +17,12 @@
  * skill reads that time from the `lastTimestamp` of the corrected action's
  * meta file: the latest timestamp the script kept, left out when no kept
  * entry has one. The meta's `agentId` is the `--agent` value, so a resumed
- * session can still send a correction to the same agent. An `--after` value that is not a date is
+ * session can still send a correction to the same agent. When the reply, with
+ * one pair of backticks or quotes stripped, is the path of a reply file
+ * `<run dir>/handed/<action id>-outcome.json`, the reply is that file's content
+ * (see `replyFileContent`); any other absolute path is the reply as written,
+ * with a `repairs` note, and its file is never read.
+ * An `--after` value that is not a date is
  * `MEASURE_FLAG_INVALID`. It prints one summary line with no action id and
  * no path, because the build skill shows it to the person. On any failure it
  * prints a typed error on stderr, exits 1, and writes nothing. It imports
@@ -37,7 +42,7 @@
  * entries). The hand-back wins when both exist. `MEASURE_NO_HANDBACK` means
  * neither exists. A transcript with a reply has at least one assistant line,
  * so the meta file always holds the usage and the tool calls, and `repairs`
- * (an array of strings, empty when the hand-back was used).
+ * (an array of strings, empty when the hand-back was used and, if it named an absolute path, that path was a reply file that was read).
  */
 import { readFileSync, readdirSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
@@ -147,6 +152,32 @@ function writesOf(v) {
   }
 }
 
+/**
+ * A member that wrote its reply to a file hands back that file's path. With one
+ * pair of surrounding backticks or quotes stripped and the whitespace trimmed,
+ * a one-line absolute path directly in `<run>/handed/` that ends `-outcome.json`
+ * is a reply file: its content is the reply when it is readable. Any other
+ * absolute path, such as a reply-file path with a trailing period or the path
+ * of a report, is not read: like a reply file that cannot be read, the reply
+ * stays as written with a `repairs` note, so the engine refuses it as malformed
+ * and the build skill corrects the same agent. Any other reply is returned as
+ * it is.
+ */
+function replyFileContent(reply, runDir, repairs) {
+  const file = reply.trim().replace(/^(["'`])(.*)\1$/s, '$2').trim();
+  if (file.includes('\n') || !path.isAbsolute(file)) return reply;
+  if (path.dirname(file) !== path.resolve(runDir, 'handed') || !file.endsWith('-outcome.json')) {
+    repairs.push(`the hand-back names ${file}, which is not a reply file: a reply file is ${path.resolve(runDir, 'handed')}/<action id>-outcome.json`);
+    return reply;
+  }
+  try {
+    return readFileSync(file, 'utf8');
+  } catch {
+    repairs.push(`the hand-back names ${file}, which is not a readable file`);
+    return reply;
+  }
+}
+
 function main(argv, env) {
   const v = flagsOf(argv);
   const configDir = env.CLAUDE_CONFIG_DIR ?? path.join(homedir(), '.claude');
@@ -155,10 +186,11 @@ function main(argv, env) {
   if (files.length > 1) throw new MeasureError('MEASURE_TRANSCRIPT_AMBIGUOUS', `${files.length} transcripts are named agent-${v.agent}.jsonl`, { files });
   const measured = measureEntries(entriesAfter(entriesOf(files[0]), v.after));
   const { usage, toolCalls, latencySeconds, lastTimestamp } = measured;
-  const reply = measured.reply ?? measured.finalText;
+  const chosen = measured.reply ?? measured.finalText;
   const span = v.after === undefined ? '' : ` after ${v.after}`;
-  if (reply === null) throw new MeasureError('MEASURE_NO_HANDBACK', `the transcript has no ${HANDBACK} tool call and no text in its last assistant message${span}, so the member ended without a reply`, { file: files[0] });
+  if (chosen === null) throw new MeasureError('MEASURE_NO_HANDBACK', `the transcript has no ${HANDBACK} tool call and no text in its last assistant message${span}, so the member ended without a reply`, { file: files[0] });
   const repairs = measured.reply === null ? ['reply taken from the final assistant text; no hand-back tool call'] : [];
+  const reply = replyFileContent(chosen, v.run, repairs);
   const writes = writesOf(v);
   const meta = { modelBinding: { model: v.model }, usage: latencySeconds === null ? usage : { ...usage, latencySeconds }, toolCalls, repairs, agentId: v.agent, ...(lastTimestamp === undefined ? {} : { lastTimestamp }) };
   if (writes !== undefined) meta.writes = writes;

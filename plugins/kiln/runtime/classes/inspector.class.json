@@ -151,7 +151,7 @@
       "path": "hosts/claude-code/agents/inspector.md",
       "projection": {
         "canonicalSources": ["hosts/claude-code/agents/inspector.md"],
-        "sourceHash": "c03d571a33aaa2de8a4b6d64b256eeafbe45f71133678292aed4c6d8d73d8372"
+        "sourceHash": "d9cf3a091d3a60bb481b56a3fdf72d0d2bc8bf49bf4751712b44a7db6850d703"
       }
     },
     "codex": {
