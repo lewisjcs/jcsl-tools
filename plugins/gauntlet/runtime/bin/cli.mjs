@@ -10451,14 +10451,44 @@ var MAX_LABEL_LENGTH = 200;
 function sanitizeLabel(problems) {
   return problems.slice(0, MAX_LABEL_PROBLEMS).map((problem) => String(problem).replace(/\s+/g, " ").trim()).join("; ").slice(0, MAX_LABEL_LENGTH);
 }
-function rejectUnknownField({ items, field, allowed, code, noun, pluralNoun, declaredBy, outcomeRetry, outcomeGap, reason }) {
-  const unknown = [...new Set(items.map((item) => item[field]).filter((value) => !allowed.includes(value)))];
-  if (unknown.length === 0) return null;
+function foldSpelling(value) {
+  return value.toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
+}
+function assertDistinctVocabulary(values, noun) {
+  const seen = /* @__PURE__ */ new Map();
+  for (const value of values) {
+    const folded = foldSpelling(value);
+    if (seen.has(folded)) {
+      throw new TypeError(`createRun: ${noun} values "${seen.get(folded)}" and "${value}" differ only in spelling \u2014 the runtime could not tell them apart in a reply`);
+    }
+    seen.set(folded, value);
+  }
+}
+var MAX_VOCABULARY_LINE_LENGTH = 180;
+var VOCABULARY_SEPARATOR = "; ";
+function vocabularyLines(values) {
+  const lines = [];
+  for (const value of values) {
+    const last = lines.length - 1;
+    if (last >= 0 && lines[last].length + VOCABULARY_SEPARATOR.length + value.length <= MAX_VOCABULARY_LINE_LENGTH) {
+      lines[last] += VOCABULARY_SEPARATOR + value;
+    } else {
+      lines.push(value);
+    }
+  }
+  return lines;
+}
+function admitDeclaredField({ items, field, allowed, code, noun, pluralNoun, declaredBy, outcomeRetry, outcomeGap, reason }) {
+  const declared = new Map(allowed.map((value) => [foldSpelling(value), value]));
+  const unknown = [...new Set(items.map((item) => item[field]).filter((value) => !declared.has(foldSpelling(value))))];
+  if (unknown.length === 0) {
+    return { items: items.map((item) => ({ ...item, [field]: declared.get(foldSpelling(item[field])) })) };
+  }
   return {
     reject: {
       code,
       label: sanitizeLabel([`unknown ${noun}: ${unknown.join(", ")}`]),
-      details: [`use only the ${pluralNoun} this ${declaredBy} declares: ${allowed.join(", ")}`],
+      details: [`use only the ${pluralNoun} this ${declaredBy} declares, spelled as listed and separated here by "${VOCABULARY_SEPARATOR.trim()}":`, ...vocabularyLines(allowed)],
       outcomeRetry,
       outcomeGap,
       reason
@@ -10536,6 +10566,7 @@ function protocolFor2(record) {
       if (typeof extras?.artifactPath !== "string" || extras.artifactPath.length === 0) {
         throw new TypeError("createRun: artifactPath must be a non-empty string for opposed runs \u2014 both roles read the bundle by reference");
       }
+      assertDistinctVocabulary(profile.lenses, "lens");
       return {
         status: "finder-pending",
         // The engine's own baseState.profile stays the kernel's closed
@@ -10554,7 +10585,7 @@ function protocolFor2(record) {
         outputContractId: FINDER_OUTPUT_CONTRACT_ID,
         buildPrompt: buildFinderPromptBody,
         accept(state, items) {
-          const lensRejection = rejectUnknownField({
+          const lensCheck = admitDeclaredField({
             items,
             field: "lens",
             allowed: state.lenses,
@@ -10566,8 +10597,8 @@ function protocolFor2(record) {
             outcomeGap: "lens-gap",
             reason: "lens-unknown"
           });
-          if (lensRejection) return lensRejection;
-          const candidates = items.map((item, index) => ({ id: candidateId(index), ...item }));
+          if (lensCheck.reject) return lensCheck;
+          const candidates = lensCheck.items.map((item, index) => ({ id: candidateId(index), ...item }));
           if (candidates.length === 0) return { fields: { candidates }, status: "adjudicating" };
           return { fields: { candidates }, status: "validator-pending", nextKind: "dispatch-validator" };
         }
@@ -10807,6 +10838,8 @@ function protocolFor3(record) {
       if (typeof extras?.artifactPath !== "string" || extras.artifactPath.length === 0) {
         throw new TypeError("createRun: artifactPath must be a non-empty string for audit runs");
       }
+      assertDistinctVocabulary(profile.lenses, "layer");
+      assertDistinctVocabulary(levelsOf(record), "level");
       return { status: "auditor-pending", extraFields: { lenses: profile.lenses, artifactPath: extras.artifactPath, originAuthorship: assertOriginAuthorship(extras?.originAuthorship ?? "self"), reviewScope: assertReviewScope(extras?.reviewScope ?? "full"), findings: [] } };
     },
     validateOutput: validateContract,
@@ -10818,7 +10851,7 @@ function protocolFor3(record) {
         outputContractId: AUDITOR_OUTPUT_CONTRACT_ID,
         buildPrompt: buildAuditorPromptBody,
         accept(state, items) {
-          const layerRejection = rejectUnknownField({
+          const layerCheck = admitDeclaredField({
             items,
             field: "layer",
             allowed: state.lenses,
@@ -10830,9 +10863,9 @@ function protocolFor3(record) {
             outcomeGap: "layer-gap",
             reason: "layer-unknown"
           });
-          if (layerRejection) return layerRejection;
-          const levelRejection = rejectUnknownField({
-            items,
+          if (layerCheck.reject) return layerCheck;
+          const levelCheck = admitDeclaredField({
+            items: layerCheck.items,
             field: "level",
             allowed: levelsOf(record),
             code: "RUNTIME_LEVEL_UNKNOWN",
@@ -10843,8 +10876,8 @@ function protocolFor3(record) {
             outcomeGap: "level-gap",
             reason: "level-unknown"
           });
-          if (levelRejection) return levelRejection;
-          const findings = items.map((item, index) => ({ id: auditFindingId(index), ...item }));
+          if (levelCheck.reject) return levelCheck;
+          const findings = levelCheck.items.map((item, index) => ({ id: auditFindingId(index), ...item }));
           return { fields: { findings }, status: "audited" };
         }
       }
