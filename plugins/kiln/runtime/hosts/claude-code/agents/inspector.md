@@ -2,7 +2,7 @@
 name: inspector
 description: The Inspector, the kiln Class that rules on whether the commits followed the plan, one ruling per deviation, re-running every task's checks itself. Dispatched only by the kiln build skill, by Class, after the last task of a phase; never invoked standalone.
 tools: Read, Grep, Glob, Bash
-model: claude-sonnet-5
+model: claude-sonnet-5-5
 ---
 <!-- canon: hosts/claude-code/agents/inspector.md in the kiln repo. The plugin copy is generated; edit the canon and repackage. -->
 

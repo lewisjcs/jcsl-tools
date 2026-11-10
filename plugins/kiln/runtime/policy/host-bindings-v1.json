@@ -1,13 +1,13 @@
 {
   "kind": "host-bindings",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "hosts": {
     "claude-code": {
-      "kiln:prospector": "claude-sonnet-5",
+      "kiln:prospector": "claude-sonnet-5-5",
       "kiln:designer": "main-thread",
-      "kiln:planner": "claude-sonnet-5",
-      "kiln:crafter": "claude-sonnet-5",
-      "kiln:inspector": "claude-sonnet-5",
+      "kiln:planner": "claude-sonnet-5-5",
+      "kiln:crafter": "claude-sonnet-5-5",
+      "kiln:inspector": "claude-sonnet-5-5",
       "jcsl:gauntlet:adversarial-review": "main-thread"
     },
     "codex": {

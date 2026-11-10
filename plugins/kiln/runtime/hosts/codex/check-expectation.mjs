@@ -6,6 +6,8 @@ export function parseCheckExpectation(value) {
   if (/^[0-9]+$/.test(expect)) return { kind: 'exact-count', count: expect };
   const minimum = /^a count of at least ([0-9]+)$/i.exec(expect);
   if (minimum && Number.isSafeInteger(Number(minimum[1]))) return { kind: 'minimum-count', count: Number(minimum[1]) };
+  const line = /^the line `([^`\n]+)`$/i.exec(expect);
+  if (line) return { kind: 'line', text: line[1] };
   const literal = /^`([^`\n]+)`$/.exec(expect);
   if (literal) return { kind: 'contains', text: literal[1] };
   return null;
@@ -29,5 +31,6 @@ export function checkMatchesExpectation(parsed, exitCode, output) {
     return parsed.kind === 'exact-count' ? n === Number(parsed.count) : n >= parsed.count;
   }
   if (exitCode !== 0) return false;
+  if (parsed.kind === 'line') return output.split('\n').some((l) => l.trimEnd() === parsed.text.trimEnd());
   return output.includes(parsed.text);
 }
