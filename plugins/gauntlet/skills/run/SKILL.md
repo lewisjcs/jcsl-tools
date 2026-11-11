@@ -65,13 +65,15 @@ Write the three results as one JSON object `{issueComments, reviewComments, revi
 
 The head commit must also exist locally, since the runtime pins the review to it in its own git worktree: check with `git -C <repo-root> cat-file -e <headRefOid>^{commit}` and, if it is absent, fetch it (`git -C <repo-root> fetch origin <headRefOid>`). Then form the party with `--primary "$STAGE/pr.diff" --type code-pr --repo-root <repo-root> --reviewed-commit <headRefOid> --title "$STAGE/pr-title.md" --body "$STAGE/pr-body.md" --origin-url <url> --base-ref <baseRefName> --base-sha <baseRefOid> --author $AUTHOR --thread "$STAGE/thread.json"`, adding `--visibility $VISIBILITY` before `--thread` only when the lookup above succeeded.
 
-**No argument.** Review the current branch against the trunk:
+**No argument.** Review the current branch from the point where it split off the remote's default branch. Ask the remote for its default branch, fetch it, then diff from the common ancestor (the three dots). Never diff against a local `main`: it can be behind its remote, and commits that landed since the split would show up as removals.
 
 ```
-git diff main..HEAD > "$STAGE/local.diff"
+DEFAULT=$(git ls-remote --symref origin HEAD | awk '/^ref:/ { sub("refs/heads/", "", $2); print $2 }')
+git fetch origin "$DEFAULT"
+git diff "origin/$DEFAULT...HEAD" > "$STAGE/local.diff"
 ```
 
-Fall back to `master` only if `main` does not exist. Then form the party with `--primary "$STAGE/local.diff" --type code-local`. A working tree cannot be pinned, so the runtime records its content digest instead.
+If any of these commands fails, or `DEFAULT` is empty, stop and tell the operator; never fall back to a local branch. Then form the party with `--primary "$STAGE/local.diff" --type code-local`. A working tree cannot be pinned, so the runtime records its content digest instead.
 
 **A path.** Pass the file as `--primary <path>` and let the runtime detect the type. Do not pass `--type`: the operator can, and the runtime records it as an override, but this skill never guesses one.
 
@@ -119,7 +121,7 @@ Roster (<roster.rowId>): fielded <classKey>… · skipped <classKey> (<reason>)�
 
 Name every fielded lane, every skipped lane with the runtime's reason, and every gap with its reason. Write `none` for an empty group. Do not editorialize, re-order, or drop a group — the skipped and gap entries are what tell the operator which coverage this run does *not* have.
 
-When `revision` is not null, the runtime linked this party to an earlier posted one. Add a line under the roster: `revision <number> of <priorPartyRunId> · narrow|full`, and when the mode is `full` without the operator asking for it, append the runtime's `fallbackReason`. In `narrow` mode the verifier reads a range-diff and the other lanes read only the patch added since the prior reviewed head (`revision.files`). A changed base or rewritten history selects `full` with an explicit reason.
+When `revision` is not null, the runtime linked this party to an earlier posted one. Add a line under the roster: `revision <number> of <priorPartyRunId> · narrow|partial|full`, and when the mode is `partial`, append the runtime's `fallbackReason`. In `narrow` mode the verifier reads a range-diff and the other lanes read only the patch added since the prior reviewed head (`revision.files`). Rewritten history, a moved base whose changes overlap the new work, or a commit missing locally that could not be fetched from `origin` makes the revision `partial`, with the reason. The new-issue lanes then stand down, and the operator can rerun with `--full` to review the whole pull request.
 
 ## 5. The go-live question
 

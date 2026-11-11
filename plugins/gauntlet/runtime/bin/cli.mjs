@@ -13384,6 +13384,17 @@ function resolves(repoRoot, sha) {
     return false;
   }
 }
+var FULL_COMMIT_ID = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
+function fetchCommit(repoRoot, sha) {
+  if (!FULL_COMMIT_ID.test(sha)) return "not a full commit id, so it was not fetched";
+  try {
+    execFileSync3("git", ["fetch", "--quiet", "origin", sha], { cwd: repoRoot, stdio: ["ignore", "pipe", "pipe"] });
+    return null;
+  } catch (err) {
+    const firstLine = String(err.stderr ?? "").split("\n").map((l) => l.trim()).find((l) => l !== "");
+    return `fetching it from origin failed: ${firstLine ?? err.message}`;
+  }
+}
 function gitOut(repoRoot, args) {
   return execFileSync3("git", args, { cwd: repoRoot, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
 }
@@ -13392,7 +13403,9 @@ function nameOnly(repoRoot, from, to) {
 }
 function computeRevisionDelta({ repoRoot, priorBase, priorHead, base, head }) {
   for (const [label, sha] of [["prior base", priorBase], ["prior head", priorHead], ["base", base], ["head", head]]) {
-    if (!resolves(repoRoot, sha)) return { mode: "partial", fallbackReason: `${label} ${sha} does not resolve in the repository` };
+    if (resolves(repoRoot, sha)) continue;
+    const clause = fetchCommit(repoRoot, sha) ?? "fetching it from origin succeeded but the commit is still absent";
+    if (!resolves(repoRoot, sha)) return { mode: "partial", fallbackReason: `${label} ${sha} does not resolve in the repository; ${clause}` };
   }
   try {
     execFileSync3("git", ["merge-base", "--is-ancestor", priorHead, head], { cwd: repoRoot, stdio: "ignore" });
