@@ -11184,7 +11184,7 @@ function renderJudgePrompt(state, tasks, acceptance) {
 }
 function renderBorrowedPrompt(state, repos) {
   const fence = fenceFor(state);
-  const scope = (r) => `branch (the diff from the merge base with ${r.base ?? "the default branch"} to HEAD)`;
+  const scope = (r) => `branch (the diff from the merge base with ${r.base ? `origin/${r.base}` : "the default branch"} to HEAD)`;
   return [
     ...opening("Borrowed review. The host plays the gauntlet adversarial review over the branch diff and appends the mapped outcome as this receipt.", fence),
     ...retryLines(state, "dispatch-borrowed", fence),
@@ -14265,6 +14265,7 @@ function isCheckout(dir) {
 function repoFactsFor() {
   return (checkout, base) => {
     if (!isCheckout(checkout)) return { exists: false, defaultBranch: null, baseOnRemote: false, branches: [] };
+    fetchOrStop(checkout, ["--prune", "origin"], "the remote branches");
     const head = spawnSync("git", ["-C", checkout, "symbolic-ref", "--short", "refs/remotes/origin/HEAD"], { encoding: "utf8" });
     const defaultBranch = head.status === 0 ? head.stdout.trim().replace(/^origin\//, "") : null;
     const baseOnRemote = base === null || spawnSync("git", ["-C", checkout, "ls-remote", "--exit-code", "--heads", "origin", `refs/heads/${base}`], { encoding: "utf8" }).status === 0;
@@ -14787,6 +14788,53 @@ function isPushed(root, branch) {
   const remote = spawnSync("git", ["-C", root, "rev-parse", "--verify", "--quiet", `refs/remotes/origin/${branch}`], { encoding: "utf8" });
   return remote.status === 0 && remote.stdout.trim() === head;
 }
+function fetchOrStop(dir, args, what) {
+  const res = spawnSync("git", ["-C", dir, "fetch", ...args], { encoding: "utf8" });
+  if (res.status !== 0) {
+    throw new KilnError("KILN_BRANCH_FETCH_FAILED", `could not fetch ${what} from origin in ${dir}: ${res.stderr.trim().split("\n")[0]}; the branch state is unknown, so the run stops`, { dir, args });
+  }
+}
+function remoteHasBranch(dir, name) {
+  const res = spawnSync("git", ["-C", dir, "ls-remote", "--heads", "origin", `refs/heads/${name}`], { encoding: "utf8" });
+  if (res.status !== 0) {
+    throw new KilnError("KILN_BRANCH_FETCH_FAILED", `could not fetch the branch list from origin in ${dir}: ${res.stderr.trim().split("\n")[0]}; the branch state is unknown, so the run stops`, { dir, args: ["ls-remote", "--heads", "origin", `refs/heads/${name}`] });
+  }
+  return res.stdout.trim() !== "";
+}
+function countsOf(dir, range2) {
+  const [left, right] = gitOut(dir, ["rev-list", "--left-right", "--count", range2]).trim().split(/\s+/).map(Number);
+  return [left, right];
+}
+function branchStateOf({ root, branch, base }) {
+  if (!existsSync2(root)) return `${root}: no worktree (removed)`;
+  let basePart;
+  let baseLive = false;
+  if (base === null || base === void 0) basePart = "base unknown (run opened before 3.2.0)";
+  else if (!remoteHasBranch(root, base)) basePart = `origin/${base} is gone from the remote`;
+  else {
+    fetchOrStop(root, ["origin", `+refs/heads/${base}:refs/remotes/origin/${base}`], `${base}`);
+    baseLive = true;
+  }
+  let remotePart;
+  if (!remoteHasBranch(root, branch)) remotePart = "not on origin (never pushed)";
+  else {
+    fetchOrStop(root, ["origin", `+refs/heads/${branch}:refs/remotes/origin/${branch}`], `${branch}`);
+    const [ahead, behind] = countsOf(root, `HEAD...refs/remotes/origin/${branch}`);
+    if (behind > 0) {
+      throw new KilnError("KILN_BRANCH_BEHIND_REMOTE", `${branch} in ${root} lacks ${behind} commit(s) that origin/${branch} has (${ahead} local commit(s) not on origin); stop and ask the person`, { root, branch, ahead, behind });
+    }
+    remotePart = ahead === 0 ? `equals origin/${branch}` : `${ahead} ahead of origin/${branch} (not pushed yet)`;
+  }
+  if (baseLive) {
+    const [behind, ahead] = countsOf(root, `refs/remotes/origin/${base}...HEAD`);
+    basePart = `${behind} behind and ${ahead} ahead of origin/${base}`;
+  }
+  const sha = gitOut(root, ["rev-parse", "--short=7", "HEAD"]).trim();
+  return `${root}: ${branch} at ${sha}; ${remotePart}; ${basePart}`;
+}
+function branchStateLines(repos) {
+  return repos.map(branchStateOf);
+}
 function removeRunWorktree({ checkout, root, branch, created }) {
   if (!created) return "reused";
   if (!existsSync2(root)) return "removed earlier";
@@ -15150,14 +15198,22 @@ function afterReceipt({ flow, paths, meta, state, nextState, actionId, pending, 
 function settleRepo({ paths, meta, state, nextState, apply }) {
   const settled = reposOf(state).length === 0 ? reposOf(nextState) : [];
   const created = settled.map((repo) => createWorktree(repo));
-  const repoWords = [...new Set(settled.flatMap((repo) => repoWordsOf(repo.root)))];
+  let repoWords;
+  let branchState;
+  try {
+    repoWords = [...new Set(settled.flatMap((repo) => repoWordsOf(repo.root)))];
+    branchState = branchStateLines(settled);
+  } catch (err) {
+    removeCreatedWorktrees(settled.filter((repo, i) => created[i]));
+    throw err;
+  }
   apply();
   if (settled.length === 0) return { installed: void 0 };
   const [first] = settled;
   const repos = settled.map(({ name, checkout, root, branch, base }, i) => ({ name, checkout, root, branch, base, created: created[i] }));
   writeRunMeta(paths, { ...meta, repo: first.root, branch: first.branch, base: first.base, repos, repoWords });
   const [installed] = installDependencies(settled.filter((repo, i) => created[i]).map((repo) => repo.root));
-  return { installed: installed === void 0 ? null : { command: installed.command } };
+  return { installed: installed === void 0 ? null : { command: installed.command }, branchState };
 }
 function modeLineFor(state, nextState) {
   const before = state.modeLog ?? [];
@@ -15434,6 +15490,7 @@ ${v.idea.trim()}
     const registry = getBuildRegistry(host.id);
     const issueTitle = title === null && source === "github" ? ticketRead.title : title;
     let directRepos = [];
+    const reusedLines = /* @__PURE__ */ new Map();
     if (taskPlan !== null && (!runExists(paths) || v.again === true)) {
       const validation = validateTicketPlan(taskPlan);
       if (!validation.valid) throw new KilnError("KILN_TICKET_PLAN_INVALID", "the host task plan fails kiln:ticket-plan@1", { issues: validation.issues });
@@ -15450,6 +15507,7 @@ ${v.idea.trim()}
           if (leaks.length > 0) throw new KilnError("KILN_OPEN_TITLE", `the --title for ${record2.name} holds "${leaks[0].word}", which a pull request title may not hold`, { leaks });
         }
       }
+      for (const record2 of directRepos.filter((r) => !r.created)) reusedLines.set(record2.root, branchStateOf(record2));
     }
     if (approvedPlan !== null && taskPlan === null && (!runExists(paths) || v.again === true)) throw new KilnError("KILN_APPROVED_TASK_PLAN_REQUIRED", "build must translate this approved plan into a validated task plan before opening a run");
     const direct = directRepos.length > 0;
@@ -15472,7 +15530,8 @@ ${v.idea.trim()}
       const deferred = resolvedPlan !== null && !atStop && savedHoldsPlan && state2.pendingAction?.kind.startsWith("dispatch-") && resolvedPlan !== state2.documents.plan.path ? { approvedPlanDeferred: resolvedPlan } : {};
       const record2 = JSON.parse(readFileSync12(paths.party.record, "utf8"));
       const flow2 = flowFor(flowCtx(meta2));
-      return { resumed: true, dir: paths.dir, ...deferred, ...ENDED.has(checked.status) ? { again: `this run ended ${checked.status}; open --again sets it aside and starts a fresh run on this ticket` } : {}, fillState: openFillState(fillStateLines({ brief: checked.brief, taskGoals, roster: record2.roster, changed: ticketChangesFor(checked, ticketRead.body).parts }), source, ticketRead), roster: { rowId: record2.roster.rowId, fielded: record2.roster.fielded.map((m) => m.classKey) }, next: nextSummary(flow2, checked, paths, meta2) };
+      const branchState2 = ENDED.has(checked.status) ? [] : branchStateLines(metaReposOf(meta2));
+      return { resumed: true, dir: paths.dir, ...deferred, ...ENDED.has(checked.status) ? { again: `this run ended ${checked.status}; open --again sets it aside and starts a fresh run on this ticket` } : {}, fillState: openFillState(fillStateLines({ brief: checked.brief, taskGoals, roster: record2.roster, changed: ticketChangesFor(checked, ticketRead.body).parts }), source, ticketRead), roster: { rowId: record2.roster.rowId, fielded: record2.roster.fielded.map((m) => m.classKey) }, branchState: branchState2, next: nextSummary(flow2, checked, paths, meta2) };
     }
     const planBrief = direct ? briefFromPlan(readInput({ plan: approvedPlan.path }, "plan"), approvedPlan.path) : null;
     const readyBrief = !direct ? brief : {
@@ -15512,12 +15571,14 @@ ${v.idea.trim()}
     if (toCreate.length > 0) checkBriefValid(state.brief);
     const begun = [];
     let repoWords;
+    let branchState;
     try {
       for (const repo of toCreate) {
         begun.push(repo);
         createWorktree(repo);
       }
       repoWords = [...new Set(directRepos.flatMap((repo) => repoWordsOf(repo.root)))];
+      branchState = directRepos.map((repo) => reusedLines.get(repo.root) ?? branchStateOf(repo));
     } catch (err) {
       removeCreatedWorktrees(begun);
       throw err;
@@ -15555,12 +15616,13 @@ ${v.idea.trim()}
     ]);
     writeRunMeta(paths, meta);
     const installed = installDependencies(toCreate.map((repo) => repo.root));
-    return { resumed: false, dir: paths.dir, ...setAside === null ? {} : { setAside }, ...carried.length === 0 ? {} : { carried }, fillState: openFillState(fillStateLines({ brief: readyBrief, taskGoals, roster, ready: direct }), source, ticketRead), roster: { rowId: roster.rowId, fielded: roster.fielded.map((m) => m.classKey) }, installed, next: nextSummary(flow, state, paths, meta) };
+    return { resumed: false, dir: paths.dir, ...setAside === null ? {} : { setAside }, ...carried.length === 0 ? {} : { carried }, fillState: openFillState(fillStateLines({ brief: readyBrief, taskGoals, roster, ready: direct }), source, ticketRead), roster: { rowId: roster.rowId, fielded: roster.fielded.map((m) => m.classKey) }, installed, branchState, next: nextSummary(flow, state, paths, meta) };
   },
   next(args) {
     const v = flags(args, { root: { type: "string" }, ticket: { type: "string" } });
     const { paths, meta, state } = openRun(v, { planCheck: true });
-    return { next: nextSummary(flowFor(flowCtx(meta)), state, paths, meta) };
+    const branchState = ENDED.has(state.status) ? [] : branchStateLines(metaReposOf(meta));
+    return { branchState, next: nextSummary(flowFor(flowCtx(meta)), state, paths, meta) };
   },
   receipt(args) {
     const v = flags(args, { root: { type: "string" }, ticket: { type: "string" }, action: { type: "string" }, output: { type: "string" }, "host-meta": { type: "string" } });
@@ -15587,12 +15649,12 @@ ${v.idea.trim()}
     if (nextState === state) throw new KilnError(issues[0].code, issues[0].message);
     const outcome = nextState.ledger.at(-1).outcome;
     const accepted2 = isAcceptedOutcome(outcome);
-    const { installed } = settleRepo({ paths, meta, state, nextState, apply: () => {
+    const { installed, branchState } = settleRepo({ paths, meta, state, nextState, apply: () => {
       afterReceipt({ flow, paths, meta, state, nextState, actionId, pending, accepted: accepted2 });
       writeFileAtomic(paths.envelope(actionId), JSON.stringify(envelope, null, 2) + "\n");
     } });
     const checked = checkPlan({ paths, meta, state: nextState });
-    return { ledger: { outcome }, runStatus: checked.status, breach: ration.breached ? { visitTokens: ration.visitTokens, threshold: ration.threshold } : null, omissions: ration.omissions, issues, installed, mode: modeLineFor(state, nextState), next: nextSummary(flow, checked, paths, meta) };
+    return { ledger: { outcome }, runStatus: checked.status, breach: ration.breached ? { visitTokens: ration.visitTokens, threshold: ration.threshold } : null, omissions: ration.omissions, issues, installed, branchState, mode: modeLineFor(state, nextState), next: nextSummary(flow, checked, paths, meta) };
   },
   reply(args) {
     const v = flags(args, { root: { type: "string" }, ticket: { type: "string" }, action: { type: "string" }, text: { type: "string" }, file: { type: "string" } });
@@ -15617,9 +15679,9 @@ ${v.idea.trim()}
     if (nextState === state) throw new KilnError(issues[0].code, issues[0].message);
     if (q.then === "plan-changed" && q.plan !== null && nextState.documents.plan.sha256 === q.plan.sha256 && q.plan.sha256 !== state.documents.plan.sha256) writePlanApproval(q.plan.path, q.plan.sha256, planParseOptions(state));
     const outcome = nextState.ledger.at(-1).outcome;
-    const { installed } = settleRepo({ paths, meta, state, nextState, apply: () => afterReceipt({ flow, paths, meta, state, nextState, actionId, pending, accepted: true }) });
+    const { installed, branchState } = settleRepo({ paths, meta, state, nextState, apply: () => afterReceipt({ flow, paths, meta, state, nextState, actionId, pending, accepted: true }) });
     const checked = checkPlan({ paths, meta, state: nextState });
-    return { ledger: { outcome }, runStatus: checked.status, issues, installed, mode: modeLineFor(state, nextState), next: nextSummary(flow, checked, paths, meta) };
+    return { ledger: { outcome }, runStatus: checked.status, issues, installed, branchState, mode: modeLineFor(state, nextState), next: nextSummary(flow, checked, paths, meta) };
   },
   writes(args) {
     const [sub, ...rest2] = args;
