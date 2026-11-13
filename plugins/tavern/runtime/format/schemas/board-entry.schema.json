@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "jcsl:board-entry@1",
+  "title": "Board history entry",
+  "type": "object",
+  "required": ["contractId", "board", "revision", "kind", "at", "writer", "action", "data", "changes", "recordDigest"],
+  "properties": {
+    "contractId": { "const": "jcsl:board-entry@1" },
+    "board": { "type": "integer", "minimum": 1 },
+    "revision": { "type": "integer", "minimum": 1 },
+    "kind": { "enum": ["opened", "written", "closed"] },
+    "at": { "type": "string", "format": "date-time", "pattern": "Z$" },
+    "writer": { "$ref": "#/$defs/nonEmptyString" },
+    "action": { "$ref": "#/$defs/nonEmptyString" },
+    "data": { "type": "object" },
+    "changes": { "type": "array", "items": { "$ref": "#/$defs/change" } },
+    "recordDigest": { "type": "string", "format": "sha256" },
+    "rules": { "type": "object" },
+    "carriedFrom": { "anyOf": [{ "type": "null" }, { "type": "integer", "minimum": 1 }] }
+  },
+  "additionalProperties": false,
+  "if": { "required": ["kind"], "properties": { "kind": { "const": "opened" } } },
+  "then": { "required": ["rules", "carriedFrom"], "properties": { "revision": { "const": 1 } } },
+  "else": { "not": { "anyOf": [{ "required": ["rules"] }, { "required": ["carriedFrom"] }] } },
+  "$defs": {
+    "nonEmptyString": { "type": "string", "minLength": 1 },
+    "holder": { "anyOf": [{ "type": "null" }, { "$ref": "#/$defs/nonEmptyString" }] },
+    "line": {
+      "type": "object",
+      "required": ["id", "status", "holder", "fields"],
+      "properties": {
+        "id": { "$ref": "#/$defs/nonEmptyString" },
+        "status": { "$ref": "#/$defs/nonEmptyString" },
+        "holder": { "$ref": "#/$defs/holder" },
+        "fields": { "type": "object" }
+      },
+      "additionalProperties": false
+    },
+    "change": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["op", "line"],
+          "properties": { "op": { "const": "add-line" }, "line": { "$ref": "#/$defs/line" } },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["op", "id"],
+          "properties": {
+            "op": { "const": "set-line" },
+            "id": { "$ref": "#/$defs/nonEmptyString" },
+            "status": { "$ref": "#/$defs/nonEmptyString" },
+            "holder": { "$ref": "#/$defs/holder" },
+            "fields": { "type": "object" }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["op", "fields"],
+          "properties": { "op": { "const": "set-board" }, "fields": { "type": "object" } },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["op"],
+          "properties": { "op": { "const": "close" } },
+          "additionalProperties": false
+        }
+      ]
+    }
+  }
+}

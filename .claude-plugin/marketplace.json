@@ -126,6 +126,25 @@
         "lint"
       ],
       "category": "development-workflows"
+    },
+    {
+      "name": "tavern",
+      "source": "./plugins/tavern",
+      "displayName": "The Tavern",
+      "description": "One guarded record of the current shift: what is open, what each session holds, what is waiting, and what was pushed aside. Six commands and a start-up line, on Claude Code and Codex.",
+      "author": {
+        "name": "Josh C.S. Lewis"
+      },
+      "repository": "https://github.com/lewisjcs/jcsl-tools",
+      "keywords": [
+        "shift",
+        "board",
+        "tickets",
+        "handoff",
+        "codex",
+        "statblock"
+      ],
+      "category": "development-workflows"
     }
   ]
 }

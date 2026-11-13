@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "jcsl:stage-receipt@1",
+  "type": "object",
+  "required": ["actionId", "rawOutput", "hostMeta"],
+  "properties": {
+    "actionId": {"type": "string", "minLength": 1},
+    "rawOutput": {"type": "string"},
+    "hostMeta": {"type": "object"}
+  },
+  "additionalProperties": false
+}

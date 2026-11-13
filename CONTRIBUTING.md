@@ -5,7 +5,7 @@
 | Tool | Notes |
 |---|---|
 | Claude Code | The primary runtime — plugins here are markdown plus shell, Python, and JavaScript components; nothing compiles in this repo |
-| `node` (>= 22) | Required by gauntlet's runtime-driven skills (`adversarial-review`, `code-quality-audit`, `revision-review`, `threat-review`); their CLI ships pre-generated at `plugins/gauntlet/runtime/bin/cli.mjs` |
+| `node` (>= 22) | Required by gauntlet's runtime-driven skills (`adversarial-review`, `code-quality-audit`, `revision-review`, `threat-review`); their CLI ships pre-generated at `plugins/gauntlet/runtime/bin/cli.mjs`. The Kiln and the Tavern also ship a bundled runtime that needs Node 22 |
 | `jq` | Required by `context-economy`'s hooks (`telemetry-record.sh`, `handoff-nudge.sh`, `context-reset-nudge.sh`) |
 | `python3` | Required by `context-economy/hooks/cost-statusline.py` (stdlib only, no pip installs) |
 | `gh` (GitHub CLI) | Used by the Kiln runtime (GitHub issue tickets and pull request creation) and Gauntlet (`code-pr` mode metadata) |
@@ -39,6 +39,7 @@ claude plugin install prospector@jcsl-tools
 claude plugin install context-economy@jcsl-tools
 claude plugin install cartographer@jcsl-tools
 claude plugin install herald@jcsl-tools
+claude plugin install tavern@jcsl-tools
 ```
 
 Restart Claude Code after installing or after any change to a `hooks.json` or `plugin.json` — component and hook registration happens at plugin-enable time, not live.
@@ -57,6 +58,7 @@ There's no repo-wide test command — verification is per-component, where a com
 | Component | Verify with |
 |---|---|
 | Kiln payload | Run `npm test` in the Kiln repository. Generate the payload from the merged source commit. Compare its files and `PROVENANCE.json` with `plugins/kiln/`. Run `claude plugin validate plugins/kiln`. |
+| Tavern payload | Run `npm test` in the Tavern repository. Generate the payload from the merged source commit. Compare its files and `PROVENANCE.json` with `plugins/tavern/`. Run `claude plugin validate plugins/tavern`. |
 | Gauntlet finder/validator agents | `bash plugins/gauntlet/agents/check-grounding-parity.sh` — asserts the shared grounding-contract sentinel block is byte-identical across the checked finder/validator agent files. |
 | Context Economy hooks | `bash plugins/context-economy/hooks/<hook-name>.test.sh` for each of `ce-langfuse-cost`, `context-reset-nudge`, `cost-statusline`, `handoff-nudge`, `handoff-stamp`, `retro-harvest`, `retro-roi`, `telemetry-record`. Exits non-zero on any failure. |
 | Context Economy behavioral fixtures | Five operator-in-the-loop scenarios in `plugins/context-economy/fixtures/` (`CE-01`–`CE-05`), each with a `prompt.md` + `expected.md` checkbox rubric. See `fixtures/README.md`. Target ≥3/5 pass before shipping a change that touches Steward/Assembler/Delegator behavior. |
@@ -92,3 +94,4 @@ Nearly every commit on `main` carries a `(#N)` suffix — PRs are the norm, not 
 | `.compounds/`, `.worktrees/` | Local machine state — gitignored, regenerated per machine |
 | `.claude/settings.json` (repo root) | Personal `enabledPlugins` state — gitignored |
 | `plugins/kiln/` | Generated payload — hand edits drift from the manifests the runtime checks; edit the kiln repository and repackage |
+| `plugins/tavern/` | Generated payload, written by the Tavern repository's packager. Edit that repository and repackage. Only `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, and `README.md` inside it are authored here |

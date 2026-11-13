@@ -7,7 +7,7 @@
 ```
 jcsl-tools/
 ├── .claude-plugin/
-│   └── marketplace.json      # marketplace manifest — lists all 6 plugins below
+│   └── marketplace.json      # marketplace manifest — lists all 7 plugins below
 └── plugins/
     ├── kiln/                 # Kiln kickoff, build, and Classes (generated payload)
     ├── gauntlet/              # multi-skill review harness
@@ -15,6 +15,7 @@ jcsl-tools/
     ├── context-economy/       # context-spend discipline Party
     ├── cartographer/          # repository documentation cartographer
     ├── herald/                # plain-English output style, markdown nudge, rewrite skill
+    ├── tavern/                # shift record, six commands, start-up hook (generated payload)
     └── _archive/kiln-2.17/    # the previous Kiln, kept whole, not listed
 ```
 
@@ -31,7 +32,7 @@ Two different `.claude-plugin/plugin.json`-shaped files exist at two levels — 
 
 A plugin's version is bumped independently in its own `plugin.json` — the marketplace manifest doesn't carry version numbers at all, only routing (`source`) and display metadata.
 
-## The six plugins
+## The seven plugins
 
 ### Kiln: kickoff, build, and Classes
 
@@ -85,6 +86,16 @@ Cartographer's pipeline reads a repository's own evidence — tracked files, man
 Entry: none. The output style applies whenever the plugin is enabled (`force-for-plugin: true` in `output-styles/herald.md`), the PostToolUse hook runs after every markdown write, and the `herald` skill is auto-discovered.
 
 Herald is one prose source for two registers: natural English for replies, and a stricter technical-writing register for a few named kinds of document. The source, `output-styles/herald.md`, holds both registers, with the stricter one covering README files, docs and runbooks folders, CHANGELOG files, and release notes. It is the plugin with three manifests: `.claude-plugin/` (output style, `hooks/hooks.json`), `.codex-plugin/` (skills and `hooks/hooks.codex.json`, whose SessionStart prints the style body through `hooks/herald-style.py`), and `.cursor-plugin/` (rules and skills; `rules/herald.mdc` is a byte-identical copy of the style body with Cursor frontmatter). `hooks/herald-lint.py` is a standard-library Python linter whose word lists, tier globs, and limits come from `hooks/rules.json`; `tests/check-rules-parity.sh` asserts the rules file, the style, and the Cursor rule agree. The hook returns `additionalContext` and exits 0 on every path, so it nudges and never blocks. Output styles never reach subagents, so the Kiln and Gauntlet Classes keep their own voice; the PostToolUse nudge does run on their markdown writes.
+
+### Tavern: shift record, six commands, start-up hook
+
+Entry: `/tavern:open` on Claude Code, `$open` on Codex. The other commands are `transfer`, `next`, `add`, `replan`, and `close`.
+
+The Tavern keeps one guarded record of the current shift. A shift is the span of work between one `open` and one `close`. The record lives in the Statblock Board layer, so each session writes under its own name and the record refuses a stale write. The record sits outside the repository, in a state folder under `$XDG_STATE_HOME/tavern` or `~/.local/state/tavern`.
+
+The plugin is a generated payload. A packager in a separate source repository bundles the program and the pinned Statblock kernel into one file, `runtime/bin/cli.mjs`, and writes every file in `plugins/tavern/` except three. The marketplace owns `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, and `README.md` inside that folder. `PROVENANCE.json` records the source commit and the payload hash. Edit the canonical files in the Tavern repository, then generate the payload again.
+
+Six skills under `skills/` call the program, one for each command, and the same files serve both hosts. Two hooks print the session status at start and mark the session ended at stop. Claude Code reads `hooks/hooks.json` and Codex reads `hooks/hooks.codex.json`. The two files differ only in how they write the plugin root. Every hook subcommand exits 0 and prints nothing on any error, so the Tavern never breaks a session start.
 
 ## Cross-plugin conventions
 

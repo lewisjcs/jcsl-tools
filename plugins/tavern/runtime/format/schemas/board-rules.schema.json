@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "jcsl:board-rules@1",
+  "title": "Board rules table",
+  "type": "object",
+  "required": ["kind", "name", "version", "statuses"],
+  "properties": {
+    "kind": { "const": "board-rules" },
+    "name": { "$ref": "#/$defs/nonEmptyString" },
+    "version": { "$ref": "#/$defs/semver" },
+    "statuses": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": { "$ref": "#/$defs/status" }
+    },
+    "openActions": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/openAction" }
+    },
+    "maxLinesNotFinal": { "type": "integer", "minimum": 1 }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "nonEmptyString": { "type": "string", "minLength": 1 },
+    "semver": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+    "status": {
+      "type": "object",
+      "required": ["final", "moves", "holder", "atClose"],
+      "properties": {
+        "final": { "type": "boolean" },
+        "moves": { "type": "array", "items": { "$ref": "#/$defs/nonEmptyString" }, "uniqueItems": true },
+        "requires": { "type": "array", "items": { "$ref": "#/$defs/nonEmptyString" }, "uniqueItems": true },
+        "holder": { "enum": ["required", "forbidden", "optional"] },
+        "maxPerHolder": { "type": "integer", "minimum": 1 },
+        "atClose": { "enum": ["refuse", "carry", "leave"] }
+      },
+      "additionalProperties": false
+    },
+    "openAction": {
+      "type": "object",
+      "required": ["effect"],
+      "properties": {
+        "effect": { "enum": ["take", "move"] },
+        "to": { "$ref": "#/$defs/nonEmptyString" }
+      },
+      "additionalProperties": false,
+      "if": { "required": ["effect"], "properties": { "effect": { "const": "move" } } },
+      "then": { "required": ["to"] },
+      "else": { "not": { "required": ["to"] } }
+    }
+  }
+}
