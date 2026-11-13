@@ -54,7 +54,7 @@ Start a new session and run `/output-style`. It shows herald as the active style
 Codex:
 
 ```bash
-codex plugin marketplace update
+codex plugin marketplace upgrade
 codex plugin add herald@jcsl-tools
 ```
 
