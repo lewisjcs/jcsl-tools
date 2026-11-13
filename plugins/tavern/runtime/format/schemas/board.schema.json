@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "jcsl:board@1",
+  "title": "Board record",
+  "type": "object",
+  "required": ["contractId", "board", "revision", "state", "openedAt", "closedAt", "rules", "fields", "lines"],
+  "properties": {
+    "contractId": { "const": "jcsl:board@1" },
+    "board": { "type": "integer", "minimum": 1 },
+    "revision": { "type": "integer", "minimum": 1 },
+    "state": { "enum": ["open", "closed"] },
+    "openedAt": { "$ref": "#/$defs/timestamp" },
+    "closedAt": { "anyOf": [{ "type": "null" }, { "$ref": "#/$defs/timestamp" }] },
+    "rules": {
+      "type": "object",
+      "required": ["name", "version", "digest"],
+      "properties": {
+        "name": { "$ref": "#/$defs/nonEmptyString" },
+        "version": { "$ref": "#/$defs/semver" },
+        "digest": { "type": "string", "format": "sha256" }
+      },
+      "additionalProperties": false
+    },
+    "fields": { "type": "object" },
+    "lines": { "type": "array", "items": { "$ref": "#/$defs/line" } }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "nonEmptyString": { "type": "string", "minLength": 1 },
+    "semver": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+    "timestamp": { "type": "string", "format": "date-time", "pattern": "Z$" },
+    "line": {
+      "type": "object",
+      "required": ["id", "status", "holder", "fields"],
+      "properties": {
+        "id": { "$ref": "#/$defs/nonEmptyString" },
+        "status": { "$ref": "#/$defs/nonEmptyString" },
+        "holder": { "anyOf": [{ "type": "null" }, { "$ref": "#/$defs/nonEmptyString" }] },
+        "fields": { "type": "object" }
+      },
+      "additionalProperties": false
+    }
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "kind": "board-rules",
+  "name": "tavern-tickets",
+  "version": "1.0.0",
+  "statuses": {
+    "rail": { "final": false, "moves": ["active", "waiting", "taken", "dropped"], "requires": ["title", "source"], "holder": "forbidden", "atClose": "carry" },
+    "active": { "final": false, "moves": ["done", "waiting", "rail", "dropped"], "holder": "required", "maxPerHolder": 1, "atClose": "refuse" },
+    "waiting": { "final": false, "moves": ["rail", "active", "done", "dropped"], "requires": ["reason"], "holder": "forbidden", "atClose": "carry" },
+    "taken": { "final": false, "moves": ["rail", "done", "dropped"], "requires": ["takenBy"], "holder": "forbidden", "atClose": "carry" },
+    "done": { "final": true, "moves": [], "requires": ["proof"], "holder": "forbidden", "atClose": "leave" },
+    "dropped": { "final": true, "moves": [], "requires": ["reason"], "holder": "forbidden", "atClose": "leave" }
+  },
+  "openActions": {
+    "take": { "effect": "take" },
+    "release": { "effect": "move", "to": "rail" },
+    "replan": { "effect": "move", "to": "rail" }
+  }
+}

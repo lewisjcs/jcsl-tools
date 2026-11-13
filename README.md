@@ -1,8 +1,8 @@
 # jcsl-tools
 
-jcsl-tools is the personal plugin marketplace of Josh C.S. Lewis. A marketplace is a catalog of plugins for an agent host. A host is the AI coding application that loads a plugin. The marketplace holds six independently installable plugins.
+jcsl-tools is the personal plugin marketplace of Josh C.S. Lewis. A marketplace is a catalog of plugins for an agent host. A host is the AI coding application that loads a plugin. The marketplace holds seven independently installable plugins.
 
-All six plugins run on Claude Code. Kiln, Gauntlet, and Herald also run on Codex, and Herald also runs on Cursor. Kiln handles kickoff and builds. The other plugins cover review, research, context use, repository documentation, and plain-English writing.
+All seven plugins run on Claude Code. Kiln, Gauntlet, Herald, and the Tavern also run on Codex, and Herald also runs on Cursor. Kiln handles kickoff and builds. The other plugins cover review, research, context use, repository documentation, plain-English writing, and a record of the current shift.
 
 ## Plugins
 
@@ -14,10 +14,11 @@ All six plugins run on Claude Code. Kiln, Gauntlet, and Herald also run on Codex
 | [`context-economy`](plugins/context-economy/) | A six-Class Party (Steward, Assembler, Delegator, Chronicler, Enforcer, Observer) that spends the Claude Code context window with care. It gates broad reads and searches until it names a cheaper option. It nudges you to write a handoff before the context window fills, and it tracks session cost. | No slash command. It starts when your words match a trigger phrase. |
 | [`cartographer`](plugins/cartographer/) | A repository cartographer. It analyzes the structure and evidence of a repository and drafts a grounded, claim-classified README enrichment. It flags unsupported claims and stale content. | The `cartograph-report` skill. Claude Code finds it on its own, and it has no slash command. |
 | [`herald`](plugins/herald/) | A plain-English output style for Claude Code, Codex, and Cursor. Replies read as natural English that explains the why. README files, docs, runbooks, CHANGELOG files, and release notes follow a stricter register. On Claude Code and Codex, a hook nudges after markdown writes. A rewrite skill applies the stricter register. | No slash command. Claude Code applies the style whenever the plugin is enabled. Codex loads it at session start, and Cursor loads it as an always-on rule. Ask the `herald` skill to "rewrite in plain English". |
+| [`tavern`](plugins/tavern/) | One guarded record of the current shift: what is open, what each session holds, what is waiting, and what was pushed aside. A shift is the span of work between one open and one close. A start-up hook prints the session status. | `/tavern:open` starts a shift. `/tavern:transfer`, `/tavern:next`, `/tavern:add`, `/tavern:replan`, and `/tavern:close` run the other commands. |
 
-The entry points in this table are the Claude Code forms. On Codex, Kiln and Gauntlet load the same skills, and you can ask for a skill by name.
+The entry points in this table are the Claude Code forms. On Codex, Kiln, Gauntlet, and the Tavern load the same skills, and you can ask for a skill by name.
 
-See each plugin's own README/SKILL.md for full usage. [ARCHITECTURE.md](./ARCHITECTURE.md) covers how the six plugins relate and the conventions shared across all of them (`${CLAUDE_PLUGIN_ROOT}` usage, progressive disclosure, finder/validator pairing).
+See each plugin's own README/SKILL.md for full usage. [ARCHITECTURE.md](./ARCHITECTURE.md) covers how the seven plugins relate and the conventions shared across all of them (`${CLAUDE_PLUGIN_ROOT}` usage, progressive disclosure, finder/validator pairing).
 
 ## Host support
 
@@ -31,10 +32,12 @@ Every host reads the same plugin folders. Full support means that every feature 
 | `context-economy` | Full | None | None |
 | `cartographer` | Full | None | None |
 | `herald` | Full | Full | The style rule and the rewrite skill. Cursor gets no markdown nudge. |
+| `tavern` | Full | Full | None |
 
 ## Requirements
 
 - Kiln and Gauntlet each ship a bundled JavaScript runtime. Both runtimes need Node 22 or later and no npm install.
+- The Tavern ships a bundled JavaScript runtime too. It needs Node 22 or later and no npm install.
 - Both runtimes include Statblock, the shared kernel that checks Class and Party data. Statblock needs no separate install.
 - On Codex, Kiln and Gauntlet need native subagents (the `spawn_agent` and `wait_agent` tools).
 - The Herald linter needs Python 3.9 or later.
@@ -54,22 +57,24 @@ claude plugin install prospector@jcsl-tools
 claude plugin install context-economy@jcsl-tools
 claude plugin install cartographer@jcsl-tools
 claude plugin install herald@jcsl-tools
+claude plugin install tavern@jcsl-tools
 ```
 
 Restart Claude Code after you install a plugin. Also restart it after any change to a plugin's `hooks.json` or `plugin.json`. To get a new release, run `claude plugin marketplace update jcsl-tools`.
 
 ### Codex
 
-Codex supports Kiln, Gauntlet, and Herald.
+Codex supports Kiln, Gauntlet, Herald, and the Tavern.
 
 ```sh
 codex plugin marketplace add lewisjcs/jcsl-tools
 codex plugin add kiln@jcsl-tools
 codex plugin add gauntlet@jcsl-tools
 codex plugin add herald@jcsl-tools
+codex plugin add tavern@jcsl-tools
 ```
 
-When Codex asks, trust the Herald hooks. Start a new thread after you add a plugin. To get a new release, run `codex plugin marketplace upgrade`.
+When Codex asks, trust the Herald hooks and the Tavern hooks. Start a new thread after you add a plugin. To get a new release, run `codex plugin marketplace upgrade`.
 
 ### Cursor
 
@@ -77,7 +82,7 @@ Cursor supports Herald only. If your Cursor offers a private plugin install, ins
 
 ## Plugin sources
 
-Most plugins are written in this repository. Kiln is a generated payload. A packager in a separate source repository writes every file in `plugins/kiln/`. The Gauntlet runtime in `plugins/gauntlet/runtime/` is packaged the same way. Each payload carries a `PROVENANCE.json` file that names its source commit. No build step runs in this repository.
+Most plugins are written in this repository. Kiln is a generated payload. A packager in a separate source repository writes every file in `plugins/kiln/`. The Gauntlet runtime in `plugins/gauntlet/runtime/` is packaged the same way. The Tavern is a generated payload too. A packager in a separate source repository writes every file in `plugins/tavern/`, apart from its two manifests and its README, which are written here. Each payload carries a `PROVENANCE.json` file that names its source commit. No build step runs in this repository.
 
 ## Documentation
 

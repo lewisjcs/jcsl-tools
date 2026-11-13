@@ -12,6 +12,7 @@
 - Every hook script path in a `hooks.json` MUST use `${CLAUDE_PLUGIN_ROOT}`, never a hardcoded or relative path — plugins install to different locations depending on install method.
 - `.compounds/` and `.worktrees/` are gitignored local state — never propose committing their contents.
 - `plugins/kiln/` is a generated payload: the kiln repository's packager writes every file in it from a merged commit. Never hand-edit it; edit the canon there and repackage.
+- `plugins/tavern/` is a generated payload: the Tavern repository's packager writes every file in it from a merged commit, apart from `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, and `README.md`, which are authored here. Never hand-edit the generated files. Edit the canon there and repackage.
 - `plugins/_archive/kiln-2.17/` is the previous Kiln, kept whole and unlisted. Never wire it back into the marketplace.
 
 ## Safety & Permissions

@@ -1,0 +1,154 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "jcsl:usage-envelope@1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "actionId", "kind", "attempt", "classId", "host", "modelBinding", "metrics", "toolCalls"],
+  "properties": {
+    "schemaVersion": { "const": "jcsl:usage-envelope@1" },
+    "actionId": { "$ref": "#/$defs/nonEmptyString" },
+    "kind": { "$ref": "#/$defs/nonEmptyString" },
+    "attempt": { "type": "integer", "minimum": 1 },
+    "classId": { "$ref": "#/$defs/classOrPartyId" },
+    "host": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "adapterId"],
+          "properties": {
+            "id": { "$ref": "#/$defs/nonEmptyString" },
+            "adapterId": { "$ref": "#/$defs/nonEmptyString" }
+          }
+        }
+      ]
+    },
+    "modelBinding": {},
+    "metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["inputTokens", "cacheWriteTokens", "cacheReadTokens", "outputTokens", "turns", "latencySeconds"],
+      "properties": {
+        "inputTokens": { "$ref": "#/$defs/metricTokens" },
+        "cacheWriteTokens": { "$ref": "#/$defs/metricTokens" },
+        "cacheReadTokens": { "$ref": "#/$defs/metricTokens" },
+        "outputTokens": { "$ref": "#/$defs/metricTokens" },
+        "turns": { "$ref": "#/$defs/metricCount" },
+        "latencySeconds": { "$ref": "#/$defs/metricSeconds" }
+      }
+    },
+    "toolCalls": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["availability", "calls"],
+          "properties": {
+            "availability": { "const": "measured" },
+            "calls": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["tool"],
+                "properties": {
+                  "tool": { "$ref": "#/$defs/nonEmptyString" },
+                  "target": { "type": "string" },
+                  "resultBytes": { "type": "integer", "minimum": 0 }
+                }
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["availability"],
+          "properties": {
+            "availability": { "const": "unavailable" }
+          }
+        }
+      ]
+    }
+  },
+  "$defs": {
+    "classOrPartyId": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*(?::[a-z0-9][a-z0-9-]*)+$" },
+    "nonEmptyString": { "type": "string", "minLength": 1 },
+    "metricTokens": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["availability", "value", "unit", "source"],
+          "properties": {
+            "availability": { "const": "measured" },
+            "value": { "type": "number" },
+            "unit": { "const": "tokens" },
+            "source": { "const": "host-wrapper" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["availability", "unit", "source"],
+          "properties": {
+            "availability": { "const": "unavailable" },
+            "unit": { "const": "tokens" },
+            "source": { "const": "host-wrapper" }
+          }
+        }
+      ]
+    },
+    "metricCount": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["availability", "value", "unit", "source"],
+          "properties": {
+            "availability": { "const": "measured" },
+            "value": { "type": "number" },
+            "unit": { "const": "count" },
+            "source": { "const": "host-wrapper" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["availability", "unit", "source"],
+          "properties": {
+            "availability": { "const": "unavailable" },
+            "unit": { "const": "count" },
+            "source": { "const": "host-wrapper" }
+          }
+        }
+      ]
+    },
+    "metricSeconds": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["availability", "value", "unit", "source"],
+          "properties": {
+            "availability": { "const": "measured" },
+            "value": { "type": "number" },
+            "unit": { "const": "seconds" },
+            "source": { "const": "host-wrapper" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["availability", "unit", "source"],
+          "properties": {
+            "availability": { "const": "unavailable" },
+            "unit": { "const": "seconds" },
+            "source": { "const": "host-wrapper" }
+          }
+        }
+      ]
+    }
+  }
+}
