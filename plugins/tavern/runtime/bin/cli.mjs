@@ -2980,7 +2980,7 @@ var require_compile = __commonJS({
       const schOrFunc = root.refs[ref];
       if (schOrFunc)
         return schOrFunc;
-      let _sch = resolve3.call(this, root, ref);
+      let _sch = resolve4.call(this, root, ref);
       if (_sch === void 0) {
         const schema2 = (_a = root.localRefs) === null || _a === void 0 ? void 0 : _a[ref];
         const { schemaId } = this.opts;
@@ -3007,7 +3007,7 @@ var require_compile = __commonJS({
     function sameSchemaEnv(s1, s2) {
       return s1.schema === s2.schema && s1.root === s2.root && s1.baseId === s2.baseId;
     }
-    function resolve3(root, ref) {
+    function resolve4(root, ref) {
       let sch;
       while (typeof (sch = this.refs[ref]) == "string")
         ref = sch;
@@ -3871,7 +3871,7 @@ var require_fast_uri = __commonJS({
       }
       return uri;
     }
-    function resolve3(baseURI, relativeURI, options) {
+    function resolve4(baseURI, relativeURI, options) {
       const schemelessOptions = options ? Object.assign({ scheme: "null" }, options) : { scheme: "null" };
       const {
         parsed: baseParsed,
@@ -4262,7 +4262,7 @@ var require_fast_uri = __commonJS({
     var fastUri = {
       SCHEMES,
       normalize,
-      resolve: resolve3,
+      resolve: resolve4,
       resolveComponent,
       equal,
       serialize,
@@ -7510,7 +7510,7 @@ var require__ = __commonJS({
 });
 
 // src/cli.mjs
-import { readFileSync as readFileSync8 } from "node:fs";
+import { readFileSync as readFileSync10 } from "node:fs";
 import { homedir } from "node:os";
 import process2 from "node:process";
 import { fileURLToPath } from "node:url";
@@ -7782,6 +7782,96 @@ function formatPointer(pointer) {
   }
 }
 
+// src/report.mjs
+var REPORT_TOOLS = ["kiln", "gauntlet", "prospector", "cartographer", "herald", "context-economy"];
+var RULE_IDS = ["holder-only", "status-unknown", "move-not-allowed", "close-refused", "field-required", "holder-required", "holder-forbidden", "holder-limit", "line-cap"];
+var CONDITIONS = ["attached", "finished", "broke", "set-aside"];
+var HOSTS = ["claude-code", "codex"];
+var bump = (counts, key) => {
+  counts[key] = (counts[key] ?? 0) + 1;
+};
+var pick = (list, value) => list.includes(value) ? value : "other";
+function ageBucket(minutes) {
+  if (minutes < 5) return "under5";
+  if (minutes < 30) return "under30";
+  if (minutes < 120) return "under120";
+  return "over120";
+}
+function countedLines({ record, rules }, newest) {
+  return record.lines.filter((line3) => newest || rules.statuses[line3.status]?.final === true);
+}
+function countTickets(readable, report2) {
+  const newest = readable.at(-1);
+  for (const board of readable) {
+    for (const line3 of countedLines(board, board === newest)) {
+      bump(report2.tickets, Object.hasOwn(board.rules.statuses, line3.status) ? line3.status : "other");
+      for (const item of line3.fields.runs ?? []) {
+        const tool = pick(REPORT_TOOLS, item.tool);
+        report2.runs[tool] ??= {};
+        bump(report2.runs[tool], pick(CONDITIONS, item.condition));
+      }
+    }
+  }
+}
+function countEntries(readable, report2) {
+  const { shifts, transfers, sidework, writes } = report2;
+  for (const { entries, record } of readable) {
+    shifts.opened += 1;
+    if (record.state === "open") shifts.stillOpen += 1;
+    if (entries.some((entry) => entry.data?.event === "sidework-offered")) sidework.offered += 1;
+    for (const entry of entries) {
+      bump(writes, pick(HOSTS, String(entry.writer).split(":")[0]));
+      const data = entry.data ?? {};
+      if (data.event === "close") {
+        shifts.closed += 1;
+        if (["approved", "skipped", "none"].includes(data.sidework)) sidework[data.sidework] += 1;
+      } else if (data.event === "close-left-open") {
+        shifts.leftOpen += 1;
+      } else if (data.event === "pivot") {
+        report2.pivots += 1;
+      } else if (data.event === "transfer") {
+        transfers.total += 1;
+        if (data.crossedHosts === true) transfers.crossedHosts += 1;
+        if (data.confirmed === true) transfers.confirmed += 1;
+        if (Number.isFinite(data.checkpointAgeMinutes)) {
+          bump(transfers.ages, ageBucket(data.checkpointAgeMinutes));
+          transfers.ages.max = Math.max(transfers.ages.max, data.checkpointAgeMinutes);
+        }
+      }
+    }
+  }
+  sidework.notRun = shifts.leftOpen;
+}
+function countRefusals(notes, refused) {
+  for (const note of notes.filter((n) => n?.kind === "refused")) {
+    if (note.code === "BOARD_RULES_VIOLATED") {
+      for (const rule of Array.isArray(note.rules) ? note.rules : []) bump(refused, pick(RULE_IDS, rule));
+    } else {
+      bump(refused, note.code === "BOARD_STALE_REVISION" ? note.code : "other");
+    }
+  }
+}
+function buildReport({ boards, notes, versions }) {
+  const readable = boards.filter((board) => board.record !== null);
+  const report2 = {
+    contractId: "tavern:report@1",
+    tavern: versions.tavern,
+    hosts: { "claude-code": versions["claude-code"], codex: versions.codex },
+    shifts: { opened: 0, closed: 0, leftOpen: 0, stillOpen: 0, unreadable: boards.length - readable.length },
+    transfers: { total: 0, crossedHosts: 0, confirmed: 0, ages: { under5: 0, under30: 0, under120: 0, over120: 0, max: 0 } },
+    pivots: 0,
+    tickets: {},
+    runs: {},
+    sidework: { offered: 0, approved: 0, skipped: 0, none: 0, notRun: 0 },
+    refused: {},
+    writes: { "claude-code": 0, codex: 0, other: 0 }
+  };
+  countEntries(readable, report2);
+  countTickets(readable, report2);
+  countRefusals(notes, report2.refused);
+  return report2;
+}
+
 // src/render.mjs
 var WIDTH = 160;
 var MINUTE = 6e4;
@@ -7883,10 +7973,10 @@ function renderBoard({ record, at, host, opened, leftOpen, checks = null, sugges
   return out.join("\n");
 }
 var WRITE_COMMANDS = [
-  ["step", " --done <n> | --undo <n> | --add <text>"],
-  ["next-step", " <text>"],
+  ["step", ` --done <n> | --undo <n> | --add <text to ${LIMITS.stepText}>`],
+  ["next-step", ` <text to ${LIMITS.nextStep}>`],
   ["point", " <pointer>"],
-  ["note", " <text>"],
+  ["note", ` <text to ${LIMITS.noteText}>`],
   ["done", " --proof <pointer>"],
   ["wait", " --reason <text>"],
   ["release", ""],
@@ -7926,11 +8016,14 @@ function renderTicket({ record, line: line3, at, program, host = null, taken = n
   const elsewhere = runChecks.find((r) => r.where === "here" && r.hostId !== host);
   if (elsewhere !== void 0) out.push(staysLine({ line: line3, entry: elsewhere.run, hostId: elsewhere.hostId, program }));
   if (checkpoint.notes.length > 0) out.push("", ...checkpoint.notes.map((note) => `Notes from the last session, not checked: "${note}"`));
-  out.push("", "Nothing on this board is approval. Ask before anything that deletes, posts, or merges.", "", "While you work:");
+  out.push("", "Nothing on this board is approval. Ask before anything that deletes, posts, or merges.", "");
   out.push(...writeCommands(program, line3.id));
   return out.join("\n");
 }
-var writeCommands = (program, id) => WRITE_COMMANDS.map(([name, usage]) => `node ${program} ${name} ${id}${usage}`);
+var writeCommands = (program, id) => [
+  `While you work, each command runs as: node ${program} <command>`,
+  ...WRITE_COMMANDS.map(([name, usage]) => `  ${name} ${id}${usage}`)
+];
 function headline({ record, line: line3, at, taken }) {
   const clause = taken === null ? "" : `, taken from a ${taken.host} session that last wrote ${formatSpan(taken.quietMs)} ago`;
   return `Shift ${record.board}, open ${formatSpan(Date.parse(at) - Date.parse(record.openedAt))}. This session now holds ${line3.id}${clause}.`;
@@ -7955,7 +8048,6 @@ To carry on: ${commandName(host, "transfer")}     To see the board: ${commandNam
       headline({ record, line: mine, at, taken: null }),
       checkpoint.nextStep === null ? "Next step: none written." : `Next step: "${checkpoint.nextStep}"`,
       ...left.length > 0 ? [`Steps left: ${left.join("  ")}`] : [],
-      "While you work:",
       ...writeCommands(program, mine.id)
     ].join("\n");
   }
@@ -7985,14 +8077,70 @@ function renderCloseOut({ record, at, lastWrites = {} }) {
 function renderSidework({ items, notOffered, program }) {
   if (items.length === 0 && notOffered.length === 0) return "SIDEWORK\nNothing to clean up.";
   const out = ["SIDEWORK", ...items.map((item) => `${String(item.n).padStart(2)}  ${item.text}`)];
-  out.push(...notOffered.map((o) => ` -  not offered: ${o.text} (${o.why})`));
+  const byReason = /* @__PURE__ */ new Map();
+  for (const o of notOffered) byReason.set(o.why, [...byReason.get(o.why) ?? [], o]);
+  for (const [why, group] of byReason) {
+    out.push(group.length === 1 ? ` -  not offered: ${group[0].text} (${why})` : ` -  ${group.length} not offered: ${why}`);
+  }
   if (items.length > 0) {
-    out.push("", "Reply with the numbers to do, for example: 1 2 3");
+    out.push("", 'Ask the person: which numbers should be done? Each number does the one line beside it and nothing else. "none" does none of them and closes the shift.');
     out.push(`Then: node ${program} close --sidework "1 2 3"     or: node ${program} close --sidework none`);
   } else {
     out.push("", `Nothing here can be done. To close: node ${program} close --sidework none`);
   }
   return out.join("\n");
+}
+function renderInit({ settingsPath, root, private: isPrivate, text, settings, found, guessed, matches, program }) {
+  const glob = settings.roadmaps.glob;
+  const folders = settings.sidework.oldFiles.map((entry) => `${entry.folder}, older than ${entry.days} days`);
+  return [
+    `Settings written: ${settingsPath}`,
+    isPrivate ? `This file is private. It sits in the Tavern's state folder, and nothing was added under ${root}.` : "This file sits at the workspace root. Track it with the workspace.",
+    "",
+    text.replace(/\n$/, ""),
+    "",
+    "Ask the person: are these three right for this workspace? Change the file named above to match the answers.",
+    ` 1  Roadmaps or plans: ${glob}      (${found.includes("roadmaps.glob") ? `found: ${matches} match` : "guessed: nothing matched"})`,
+    ` 2  Repositories: ${settings.repositories.join(", ")}      (${found.includes("repositories") ? "found" : "guessed: no folder of repositories seen"})`,
+    ` 3  Old files offered at close: ${folders.length === 0 ? "none" : folders.join("; ")}      (${found.includes("sidework.oldFiles") ? "found" : "guessed: no scratch folder seen"})`,
+    `Then: node ${program} selftest`
+  ].join("\n");
+}
+var pairs = (counts, keys, separator) => keys.length === 0 ? "none" : keys.map((key) => `${key}${separator}${counts[key]}`).join("  ");
+var sortedKeys = (counts, first = []) => {
+  const present = Object.keys(counts).filter((key) => counts[key] > 0);
+  return [...first.filter((key) => present.includes(key)), ...present.filter((key) => !first.includes(key)).sort()];
+};
+var row = (label, text) => `${label.padEnd(11)}${text}`;
+function renderReport(report2) {
+  const { shifts, transfers, sidework, writes, hosts } = report2;
+  const { ages } = transfers;
+  const runs = sortedKeys(report2.runs, REPORT_TOOLS).map((tool) => {
+    const conditions = sortedKeys(report2.runs[tool], ["attached", "finished", "broke", "set-aside"]);
+    return `${tool}: ${conditions.map((condition) => `${condition} ${report2.runs[tool][condition]}`).join(", ")}`;
+  });
+  return [
+    "TAVERN REPORT (counts only)",
+    row("tool", `tavern ${report2.tavern.slice(0, 12)}  claude-code ${hosts["claude-code"]}  codex ${hosts.codex}`),
+    row("shifts", `opened ${shifts.opened}  closed ${shifts.closed}  left open ${shifts.leftOpen}  still open ${shifts.stillOpen}  unreadable ${shifts.unreadable}`),
+    row("transfers", `total ${transfers.total}  crossed hosts ${transfers.crossedHosts}  confirmed ${transfers.confirmed}`),
+    row("ages", `under 5m ${ages.under5}  5 to 30m ${ages.under30}  30m to 2h ${ages.under120}  2h or more ${ages.over120}  longest ${ages.max}m`),
+    row("pivots", `${report2.pivots}`),
+    row("tickets", pairs(report2.tickets, sortedKeys(report2.tickets), " ")),
+    row("runs", runs.length === 0 ? "none" : runs.join("; ")),
+    row("sidework", `offered ${sidework.offered}  approved ${sidework.approved}  skipped ${sidework.skipped}  none ${sidework.none}  not run ${sidework.notRun}`),
+    row("refused", pairs(report2.refused, sortedKeys(report2.refused, RULE_IDS), " ")),
+    row("writes", `claude-code ${writes["claude-code"]}  codex ${writes.codex}  other ${writes.other}`)
+  ].join("\n");
+}
+function renderSelftest({ version: version2, stateRoot, session, steps, pass }) {
+  return [
+    `tavern ${version2}`,
+    `state root: ${stateRoot}`,
+    session === null ? "session: none (not run inside a host session)" : `session: ${session.host} (${session.variable} is set)`,
+    ...steps.map((step2) => step2.ok ? `ok    ${step2.name}` : `FAIL  ${step2.name}: ${step2.says}`),
+    pass ? "PASS" : "FAIL"
+  ].join("\n");
 }
 
 // src/roadmaps.mjs
@@ -8040,7 +8188,7 @@ function readMilestone(path3, number, { heading, currentMarker }) {
     text = readFileSync2(path3, "utf8");
   } catch (error) {
     if (error.code !== "ENOENT" && error.code !== "ENOTDIR") throw error;
-    return { exists: false, section: "none", found: false, current: false };
+    return { exists: false, section: "none", found: false, current: false, currentNumber: null };
   }
   const sections = [];
   for (const line3 of text.split(/\r?\n/)) {
@@ -8050,11 +8198,13 @@ function readMilestone(path3, number, { heading, currentMarker }) {
   const headings = sections.filter((s) => s !== null);
   const own = new RegExp(`^\\s*${number}[.)]\\s`);
   const hits = headings.map((lines) => lines.find((l) => own.test(l))).filter((l) => l !== void 0);
+  const marked = headings.flat().map((l) => /^\s*(\d+)[.)]\s/.exec(l)).filter((m) => m !== null && m.input.includes(currentMarker));
   return {
     exists: true,
     section: headings.length === 0 ? "none" : hits.length > 1 ? "many" : "one",
     found: hits.length > 0,
-    current: hits.length === 1 && hits[0].includes(currentMarker)
+    current: hits.length === 1 && hits[0].includes(currentMarker),
+    currentNumber: marked.length === 1 ? Number(marked[0][1]) : null
   };
 }
 function listRoadmaps({ workspaceRoot, glob, currentMarker }) {
@@ -8077,6 +8227,15 @@ function realExec(cmd, args, { cwd, env: env2, timeoutMs = 2e4 } = {}) {
   const result2 = spawnSync(cmd, args, { cwd, env: env2, timeout: timeoutMs, encoding: "utf8" });
   if (result2.error !== void 0) return { code: 1, stdout: "", stderr: result2.error.message };
   return { code: result2.status ?? 1, stdout: result2.stdout, stderr: result2.stderr };
+}
+function hostVersion(exec, command) {
+  try {
+    const result2 = exec(command, ["--version"], { timeoutMs: 5e3 });
+    const found = result2.code === 0 ? /\d+\.\d+\.\d+[0-9A-Za-z.-]*/.exec(result2.stdout) : null;
+    return found === null ? "not found" : found[0];
+  } catch {
+    return "not found";
+  }
 }
 var ok = (says) => ({ mark: "ok", says });
 var wrong = (says) => ({ mark: "wrong", says });
@@ -8108,7 +8267,9 @@ function checkRoadmap(pointer, ctx) {
   if (found.section === "none") return notChecked(`the file has no "${milestonesHeading}" heading`);
   if (found.section === "many") return notChecked(`milestone ${pointer.milestone} sits under more than one "${milestonesHeading}" heading`);
   if (!found.found) return wrong("gone");
-  return ok(found.current ? "still current" : "moved on");
+  if (found.current) return ok("still current");
+  if (found.currentNumber === null) return ok("no current milestone");
+  return ok(Number(pointer.milestone) > found.currentNumber ? "not started" : "moved on");
 }
 var git = (ctx, repo, args) => ctx.exec("git", ["-C", repo, ...args], { cwd: ctx.workspaceRoot, env: { ...ctx.env, GIT_TERMINAL_PROMPT: "0" } });
 function fetchOnce(ctx, repo) {
@@ -8218,7 +8379,38 @@ function checkTicket(line3, ctx) {
 
 // src/main.mjs
 import { parseArgs } from "node:util";
-import { basename as basename5, isAbsolute as isAbsolute4, join as join7 } from "node:path";
+import { basename as basename5, isAbsolute as isAbsolute5, join as join7 } from "node:path";
+
+// src/init.mjs
+var ROADMAP_GLOBS = ["projects/active/*/ROADMAP.md", "projects/*/ROADMAP.md", "docs/*/ROADMAP.md", "plans/*/ROADMAP.md", "roadmaps/*/ROADMAP.md"];
+var OLD_FOLDERS = ["scratch", "tmp", "temp"];
+var POINTER_KINDS = ["file", "roadmap", "branch", "worktree", "pr", "run", "key", "link", "note"];
+function guessSettings(seen, at) {
+  const found = [];
+  const guessed = [];
+  const matched = ROADMAP_GLOBS.find((glob) => (seen.roadmaps[glob] ?? 0) > 0);
+  (matched === void 0 ? guessed : found).push("roadmaps.glob");
+  (seen.repositories.length === 0 ? guessed : found).push("repositories");
+  (seen.oldFolders.length === 0 ? guessed : found).push("sidework.oldFiles");
+  const list = (names) => names.length === 0 ? "nothing" : names.join(", ");
+  const settings = {
+    contractId: "tavern:settings@1",
+    roadmaps: { glob: matched ?? ROADMAP_GLOBS[0], milestonesHeading: "## Milestones", currentMarker: "\u2190 current" },
+    repositories: seen.repositories.length === 0 ? ["repos/*"] : seen.repositories,
+    pointerKinds: POINTER_KINDS,
+    leftOpenHours: 16,
+    maxTicketsNotFinal: 12,
+    quietMinutes: 30,
+    sidework: {
+      oldFiles: seen.oldFolders.map((folder) => ({ folder, days: 30 })),
+      mergedWorktrees: true,
+      untouchedShifts: 5,
+      holdingDays: 14
+    },
+    guesses: `Written by init on ${at.slice(0, 10)}. Found here: ${list(found)}. Not found, so guessed: ${list(guessed)}. Every number in this file is a starting guess. Change any of it here.`
+  };
+  return { settings, found, guessed };
+}
 
 // src/moves.mjs
 var touched = (record, at) => ({ touchedAt: at, touchedBoard: record.board });
@@ -8485,8 +8677,44 @@ function planClose(record, { answer, approved, results, drops }, { writer, at })
   };
 }
 
+// src/selftest.mjs
+var SESSION_A = "claude-code:selftest-1";
+var SESSION_B = "codex:selftest-2";
+var LATER_MINUTES = 31;
+var COUNTED = [["shifts", "opened"], ["shifts", "closed"], ["transfers", "total"], ["transfers", "crossedHosts"], ["tickets", "done"]];
+function checkCounts(json) {
+  const wrong2 = COUNTED.map(([group, key]) => [`${group}.${key}`, json?.[group]?.[key]]).filter(([, value]) => value !== 1);
+  if (wrong2.length === 0) return null;
+  return { code: "TAVERN_SELFTEST_COUNTS", message: `The report counts are wrong: ${wrong2.map(([name, value]) => `${name} is ${value}, not 1`).join("; ")}.` };
+}
+var SELFTEST_STEPS = [
+  { name: "init", argv: ["init"], session: null, later: false },
+  { name: "open", argv: ["open"], session: SESSION_A, later: false },
+  { name: "add", argv: ["add", "--title", "Selftest ticket", "--source", "note:made-up"], session: SESSION_A, later: false },
+  { name: "next", argv: ["next"], session: SESSION_A, later: false },
+  { name: "step", argv: ["step", "T1", "--add", "A made-up step"], session: SESSION_A, later: false },
+  { name: "transfer", argv: ["transfer"], session: SESSION_B, later: true },
+  { name: "done", argv: ["done", "T1", "--proof", "note:made-up"], session: SESSION_B, later: true },
+  { name: "close", argv: ["close"], session: SESSION_B, later: true },
+  { name: "report", argv: ["report", "--json"], session: null, later: true, check: checkCounts }
+];
+function runSelftest({ call, folders, at }) {
+  const later = new Date(Date.parse(at) + LATER_MINUTES * 6e4).toISOString().replace(".000Z", "Z");
+  const steps = [];
+  for (const step2 of SELFTEST_STEPS) {
+    const result2 = call(step2.argv, { session: step2.session, at: step2.later ? later : at, cwd: folders.workspace });
+    const failure = result2.code === 0 ? step2.check?.(result2.json) ?? null : result2.error;
+    if (failure !== null) {
+      steps.push({ name: step2.name, ok: false, says: `${failure.code}: ${failure.message}` });
+      return { pass: false, steps };
+    }
+    steps.push({ name: step2.name, ok: true, says: "" });
+  }
+  return { pass: true, steps };
+}
+
 // src/session.mjs
-var HOSTS = ["claude-code", "codex"];
+var HOSTS2 = ["claude-code", "codex"];
 var ENV_NAMES = { "claude-code": "CLAUDE_CODE_SESSION_ID", codex: "CODEX_SESSION_ID" };
 var SAFE_ID = /^[A-Za-z0-9._-]+$/;
 function checkId(id) {
@@ -8502,15 +8730,15 @@ function resolveSession({ env: env2, flag, host }) {
   if (flag !== void 0) {
     const at = flag.indexOf(":");
     const flagHost = at < 0 ? "" : flag.slice(0, at);
-    if (!HOSTS.includes(flagHost)) {
+    if (!HOSTS2.includes(flagHost)) {
       throw new TavernError("TAVERN_SESSION_INVALID", `The session "${flag}" must look like <host>:<id>, with host claude-code or codex.`, { flag });
     }
     return named(flagHost, flag.slice(at + 1));
   }
-  if (host !== void 0 && !HOSTS.includes(host)) {
+  if (host !== void 0 && !HOSTS2.includes(host)) {
     throw new TavernError("TAVERN_SESSION_INVALID", `The host "${host}" is not claude-code or codex.`, { host });
   }
-  const present = HOSTS.filter((name) => env2[ENV_NAMES[name]]);
+  const present = HOSTS2.filter((name) => env2[ENV_NAMES[name]]);
   const chosen = host ?? (present.length === 1 ? present[0] : void 0);
   if (chosen === void 0 && present.length > 1) {
     throw new TavernError("TAVERN_SESSION_AMBIGUOUS", "Both CLAUDE_CODE_SESSION_ID and CODEX_SESSION_ID are set. Pass --host.", { present });
@@ -8523,7 +8751,8 @@ function resolveSession({ env: env2, flag, host }) {
 
 // src/settings.mjs
 var import__ = __toESM(require__(), 1);
-import { readFileSync as readFileSync3 } from "node:fs";
+import { mkdirSync, readFileSync as readFileSync3, writeFileSync } from "node:fs";
+import { dirname as dirname3 } from "node:path";
 var schema = JSON.parse(readFileSync3(new URL("../format/schemas/tavern-settings.schema.json", import.meta.url), "utf8"));
 var validate = new import__.default({ allErrors: true }).compile(schema);
 function validateSettings(value) {
@@ -8544,11 +8773,27 @@ function loadSettings(settingsPath) {
   }
   return value;
 }
+function writeNewSettings(settingsPath, settings) {
+  const { valid, issues } = validateSettings(settings);
+  if (!valid) {
+    throw new TavernError("TAVERN_SETTINGS_INVALID", `The settings for ${settingsPath} do not match tavern:settings@1.`, { settingsPath, issues });
+  }
+  mkdirSync(dirname3(settingsPath), { recursive: true });
+  const text = `${JSON.stringify(settings, null, 2)}
+`;
+  try {
+    writeFileSync(settingsPath, text, { flag: "wx" });
+  } catch (error) {
+    if (error.code !== "EEXIST") throw error;
+    throw new TavernError("TAVERN_INIT_EXISTS", `${settingsPath} already exists. Change it by hand, or remove it and run init again.`, { settingsPath });
+  }
+  return text;
+}
 
 // src/sidework.mjs
 import { createHash } from "node:crypto";
-import { cpSync, existsSync as existsSync3, mkdirSync, readdirSync as readdirSync3, realpathSync, renameSync, rmSync, statSync as statSync3 } from "node:fs";
-import { basename as basename3, dirname as dirname3, isAbsolute as isAbsolute3, join as join4, relative as relative2, resolve as resolve2, sep } from "node:path";
+import { cpSync, existsSync as existsSync3, mkdirSync as mkdirSync2, readdirSync as readdirSync3, realpathSync, renameSync, rmdirSync, rmSync, statSync as statSync3 } from "node:fs";
+import { basename as basename3, dirname as dirname4, isAbsolute as isAbsolute3, join as join4, relative as relative2, resolve as resolve2, sep } from "node:path";
 var DAY2 = 864e5;
 var DATED = /^\d{4}-\d{2}-\d{2}$/;
 var plural2 = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
@@ -8588,12 +8833,13 @@ function oldFilesItem(entry, { workspaceRoot, at }) {
   if (old.length === 0) return {};
   const name = basename3(folder);
   const label = `${entry.folder.replace(/\/+$/, "")}/`;
-  const what = `move ${plural2(old.length, `${name} file`)} older than ${entry.days} days to the holding folder`;
+  const what = `move ${plural2(old.length, `${name} file`)} older than ${entry.days} days to the holding folder, and remove the folders that leaves empty`;
   const why = `${label}, oldest ${isoDate(Math.min(...old.map((f) => f.mtime)))}`;
   return {
     item: {
       kind: "old-files",
       text: line(what, why),
+      folder,
       target: old.map((f) => relative2(workspaceRoot, f.path).split(sep).join("/")).sort(),
       why,
       brief: `${plural2(old.length, `${name} file`)} past ${entry.days} days`
@@ -8729,7 +8975,7 @@ function summarizeSidework(items) {
 }
 function moveToHolding(from, to, shown) {
   if (existsSync3(to)) throw new Error(`${shown} is already held for today; nothing was overwritten`);
-  mkdirSync(dirname3(to), { recursive: true });
+  mkdirSync2(dirname4(to), { recursive: true });
   try {
     renameSync(from, to);
   } catch (error) {
@@ -8741,6 +8987,23 @@ function moveToHolding(from, to, shown) {
     }
     rmSync(from, { recursive: true });
   }
+}
+function removeEmptied(item, workspaceRoot) {
+  const emptied = /* @__PURE__ */ new Set();
+  for (const rel of item.target) {
+    for (let dir = dirname4(resolve2(workspaceRoot, rel)); inside(item.folder, dir); dir = dirname4(dir)) emptied.add(dir);
+  }
+  const removed = [];
+  const failed = [];
+  for (const dir of [...emptied].sort((a, b) => b.split(sep).length - a.split(sep).length || (a < b ? -1 : 1))) {
+    try {
+      rmdirSync(dir);
+      removed.push(dir);
+    } catch (error) {
+      if (error.code !== "ENOTEMPTY" && error.code !== "ENOENT") failed.push(error);
+    }
+  }
+  return { removed: removed.length, failed };
 }
 function moveOldFiles(item, { paths, workspaceRoot, at }) {
   const dayFolder = join4(paths.holding, at.slice(0, 10));
@@ -8755,7 +9018,11 @@ function moveOldFiles(item, { paths, workspaceRoot, at }) {
   } catch (error) {
     return { ok: false, says: `moved ${moved} of ${item.target.length} files, then stopped: ${error.message}` };
   }
-  return { ok: true, says: `moved ${plural2(moved, "file")} to holding/${at.slice(0, 10)}` };
+  const { removed, failed } = removeEmptied(item, workspaceRoot);
+  let says = `moved ${plural2(moved, "file")} to holding/${at.slice(0, 10)}`;
+  if (removed > 0) says += `, removed ${plural2(removed, "emptied folder")}`;
+  if (failed.length > 0) says += `, could not remove ${plural2(failed.length, "emptied folder")}: ${failed[0].message.split("\n")[0]}`;
+  return { ok: true, says };
 }
 function removeWorktree(item, ctx) {
   const { repo, path: path3, ignored } = item.target;
@@ -8805,33 +9072,49 @@ function applySidework({ items, numbers, paths, workspaceRoot, at, exec, env: en
 }
 
 // src/notes.mjs
-import { appendFileSync, mkdirSync as mkdirSync2 } from "node:fs";
-import { dirname as dirname4 } from "node:path";
+import { appendFileSync, mkdirSync as mkdirSync3, readFileSync as readFileSync4 } from "node:fs";
+import { dirname as dirname5 } from "node:path";
 function appendNote(notesPath, note) {
   try {
-    mkdirSync2(dirname4(notesPath), { recursive: true });
+    mkdirSync3(dirname5(notesPath), { recursive: true });
     appendFileSync(notesPath, `${JSON.stringify(note)}
 `);
   } catch {
   }
 }
+function readNotes(notesPath) {
+  let text;
+  try {
+    text = readFileSync4(notesPath, "utf8");
+  } catch (error) {
+    if (error.code === "ENOENT") return [];
+    throw error;
+  }
+  return text.split("\n").flatMap((line3) => {
+    try {
+      return line3 === "" ? [] : [JSON.parse(line3)];
+    } catch {
+      return [];
+    }
+  });
+}
 
 // src/sessions.mjs
 import { randomBytes } from "node:crypto";
-import { mkdirSync as mkdirSync3, readFileSync as readFileSync4, renameSync as renameSync2, unlinkSync, writeFileSync } from "node:fs";
+import { mkdirSync as mkdirSync4, readFileSync as readFileSync5, renameSync as renameSync2, unlinkSync, writeFileSync as writeFileSync2 } from "node:fs";
 import { join as join5 } from "node:path";
 var markerPath = (sessionsDir, writer) => join5(sessionsDir, `${writer.replace(":", "-")}.json`);
 function markEnded(sessionsDir, writer, { at, reason }) {
-  mkdirSync3(sessionsDir, { recursive: true });
+  mkdirSync4(sessionsDir, { recursive: true });
   const path3 = markerPath(sessionsDir, writer);
   const temporary = `${path3}.${randomBytes(6).toString("hex")}.tmp`;
-  writeFileSync(temporary, `${JSON.stringify({ writer, at, reason })}
+  writeFileSync2(temporary, `${JSON.stringify({ writer, at, reason })}
 `);
   renameSync2(temporary, path3);
 }
 function endedAt(sessionsDir, writer) {
   try {
-    const { at } = JSON.parse(readFileSync4(markerPath(sessionsDir, writer), "utf8"));
+    const { at } = JSON.parse(readFileSync5(markerPath(sessionsDir, writer), "utf8"));
     return typeof at === "string" ? at : null;
   } catch {
     return null;
@@ -8859,9 +9142,9 @@ var BoardError = class extends Error {
 var import__2 = __toESM(require__(), 1);
 
 // node_modules/@lewisjcs/statblock/src/formatSchemas.mjs
-import { readFileSync as readFileSync5 } from "node:fs";
+import { readFileSync as readFileSync6 } from "node:fs";
 function readFormatSchema(fileName) {
-  return JSON.parse(readFileSync5(new URL(`../format/schemas/${fileName}`, import.meta.url), "utf8"));
+  return JSON.parse(readFileSync6(new URL(`../format/schemas/${fileName}`, import.meta.url), "utf8"));
 }
 
 // node_modules/@lewisjcs/statblock/src/runtime/digest.mjs
@@ -9185,7 +9468,7 @@ function selectCarriedLines({ previous, previousRules, rules, statusMap = {} }) 
 }
 
 // node_modules/@lewisjcs/statblock/src/board/store.mjs
-import { closeSync, existsSync as existsSync4, fsyncSync, linkSync, mkdirSync as mkdirSync4, openSync, readdirSync as readdirSync4, readFileSync as readFileSync6, rmSync as rmSync2, statSync as statSync4, writeFileSync as writeFileSync2 } from "node:fs";
+import { closeSync, existsSync as existsSync4, fsyncSync, linkSync, mkdirSync as mkdirSync5, openSync, readdirSync as readdirSync4, readFileSync as readFileSync7, rmSync as rmSync2, statSync as statSync4, writeFileSync as writeFileSync3 } from "node:fs";
 import { randomUUID } from "node:crypto";
 import path from "node:path";
 var ENTRY_CONTRACT_ID2 = "jcsl:board-entry@1";
@@ -9213,7 +9496,7 @@ function listDirectory(dir) {
 }
 function makeDirectory(dir) {
   try {
-    mkdirSync4(dir, { recursive: true });
+    mkdirSync5(dir, { recursive: true });
   } catch (err) {
     throw unwritable(dir, err);
   }
@@ -9224,7 +9507,7 @@ function checkLinks(root) {
   const firstLinkFailed = (err) => new BoardError("BOARD_LINKS_UNSUPPORTED", "the store needs a local filesystem with hard links", { root, cause: err.code });
   try {
     try {
-      writeFileSync2(probe, "probe");
+      writeFileSync3(probe, "probe");
     } catch (err) {
       throw unwritable(root, err);
     }
@@ -9269,7 +9552,7 @@ function publish(dir, revision2, entry) {
       throw unwritable(tmpPath, err);
     }
     try {
-      writeFileSync2(fd, body);
+      writeFileSync3(fd, body);
       fsyncSync(fd);
     } catch (err) {
       throw unwritable(tmpPath, err);
@@ -9310,7 +9593,7 @@ function readBoardEntries(root, { board } = {}) {
   const dir = path.join(root, boardDirName(number));
   const entries = listDirectory(dir).filter((name) => ENTRY_FILE_PATTERN.test(name) && entryFileName(Number(name.slice(0, -".json".length))) === name).map((name) => ({ name, revision: Number(name.slice(0, -".json".length)) })).sort((a, b) => a.revision - b.revision).map(({ name, revision: revision2 }) => {
     try {
-      return JSON.parse(readFileSync6(path.join(dir, name), "utf8"));
+      return JSON.parse(readFileSync7(path.join(dir, name), "utf8"));
     } catch (err) {
       throw new BoardError("BOARD_ENTRY_INVALID", `board ${number} revision ${revision2}: ${err.message}`, { board: number, revision: revision2, reason: err.message });
     }
@@ -9383,8 +9666,8 @@ function writeBoard(root, options) {
 }
 
 // src/rules.mjs
-import { readFileSync as readFileSync7 } from "node:fs";
-var POLICY = JSON.parse(readFileSync7(new URL("../policy/ticket-rules-v1.json", import.meta.url), "utf8"));
+import { readFileSync as readFileSync8 } from "node:fs";
+var POLICY = JSON.parse(readFileSync8(new URL("../policy/ticket-rules-v1.json", import.meta.url), "utf8"));
 function ticketRules(settings) {
   return { ...structuredClone(POLICY), maxLinesNotFinal: settings.maxTicketsNotFinal };
 }
@@ -9402,6 +9685,17 @@ function snapshot(boards, board) {
 function readShift(boards) {
   const found = snapshot(boards);
   return found === null ? null : { record: found.record, rules: found.rules, newestAt: found.newestAt };
+}
+function readAllBoards(boards) {
+  return listBoards(boards).map((board) => {
+    try {
+      const entries = readBoardEntries(boards, { board });
+      return { board, entries, ...rebuildRecord(entries) };
+    } catch (error) {
+      if (!/^BOARD_/.test(error.code ?? "")) throw error;
+      return { board, entries: null, record: null, rules: null };
+    }
+  });
 }
 function staleFor(record, newestAt, settings, at) {
   if (record.state !== "open") return null;
@@ -9503,8 +9797,8 @@ function commit(boards, plan, { writer, at, notes }) {
 
 // src/workspace.mjs
 import { createHash as createHash3 } from "node:crypto";
-import { existsSync as existsSync5, realpathSync as realpathSync2, statSync as statSync5 } from "node:fs";
-import { basename as basename4, dirname as dirname5, join as join6 } from "node:path";
+import { existsSync as existsSync5, mkdirSync as mkdirSync6, mkdtempSync, readdirSync as readdirSync5, readFileSync as readFileSync9, realpathSync as realpathSync2, renameSync as renameSync3, rmSync as rmSync3, statSync as statSync5, writeFileSync as writeFileSync4 } from "node:fs";
+import { basename as basename4, dirname as dirname6, isAbsolute as isAbsolute4, join as join6, resolve as resolve3 } from "node:path";
 
 // node_modules/@lewisjcs/statblock/src/runtime/contracts.mjs
 var import__3 = __toESM(require__(), 1);
@@ -9568,14 +9862,61 @@ function holdsSettings(folder) {
   const path3 = join6(folder, SETTINGS_FILE);
   return existsSync5(path3) && statSync5(path3).isFile();
 }
-function findWorkspace(cwd) {
+var ROOTS_FILE = "roots.json";
+var ROOTS_CONTRACT = "tavern:roots@1";
+function readRoots(stateRoot) {
+  const path3 = join6(stateRoot, ROOTS_FILE);
+  let text;
+  try {
+    text = readFileSync9(path3, "utf8");
+  } catch (error) {
+    if (error.code === "ENOENT") return [];
+    throw error;
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    parsed = null;
+  }
+  const valid = parsed !== null && typeof parsed === "object" && parsed.contractId === ROOTS_CONTRACT && Array.isArray(parsed.roots) && parsed.roots.every((root) => typeof root === "string" && isAbsolute4(root));
+  if (!valid) throw new TavernError("TAVERN_ROOTS_INVALID", `${path3} is not a ${ROOTS_CONTRACT} file.`, { path: path3 });
+  return parsed.roots;
+}
+function registerRoot(stateRoot, root) {
+  const roots = [.../* @__PURE__ */ new Set([...readRoots(stateRoot), realpathSync2(root)])].sort();
+  mkdirSync6(stateRoot, { recursive: true });
+  const path3 = join6(stateRoot, ROOTS_FILE);
+  const temporary = `${path3}.tmp`;
+  writeFileSync4(temporary, `${JSON.stringify({ contractId: ROOTS_CONTRACT, roots }, null, 2)}
+`);
+  renameSync3(temporary, path3);
+}
+function privateSettingsPath(stateRoot, root) {
+  return join6(stateRoot, workspaceKey(root), SETTINGS_FILE);
+}
+function findWorkspace(cwd, { stateRoot } = {}) {
   const real = realpathSync2(cwd);
+  let roots = null;
+  let rootsError = null;
   let folder = real;
   for (; ; ) {
-    if (holdsSettings(folder)) return { root: folder, settingsPath: join6(folder, SETTINGS_FILE), cwd: real };
-    const parent = dirname5(folder);
+    if (holdsSettings(folder)) return { root: folder, settingsPath: join6(folder, SETTINGS_FILE), cwd: real, private: false };
+    if (stateRoot !== void 0 && roots === null && rootsError === null) {
+      try {
+        roots = readRoots(stateRoot);
+      } catch (error) {
+        rootsError = error;
+      }
+    }
+    if (roots?.includes(folder)) {
+      const settingsPath = privateSettingsPath(stateRoot, folder);
+      if (existsSync5(settingsPath) && statSync5(settingsPath).isFile()) return { root: folder, settingsPath, cwd: real, private: true };
+    }
+    const parent = dirname6(folder);
     if (parent === folder) {
-      throw new TavernError("TAVERN_WORKSPACE_NOT_FOUND", `No ${SETTINGS_FILE} in ${cwd} or any folder above it.`, { cwd });
+      if (rootsError !== null) throw rootsError;
+      throw new TavernError("TAVERN_WORKSPACE_NOT_FOUND", `No ${SETTINGS_FILE} in ${cwd} or any folder above it, and no registered root. Run init at the workspace root.`, { cwd });
     }
     folder = parent;
   }
@@ -9601,12 +9942,50 @@ function statePaths({ stateRoot, key }) {
     holding: join6(dir, "holding")
   };
 }
+function realFolder(cwd) {
+  return realpathSync2(cwd);
+}
+function isFolder2(path3) {
+  try {
+    return statSync5(path3).isDirectory();
+  } catch {
+    return false;
+  }
+}
+function namesIn2(folder) {
+  try {
+    return readdirSync5(folder).sort();
+  } catch {
+    return [];
+  }
+}
+function lookAround(root, { globs, oldFolders }) {
+  const roadmaps = Object.fromEntries(globs.map((glob) => [glob, matchPattern(root, glob).length]));
+  const repositories = namesIn2(root).filter((name) => !name.startsWith(".") && isFolder2(join6(root, name))).filter((name) => namesIn2(join6(root, name)).some((child) => existsSync5(join6(root, name, child, ".git")))).map((name) => `${name}/*`);
+  return { roadmaps, repositories, oldFolders: oldFolders.filter((name) => isFolder2(join6(root, name))) };
+}
+var SELFTEST_NAME = /^selftest-[A-Za-z0-9]{6}$/;
+function makeSelftestFolder(stateRoot) {
+  mkdirSync6(stateRoot, { recursive: true });
+  const dir = mkdtempSync(join6(stateRoot, "selftest-"));
+  const workspace = join6(dir, "workspace");
+  const state = join6(dir, "state");
+  mkdirSync6(workspace);
+  mkdirSync6(state);
+  return { dir, workspace, state };
+}
+function removeSelftestFolder(stateRoot, dir) {
+  if (resolve3(dirname6(dir)) !== resolve3(stateRoot) || !SELFTEST_NAME.test(basename4(dir))) {
+    throw new TavernError("TAVERN_SELFTEST_FOLDER", `${dir} is not a selftest folder under ${stateRoot}, so it was not removed.`, { dir });
+  }
+  rmSync3(dir, { recursive: true, force: true });
+}
 
 // src/main.mjs
 var VALUE_FLAGS = ["--root", "--session", "--host"];
+var sourceCommit = () => false ? "(source)" : "142135ece8f63caf37878029195b9132f9a089b4";
 function version() {
-  const commit2 = false ? "(source)" : "a90c9e8a0c02c25533d0db55b21d9b3fcd3f74b1";
-  return { text: `tavern ${commit2}`, json: { version: commit2 } };
+  return { text: `tavern ${sourceCommit()}`, json: { version: sourceCommit() } };
 }
 function checkContext(ctx) {
   return {
@@ -9854,18 +10233,18 @@ Ask the person before taking it. To take it: node ${ctx.program} transfer ${line
   return { text, json: { record: after, ticket: line3.id, from: holder, checks: checked } };
 }
 function kilnRun(ctx, folder) {
-  if (!isAbsolute4(folder) && /[\\/]|^\.\.?$/.test(folder)) {
+  if (!isAbsolute5(folder) && /[\\/]|^\.\.?$/.test(folder)) {
     throw new TavernError("TAVERN_USAGE", "A Kiln run is a folder name under the Kiln runs folder, or an absolute path.", { folder });
   }
-  const dir = isAbsolute4(folder) ? folder : join7(resolveKilnRuns({ env: ctx.io.env, home: ctx.io.home }), folder);
+  const dir = isAbsolute5(folder) ? folder : join7(resolveKilnRuns({ env: ctx.io.env, home: ctx.io.home }), folder);
   const fingerprint = fingerprintRun(dir);
   if (fingerprint === null) throw new TavernError("TAVERN_RUN_NOT_FOUND", `No readable Kiln run in ${dir}.`, { folder, dir });
-  return { tool: "kiln", folder: basename5(dir), dir: isAbsolute4(folder) ? dir : null, host: fingerprint.hostId, fingerprint };
+  return { tool: "kiln", folder: basename5(dir), dir: isAbsolute5(folder) ? dir : null, host: fingerprint.hostId, fingerprint };
 }
 function attachRun(args, ctx) {
   const o = parseCommand(args, {}, ["<id>", "<tool>", "<folder>"]);
   const [id, tool, folder] = o.ids;
-  const run = tool === "kiln" ? kilnRun(ctx, folder) : { tool, folder, dir: isAbsolute4(folder) ? folder : null, host: ctx.session().host, fingerprint: null };
+  const run = tool === "kiln" ? kilnRun(ctx, folder) : { tool, folder, dir: isAbsolute5(folder) ? folder : null, host: ctx.session().host, fingerprint: null };
   work(ctx, (before, c) => planRun(before, { id, run }, c), { ticket: id });
   return { text: `${id} run ${tool}:${run.folder} attached.`, json: { ticket: id, run } };
 }
@@ -10042,6 +10421,99 @@ function hook(args, ctx, flags) {
   const hooked = makeContext({ env: ctx.io.env, home: ctx.io.home, now: ctx.io.now, stdin: ctx.io.stdin, program: ctx.io.program, cwd: input.cwd }, { ...flags, session: `${flags.host}:${input.session_id}` });
   return HOOKS[sub](input, hooked);
 }
+function init(args, ctx) {
+  const o = parseCommand(args, { private: { type: "boolean" } }, []);
+  let root;
+  try {
+    root = realFolder(ctx.io.cwd);
+  } catch (error) {
+    throw new TavernError("TAVERN_CWD_UNREADABLE", `The working folder cannot be read: ${error.message}`, {});
+  }
+  const stateRoot = ctx.stateRoot();
+  try {
+    const found2 = findWorkspace(root, { stateRoot });
+    if (found2.root === root) throw new TavernError("TAVERN_INIT_EXISTS", `${found2.settingsPath} already exists. Change it by hand, or remove it and run init again.`, { settingsPath: found2.settingsPath });
+    throw new TavernError("TAVERN_INIT_INSIDE", `This folder is inside the workspace at ${found2.root}, whose settings file is ${found2.settingsPath}. Run init at a workspace root.`, { root: found2.root, settingsPath: found2.settingsPath });
+  } catch (error) {
+    if (error.code !== "TAVERN_WORKSPACE_NOT_FOUND") throw error;
+  }
+  const seen = lookAround(root, { globs: ROADMAP_GLOBS, oldFolders: OLD_FOLDERS });
+  const { settings, found, guessed } = guessSettings(seen, ctx.at);
+  let settingsPath = join7(root, "tavern.json");
+  if (o.private) {
+    registerRoot(stateRoot, root);
+    settingsPath = privateSettingsPath(stateRoot, root);
+  }
+  const text = writeNewSettings(settingsPath, settings);
+  return {
+    text: renderInit({ settingsPath, root, private: o.private === true, text, settings, found, guessed, matches: seen.roadmaps[settings.roadmaps.glob], program: ctx.program }),
+    json: { root, settingsPath, private: o.private === true, found, guessed, settings }
+  };
+}
+function report(args, ctx) {
+  parseCommand(args, {}, []);
+  const { boards, notes } = ctx.paths();
+  const versions = { tavern: sourceCommit(), "claude-code": hostVersion(ctx.exec, "claude"), codex: hostVersion(ctx.exec, "codex") };
+  const counted = buildReport({ boards: readAllBoards(boards), notes: readNotes(notes), versions });
+  return { text: renderReport(counted), json: counted };
+}
+var SANDBOX_CODES = ["EPERM", "EACCES"];
+function parseJson(text) {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
+}
+function selftest(args, ctx, flags, commands) {
+  parseCommand(args, {}, []);
+  const stateRoot = ctx.stateRoot();
+  const host = Object.keys(ENV_NAMES).find((name) => ctx.io.env[ENV_NAMES[name]]);
+  const session = host === void 0 ? null : { host, variable: ENV_NAMES[host] };
+  const steps = [];
+  const finish = (pass2, failedAt2) => ({
+    text: renderSelftest({ version: sourceCommit(), stateRoot, session, steps, pass: pass2 }),
+    json: { pass: pass2, steps, stateRoot },
+    ...pass2 ? {} : { error: { code: "TAVERN_SELFTEST_FAILED", message: `Selftest failed at ${failedAt2}.`, details: { step: failedAt2 } } }
+  });
+  let folder;
+  try {
+    folder = makeSelftestFolder(stateRoot);
+  } catch (error) {
+    const code = error.code ?? "TAVERN_SELFTEST_FOLDER";
+    const said = error.message.startsWith(`${code}: `) ? error.message : `${code}: ${error.message}`;
+    const sandbox = SANDBOX_CODES.includes(error.code) ? `${said.endsWith(".") ? "" : "."} The sandbox does not allow writes under ${stateRoot}. Allow that folder, then run selftest again.` : "";
+    steps.push({ name: "folder", ok: false, says: `${said}${sandbox}` });
+    return finish(false, "folder");
+  }
+  steps.push({ name: "folder", ok: true, says: "" });
+  const at = ctx.at;
+  const call = (argv2, { session: inner, at: when, cwd }) => {
+    const io2 = { env: {}, cwd, home: folder.dir, now: () => when, stdin: "", program: ctx.program, exec: () => ({ code: 1, stdout: "", stderr: "selftest runs no outside command" }) };
+    const result2 = main([...argv2, "--root", folder.state, "--json", ...inner === null ? [] : ["--session", inner]], io2, commands);
+    const json = parseJson(result2.stdout) ?? parseJson(result2.stderr);
+    lastError = json?.error;
+    return { code: result2.code, json, error: json?.error ?? { code: "TAVERN_UNEXPECTED", message: "The command printed no error." } };
+  };
+  let lastError;
+  const ran = runSelftest({ call, folders: folder, at });
+  const initFailed = ran.steps.find((step2) => step2.name === "init" && !step2.ok);
+  if (initFailed !== void 0 && lastError?.code === "TAVERN_INIT_INSIDE") {
+    initFailed.says = `TAVERN_INIT_INSIDE: The state root ${stateRoot} sits inside the workspace at ${lastError.details.root}, so selftest cannot make a workspace there. Use a state root outside every workspace.`;
+  }
+  steps.push(...ran.steps);
+  let pass = ran.pass;
+  let failedAt = ran.steps.find((step2) => !step2.ok)?.name;
+  try {
+    removeSelftestFolder(stateRoot, folder.dir);
+    steps.push({ name: "cleanup", ok: true, says: "" });
+  } catch (error) {
+    steps.push({ name: "cleanup", ok: false, says: `${error.code ?? "TAVERN_SELFTEST_FOLDER"}: ${error.message}` });
+    failedAt ??= "cleanup";
+    pass = false;
+  }
+  return finish(pass, failedAt);
+}
 var COMMANDS = {
   version,
   open,
@@ -10056,6 +10528,9 @@ var COMMANDS = {
   status,
   hook,
   close,
+  init,
+  report,
+  selftest,
   run: attachRun,
   "run-broke": runCondition("broke"),
   "run-aside": runCondition("set-aside"),
@@ -10093,6 +10568,7 @@ function splitFlags(argv2) {
   return { flags, args };
 }
 function makeContext(io2, flags) {
+  const stateRoot = once(() => resolveStateRoot({ flag: flags.root, env: io2.env, home: io2.home }));
   const workspace = once(() => {
     let cwd;
     try {
@@ -10100,7 +10576,7 @@ function makeContext(io2, flags) {
     } catch (error) {
       throw new TavernError("TAVERN_CWD_UNREADABLE", `The working folder cannot be read: ${error.message}`, {});
     }
-    return findWorkspace(cwd);
+    return findWorkspace(cwd, { stateRoot: stateRoot() });
   });
   return {
     io: io2,
@@ -10111,9 +10587,10 @@ function makeContext(io2, flags) {
     at: io2.now(),
     exec: io2.exec,
     session: once(() => resolveSession({ env: io2.env, flag: flags.session, host: flags.host })),
+    stateRoot,
     workspace,
     paths: once(() => statePaths({
-      stateRoot: resolveStateRoot({ flag: flags.root, env: io2.env, home: io2.home }),
+      stateRoot: stateRoot(),
       key: workspaceKey(workspace().root)
     })),
     settings: once(() => loadSettings(workspace().settingsPath))
@@ -10140,7 +10617,7 @@ function main(argv2, io2, commands = COMMANDS) {
       throw new TavernError("TAVERN_UNKNOWN_COMMAND", `Unknown command "${name ?? ""}". Commands: ${Object.keys(commands).join(", ")}.`, { command: name ?? null });
     }
     const ctx = makeContext(io2, flags);
-    const result2 = handler(rest, ctx, flags);
+    const result2 = handler(rest, ctx, flags, commands);
     const { rollover, reclaimed } = ctx;
     let text;
     if (flags.json) text = JSON.stringify({ ...result2.json, ...rollover === null ? {} : { rollover }, ...reclaimed === null ? {} : { reclaimed } });
@@ -10159,7 +10636,7 @@ function main(argv2, io2, commands = COMMANDS) {
 // src/cli.mjs
 function readStdin() {
   try {
-    return readFileSync8(0, "utf8");
+    return readFileSync10(0, "utf8");
   } catch {
     return "";
   }
