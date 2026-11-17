@@ -7973,10 +7973,10 @@ function renderBoard({ record, at, host, opened, leftOpen, checks = null, sugges
   return out.join("\n");
 }
 var WRITE_COMMANDS = [
-  ["step", ` --done <n> | --undo <n> | --add <text to ${LIMITS.stepText}>`],
+  ["step", ` --done <n> | --undo <n> | --add <text to ${LIMITS.stepText}, at most ${LIMITS.steps} steps>`],
   ["next-step", ` <text to ${LIMITS.nextStep}>`],
   ["point", " <pointer>"],
-  ["note", ` <text to ${LIMITS.noteText}>`],
+  ["note", ` <text to ${LIMITS.noteText}, at most ${LIMITS.notes} notes>`],
   ["done", " --proof <pointer>"],
   ["wait", " --reason <text>"],
   ["release", ""],
@@ -8111,11 +8111,12 @@ var sortedKeys = (counts, first = []) => {
   const present = Object.keys(counts).filter((key) => counts[key] > 0);
   return [...first.filter((key) => present.includes(key)), ...present.filter((key) => !first.includes(key)).sort()];
 };
+var totals = (groups) => Object.fromEntries(Object.entries(groups).map(([key, counts]) => [key, Object.values(counts).reduce((sum, n) => sum + n, 0)]));
 var row = (label, text) => `${label.padEnd(11)}${text}`;
 function renderReport(report2) {
   const { shifts, transfers, sidework, writes, hosts } = report2;
   const { ages } = transfers;
-  const runs = sortedKeys(report2.runs, REPORT_TOOLS).map((tool) => {
+  const runs = sortedKeys(totals(report2.runs), REPORT_TOOLS).map((tool) => {
     const conditions = sortedKeys(report2.runs[tool], ["attached", "finished", "broke", "set-aside"]);
     return `${tool}: ${conditions.map((condition) => `${condition} ${report2.runs[tool][condition]}`).join(", ")}`;
   });
@@ -9983,7 +9984,7 @@ function removeSelftestFolder(stateRoot, dir) {
 
 // src/main.mjs
 var VALUE_FLAGS = ["--root", "--session", "--host"];
-var sourceCommit = () => false ? "(source)" : "142135ece8f63caf37878029195b9132f9a089b4";
+var sourceCommit = () => false ? "(source)" : "29e581e33acef24096044acf1d04ef67414afc01";
 function version() {
   return { text: `tavern ${sourceCommit()}`, json: { version: sourceCommit() } };
 }
@@ -10063,6 +10064,9 @@ function parseCommand(args, options, positionals) {
     throw new TavernError("TAVERN_USAGE", error.message, {});
   }
   if (positionals !== null && parsed.positionals.length !== positionals.length) {
+    if (positionals.length === 0) {
+      throw new TavernError("TAVERN_USAGE", `This command takes only flags, and "${parsed.positionals[0]}" is not a flag.`, { positionals });
+    }
     throw new TavernError("TAVERN_USAGE", `Expected: ${positionals.join(" ")}.`, { positionals });
   }
   return { ...parsed.values, ids: parsed.positionals };
