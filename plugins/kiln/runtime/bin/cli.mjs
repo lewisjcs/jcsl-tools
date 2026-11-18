@@ -13628,10 +13628,13 @@ function blockKindsOf(doc) {
   }
   return visit(doc) ? [...kinds].sort() : null;
 }
-function ticketNodeOf(json) {
+function issueIn(json) {
   const node = json?.issues?.nodes?.[0];
   if (node !== null && typeof node === "object" && !Array.isArray(node)) return node;
   return typeof json?.key === "string" && json.fields !== null && typeof json.fields === "object" && !Array.isArray(json.fields) ? json : null;
+}
+function ticketNodeOf(json) {
+  return issueIn(json) ?? issueIn(json?.data);
 }
 
 // src/writes.mjs
@@ -14535,7 +14538,7 @@ function readJiraTicket(key, { ask: ask2 = true } = {}) {
   const node = byCommand ? json : ticketNodeOf(json);
   if (node === null) {
     const keys = json !== null && typeof json === "object" ? Object.keys(json).sort() : [];
-    throw new KilnError("KILN_JIRA_SHAPE", `${origin} for ${key} holds no Jira issue at the root or at issues.nodes[0]. It saw these field names: ${keys.join(", ")}.`, { ref: key, keys });
+    throw new KilnError("KILN_JIRA_SHAPE", `${origin} for ${key} holds no Jira issue at the root, at issues.nodes[0], or under data. It saw these field names: ${keys.join(", ")}.`, { ref: key, keys });
   }
   if (node.key !== key) {
     const keys = Object.keys(node).sort();

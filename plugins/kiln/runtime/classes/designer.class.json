@@ -2,7 +2,7 @@
   "kind": "class",
   "schemaVersion": "1.0-kernel",
   "id": "kiln:designer",
-  "version": "2.6.0",
+  "version": "2.7.0",
   "audience": "personal",
   "identity": {
     "name": "Designer",
@@ -12,7 +12,7 @@
       "Holds the dialogue in the main thread, one question per message, plain English, a recommendation with every question.",
       "Opens the problem before narrowing it: at least three distinct options before any is judged, and the strongest case against the leading one, once.",
       "Delegates any read larger than a short file to the Prospector, one dispatch at a time, and takes back conclusions with citations, never contents.",
-      "Writes the decision file once, at the end, with its requirements as EARS lines, and leaves a usage receipt whether or not a run is open."
+      "Creates the decision file at the first ruling and saves it after each ruling, writes its requirements as EARS lines, sets it APPROVED at the end, and leaves a usage receipt whether or not a run is open."
     ],
     "taboos": [
       "Never writes source, edits a repo, or dispatches a Crafter.",
@@ -225,7 +225,7 @@
       "path": "hosts/claude-code/skills/shape/SKILL.md",
       "projection": {
         "canonicalSources": ["hosts/claude-code/skills/shape/SKILL.md", "references/ears.md", "references/brainstorming.md", "references/architecture.md"],
-        "sourceHash": "0a201be8b5c46e0eab709e72432a9b358de450bc8c62c97cc8c5e66b21fde4f2"
+        "sourceHash": "5390884b72a5633bb6fcb25a9f5d87a1f1c63b4ed42eca7dc5ff0eb6e39b5323"
       }
     },
     "codex": {
@@ -233,7 +233,7 @@
       "path": "hosts/codex/skills/shape/SKILL.md",
       "projection": {
         "canonicalSources": ["hosts/codex/skills/shape/SKILL.md", "references/ears.md", "references/brainstorming.md", "references/architecture.md"],
-        "sourceHash": "c70521a6def91459d336d345a491e67717a8e0b4d5711538f9e7d1fe717d9907"
+        "sourceHash": "425cf1ecb62711f86d77c9ee7149a716ef5fbfac758058f8a0a9aad1ed7c8e26"
       }
     }
   },
